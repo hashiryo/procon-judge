@@ -14,6 +14,7 @@ from . import environment as env_mod
 from . import fetch
 from . import problem as problem_mod
 from . import run as run_mod
+from .fetch import mirror
 from .paths import RESULTS_DIR
 from .store import Store
 
@@ -91,13 +92,68 @@ def cmd_submissions_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def _problems(args: argparse.Namespace) -> list[problem_mod.Problem]:
+    if getattr(args, "problem", None):
+        return [problem_mod.load_by_id(args.problem)]
+    return [problem_mod.load(d) for d in problem_mod.all_problem_dirs()]
+
+
 def cmd_fetch(args: argparse.Namespace) -> int:
+    if not args.problem and not args.all:
+        return _die("--problem か --all のどちらかを指定してください")
+    for p in _problems(args):
+        if not fetch.needs_testdata(p):
+            print(f"{p.id}: テストデータを使いません")
+            continue
+        testcases = fetch.ensure(p, refresh=args.refresh)
+        print(
+            f"{p.id}: {testcases.count} cases  cases_hash={testcases.cases_hash}  "
+            f"{testcases.dir}"
+        )
+    return 0
+
+
+def cmd_testdata_import(args: argparse.Namespace) -> int:
     p = problem_mod.load_by_id(args.problem)
-    testcases = fetch.ensure(p, refresh=args.refresh)
+    testcases = fetch.import_dir(p, Path(args.dir))
     print(
-        f"{p.id}: {testcases.count} cases  cases_hash={testcases.cases_hash}  "
-        f"{testcases.dir}"
+        f"{p.id}: {testcases.count} cases 取り込みました  "
+        f"cases_hash={testcases.cases_hash}  {testcases.dir}"
     )
+    return 0
+
+
+def cmd_mirror_push(args: argparse.Namespace) -> int:
+    p = problem_mod.load_by_id(args.problem)
+    if not mirror.should_mirror(p):
+        return _die(
+            f"{p.id}: source = {p.testdata.source!r} は生成し直せるので保管しません"
+        )
+    directory = fetch.cache_dir_for(p)
+    if not (directory / fetch.MANIFEST_NAME).is_file():
+        return _die(f"{p.id}: 先に pj fetch か pj testdata import をしてください")
+    mirror.push(p, directory)
+    return 0
+
+
+def cmd_mirror_pull(args: argparse.Namespace) -> int:
+    p = problem_mod.load_by_id(args.problem)
+    if not mirror.pull(p, fetch.cache_dir_for(p)):
+        return _die(f"{p.id}: 保管庫にありません")
+    return 0
+
+
+def cmd_mirror_status(args: argparse.Namespace) -> int:
+    stored = {a["name"]: a for a in mirror.assets()}
+    for p in _problems(args):
+        name = mirror.asset_name(p)
+        if not mirror.should_mirror(p):
+            state = "-\t生成し直せるので保管しません"
+        elif name in stored:
+            state = f"あり\t{stored[name].get('size', '?')} bytes"
+        else:
+            state = "なし"
+        print(f"{p.id}\t{state}")
     return 0
 
 
@@ -217,9 +273,31 @@ def build_parser() -> argparse.ArgumentParser:
     s_list.set_defaults(func=cmd_submissions_list)
 
     p_fetch = sub.add_parser("fetch", help="テストデータ取得")
-    p_fetch.add_argument("--problem", required=True)
+    p_fetch.add_argument("--problem")
+    p_fetch.add_argument("--all", action="store_true", help="全問題")
     p_fetch.add_argument("--refresh", action="store_true", help="キャッシュを無視する")
     p_fetch.set_defaults(func=cmd_fetch)
+
+    testdata = sub.add_parser("testdata", help="テストデータ").add_subparsers(
+        dest="subcommand", required=True
+    )
+    t_import = testdata.add_parser("import", help="手元で落としたものを取り込む")
+    t_import.add_argument("--problem", required=True)
+    t_import.add_argument("--dir", required=True, metavar="PATH")
+    t_import.set_defaults(func=cmd_testdata_import)
+
+    mirror_cmd = sub.add_parser("mirror", help="テストデータの保管庫").add_subparsers(
+        dest="subcommand", required=True
+    )
+    m_push = mirror_cmd.add_parser("push", help="保管庫へ上げる")
+    m_push.add_argument("--problem", required=True)
+    m_push.set_defaults(func=cmd_mirror_push)
+    m_pull = mirror_cmd.add_parser("pull", help="保管庫から落とす")
+    m_pull.add_argument("--problem", required=True)
+    m_pull.set_defaults(func=cmd_mirror_pull)
+    m_status = mirror_cmd.add_parser("status", help="問題ごとの保管状況")
+    m_status.add_argument("--problem")
+    m_status.set_defaults(func=cmd_mirror_status)
 
     p_run = sub.add_parser("run", help="実行して記録を出す")
     p_run.add_argument("--env", required=True)
@@ -256,6 +334,7 @@ def main(argv: list[str] | None = None) -> int:
         problem_mod.ProblemError,
         env_mod.EnvironmentError_,
         fetch.FetchError,
+        mirror.MirrorError,
     ) as e:
         return _die(str(e))
 

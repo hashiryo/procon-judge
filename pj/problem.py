@@ -10,9 +10,11 @@ from .paths import PROBLEMS_DIR
 
 HARNESS_KINDS = frozenset({"base", "raw"})
 
-# 第一版で実装している取得元と比較。残りは DESIGN.md の「最小の第一版」を参照。
-TESTDATA_SOURCES = frozenset({"library_checker", "local", "none"})
-PLANNED_TESTDATA_SOURCES = frozenset({"aoj", "yukicoder", "manual"})
+# 実装している取得元と比較。残りは DESIGN.md の「最小の第一版」を参照。
+TESTDATA_SOURCES = frozenset(
+    {"library_checker", "aoj", "yukicoder", "manual", "local", "none"}
+)
+PLANNED_TESTDATA_SOURCES: frozenset[str] = frozenset()
 COMPARE_KINDS = frozenset({"tokens", "checker", "compile_only"})
 PLANNED_COMPARE_KINDS = frozenset({"float", "exit_code"})
 
@@ -125,8 +127,8 @@ def load(problem_dir: Path) -> Problem:
         count=int(td_raw.get("count", 0)),
         reference=td_raw.get("reference", ""),
     )
-    if source == "library_checker":
-        _require(bool(testdata.name), f"{toml_path}: library_checker には name が必要です")
+    if source in ("library_checker", "aoj", "yukicoder", "manual"):
+        _require(bool(testdata.name), f"{toml_path}: {source} には name が必要です")
     if source == "local":
         _require(
             testdata.count > 0, f"{toml_path}: local には正の count が必要です"

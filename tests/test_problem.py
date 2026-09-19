@@ -48,9 +48,16 @@ def test_base_harness_needs_base_cpp(tmp_path):
         problem_mod.load(make(tmp_path, "x", body))
 
 
-def test_planned_source_is_rejected_clearly(tmp_path):
-    body = MINIMAL.format(id="x").replace('source = "none"', 'source = "aoj"\nname = "DSL_2_A"')
-    with pytest.raises(problem_mod.ProblemError, match="未実装"):
+def test_unknown_source_is_rejected(tmp_path):
+    body = MINIMAL.format(id="x").replace('source = "none"', 'source = "codeforces"\nname = "1"')
+    with pytest.raises(problem_mod.ProblemError, match="testdata.source"):
+        problem_mod.load(make(tmp_path, "x", body))
+
+
+def test_aoj_needs_a_name(tmp_path):
+    body = MINIMAL.format(id="x").replace('source = "none"', 'source = "aoj"')
+    body = body.replace('kind = "compile_only"', 'kind = "tokens"')
+    with pytest.raises(problem_mod.ProblemError, match="name"):
         problem_mod.load(make(tmp_path, "x", body))
 
 

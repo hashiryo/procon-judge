@@ -51,14 +51,15 @@ jobs:
           g++-15 --version
 
       # 7 日使われないと消えるので、消えても再取得できる形にしてある。
+      # テストデータはただのテキストで環境に依存しないので、キーに env を入れない。
+      # v1 はキャッシュの世代。まっさらから取り直させたいときに上げる。
       - name: テストデータのキャッシュ
         uses: actions/cache@v6
         with:
           path: .cache/testcases
-          key: testcases-${{ matrix.env }}-${{ hashFiles('problems/*/problem.toml') }}
+          key: testcases-v1-${{ hashFiles('problems/*/problem.toml') }}
           restore-keys: |
-            testcases-${{ matrix.env }}-
-            testcases-
+            testcases-v1-
 
       # pin しない。実行のたびに最新を取る。
       # 取れなくても、ライブラリを使わない提出は走る。
@@ -67,7 +68,11 @@ jobs:
         run: git clone --depth=1 https://github.com/hashiryo/Library.git lib
 
       # 書き先をドットで始めない。upload-artifact は既定で隠しファイルを除く。
+      # 取れなかったテストデータは保管庫から取る。原本まで行ったら保管庫へ上げる。
       - name: 実行
+        env:
+          TESTDATA_TOKEN: ${{ secrets.TESTDATA_TOKEN }}
+          YUKICODER_TOKEN: ${{ secrets.YUKICODER_TOKEN }}
         run: >
           uv run pj run
           --env ${{ matrix.env }}
