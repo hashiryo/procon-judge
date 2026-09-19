@@ -124,6 +124,9 @@ def cmd_run(args: argparse.Namespace) -> int:
     env = env_mod.load(args.env)
     machine = run_mod.Machine.detect(env)
     store = Store(Path(args.store) if args.store else RESULTS_DIR)
+    # CI では results ブランチから読んで、記録はアーティファクトに置く。
+    # push するのは collect だけなので、run は store を書き換えない。
+    out = Store(Path(args.out)) if args.out else store
     targets = _targets(args)
 
     print(
@@ -155,7 +158,7 @@ def cmd_run(args: argparse.Namespace) -> int:
                 file=sys.stderr,
             )
             record = run_mod.execute_job(job)
-            store.append(record)
+            out.append(record)
             print(record.to_json(), flush=True)
 
     _print_summary(plan, args.dry_run, file=sys.stderr)
@@ -170,6 +173,13 @@ def _print_summary(plan: run_mod.Plan, dry_run: bool, *, file) -> None:
     if plan.pending:
         parts.append(f"テストデータ未取得 {len(plan.pending)} 件")
     print(" / ".join(parts), file=file)
+
+
+def cmd_records_append(args: argparse.Namespace) -> int:
+    store = Store(Path(args.store) if args.store else RESULTS_DIR)
+    added, skipped = store.absorb(Path(d) for d in args.dirs)
+    print(f"追加 {added} 件 / 既にあった {skipped} 件", file=sys.stderr)
+    return 0
 
 
 def cmd_records_list(args: argparse.Namespace) -> int:
@@ -218,13 +228,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.add_argument(
         "--dry-run", action="store_true", help="走らせる対象を出すだけ"
     )
-    p_run.add_argument("--store", help=f"記録の置き場 (既定 {RESULTS_DIR.name}/)")
+    p_run.add_argument("--store", help=f"記録を読む場所 (既定 {RESULTS_DIR.name}/)")
+    p_run.add_argument("--out", help="記録の書き先 (既定は --store と同じ)")
     p_run.add_argument("--refresh", action="store_true", help="テストデータを取り直す")
     p_run.set_defaults(func=cmd_run)
 
     records = sub.add_parser("records", help="記録").add_subparsers(
         dest="subcommand", required=True
     )
+    r_append = records.add_parser("append", help="ほかの jsonl を取り込む")
+    r_append.add_argument("dirs", nargs="+", metavar="DIR")
+    r_append.add_argument("--store")
+    r_append.set_defaults(func=cmd_records_append)
+
     r_list = records.add_parser("list", help="記録の一覧")
     r_list.add_argument("--store")
     r_list.set_defaults(func=cmd_records_list)

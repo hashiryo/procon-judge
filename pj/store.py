@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import sys
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 from .record import Record
@@ -65,3 +65,56 @@ class Store:
 
     def count(self) -> int:
         return sum(1 for pid in self.problem_ids() for _ in self.read(pid))
+
+    def append_raw(self, problem_id: str, line: str) -> None:
+        path = self.path_for(problem_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a") as f:
+            f.write(line + "\n")
+
+    def absorb(self, directories: Iterable[Path]) -> tuple[int, int]:
+        """他所の jsonl を取り込む。足した件数と飛ばした件数を返す。
+
+        CI では run のジョブがアーティファクトへ記録を置いて、collect が
+        ここへまとめる。ワークフローを回し直しても重ならないよう、
+        既にあるキーは飛ばす。
+        """
+        known = self.keys()
+        added = skipped = 0
+        for path in _jsonl_files(directories):
+            for number, line in enumerate(path.read_text().splitlines(), start=1):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError:
+                    print(f"warning: {path}:{number} を読めません", file=sys.stderr)
+                    continue
+                key, problem = record.get("key"), record.get("problem")
+                if not key or not problem:
+                    print(f"warning: {path}:{number} に key か problem がありません",
+                          file=sys.stderr)
+                    continue
+                if key in known:
+                    skipped += 1
+                    continue
+                known.add(key)
+                self.append_raw(problem, line)
+                added += 1
+        return added, skipped
+
+
+def _jsonl_files(directories: Iterable[Path]) -> list[Path]:
+    """渡されたディレクトリの下の jsonl を集める。
+
+    アーティファクトの展開先は run のジョブごとに 1 段深くなるので、
+    決め打ちせずに再帰で拾う。
+    """
+    found: list[Path] = []
+    for directory in directories:
+        if directory.is_file() and directory.suffix == ".jsonl":
+            found.append(directory)
+        elif directory.is_dir():
+            found.extend(sorted(directory.rglob("*.jsonl")))
+    return sorted(set(found))

@@ -85,3 +85,73 @@ def test_empty_store(tmp_path):
     assert store.keys() == set()
     assert store.problem_ids() == []
     assert store.count() == 0
+
+
+def write_jsonl(path, records):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("".join(r.to_json() + "\n" for r in records))
+
+
+def test_absorb_takes_records_from_a_directory(tmp_path):
+    artifacts = tmp_path / "artifacts"
+    write_jsonl(artifacts / "problems" / "p.jsonl", [make_record(key="k1")])
+    store = Store(tmp_path / "store")
+
+    assert store.absorb([artifacts]) == (1, 0)
+    assert store.keys() == {"k1"}
+
+
+def test_absorb_is_idempotent(tmp_path):
+    artifacts = tmp_path / "artifacts"
+    write_jsonl(artifacts / "problems" / "p.jsonl", [make_record(key="k1")])
+    store = Store(tmp_path / "store")
+
+    store.absorb([artifacts])
+    assert store.absorb([artifacts]) == (0, 1)
+    assert store.count() == 1
+
+
+def test_absorb_looks_deeper_than_one_level(tmp_path):
+    # アーティファクトの展開先は run のジョブごとに 1 段深くなる。
+    artifacts = tmp_path / "artifacts"
+    write_jsonl(
+        artifacts / "records-x64-gcc" / "problems" / "p.jsonl",
+        [make_record(key="k1")],
+    )
+    write_jsonl(
+        artifacts / "records-arm-gcc" / "problems" / "p.jsonl",
+        [make_record(key="k2")],
+    )
+    store = Store(tmp_path / "store")
+
+    assert store.absorb([artifacts]) == (2, 0)
+    assert store.keys() == {"k1", "k2"}
+
+
+def test_absorb_splits_by_problem(tmp_path):
+    artifacts = tmp_path / "artifacts"
+    write_jsonl(
+        artifacts / "all.jsonl",
+        [make_record(key="k1", problem="a"), make_record(key="k2", problem="b")],
+    )
+    store = Store(tmp_path / "store")
+
+    store.absorb([artifacts])
+    assert store.problem_ids() == ["a", "b"]
+
+
+def test_absorb_ignores_a_broken_line(tmp_path, capsys):
+    artifacts = tmp_path / "artifacts"
+    path = artifacts / "problems" / "p.jsonl"
+    write_jsonl(path, [make_record(key="k1")])
+    with path.open("a") as f:
+        f.write("{not json\n")
+    store = Store(tmp_path / "store")
+
+    assert store.absorb([artifacts]) == (1, 0)
+    assert "読めません" in capsys.readouterr().err
+
+
+def test_absorb_of_nothing(tmp_path):
+    store = Store(tmp_path / "store")
+    assert store.absorb([tmp_path / "missing"]) == (0, 0)

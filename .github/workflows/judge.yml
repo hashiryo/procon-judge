@@ -1,0 +1,121 @@
+name: judge
+
+on:
+  push:
+    branches: [main]
+  repository_dispatch:
+  schedule:
+    # 03:00 JST。取りこぼしを埋める。
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+# 記録を失いたくないので、実行中のものを打ち切らずに待たせる。
+concurrency:
+  group: judge
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    strategy:
+      fail-fast: false
+      matrix:
+        # environments.toml と対応させる。M5 で 4 環境に広げる。
+        include:
+          - env: x64-gcc
+            runs_on: ubuntu-24.04
+    runs-on: ${{ matrix.runs_on }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # 先端の状態しか要らないので fetch-depth: 1。履歴が増えても時間が変わらない。
+      - name: results を読む
+        uses: actions/checkout@v4
+        with:
+          ref: results
+          path: .results
+          fetch-depth: 1
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: コンパイラを入れる
+        run: |
+          sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+          sudo apt-get update
+          sudo apt-get install -y g++-15
+          g++-15 --version
+
+      # 7 日使われないと消えるので、消えても再取得できる形にしてある。
+      - name: テストデータのキャッシュ
+        uses: actions/cache@v4
+        with:
+          path: .cache/testcases
+          key: testcases-${{ matrix.env }}-${{ hashFiles('problems/*/problem.toml') }}
+          restore-keys: |
+            testcases-${{ matrix.env }}-
+            testcases-
+
+      # pin しない。実行のたびに最新を取る。
+      # 取れなくても、ライブラリを使わない提出は走る。
+      - name: ライブラリを取る
+        continue-on-error: true
+        run: git clone --depth=1 https://github.com/hashiryo/Library.git lib
+
+      - name: 実行
+        run: >
+          uv run pj run
+          --env ${{ matrix.env }}
+          --store .results
+          --out .artifacts
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: records-${{ matrix.env }}
+          path: .artifacts
+          if-no-files-found: ignore
+
+  collect:
+    needs: run
+    if: always()
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: results を読む
+        uses: actions/checkout@v4
+        with:
+          ref: results
+          path: .results
+          fetch-depth: 1
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: .artifacts
+
+      - name: 記録をまとめる
+        run: uv run pj records append .artifacts --store .results
+
+      # 並列で results に push すると衝突するので、押すのは collect だけ。
+      - name: results に push する
+        working-directory: .results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "増えた記録はありません"
+            exit 0
+          fi
+          git commit -m "記録を追加 (${GITHUB_SHA::7})"
+          git push origin HEAD:results

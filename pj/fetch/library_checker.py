@@ -6,6 +6,8 @@ Library/scripts/lib/download.py の download_yosupo を移植した。
 
 from __future__ import annotations
 
+import platform
+import shlex
 import shutil
 import subprocess
 import sys
@@ -52,11 +54,19 @@ def ensure_repo(directory: Path = LIBRARY_CHECKER_DIR) -> Path:
 
 
 def _generate_command(info_toml: Path) -> list[str]:
-    """generate.py を走らせるコマンド。依存は uv が用意する。"""
+    """generate.py を走らせるコマンド。依存は uv が用意する。
+
+    Linux ではスタックを広げてから呼ぶ。深い再帰を書いたジェネレータがあり、
+    既定の 8 MB では落ちる。generate.py は Darwin と Windows のスタックだけ
+    自分で面倒を見るので、Linux はこちらで用意する。macOS で
+    `ulimit -s unlimited` は通らないので囲まない。
+    """
     cmd = ["uv", "run", "--quiet"]
     for dep in GENERATE_DEPS:
         cmd += ["--with", dep]
     cmd += ["python", "generate.py", str(info_toml)]
+    if platform.system() == "Linux":
+        return ["bash", "-c", "ulimit -s unlimited && exec " + shlex.join(cmd)]
     return cmd
 
 
