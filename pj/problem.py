@@ -18,6 +18,15 @@ PLANNED_TESTDATA_SOURCES: frozenset[str] = frozenset()
 COMPARE_KINDS = frozenset({"tokens", "checker", "compile_only"})
 PLANNED_COMPARE_KINDS = frozenset({"float", "exit_code"})
 
+# id の接頭辞は問題そのものの出どころを表す (DESIGN.md「problem.toml」)。判定サイトから
+# 取るテストデータはその出どころの問題にしか付かないので、食い違っていたらどちらかが
+# 間違っている。逆向きは成り立たない (aoj- の問題を local や manual で持ってよい)。
+SOURCE_PREFIXES = {
+    "library_checker": "yosupo-",
+    "aoj": "aoj-",
+    "yukicoder": "yuki-",
+}
+
 
 class ProblemError(Exception):
     """problem.toml が壊れているときに投げる。"""
@@ -175,6 +184,15 @@ def load(problem_dir: Path) -> Problem:
         compare=compare,
         raw=raw,
     )
+
+
+def warnings(problem: Problem) -> list[str]:
+    """エラーにはしないが、直したほうがよいものを返す。"""
+    source = problem.testdata.source
+    prefix = SOURCE_PREFIXES.get(source)
+    if prefix is None or problem.id.startswith(prefix):
+        return []
+    return [f"id が {prefix!r} で始まっていません (testdata.source = {source!r})"]
 
 
 def load_by_id(problem_id: str) -> Problem:

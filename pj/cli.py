@@ -63,6 +63,7 @@ def cmd_problems_check(args: argparse.Namespace) -> int:
         if not directories:
             return _die(f"問題 {args.problem!r} がありません")
     failed = 0
+    warned = 0
     for directory in directories:
         try:
             p = problem_mod.load(directory)
@@ -70,11 +71,16 @@ def cmd_problems_check(args: argparse.Namespace) -> int:
             print(f"NG  {directory.name}: {e}")
             failed += 1
             continue
+        for message in problem_mod.warnings(p):
+            print(f"WARN {p.id}: {message}")
+            warned += 1
         if not p.submissions():
             print(f"NG  {p.id}: submissions/ に提出がありません")
             failed += 1
             continue
         print(f"OK  {p.id}  ({len(p.submissions())} submissions)")
+    if warned:
+        print(f"\n{warned} 件に警告があります", file=sys.stderr)
     if failed:
         print(f"\n{failed} 件が通りませんでした", file=sys.stderr)
     return 1 if failed else 0

@@ -89,3 +89,32 @@ def test_real_problem_loads():
     assert p.harness_kind == "base"
     assert p.compare.kind == "checker"
     assert "submissions/naive.hpp" in [s.as_posix() for s in p.submissions()]
+
+
+def with_source(problem_id, source, name="1"):
+    body = MINIMAL.format(id=problem_id)
+    return body.replace('source = "none"', f'source = "{source}"\nname = "{name}"')
+
+
+def test_prefix_matching_the_source_does_not_warn(tmp_path):
+    body = with_source("yuki-649", "yukicoder", "649")
+    p = problem_mod.load(make(tmp_path, "yuki-649", body))
+    assert problem_mod.warnings(p) == []
+
+
+def test_prefix_not_matching_the_source_warns(tmp_path):
+    body = with_source("aoj-649", "yukicoder", "649")
+    p = problem_mod.load(make(tmp_path, "aoj-649", body))
+    assert "'yuki-'" in problem_mod.warnings(p)[0]
+
+
+def test_missing_prefix_warns(tmp_path):
+    body = with_source("gf2-64", "library_checker", "math/x")
+    p = problem_mod.load(make(tmp_path, "gf2-64", body))
+    assert "'yosupo-'" in problem_mod.warnings(p)[0]
+
+
+def test_source_without_a_prefix_never_warns(tmp_path):
+    body = with_source("aoj-DSL_2_B", "manual")
+    p = problem_mod.load(make(tmp_path, "aoj-DSL_2_B", body))
+    assert problem_mod.warnings(p) == []
