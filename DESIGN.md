@@ -492,42 +492,37 @@ name = "x64-gcc"
 runs_on = "ubuntu-24.04"
 cxx = "g++-15"
 cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=x86-64-v3 -flto=auto -pthread"
-tier = 1
 
 [[env]]
 name = "x64-clang"
 runs_on = "ubuntu-24.04"
 cxx = "clang++-21"
 cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=x86-64-v3 -flto=auto -pthread -fuse-ld=lld"
-tier = 2
 
 [[env]]
 name = "arm-gcc"
 runs_on = "ubuntu-24.04-arm"
 cxx = "g++-15"
-cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=armv8.2-a -flto=auto -pthread -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES -Ithird_party/simde"
-tier = 1
+cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=armv8.2-a -flto=auto -pthread -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES"
 
 [[env]]
 name = "arm-clang"
 runs_on = "ubuntu-24.04-arm"
 cxx = "clang++-21"
-cxxflags = "..."
-tier = 2
+cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=armv8.2-a -flto=auto -pthread -fuse-ld=lld -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES"
 
 [[env]]
 name = "local"
 runs_on = "self"
 cxx = "c++"
-cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES -Ithird_party/simde"
-tier = 0
+cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES"
 ```
 
-`tier = 0` は手元専用で、CI では走らせません。Mac の Apple clang を使うので `-march` は付けません。
+`runs_on = "self"` は手元専用で、CI のマトリクスには出しません。Mac の Apple clang を使うので `-march` は付けません。
 
-`tier = 1` の環境は変更ごとに走らせます。`tier = 2` は定期実行と手動のときだけ走らせます。これで変更ごとの費用が半分になります。
+`tier` はまだ入れていません。入れるときは `tier = 1` を変更ごとに、`tier = 2` を定期実行と手動のときだけ走らせる形にします。これで変更ごとの費用が半分になります。
 
-`pj` は `environments.toml` の `cxxflags` に `-I lib` と問題のディレクトリを足してからコンパイルします。記録の `cxxflags` には足したあとの文字列をそのまま入れてください。キーの一部なので、記録と実際のコンパイルがずれてはいけません。
+`pj` は `environments.toml` の `cxxflags` に `-Ilib`、問題のディレクトリ、`-Ithird_party/simde` の 3 つを足してからコンパイルします。記録の `cxxflags` には足したあとの文字列をそのまま入れてください。キーの一部なので、記録と実際のコンパイルがずれてはいけません。`-I` を `environments.toml` の側にも書くと二度出るので、書かないでください。
 
 arm では SIMDe を使います。手元の Mac が arm で提出先が x86 なので、x86 の intrinsics をそのまま書いて arm で動かすために必要です。SIMDe は `third_party/simde` に submodule で入れます。
 
@@ -586,7 +581,9 @@ concurrency:
 
 記録を失いたくないので、実行中のものを打ち切らずに待たせます。
 
-ジョブは 2 段です。
+ジョブは 3 つです。`test` は `pj` 自身の pytest を回すだけで、ほかの 2 つとは独立に走ります。キーの計算や出力比較が壊れると記録の意味が変わるので、手元だけで見るのはやめました。環境の定義と matrix がずれていないかもここで見ています。
+
+残りの 2 つは段になっています。
 
 `run` は matrix で環境 × シャードに広がります。各ジョブの手順は次のとおりです。
 
@@ -714,7 +711,7 @@ M1 の時点で `problem.toml`、`base.cpp`、`submissions/naive.hpp` を手で�
 
 ## 実装の状況
 
-M4 まで通っています。手元で `pj run --env local` が動き、2 回目は 0 件になります。main へ push すると CI が `x64-gcc` で走って、`results` ブランチに記録が増えます。AOJ のテストデータは保管庫から取るので、CI は judgedat を叩きません。
+M5 まで通っています。手元で `pj run --env local` が動き、2 回目は 0 件になります。main へ push すると CI が 4 環境で走って、`results` ブランチに記録が増えます。AOJ のテストデータは保管庫から取るので、CI は judgedat を叩きません。
 
 以下は段ごとの実装の記録です。決めたことと、踏んだ罠を書いてあります。
 
@@ -929,6 +926,72 @@ judgedat は大きいケースを切り詰めて返すことがあります。he
 
 取得は実装しましたが、問題はまだ足していません。`YUKICODER_TOKEN` を secret に入れたら足せます。トークンが無いときは何が要るか言って止まります。
 
+
+## M5 の実装の記録
+
+4 環境の記録が揃いました。x64 と arm に gcc と clang の組み合わせです。`local` は `runs_on = "self"` にして CI のマトリクスには出しません。`tier` はまだ入れていません。4 環境を毎回回して費用が気になってから足します。
+
+### -I は環境の定義に書きません
+
+設計の `environments.toml` は arm と `local` の `cxxflags` に `-Ithird_party/simde` を書いていましたが、落としました。`pj` が `-Ilib`、問題のディレクトリ、`-Ithird_party/simde` の 3 つを足すので、両方に書くと記録の `cxxflags` に同じ `-I` が二度出ます。`environments.toml` に `-I` が無いことは pytest で見ています。
+
+`include_dirs` は `third_party/simde` があるかどうかを見なくなりました。submodule を初期化していない手元と、初期化した CI とで `cxxflags` が変わってしまい、同じ提出が別のキーで二度測られるからです。存在しない `-I` はコンパイラが黙って無視します。
+
+この 2 つで `cxxflags` の文字列が変わったので、M4 までの記録のキーは全部無効になりました。1 回ぶん測り直しています。
+
+### 既存の judge から落としたフラグが 2 つあります
+
+既存の `judge` は `-ftrivial-auto-var-init=zero` を 4 環境すべてに、`-fconstexpr-depth=1024` を clang の 2 つに付けています。設計の `environments.toml` はどちらも書いていないので、書いてあるとおりにしました。
+
+`-ftrivial-auto-var-init=zero` は初期化していない自動変数を 0 で埋めます。環境ごとのスタックの中身の違いで判定が揺れなくなる代わりに、大きな自動変数を置く実装ではその 0 埋めのぶん遅くなります。`judge` から提出を移したときに、これに頼っていた実装が WA になることがあります。
+
+`-fconstexpr-depth=1024` は clang の既定の 512 では足りない実装のためのものです。深い constexpr を書いた提出を移すと CE になります。
+
+どちらも `environments.toml` の 1 行です。移してみて困ったら足してください。
+
+### SIMDe は Library と同じコミットに留めます
+
+`third_party/simde` は submodule です。`hashiryo/Library` が `include/simde` に留めているのと同じ `cb5b957` に合わせました。`judge` の algo 実装は `#include <simde/x86/avx2.h>` の形で書いてあるので、`-Ithird_party/simde` があればそのまま通ります。
+
+CI の checkout は `submodules: true` です。`fetch-depth` の既定が 1 なので submodule も深さ 1 で取ります。作業ツリーは 60 MB あって、そのうち 49 MB は simde 自身のテストです。
+
+`ruff` が simde の Python を見に行くので、`pyproject.toml` で `third_party` を除きました。
+
+### arm の CPU モデルは lscpu から取ります
+
+arm の `/proc/cpuinfo` にはモデル名が載りません。実装者と part 番号しか無いので、`cpu_model()` が "unknown" を返していました。CPU モデルはキーの材料なので、このままだと arm の記録が全部 "unknown" で並びます。
+
+`lscpu` が part 番号を名前に直してくれるので、cpuinfo に無いときはそちらに落とします。`ubuntu-24.04-arm` は `Neoverse-N2` でした。x86 ではどちらも同じ文字列を返すので、先に読む cpuinfo の側で決まります。x64 の記録のキーはこの変更では動きません。
+
+`lscpu` の見出しは訳されることがあるので `LC_ALL=C` で呼びます。出力には `Model name` のほかに `Model` の行もあるので、番号の方を拾わないようにしています。
+
+### チェッカのバイナリに arch を入れました
+
+テストデータのキャッシュは 4 環境で共有します。キーに `matrix.env` を入れていないのは、テストデータが環境に依存しないからです。ところが同じディレクトリに `checker.bin` を置いていたので、x86 で組んだチェッカが arm のジョブに復元されて、そのまま使われる形になっていました。名前を `checker-<arch>.bin` にして分けました。
+
+### コンパイラの入れ方
+
+gcc は `ppa:ubuntu-toolchain-r/test` の `g++-15` です。この PPA は arm64 のビルドも置いています。clang は `apt.llvm.org` の `llvm.sh 21 all` で、36 秒で終わります。`-fuse-ld=lld` は PATH の `ld.lld` を探しますが、apt.llvm.org は版つきの名前しか置かないので `/usr/local/bin/ld.lld` に別名を張ります。どれも既存の `judge` が 4 環境で回していた手順です。
+
+clang でも `-flto=auto` が通ります。gcc 向けの綴りですが、clang も LTO の指定として受け取ります。
+
+入らなかったらジョブを落とします。既存の `judge` は、Launchpad が落ちているときに `g++-14` へ切り替えます。こちらでは採りません。記録に残る環境名と、実際に測ったコンパイラがずれるからです。取りこぼしは次の実行が拾います。
+
+### マトリクスは手書きのままにしました
+
+M3 で先送りにした二重持ちの件です。`environments.toml` と `judge.yml` の両方に環境名とランナー名を書いています。
+
+前段のジョブで `environments.toml` を読んで `fromJSON` で matrix に渡す形は採りませんでした。ジョブが 1 つ増えて全体が待たされるのと、yml を読んでも何が走るのか分からなくなるからです。環境を足すのは滅多に起きません。
+
+代わりに、ずれたら pytest が落ちるようにしました。`runs_on` が "self" でない環境の集合と matrix の `include` の集合が一致すること、ランナー名が一致すること、`toolchain` が `cxx` と合っていることを見ています。
+
+それを回す場所として `test` ジョブを足しました。`run` と `collect` からは独立に走ります。`tier` とシャードを入れて matrix が引き金ごとに変わりはじめたら、生成する側へ切り替えてください。
+
+### x86 の 4 つ目のモデルが出ました
+
+M4 の時点では AMD EPYC 7763、AMD EPYC 9V74、INTEL(R) XEON(R) PLATINUM 8573C の 3 つでした。今回 `x64-clang` が `Intel(R) Xeon(R) 6973P-C` に当たって 4 つ目になりました。設計が「x86 は 3 モデルに散る」と見ていたより 1 つ多いです。
+
+CPU モデルはキーの一部なので、当たったぶんだけ記録が増えます。arm は今のところ `Neoverse-N2` の 1 つだけです。
 
 ## 既存リポジトリから移すもの
 
