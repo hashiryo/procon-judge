@@ -190,3 +190,52 @@ def test_ids_that_would_escape_the_directory_are_skipped(tmp_path, no_problem_di
     out = tmp_path / "site"
     summary = site_build.build(store, out)
     assert summary.problems == 0
+
+
+# --- ソースへのリンク ------------------------------------------------------
+
+
+def test_rows_carry_the_commit_that_was_measured(tmp_path, no_problem_dirs):
+    """リンク先はいまの main ではなく、その数字を出したコミット。"""
+    store = store_with(tmp_path, [rec(judge_sha="abc123", library_sha="def456")])
+    out = tmp_path / "site"
+    site_build.build(store, out, library_url="https://example.invalid/lib")
+    data = json.loads((out / "data" / "problems" / "p.json").read_text())
+    assert data["rows"][0]["judge_sha"] == "abc123"
+    assert data["rows"][0]["library_sha"] == "def456"
+    assert data["library"] == "https://example.invalid/lib"
+
+
+def test_without_a_library_url_there_is_no_link(tmp_path, no_problem_dirs):
+    """このリポジトリはライブラリの在処を持たない。渡されなければ出さない。"""
+    out = tmp_path / "site"
+    site_build.build(store_with(tmp_path, [rec()]), out)
+    data = json.loads((out / "data" / "problems" / "p.json").read_text())
+    assert data["library"] is None
+
+
+def test_repo_url_comes_from_the_ci_environment(monkeypatch):
+    monkeypatch.setenv("GITHUB_REPOSITORY", "owner/repo")
+    monkeypatch.delenv("GITHUB_SERVER_URL", raising=False)
+    assert site_build.repo_url() == "https://github.com/owner/repo"
+
+
+def make_repo(tmp_path, remote):
+    import subprocess
+
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "remote", "add", "origin", remote], cwd=tmp_path, check=True)
+    return tmp_path
+
+
+def test_repo_url_survives_an_ssh_alias(tmp_path, monkeypatch):
+    """remote の host は別名が挟まるので当てにしない。owner/repo だけ拾う。"""
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+    root = make_repo(tmp_path, "git@github.com.hashiryo:hashiryo/procon-judge.git")
+    assert site_build.repo_url(root) == "https://github.com/hashiryo/procon-judge"
+
+
+def test_repo_url_is_none_when_the_remote_is_not_github(tmp_path, monkeypatch):
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+    root = make_repo(tmp_path, "git@ghe.example.invalid:team/thing.git")
+    assert site_build.repo_url(root) is None

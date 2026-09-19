@@ -242,7 +242,7 @@ def cmd_records_append(args: argparse.Namespace) -> int:
 def cmd_site_build(args: argparse.Namespace) -> int:
     store = Store(Path(args.store) if args.store else RESULTS_DIR)
     out = Path(args.out) if args.out else SITE_DIR
-    summary = site_build.build(store, out)
+    summary = site_build.build(store, out, library_url=args.library_url)
     print(
         f"{summary.out} に問題 {summary.problems} 件 / 記録 {summary.records} 件 / "
         f"ページ {summary.pages + 1} 枚",
@@ -342,6 +342,9 @@ def build_parser() -> argparse.ArgumentParser:
     site_b = site.add_parser("build", help="記録から静的なサイトを作る")
     site_b.add_argument("--out", help=f"書き先 (既定 {SITE_DIR.name}/)")
     site_b.add_argument("--store", help=f"記録を読む場所 (既定 {RESULTS_DIR.name}/)")
+    # このリポジトリはライブラリの在処を持たない。記録の library_sha を
+    # リンクにしたいときだけ、呼ぶ側が渡す。
+    site_b.add_argument("--library-url", help="ライブラリのリポジトリ URL")
     site_b.set_defaults(func=cmd_site_build)
 
     return parser

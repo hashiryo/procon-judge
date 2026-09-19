@@ -10,8 +10,10 @@ from __future__ import annotations
 import hashlib
 import html
 import json
+import os
 import re
 import shutil
+import subprocess
 import urllib.parse
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -20,6 +22,7 @@ from pathlib import Path
 
 from .. import environment as env_mod
 from .. import problem as problem_mod
+from ..paths import ROOT
 from ..record import judge_sha
 from ..store import Store
 
@@ -56,6 +59,8 @@ class Cell:
     binary_bytes: int | None
     samples: int
     timestamp: str
+    judge_sha: str | None
+    library_sha: str | None
     failed: dict | None
 
 
@@ -110,6 +115,8 @@ def collapse(records: Sequence[dict]) -> list[Cell]:
                 binary_bytes=newest.get("binary_bytes"),
                 samples=len(same),
                 timestamp=max(r.get("timestamp") or "" for r in same),
+                judge_sha=newest.get("judge_sha"),
+                library_sha=newest.get("library_sha"),
                 failed=_failed(newest),
             )
         )
@@ -146,6 +153,8 @@ def problem_payload(
     cells: Sequence[Cell],
     generated_at: str,
     case_count: int = 0,
+    repo: str | None = None,
+    library: str | None = None,
 ) -> dict:
     """problems/<id>.html が読む JSON。"""
     order = _env_order()
@@ -180,6 +189,8 @@ def problem_payload(
         "mle_mb": problem.limits.mle_mb if problem else 0,
         "case_count": case_count,
         "generated_at": generated_at,
+        "repo": repo,
+        "library": library,
         "submissions": submissions,
         "combos": sorted(
             combos.values(),
@@ -199,6 +210,8 @@ def problem_payload(
                 "binary_bytes": c.binary_bytes,
                 "samples": c.samples,
                 "timestamp": c.timestamp,
+                "judge_sha": c.judge_sha,
+                "library_sha": c.library_sha,
                 "failed": c.failed,
             }
             for c in cells
@@ -241,10 +254,38 @@ def _prepare(out: Path) -> None:
     (out / MARKER).write_text("pj site build\n")
 
 
-def build(store: Store, out: Path) -> Summary:
+def repo_url(root: Path = ROOT) -> str | None:
+    """このリポジトリの GitHub 上の URL。提出のソースへ飛ばすのに使う。
+
+    CI では GITHUB_REPOSITORY がある。手元では origin の remote から作る。
+    remote の host は SSH の別名 (github.com.hashiryo) が挟まって当てにならないので、
+    github.com を含むことだけ確かめて末尾の 2 つを owner/repo として拾う。
+    """
+    slug = os.environ.get("GITHUB_REPOSITORY")
+    if slug:
+        server = os.environ.get("GITHUB_SERVER_URL") or "https://github.com"
+        return f"{server.rstrip('/')}/{slug}"
+    try:
+        proc = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            cwd=root, capture_output=True, text=True, check=False, timeout=10,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return None
+    remote = proc.stdout.strip()
+    if proc.returncode != 0 or "github.com" not in remote:
+        return None
+    parts = remote.removesuffix(".git").replace(":", "/").split("/")
+    if len(parts) < 2:
+        return None
+    return "https://github.com/" + "/".join(parts[-2:])
+
+
+def build(store: Store, out: Path, library_url: str | None = None) -> Summary:
     generated_at = (
         datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     )
+    repo = repo_url()
     _prepare(out)
 
     style_v = _write(out / "style.css", (TEMPLATES / "style.css").read_text())
@@ -277,6 +318,8 @@ def build(store: Store, out: Path) -> Summary:
             cells,
             generated_at,
             case_count=max((r.get("case_count") or 0 for r in records), default=0),
+            repo=repo,
+            library=library_url,
         )
 
         name = f"{problem_id}.json"

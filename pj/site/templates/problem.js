@@ -25,15 +25,125 @@ function bytes(n) {
   return n < 1024 ? n + " B" : (n / 1024).toFixed(1) + " KB";
 }
 
-// 順位は algo の最大ケースで決める。計測区間の外の I/O と整形を含まないので、
-// 実装どうしを比べるならこちら。algo が無い記録は実時間で代用する。
+// 既定の並びは algo の最大ケース。計測区間の外の I/O と整形を含まないので、
+// 実装どうしを比べるならこちら。algo の無い記録は実時間で代用する。
 function speed(row) {
   return row.algo_ns === null || row.algo_ns === undefined
     ? row.wall_ms * 1e6
     : row.algo_ns;
 }
 
+function linkCell(text, href, className) {
+  const td = el("td", null, className);
+  if (!href) {
+    td.textContent = text;
+    return td;
+  }
+  const a = el("a", text);
+  a.href = href;
+  td.append(a);
+  return td;
+}
+
+function statusCell(row) {
+  const td = el("td", row.status, "st st-" + row.status);
+  if (row.failed && row.failed.name) td.append(el("div", row.failed.name, "dim"));
+  if (row.failed && row.failed.detail) td.title = row.failed.detail;
+  return td;
+}
+
+// その記録を測ったコミットのソース。いまの main ではない。
+function sourceHref(row) {
+  if (!DATA.repo || !row.judge_sha) return null;
+  return (
+    DATA.repo +
+    "/blob/" +
+    row.judge_sha +
+    "/problems/" +
+    encodeURIComponent(DATA.id) +
+    "/" +
+    row.submission
+  );
+}
+
+function libraryHref(row) {
+  if (!DATA.library || !row.library_sha) return null;
+  return DATA.library + "/tree/" + row.library_sha;
+}
+
+const COLUMNS = [
+  {
+    id: "submission",
+    label: "提出",
+    text: true,
+    value: (r) => r.submission,
+    cell: (r) => el("td", r.submission, "mono"),
+  },
+  {
+    id: "status",
+    label: "状態",
+    text: true,
+    value: (r) => r.status,
+    cell: statusCell,
+  },
+  {
+    id: "algo",
+    label: "algo 最大",
+    value: speed,
+    // 打ち切られた実行の algo は通ったケースまでの値でしかない。数字は残すが、
+    // 比べる根拠には見えないように落とす。
+    cell: (r) => el("td", ms(r.algo_ns), r.status === "AC" ? "n" : "n dim"),
+  },
+  {
+    id: "wall",
+    label: "実時間 最大",
+    value: (r) => r.wall_ms,
+    cell: (r) => el("td", r.wall_ms + " ms", "n"),
+  },
+  {
+    id: "rss",
+    label: "メモリ",
+    value: (r) => r.rss_kb,
+    cell: (r) => el("td", mb(r.rss_kb), "n"),
+  },
+  {
+    id: "source",
+    label: "ソース",
+    value: (r) => r.source_bytes,
+    cell: (r) => linkCell(bytes(r.source_bytes), sourceHref(r), "n"),
+  },
+  {
+    id: "binary",
+    label: "バイナリ",
+    value: (r) => (r.binary_bytes === null ? -1 : r.binary_bytes),
+    cell: (r) => el("td", bytes(r.binary_bytes), "n"),
+  },
+  {
+    id: "library",
+    label: "lib",
+    text: true,
+    value: (r) => r.library_sha || "",
+    cell: (r) =>
+      linkCell(r.library_sha ? r.library_sha.slice(0, 7) : "-", libraryHref(r), "mono"),
+  },
+  {
+    id: "samples",
+    label: "標本",
+    value: (r) => r.samples,
+    cell: (r) => el("td", r.samples, "n"),
+  },
+  {
+    id: "measured",
+    label: "計測",
+    text: true,
+    value: (r) => r.timestamp,
+    cell: (r) => el("td", stamp(r.timestamp), "dim"),
+  },
+];
+
 let DATA = null;
+let sortBy = "algo";
+let ascending = true;
 
 function envs() {
   return [...new Set(DATA.combos.map((c) => c.env))];
@@ -53,62 +163,70 @@ function fill(select, values, keep) {
   if (keep && values.includes(keep)) select.value = keep;
 }
 
+function compare(a, b, column) {
+  const x = column.value(a);
+  const y = column.value(b);
+  return column.text ? String(x).localeCompare(String(y)) : x - y;
+}
+
+function sortRows(rows) {
+  const column = COLUMNS.find((c) => c.id === sortBy);
+  const sign = ascending ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    // どの列で並べても、通した実装が先。通っていないものを混ぜない。
+    const passed = (a.status === "AC" ? 0 : 1) - (b.status === "AC" ? 0 : 1);
+    if (passed !== 0) return passed;
+    return sign * compare(a, b, column) || a.submission.localeCompare(b.submission);
+  });
+}
+
+function renderHead() {
+  const tr = document.getElementById("head");
+  tr.replaceChildren();
+  for (const column of COLUMNS) {
+    const th = el("th", column.label, column.text ? "sortable" : "n sortable");
+    if (column.id === sortBy) th.append(el("span", ascending ? " ▲" : " ▼"));
+    th.addEventListener("click", () => {
+      if (sortBy === column.id) ascending = !ascending;
+      else {
+        sortBy = column.id;
+        ascending = true;
+      }
+      renderHead();
+      render();
+    });
+    tr.append(th);
+  }
+}
+
 function render() {
   const env = document.getElementById("env").value;
   const model = document.getElementById("model").value;
-  const combo = DATA.combos.find(
-    (c) => c.env === env && c.cpu_model === model
-  );
+  const combo = DATA.combos.find((c) => c.env === env && c.cpu_model === model);
   document.getElementById("combo-meta").replaceChildren(
     el("span", combo ? combo.compiler_version : ""),
     el("span", DATA.cxxflags[env] || "", "flags mono")
   );
 
   const rows = DATA.rows.filter((r) => r.env === env && r.cpu_model === model);
-  const byName = new Map(rows.map((r) => [r.submission, r]));
-  const ac = rows.filter((r) => r.status === "AC").sort((a, b) => speed(a) - speed(b));
-  const other = rows
-    .filter((r) => r.status !== "AC")
-    .sort((a, b) => a.submission.localeCompare(b.submission));
-  const missing = DATA.submissions.filter((s) => !byName.has(s));
-
+  const measured = new Set(rows.map((r) => r.submission));
   const body = document.getElementById("rows");
   body.replaceChildren();
-  ac.forEach((row, index) => body.append(line(row, index + 1)));
-  other.forEach((row) => body.append(line(row, null)));
-  missing.forEach((name) => body.append(missingLine(name)));
-}
-
-function line(row, rank) {
-  const tr = el("tr");
-  tr.append(el("td", rank === null ? "" : rank, "n"));
-  tr.append(el("td", row.submission, "mono"));
-
-  const status = el("td", row.status, "st st-" + row.status);
-  if (row.failed && row.failed.name) {
-    status.append(el("div", row.failed.name, "dim"));
+  for (const row of sortRows(rows)) {
+    const tr = el("tr");
+    for (const column of COLUMNS) tr.append(column.cell(row));
+    body.append(tr);
   }
-  if (row.failed && row.failed.detail) status.title = row.failed.detail;
-  tr.append(status);
-
-  // 打ち切られた実行の algo は通ったケースまでの値でしかない。数字は残すが
-  // 順位の根拠には見えないように落とす。
-  tr.append(el("td", ms(row.algo_ns), row.status === "AC" ? "n" : "n dim"));
-  tr.append(el("td", row.wall_ms + " ms", "n"));
-  tr.append(el("td", mb(row.rss_kb), "n"));
-  tr.append(el("td", bytes(row.source_bytes), "n"));
-  tr.append(el("td", bytes(row.binary_bytes), "n"));
-  tr.append(el("td", row.samples, "n"));
-  tr.append(el("td", stamp(row.timestamp), "dim"));
-  return tr;
+  for (const name of DATA.submissions.filter((s) => !measured.has(s))) {
+    body.append(missingLine(name));
+  }
 }
 
 function missingLine(name) {
   const tr = el("tr");
-  tr.append(el("td", "", "n"));
   tr.append(el("td", name, "mono dim"));
   const cell = el("td", "未計測", "dim");
-  cell.colSpan = 7;
+  cell.colSpan = COLUMNS.length - 1;
   tr.append(cell);
   return tr;
 }
@@ -146,6 +264,7 @@ async function main() {
     render();
   });
   modelSelect.addEventListener("change", render);
+  renderHead();
   render();
 }
 

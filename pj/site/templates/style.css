@@ -112,6 +112,15 @@ th {
   background: var(--bg2);
 }
 
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+th.sortable:hover {
+  color: var(--text);
+}
+
 th.n,
 td.n {
   text-align: right;
