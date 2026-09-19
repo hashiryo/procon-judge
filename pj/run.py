@@ -255,7 +255,11 @@ def execute_job(job: Job) -> Record:
             raise fetch.FetchError(
                 f"{problem.id}: compare.kind = 'checker' なのに checker.cpp がありません"
             )
-        checker = build_mod.build_checker(source, testcases.dir / "checker.bin", env)
+        # テストデータのキャッシュは 4 環境で共有するので、名前にアーキテクチャを
+        # 入れる。x86 で組んだチェッカが arm のジョブに復元されると動かない。
+        checker = build_mod.build_checker(
+            source, testcases.dir / f"checker-{job.machine.cpu_arch}.bin", env
+        )
         if checker is None:
             raise fetch.FetchError(f"{source} のコンパイルに失敗しました")
 

@@ -41,11 +41,13 @@ def effective_cxxflags(env: Environment, problem: Problem) -> str:
 
 
 def include_dirs(problem: Problem) -> list[Path]:
-    """-I に渡すディレクトリ。閉包の解決もこの順で探す。"""
-    dirs = [LIB_DIR, problem.dir]
-    if SIMDE_DIR.is_dir():
-        dirs.append(SIMDE_DIR)
-    return dirs
+    """-I に渡すディレクトリ。閉包の解決もこの順で探す。
+
+    third_party/simde は submodule を初期化していなくても外さない。有無で外すと
+    cxxflags が変わってキーが変わり、手元と CI で別の記録が増える。存在しない
+    -I はコンパイラが黙って無視する。
+    """
+    return [LIB_DIR, problem.dir, SIMDE_DIR]
 
 
 def _rel(path: Path) -> str:

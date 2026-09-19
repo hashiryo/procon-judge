@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import platform
 import subprocess
 import tomllib
@@ -62,25 +63,60 @@ def compiler_version(cxx: str) -> str:
     return proc.stdout.splitlines()[0].strip()
 
 
+def _capture(cmd: list[str]) -> str | None:
+    """外部コマンドの標準出力。失敗したら None。
+
+    出力を読むので LC_ALL=C で揃える。訳された見出しを拾えないため。
+    """
+    try:
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=10, check=True,
+            env={**os.environ, "LC_ALL": "C"},
+        )
+    except (subprocess.SubprocessError, OSError):
+        return None
+    return proc.stdout
+
+
+def parse_cpuinfo_model(text: str) -> str | None:
+    for line in text.splitlines():
+        # x86 は "model name"、Raspberry Pi のような板は "Model" が出る。
+        if line.split(":")[0].strip() in ("model name", "Model"):
+            return line.split(":", 1)[1].strip() or None
+    return None
+
+
+def parse_lscpu_model(text: str) -> str | None:
+    for line in text.splitlines():
+        head, sep, tail = line.partition(":")
+        if sep and head.strip() == "Model name":
+            return tail.strip() or None
+    return None
+
+
 def cpu_model() -> str:
+    """CPU のモデル名。キーの一部になる。
+
+    arm の /proc/cpuinfo にはモデル名が載らない。実装者と part 番号しか無いので、
+    それを名前に直してくれる lscpu に落とす。ubuntu-24.04-arm では Neoverse-N2 が
+    返る。x86 では両方が同じ文字列を返すので、先に読む cpuinfo の側で決まる。
+    """
     system = platform.system()
     if system == "Darwin":
-        try:
-            proc = subprocess.run(
-                ["sysctl", "-n", "machdep.cpu.brand_string"],
-                capture_output=True, text=True, timeout=10, check=True,
-            )
-            return proc.stdout.strip()
-        except (subprocess.SubprocessError, OSError):
-            return "unknown"
+        out = _capture(["sysctl", "-n", "machdep.cpu.brand_string"])
+        return out.strip() if out and out.strip() else "unknown"
     if system == "Linux":
         try:
-            for line in Path("/proc/cpuinfo").read_text().splitlines():
-                # x86 は "model name"、arm は "Model" が出る。
-                if line.split(":")[0].strip() in ("model name", "Model"):
-                    return line.split(":", 1)[1].strip()
+            model = parse_cpuinfo_model(Path("/proc/cpuinfo").read_text())
         except OSError:
-            pass
+            model = None
+        if model:
+            return model
+        out = _capture(["lscpu"])
+        if out:
+            model = parse_lscpu_model(out)
+            if model:
+                return model
     return "unknown"
 
 

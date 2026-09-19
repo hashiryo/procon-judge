@@ -1,5 +1,7 @@
 # 環境名はキーの一部なので、一度決めたら変えない。
-# 残りの 3 環境 (x64-clang, arm-gcc, arm-clang) は M5 で足す。
+# cxxflags は -I を足す前の形。pj が -Ilib、問題のディレクトリ、-Ithird_party/simde
+# を足してからコンパイルする。記録の cxxflags には足したあとの文字列が入る。
+# runs_on = "self" は手元専用で、CI のマトリクスには出さない。
 
 [[env]]
 name = "x64-gcc"
@@ -8,7 +10,25 @@ cxx = "g++-15"
 cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=x86-64-v3 -flto=auto -pthread"
 
 [[env]]
+name = "x64-clang"
+runs_on = "ubuntu-24.04"
+cxx = "clang++-21"
+cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=x86-64-v3 -flto=auto -pthread -fuse-ld=lld"
+
+[[env]]
+name = "arm-gcc"
+runs_on = "ubuntu-24.04-arm"
+cxx = "g++-15"
+cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=armv8.2-a -flto=auto -pthread -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES"
+
+[[env]]
+name = "arm-clang"
+runs_on = "ubuntu-24.04-arm"
+cxx = "clang++-21"
+cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=armv8.2-a -flto=auto -pthread -fuse-ld=lld -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES"
+
+[[env]]
 name = "local"
 runs_on = "self"
 cxx = "c++"
-cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES -Ithird_party/simde"
+cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES"

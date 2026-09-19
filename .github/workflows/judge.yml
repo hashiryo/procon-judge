@@ -18,17 +18,33 @@ permissions:
   contents: read
 
 jobs:
+  # キーの計算や出力比較が壊れると記録の意味が変わるので、手元だけでなくここでも
+  # 回す。環境の定義と下のマトリクスがずれていないかもここで見ている。
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+      - run: uv run pytest -q
+
   run:
     strategy:
       fail-fast: false
       matrix:
-        # environments.toml と対応させる。M5 で 4 環境に広げる。
+        # environments.toml と二重持ちになる。ずれていないかは pytest で見ている。
         include:
-          - env: x64-gcc
-            runs_on: ubuntu-24.04
+          - { env: x64-gcc, runs_on: ubuntu-24.04, toolchain: gcc }
+          - { env: x64-clang, runs_on: ubuntu-24.04, toolchain: clang }
+          - { env: arm-gcc, runs_on: ubuntu-24.04-arm, toolchain: gcc }
+          - { env: arm-clang, runs_on: ubuntu-24.04-arm, toolchain: clang }
     runs-on: ${{ matrix.runs_on }}
     steps:
+      # arm では x86 の intrinsics を SIMDe で動かすので submodule が要る。
       - uses: actions/checkout@v7
+        with:
+          submodules: true
 
       # 先端の状態しか要らないので fetch-depth: 1。履歴が増えても時間が変わらない。
       - name: results を読む
@@ -43,16 +59,30 @@ jobs:
         with:
           enable-cache: true
 
+      # 入らなかったら落とす。別のコンパイラで代用すると、環境名が名乗るものと
+      # 実際に測ったものがずれた記録が残る。取りこぼしは次の実行が拾う。
       - name: コンパイラを入れる
         run: |
-          sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-          sudo apt-get update
-          sudo apt-get install -y g++-15
-          g++-15 --version
+          set -eux
+          if [ "${{ matrix.toolchain }}" = "gcc" ]; then
+            sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+            sudo apt-get update
+            sudo apt-get install -y g++-15
+            g++-15 --version
+          else
+            sudo apt-get update
+            sudo apt-get install -y wget lsb-release software-properties-common gnupg
+            wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh
+            sudo bash /tmp/llvm.sh 21 all
+            # -fuse-ld=lld は PATH の ld.lld を探すが、apt.llvm.org は版つきの
+            # 名前しか置かない。別名を足す。
+            sudo ln -sf /usr/bin/ld.lld-21 /usr/local/bin/ld.lld
+            clang++-21 --version
+          fi
 
       # 7 日使われないと消えるので、消えても再取得できる形にしてある。
       # テストデータはただのテキストで環境に依存しないので、キーに env を入れない。
-      # v1 はキャッシュの世代。まっさらから取り直させたいときに上げる。
+      # キーの v2 はキャッシュの世代。まっさらから取り直させたいときに上げる。
       - name: テストデータのキャッシュ
         uses: actions/cache@v6
         with:
