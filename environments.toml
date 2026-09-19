@@ -1,0 +1,8 @@
+# 環境名はキーの一部なので、一度決めたら変えない。
+# CI の 4 環境は M5 で足す。
+
+[[env]]
+name = "local"
+runs_on = "self"
+cxx = "c++"
+cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES -Ithird_party/simde"
