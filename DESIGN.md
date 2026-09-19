@@ -133,6 +133,19 @@ kind = "checker"
 
 `id` はディレクトリ名と一致させます。検証で一致しなければエラーにします。
 
+id は `<出どころ>-<問題>` の形にします。出どころはテストデータの取得元ではなく、問題そのものがどこの問題かです。AtCoder の問題は `source = "none"` になりますが、id は `atcoder-` で始めます。
+
+| 出どころ | 接頭辞 | 例 |
+| --- | --- | --- |
+| Library Checker | `yosupo-` | `yosupo-point-add-range-sum` |
+| AOJ | `aoj-` | `aoj-DSL_2_B` |
+| yukicoder | `yuki-` | `yuki-1234` |
+| AtCoder | `atcoder-` | `atcoder-abc123-d` |
+| LOJ | `loj-` | `loj-6620` |
+| 自作 | 付けません | `gf2-64`、`warshall-floyd` |
+
+id は保管庫のアセット名にもなります。アセット名は `<問題 id>.tar.zst` で、対応表を持たずに計算しているからです。あとから id を変えると、保管庫のアセットが孤児になり、キーも変わって記録が全部測り直しになります。付けるときに決めてください。
+
 ### ハーネスの種別
 
 `kind = "base"` が既定です。問題が `base.cpp` を持ち、提出は問題が決めたインターフェースを実装します。入出力はハーネスが担当し、計測区間を挟みます。
@@ -258,6 +271,27 @@ hashiryo/CPtools     loj_download.py
 LOJ はリアルタイムで取得できません。`CPtools/loj_download.py` の中身を確認しました。まず `getSubmissionDetail` にある提出 ID からケースのファイル名一覧が得られます。そのあと `downloadProblemFiles` で本体が落ちてきます。つまり自分がその問題に提出して結果を得ていないと、ファイル名は分かりません。IOI、CSES、Codeforces も実装がありません。これらは `source = "manual"` にします。
 
 AOJ の judgedat は大きいケースを切り詰めて返すことがあります。取得したあとに header のケース数とサイズを突き合わせてください。合わなければ警告にします。切り詰められたデータで判定すると、結果の意味が変わります。
+
+### テストケースの形
+
+取得元が何であれ、キャッシュの中は同じ形にします。平らな 1 ディレクトリに `<ケース名>.in` と `<ケース名>.out` を並べます。`in/` と `out/` のディレクトリは作りません。
+
+```
+.cache/testcases/<ハッシュ>/
+  00_small_00.in
+  00_small_00.out
+  04_maximum_03.in
+  04_maximum_03.out
+  manifest.json
+```
+
+組にするのは拡張子を除いた部分が一致するかどうかだけです。対になる `.out` が無い `.in` は無視します。
+
+取得元の形はここへ揃えます。Library Checker は `in/` と `out/` に分けて出すので平らにします。yukicoder の zip は `test_in/` と `test_out/` なので同じです。AOJ は serial 番号で来るので、header の name をケース名に使います。
+
+手で取り込むときも同じ形にしてから渡します。1 つのディレクトリに `.in` と `.out` を名前をそろえて並べて、`pj testdata import --problem ID --dir PATH` です。
+
+ケース名は `cases_hash` に入ります。あとから名前を変えると `cases_hash` が動いて、キーが変わって、その問題の記録が全部測り直しになります。取り込む時点で決めてください。
 
 ### テストデータの保管
 
