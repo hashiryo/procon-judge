@@ -73,14 +73,24 @@ jobs:
           --store .results
           --out ${{ runner.temp }}/records
 
-      - uses: actions/upload-artifact@v4
+      # 全部スキップされた実行では 1 件も出ない。それは正常なので上げない。
+      # 上げると決めたのに空だったときは、取りこぼしなので失敗にする。
+      - name: 記録が出たか
         if: always()
+        id: records
+        run: |
+          if find "${{ runner.temp }}/records" -name '*.jsonl' -print -quit 2>/dev/null | grep -q .; then
+            echo "any=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "any=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.records.outputs.any == 'true'
         with:
           name: records-${{ matrix.env }}
           path: ${{ runner.temp }}/records
-          # 全部スキップされた実行では 1 件も出ないので、失敗にはしない。
-          # ignore だと取りこぼしに気づけないので warn にする。
-          if-no-files-found: warn
+          if-no-files-found: error
 
   collect:
     needs: run

@@ -678,9 +678,13 @@ M1 の題材は Library Checker の `point_add_range_sum` を勧めます。テ�
 
 M1 の時点で `problem.toml`、`base.cpp`、`submissions/naive.hpp` を手で書いて、それを通してください。インターフェースは仕様書ではなく、この最初の 1 問に決めさせます。
 
-## 実装の記録
+## 実装の状況
 
-M2 まで実装しました。`pj run --env local` を 2 回叩くと 2 回目が 0 件になります。以下は実装しながら決めたことです。
+M3 まで通っています。手元で `pj run --env local` が動き、2 回目は 0 件になります。main へ push すると CI が `x64-gcc` で走って、`results` ブランチに記録が増えます。
+
+以下は段ごとの実装の記録です。決めたことと、踏んだ罠を書いてあります。
+
+## M1 の実装の記録
 
 提出は 2 本置きました。`submissions/fenwick.hpp` が 21 ケース AC で、Apple M2 Max の `local` 環境で `time_max_ms` が 181、`algo_time_max_ns` が 1440 万ほどです。`submissions/naive.hpp` は区間和を毎回足し直すので `max_random_00` で TLE になります。打ち切りと `failed_case` の確認に使えるので残してあります。
 
@@ -824,7 +828,7 @@ library-checker の `generate.py` は Darwin と Windows のスタックサイ�
 
 ### アーティファクトの置き場をドットで始めません
 
-`upload-artifact` は隠しファイルを既定で除きます。最初 `--out .artifacts` にしていたら 1 件も上がらず、`collect` が 0 件で終わりました。`if-no-files-found: ignore` にしていたので、警告も出ずに黙って落ちていました。`${{ runner.temp }}/records` に置き換えて、`if-no-files-found` は `warn` にしました。全部スキップされた実行では 1 件も出ないので、失敗にはできません。
+`upload-artifact` は隠しファイルを既定で除きます。最初 `--out .artifacts` にしていたら 1 件も上がらず、`collect` が 0 件で終わりました。`if-no-files-found: ignore` にしていたので、警告も出ずに黙って落ちていました。`${{ runner.temp }}/records` に置き換えました。全部スキップされた実行では 1 件も出ないので、その回はアップロードのステップごと飛ばします。上げると決めたのに空だったときは取りこぼしなので、`if-no-files-found` は `error` にしてあります。
 
 ### Linux の RSS は下駄が高いです
 
