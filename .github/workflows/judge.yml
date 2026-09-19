@@ -28,17 +28,17 @@ jobs:
             runs_on: ubuntu-24.04
     runs-on: ${{ matrix.runs_on }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # 先端の状態しか要らないので fetch-depth: 1。履歴が増えても時間が変わらない。
       - name: results を読む
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: results
           path: .results
           fetch-depth: 1
 
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v10
         with:
           enable-cache: true
 
@@ -51,7 +51,7 @@ jobs:
 
       # 7 日使われないと消えるので、消えても再取得できる形にしてある。
       - name: テストデータのキャッシュ
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .cache/testcases
           key: testcases-${{ matrix.env }}-${{ hashFiles('problems/*/problem.toml') }}
@@ -85,7 +85,7 @@ jobs:
             echo "any=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always() && steps.records.outputs.any == 'true'
         with:
           name: records-${{ matrix.env }}
@@ -99,20 +99,20 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: results を読む
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: results
           path: .results
           fetch-depth: 1
 
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v10
         with:
           enable-cache: true
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: ${{ runner.temp }}/records
 
