@@ -830,6 +830,12 @@ library-checker の `generate.py` は Darwin と Windows のスタックサイ�
 
 `upload-artifact` は隠しファイルを既定で除きます。最初 `--out .artifacts` にしていたら 1 件も上がらず、`collect` が 0 件で終わりました。`if-no-files-found: ignore` にしていたので、警告も出ずに黙って落ちていました。`${{ runner.temp }}/records` に置き換えました。全部スキップされた実行では 1 件も出ないので、その回はアップロードのステップごと飛ばします。上げると決めたのに空だったときは取りこぼしなので、`if-no-files-found` は `error` にしてあります。
 
+### アクションのバージョン
+
+`runs.using` が `node20` のアクションは、GitHub が Node 24 での強制実行に切り替えている最中です。警告が出るので、`node24` を宣言しているメジャーまで上げました。checkout v7、cache v6、upload-artifact v7、download-artifact v8、setup-uv v10.1.0 です。
+
+`astral-sh/setup-uv` は v8 以降、浮動のメジャータグを出していません。`@v10` では解決できずにジョブが落ちます。正確な版で固定してください。`actions/*` の方は浮動メジャーがあります。
+
 ### Linux の RSS は下駄が高いです
 
 ubuntu-24.04 のランナーで測ると、入力が 45 バイトの `example_00` でも 22760 KB 出ます。小さいケースは全部この値で揃うので、これがこのランナーの下限です。手元の macOS は同じケースで 1408 KB でした。ケースの大きさで動くぶんはこの上に乗ります (`max_random` で 29820 KB)。設計が言うとおり `mle_mb` をきつく設定しないでください。
