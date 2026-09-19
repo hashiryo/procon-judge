@@ -1,0 +1,16 @@
+id = "yuki-649"
+title = "ここでちょっとQK！"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "yukicoder"
+name = "649"
+
+[compare]
+kind = "tokens"
