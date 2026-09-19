@@ -65,19 +65,22 @@ jobs:
         continue-on-error: true
         run: git clone --depth=1 https://github.com/hashiryo/Library.git lib
 
+      # 書き先をドットで始めない。upload-artifact は既定で隠しファイルを除く。
       - name: 実行
         run: >
           uv run pj run
           --env ${{ matrix.env }}
           --store .results
-          --out .artifacts
+          --out ${{ runner.temp }}/records
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: records-${{ matrix.env }}
-          path: .artifacts
-          if-no-files-found: ignore
+          path: ${{ runner.temp }}/records
+          # 全部スキップされた実行では 1 件も出ないので、失敗にはしない。
+          # ignore だと取りこぼしに気づけないので warn にする。
+          if-no-files-found: warn
 
   collect:
     needs: run
@@ -101,10 +104,10 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          path: .artifacts
+          path: ${{ runner.temp }}/records
 
       - name: 記録をまとめる
-        run: uv run pj records append .artifacts --store .results
+        run: uv run pj records append ${{ runner.temp }}/records --store .results
 
       # 並列で results に push すると衝突するので、押すのは collect だけ。
       - name: results に push する

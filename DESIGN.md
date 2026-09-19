@@ -793,7 +793,42 @@ manifest が無いときはキーを計算できないので取りに行きま�
 
 `pj run --env NAME` で全問題の全提出を見ます。`--problem` と `--submission` で絞れます。`--dry-run` は走らせる対象を出すだけです。`pj records list` で記録の一覧が見えます。
 
-`--shard` と `--budget` はまだ入れていません。1 ジョブで捌けなくなってからです。`pj records append` と `pj records squash` も M3 です。
+`--shard` と `--budget` はまだ入れていません。1 ジョブで捌けなくなってからです。`pj records squash` は太ってきてからです。
+
+
+## M3 の実装の記録
+
+### 読む場所と書く場所を分けます
+
+`pj run` に `--out` を足しました。`--store` から記録を読んでスキップを決め、新しい記録は `--out` へ書きます。省略すると両方とも `.results/` です。
+
+CI の `run` は `--store .results --out .artifacts` で呼びます。results ブランチから読んで、記録はアーティファクトへ置くだけです。results へ push するのは `collect` だけにしてあります。並列で押すと衝突するからです。
+
+`--out` の書き先も `Store` なので、アーティファクトの中身は results と同じ `problems/<id>.jsonl` の形になります。`collect` はそれを取り込むだけで済みます。
+
+### pj records append
+
+渡されたディレクトリの下から `*.jsonl` を再帰で拾います。`actions/download-artifact` の展開先は run のジョブごとに 1 段深くなるので、階層を決め打ちしていません。
+
+既にあるキーは飛ばします。設計は「記録が作られるのは必ず新しいキーのときなので、重複は起きません」と書いていますが、ワークフローを回し直しても二重に取り込まないための保険です。追加した件数と飛ばした件数を出します。
+
+### results ブランチ
+
+作業ツリーを触らずに、空の tree から `git commit-tree` で始点のコミットを作りました。`git switch --orphan` は作業ツリーを空にするので、手元のファイルを巻き込む危険があります。
+
+CI では `actions/checkout` で `path: .results` に `fetch-depth: 1` で置きます。main の作業ツリーの中に別のリポジトリが入る形ですが、`.results/` は main の側で gitignore してあるので混ざりません。
+
+### Linux ではスタックを広げます
+
+library-checker の `generate.py` は Darwin と Windows のスタックサイズだけ自分で設定します。Linux は呼ぶ側の責任なので、`bash -c "ulimit -s unlimited && ..."` で囲んでから呼びます。深い再帰を書いたジェネレータがあり、既定の 8 MB では落ちます。移植元の `Library/scripts/lib/download.py` が同じことをしていました。macOS で `ulimit -s unlimited` は通らないので、そちらは囲みません。
+
+### マトリクスは今のところ手書きです
+
+`.github/workflows/judge.yml` の matrix に `x64-gcc` と `ubuntu-24.04` を直に書いています。`environments.toml` と二重持ちですが、yml から toml を読むには matrix を作る前段のジョブが要ります。4 環境に広げる M5 でまとめて考えます。
+
+### テストデータのキャッシュ
+
+`actions/cache` で `.cache/testcases` を持ち越します。`point_add_range_sum` 1 問で 129 MB なので、問題を増やすと GitHub の 10 GB に当たります。M4 の保管庫を入れるときに、キャッシュへ何を残すかを決め直します。
 
 
 ## 既存リポジトリから移すもの
