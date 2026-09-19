@@ -8,8 +8,9 @@ function el(tag, text, className) {
   return node;
 }
 
+// 列幅に収める。秒と UTC は落として、元の値は title に残す。
 function stamp(iso) {
-  return iso ? iso.replace("T", " ").replace("Z", " UTC") : "";
+  return iso ? iso.slice(0, 16).replace("T", " ") : "";
 }
 
 function ms(ns) {
@@ -47,7 +48,7 @@ function linkCell(text, href, className) {
 
 function statusCell(row) {
   const td = el("td", row.status, "st st-" + row.status);
-  if (row.failed && row.failed.name) td.append(el("div", row.failed.name, "dim"));
+  if (row.failed && row.failed.name) td.append(el("span", " " + row.failed.name, "dim"));
   if (row.failed && row.failed.detail) td.title = row.failed.detail;
   return td;
 }
@@ -68,22 +69,29 @@ function sourceHref(row) {
 
 const COLUMNS = [
   {
+    // 幅を決めない列は残りをもらう。提出のパスがいちばん長い。
     id: "submission",
     label: "提出",
     text: true,
     value: (r) => r.submission,
-    cell: (r) => el("td", r.submission, "mono"),
+    cell: (r) => {
+      const td = el("td", r.submission, "mono");
+      td.title = r.submission;
+      return td;
+    },
   },
   {
     id: "status",
     label: "状態",
     text: true,
+    width: "180px",
     value: (r) => r.status,
     cell: statusCell,
   },
   {
     id: "algo",
     label: "algo 最大",
+    width: "110px",
     value: speed,
     // 打ち切られた実行の algo は通ったケースまでの値でしかない。数字は残すが、
     // 比べる根拠には見えないように落とす。
@@ -92,39 +100,49 @@ const COLUMNS = [
   {
     id: "wall",
     label: "実時間 最大",
+    width: "130px",
     value: (r) => r.wall_ms,
     cell: (r) => el("td", r.wall_ms + " ms", "n"),
   },
   {
     id: "rss",
     label: "メモリ",
+    width: "95px",
     value: (r) => r.rss_kb,
     cell: (r) => el("td", mb(r.rss_kb), "n"),
   },
   {
     id: "source",
     label: "ソース",
+    width: "90px",
     value: (r) => r.source_bytes,
     cell: (r) => linkCell(bytes(r.source_bytes), sourceHref(r), "n"),
   },
   {
     id: "binary",
     label: "バイナリ",
+    width: "100px",
     value: (r) => (r.binary_bytes === null ? -1 : r.binary_bytes),
     cell: (r) => el("td", bytes(r.binary_bytes), "n"),
   },
   {
     id: "samples",
     label: "標本",
+    width: "72px",
     value: (r) => r.samples,
     cell: (r) => el("td", r.samples, "n"),
   },
   {
     id: "measured",
-    label: "計測",
+    label: "計測 (UTC)",
     text: true,
+    width: "145px",
     value: (r) => r.timestamp,
-    cell: (r) => el("td", stamp(r.timestamp), "dim"),
+    cell: (r) => {
+      const td = el("td", stamp(r.timestamp), "dim");
+      td.title = r.timestamp;
+      return td;
+    },
   },
 ];
 
@@ -168,11 +186,20 @@ function sortRows(rows) {
 }
 
 function renderHead() {
+  const cols = document.getElementById("cols");
+  cols.replaceChildren();
+  for (const column of COLUMNS) {
+    const col = document.createElement("col");
+    if (column.width) col.style.width = column.width;
+    cols.append(col);
+  }
+
   const tr = document.getElementById("head");
   tr.replaceChildren();
   for (const column of COLUMNS) {
     const th = el("th", column.label, column.text ? "sortable" : "n sortable");
-    if (column.id === sortBy) th.append(el("span", ascending ? " ▲" : " ▼"));
+    // 印は出ていないときも場所を取る。押すたびに見出しがずれないように。
+    th.append(el("span", column.id === sortBy ? (ascending ? "▲" : "▼") : "", "mark"));
     th.addEventListener("click", () => {
       if (sortBy === column.id) ascending = !ascending;
       else {

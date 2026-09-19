@@ -9,7 +9,7 @@ function el(tag, text, className) {
 }
 
 function stamp(iso) {
-  return iso ? iso.replace("T", " ").replace("Z", " UTC") : "";
+  return iso ? iso.slice(0, 16).replace("T", " ") : "";
 }
 
 function link(href, text) {
@@ -23,7 +23,7 @@ async function main() {
   document.getElementById("sub").textContent =
     "問題 " + data.problems.length +
     " / 記録 " + data.record_count +
-    " / " + stamp(data.generated_at) + " 生成";
+    " / " + stamp(data.generated_at) + " 生成 (UTC)";
 
   const body = document.getElementById("rows");
   if (data.problems.length === 0) {
@@ -44,7 +44,9 @@ async function main() {
     if (p.pending > 0) cover.classList.add("dim");
     tr.append(cover);
     tr.append(el("td", p.records, "n"));
-    tr.append(el("td", stamp(p.updated), "dim"));
+    const updated = el("td", stamp(p.updated), "dim");
+    updated.title = p.updated;
+    tr.append(updated);
     body.append(tr);
   }
 }

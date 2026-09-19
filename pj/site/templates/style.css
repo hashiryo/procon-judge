@@ -98,6 +98,26 @@ table {
   font-size: 0.9em;
 }
 
+/* 列幅を中身から決めさせない。組み合わせを切り替えるたびに桁数が変わって
+   表が動くのを止める。入りきらない中身は省略記号にして title に残す。 */
+table.fixed {
+  table-layout: fixed;
+  min-width: 1120px;
+}
+
+table.fixed th,
+table.fixed td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 並べ替えの印。出ていないときも場所を空けておく。 */
+.mark {
+  display: inline-block;
+  width: 1em;
+  text-align: center;
+}
+
 th,
 td {
   border-bottom: 1px solid var(--border);
