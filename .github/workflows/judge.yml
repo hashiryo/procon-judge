@@ -176,14 +176,8 @@ jobs:
           git push origin HEAD:results
 
       # サイトはビルド出力なので保存しない。記録から毎回作り直す。
-      # ライブラリの在処はこのリポジトリが持たない。記録の library_sha を
-      # リンクにするために、ここで渡す。
       - name: サイトを作る
-        run: >
-          uv run pj site build
-          --store .results
-          --out site
-          --library-url https://github.com/hashiryo/Library
+        run: uv run pj site build --store .results --out site
 
       - uses: actions/upload-pages-artifact@v5
         with:

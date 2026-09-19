@@ -197,21 +197,10 @@ def test_ids_that_would_escape_the_directory_are_skipped(tmp_path, no_problem_di
 
 def test_rows_carry_the_commit_that_was_measured(tmp_path, no_problem_dirs):
     """リンク先はいまの main ではなく、その数字を出したコミット。"""
-    store = store_with(tmp_path, [rec(judge_sha="abc123", library_sha="def456")])
     out = tmp_path / "site"
-    site_build.build(store, out, library_url="https://example.invalid/lib")
+    site_build.build(store_with(tmp_path, [rec(judge_sha="abc123")]), out)
     data = json.loads((out / "data" / "problems" / "p.json").read_text())
     assert data["rows"][0]["judge_sha"] == "abc123"
-    assert data["rows"][0]["library_sha"] == "def456"
-    assert data["library"] == "https://example.invalid/lib"
-
-
-def test_without_a_library_url_there_is_no_link(tmp_path, no_problem_dirs):
-    """このリポジトリはライブラリの在処を持たない。渡されなければ出さない。"""
-    out = tmp_path / "site"
-    site_build.build(store_with(tmp_path, [rec()]), out)
-    data = json.loads((out / "data" / "problems" / "p.json").read_text())
-    assert data["library"] is None
 
 
 def test_repo_url_comes_from_the_ci_environment(monkeypatch):

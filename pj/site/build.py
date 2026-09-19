@@ -60,7 +60,6 @@ class Cell:
     samples: int
     timestamp: str
     judge_sha: str | None
-    library_sha: str | None
     failed: dict | None
 
 
@@ -116,7 +115,6 @@ def collapse(records: Sequence[dict]) -> list[Cell]:
                 samples=len(same),
                 timestamp=max(r.get("timestamp") or "" for r in same),
                 judge_sha=newest.get("judge_sha"),
-                library_sha=newest.get("library_sha"),
                 failed=_failed(newest),
             )
         )
@@ -154,7 +152,6 @@ def problem_payload(
     generated_at: str,
     case_count: int = 0,
     repo: str | None = None,
-    library: str | None = None,
 ) -> dict:
     """problems/<id>.html が読む JSON。"""
     order = _env_order()
@@ -190,7 +187,6 @@ def problem_payload(
         "case_count": case_count,
         "generated_at": generated_at,
         "repo": repo,
-        "library": library,
         "submissions": submissions,
         "combos": sorted(
             combos.values(),
@@ -211,7 +207,6 @@ def problem_payload(
                 "samples": c.samples,
                 "timestamp": c.timestamp,
                 "judge_sha": c.judge_sha,
-                "library_sha": c.library_sha,
                 "failed": c.failed,
             }
             for c in cells
@@ -281,7 +276,7 @@ def repo_url(root: Path = ROOT) -> str | None:
     return "https://github.com/" + "/".join(parts[-2:])
 
 
-def build(store: Store, out: Path, library_url: str | None = None) -> Summary:
+def build(store: Store, out: Path) -> Summary:
     generated_at = (
         datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     )
@@ -319,7 +314,6 @@ def build(store: Store, out: Path, library_url: str | None = None) -> Summary:
             generated_at,
             case_count=max((r.get("case_count") or 0 for r in records), default=0),
             repo=repo,
-            library=library_url,
         )
 
         name = f"{problem_id}.json"

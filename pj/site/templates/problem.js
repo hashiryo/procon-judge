@@ -66,11 +66,6 @@ function sourceHref(row) {
   );
 }
 
-function libraryHref(row) {
-  if (!DATA.library || !row.library_sha) return null;
-  return DATA.library + "/tree/" + row.library_sha;
-}
-
 const COLUMNS = [
   {
     id: "submission",
@@ -117,14 +112,6 @@ const COLUMNS = [
     label: "バイナリ",
     value: (r) => (r.binary_bytes === null ? -1 : r.binary_bytes),
     cell: (r) => el("td", bytes(r.binary_bytes), "n"),
-  },
-  {
-    id: "library",
-    label: "lib",
-    text: true,
-    value: (r) => r.library_sha || "",
-    cell: (r) =>
-      linkCell(r.library_sha ? r.library_sha.slice(0, 7) : "-", libraryHref(r), "mono"),
   },
   {
     id: "samples",
