@@ -53,9 +53,6 @@ signed main() {
   }
   auto t1 = chrono::steady_clock::now();
 
-  fprintf(stderr, "PJ_METRICS {\"algo_time_ns\":%lld}\n",
-          (long long)chrono::duration_cast<chrono::nanoseconds>(t1 - t0).count());
-
   string out;
   out.reserve(ans.size() * 20);
   for (i64 v : ans) {
@@ -63,4 +60,8 @@ signed main() {
     out += '\n';
   }
   fwrite(out.data(), 1, out.size(), stdout);
+
+  // 出力の整形まで含めたピークを読みたいので、計測値は最後に出す。
+  report_metrics(
+      (long long)chrono::duration_cast<chrono::nanoseconds>(t1 - t0).count());
 }

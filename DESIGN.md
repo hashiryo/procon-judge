@@ -175,9 +175,9 @@ signed main() {
   }
   auto t1 = chrono::steady_clock::now();
 
-  fprintf(stderr, "PJ_METRICS {\"algo_time_ns\":%lld}\n",
-          (long long)chrono::duration_cast<chrono::nanoseconds>(t1 - t0).count());
   fputs(out.c_str(), stdout);
+  report_metrics(
+      (long long)chrono::duration_cast<chrono::nanoseconds>(t1 - t0).count());
 }
 ```
 
@@ -208,6 +208,16 @@ signed main() {
 接頭辞で絞る形にしておくと、他の出力が stderr に混ざっても平気です。サニタイザを入れた環境や、ライブラリが警告を吐く場合に効きます。JSON にしておくと、項目を足すときも JSON のキーが増えるだけで済みます。
 
 専用のファイルに出す方式は採りません。パスを環境変数で渡す必要があり、渡されなかったときの退避も要ります。ケースごとにファイルを作って読んで消す手間も増えます。stderr は既定でバッファされないので、あとで異常終了しても行が残ります。
+
+メモリもハーネスが測って `max_rss_kb` として返します。実行側の `ru_maxrss` は使えません。`posix_spawn` した子のそれには親のピーク RSS が混ざるからです。カーネルが exec のときに古い mm の high-water を引き継ぐ仕組みで、Linux では `pj` 自身の RSS がそのまま下駄になります。`pj` が直前に何をしたかで下駄の高さが変わるので、記録どうしを比べられません。
+
+Linux では `/proc/self/status` の VmHWM を読みます。exec 後の mm だけを見るので汚れません。macOS の `posix_spawn` はアドレス空間を共有しないので `getrusage(RUSAGE_SELF)` で足ります。どちらも `common.hpp` の `peak_rss_kb()` にあります。出力の整形まで含めたピークを読みたいので、`report_metrics` は `main` の末尾で呼びます。
+
+打ち切られた実行はハーネスが報告できないので、そのときだけ `ru_maxrss` に落ちます。TLE と MLE の行のメモリには下駄が乗ったままです。
+
+`peak_rss_kb()` は問題ごとの `common.hpp` に置いてあります。問題が増えたら共有のヘッダへ出したくなりますが、`harness_hash` が見ているのは `base.cpp` と `common.hpp` だけです。出すときは閉包を辿るように直してください。そうしないと共有ヘッダを書き換えても測り直しが起きません。
+
+既存の `judge` がこれを踏んでいないのは、`/usr/bin/time -v` 越しに走らせているからです。fork する親が 1 MB ほどの C プログラムなので下駄が見えません。24000 件の記録の最小が 3 MB 台で、それがその高さです。
 
 判定サイトに貼っても影響しません。AtCoder、Library Checker、AOJ、yukicoder のいずれも stderr を判定に使いません。
 
@@ -874,7 +884,9 @@ library-checker の `generate.py` は Darwin と Windows のスタックサイ�
 
 ### Linux の RSS は下駄が高いです
 
-ubuntu-24.04 のランナーで測ると、入力が 45 バイトの `example_00` でも 22760 KB 出ます。小さいケースは全部この値で揃うので、これがこのランナーの下限です。手元の macOS は同じケースで 1408 KB でした。ケースの大きさで動くぶんはこの上に乗ります (`max_random` で 29820 KB)。設計が言うとおり `mle_mb` をきつく設定しないでください。
+ubuntu-24.04 のランナーで測ると、入力が 45 バイトの `example_00` でも 22760 KB 出ます。小さいケースは全部この値で揃います。手元の macOS は同じケースで 1408 KB でした。ケースの大きさで動くぶんはこの上に乗ります (`max_random` で 29820 KB)。設計が言うとおり `mle_mb` をきつく設定しないでください。
+
+これをランナーの下限だと書いていましたが、違いました。`ru_maxrss` に `pj` 自身のピークが混ざっていただけです。yuki-649 を足したときに下駄が 138868 KB へ動いて分かりました。直し方は「ハーネスの種別」に書いてあります。
 
 ### マトリクスは今のところ手書きです
 

@@ -52,6 +52,20 @@ def _rss_to_kb(ru_maxrss: int) -> int:
     return ru_maxrss
 
 
+def peak_rss_kb(metrics: dict, ru_maxrss: int) -> int:
+    """ピーク RSS。ハーネスが報告していればそちらを採る。
+
+    posix_spawn した子の ru_maxrss は当てにならない。カーネルが exec のときに
+    古い mm の high-water を引き継ぐので、Linux では pj 自身のピーク RSS が
+    そのまま下駄になる。ハーネスは /proc/self/status の VmHWM を読んで返す。
+    打ち切られた実行では報告が出ないので、そのときだけ ru_maxrss に落ちる。
+    """
+    reported = metrics.get("max_rss_kb")
+    if isinstance(reported, int) and not isinstance(reported, bool) and reported > 0:
+        return reported
+    return _rss_to_kb(ru_maxrss)
+
+
 def parse_metrics(stderr_path: Path) -> dict:
     """stderr から PJ_METRICS の行を拾う。他の出力が混ざっていても平気。"""
     metrics: dict = {}
@@ -129,13 +143,14 @@ def run(
         term_signal = None
         exit_code = os.WEXITSTATUS(status)
 
+    metrics = parse_metrics(stderr_path)
     return RunResult(
         exit_code=exit_code,
         term_signal=term_signal,
         timed_out=state["timed_out"],
         wall_ns=wall_ns,
-        max_rss_kb=_rss_to_kb(rusage.ru_maxrss),
-        metrics=parse_metrics(stderr_path),
+        max_rss_kb=peak_rss_kb(metrics, rusage.ru_maxrss),
+        metrics=metrics,
     )
 
 
