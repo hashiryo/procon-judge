@@ -88,7 +88,7 @@ procon-judge/
     <id>/
       problem.toml
       base.cpp              ハーネス (kind = "base" のとき)
-      common.hpp            提出が共通で使うもの (省略可)
+      common.hpp            その問題だけが共通で使うもの (省略可)
       submissions/
         lib.hpp
         naive.hpp
@@ -96,6 +96,8 @@ procon-judge/
       gen.py                ジェネレータ (source = "local" のとき)
       reference.hpp         期待出力を作る参照実装 (同上)
       checker.cpp           独自チェッカ (自分で書くときだけ)
+  harness/
+    pj.hpp                  全問題のハーネスと提出が共有するもの
   third_party/
     simde/                  submodule
   tests/                    pj 自身のテスト (pytest)
@@ -152,7 +154,7 @@ id は保管庫のアセット名にもなります。アセット名は `<問�
 
 ```cpp
 // problems/yosupo-point-add-range-sum/base.cpp
-#include "common.hpp"
+#include "pj.hpp"
 #ifndef SUBMISSION_HPP
 #define SUBMISSION_HPP "submissions/naive.hpp"
 #endif
@@ -211,11 +213,13 @@ signed main() {
 
 メモリもハーネスが測って `max_rss_kb` として返します。実行側の `ru_maxrss` は使えません。`posix_spawn` した子のそれには親のピーク RSS が混ざるからです。カーネルが exec のときに古い mm の high-water を引き継ぐ仕組みで、Linux では `pj` 自身の RSS がそのまま下駄になります。`pj` が直前に何をしたかで下駄の高さが変わるので、記録どうしを比べられません。
 
-Linux では `/proc/self/status` の VmHWM を読みます。exec 後の mm だけを見るので汚れません。macOS の `posix_spawn` はアドレス空間を共有しないので `getrusage(RUSAGE_SELF)` で足ります。どちらも `common.hpp` の `peak_rss_kb()` にあります。出力の整形まで含めたピークを読みたいので、`report_metrics` は `main` の末尾で呼びます。
+Linux では `/proc/self/status` の VmHWM を読みます。exec 後の mm だけを見るので汚れません。macOS の `posix_spawn` はアドレス空間を共有しないので `getrusage(RUSAGE_SELF)` で足ります。どちらも `harness/pj.hpp` の `peak_rss_kb()` にあります。出力の整形まで含めたピークを読みたいので、`report_metrics` は `main` の末尾で呼びます。
 
 打ち切られた実行はハーネスが報告できないので、そのときだけ `ru_maxrss` に落ちます。TLE と MLE の行のメモリには下駄が乗ったままです。
 
-`peak_rss_kb()` は問題ごとの `common.hpp` に置いてあります。問題が増えたら共有のヘッダへ出したくなりますが、`harness_hash` が見ているのは `base.cpp` と `common.hpp` だけです。出すときは閉包を辿るように直してください。そうしないと共有ヘッダを書き換えても測り直しが起きません。
+問題をまたいで同じものは `harness/pj.hpp` に置きます。include 一式、`i64` などの型別名、`must_scan`、`peak_rss_kb`、`report_metrics` です。`-Iharness` が入っているので `#include "pj.hpp"` で引けます。問題ごとの `common.hpp` は、その問題だけが共通で使うものを置く場所として残してあります。今の 3 問には該当するものが無いので、どれも持っていません。
+
+探索の順は `lib`、問題のディレクトリ、`harness`、`third_party/simde` です。問題のディレクトリが `harness` より先なので、問題ごとに同じ名前のヘッダを置けばそちらが勝ちます。
 
 既存の `judge` がこれを踏んでいないのは、`/usr/bin/time -v` 越しに走らせているからです。fork する親が 1 MB ほどの C プログラムなので下駄が見えません。24000 件の記録の最小が 3 MB 台で、それがその高さです。
 
@@ -461,7 +465,8 @@ normalize(src) = 行末空白除去 + 空行除去
 
 submission_hash = sha256( normalize(提出のソース)
                           + Σ sorted(include 閉包) の (パス + normalize(内容)) )
-harness_hash    = sha256( normalize(base.cpp) + normalize(common.hpp) )
+harness_hash    = sha256( normalize(base.cpp)
+                          + Σ sorted(include 閉包) の (パス + normalize(内容)) )
 problem_hash    = sha256( problem.toml を正規化したもの )
 
 key = sha256( 提出のパス, submission_hash, harness_hash, problem_hash, cases_hash,
@@ -471,6 +476,8 @@ key = sha256( 提出のパス, submission_hash, harness_hash, problem_hash, case
 提出のパスをキーに入れるのは、中身が同じ提出を別物として数えるためです。`submission_hash` は中身と include 閉包だけから作るので、バイト単位で同じ提出が 2 本あると同じ値になります。提出ページはパスごとに描くので、パスが違えば別の記録が要ります。リネームすると測り直しになりますが、新しいパスには記録が無いので、そちらの方が欲しい動きです。
 
 `problem_hash` は実行に影響する項目だけから作ります。`limits`、`harness`、`testdata`、`compare` です。`title` のような表示用の項目は外します。題名を直しただけで全部が走り直すのを避けるためです。
+
+`harness_hash` が閉包まで見るのは、共有のハーネスヘッダを書き換えたときに測り直しを起こすためです。名前を挙げて足す形だと、`harness/pj.hpp` のような外のファイルが抜けます。問題ごとの `common.hpp` も `base.cpp` が include していれば閉包から入るので、名指しは要りません。
 
 `kind = "raw"` の問題には `base.cpp` がありません。その場合の `harness_hash` は空文字列のハッシュにします。
 
@@ -482,7 +489,7 @@ key = sha256( 提出のパス, submission_hash, harness_hash, problem_hash, case
 
 include 閉包は `#include "..."` を再帰的に辿って作ります。角括弧の include は辿りません。閉包の解決は `pj/include.py` に置いて、pytest で固めてください。
 
-閉包を辿るときの include パスは、コンパイル時と同じにしてください。`lib/`、問題のディレクトリ、`third_party/simde` です。ずれているとライブラリのヘッダを解決できず、閉包が欠けます。欠けた閉包はキーを誤らせるので、ライブラリを直しても再実行されなくなります。
+閉包を辿るときの include パスは、コンパイル時と同じにしてください。`lib/`、問題のディレクトリ、`harness/`、`third_party/simde` です。ずれているとライブラリのヘッダを解決できず、閉包が欠けます。欠けた閉包はキーを誤らせるので、ライブラリを直しても再実行されなくなります。
 
 この設計から出る結果を 4 つ書きます。
 

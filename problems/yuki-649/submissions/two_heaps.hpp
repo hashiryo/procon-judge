@@ -1,7 +1,7 @@
 #pragma once
 #include <queue>
 
-#include "common.hpp"
+#include "pj.hpp"
 
 // K が全クエリで共通なのを使う。小さい方から K 個を最大ヒープ lo に、残りを
 // 最小ヒープ hi に置く。K 番目に小さい値は常に lo の先頭にある。

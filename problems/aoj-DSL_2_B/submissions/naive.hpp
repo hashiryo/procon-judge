@@ -1,5 +1,5 @@
 #pragma once
-#include "common.hpp"
+#include "pj.hpp"
 
 // 配列をそのまま持って、区間和は毎回足し直す。O(1) 更新 / O(N) 取得。
 // N, Q ともに 10 万までなので、この問題では間に合ってしまう。

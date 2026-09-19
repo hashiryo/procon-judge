@@ -1,5 +1,5 @@
 #pragma once
-#include "common.hpp"
+#include "pj.hpp"
 
 // 配列をそのまま持って、区間和は毎回足し直す。O(1) 更新 / O(N) 取得。
 // 比較の下限を置くための実装なので、大きいケースでは TLE する。

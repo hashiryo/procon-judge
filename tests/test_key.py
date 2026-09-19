@@ -122,11 +122,42 @@ def test_base_harness_follows_base_cpp(tmp_path):
 
 def test_base_harness_follows_common_hpp(tmp_path):
     problem = make_problem(
-        tmp_path, harness="base", base_cpp="int main() {}\n", common="// a\n"
+        tmp_path,
+        harness="base",
+        base_cpp='#include "common.hpp"\nint main() {}\n',
+        common="// a\n",
     )
-    before = key_mod.harness_hash(problem)
+    paths = [problem.dir]
+    before = key_mod.harness_hash(problem, paths)
     (problem.dir / "common.hpp").write_text("// b\n")
-    assert key_mod.harness_hash(problem) != before
+    assert key_mod.harness_hash(problem, paths) != before
+
+
+def test_base_harness_follows_the_shared_header(tmp_path):
+    """共有のハーネスヘッダを書き換えたら測り直しが起きてほしい。"""
+    shared = tmp_path / "harness"
+    shared.mkdir()
+    (shared / "pj.hpp").write_text("// a\n")
+    problem = make_problem(
+        tmp_path, harness="base", base_cpp='#include "pj.hpp"\nint main() {}\n'
+    )
+    paths = [problem.dir, shared]
+    before = key_mod.harness_hash(problem, paths)
+    (shared / "pj.hpp").write_text("// b\n")
+    assert key_mod.harness_hash(problem, paths) != before
+
+
+def test_base_harness_ignores_formatting(tmp_path):
+    problem = make_problem(
+        tmp_path, harness="base", base_cpp='#include "pj.hpp"\nint main() {}\n'
+    )
+    shared = tmp_path / "harness"
+    shared.mkdir()
+    (shared / "pj.hpp").write_text("// a\n")
+    paths = [problem.dir, shared]
+    before = key_mod.harness_hash(problem, paths)
+    (shared / "pj.hpp").write_text("// a   \n\n")
+    assert key_mod.harness_hash(problem, paths) == before
 
 
 def test_problem_hash_ignores_the_title(tmp_path):

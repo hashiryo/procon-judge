@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .environment import Environment
-from .paths import BUILD_CACHE_DIR, LIB_DIR, ROOT, SIMDE_DIR
+from .paths import BUILD_CACHE_DIR, HARNESS_DIR, LIB_DIR, ROOT, SIMDE_DIR
 from .problem import Problem
 
 # constexpr を重く回す実装や -flto のリンクで伸びるので上限を置く。超えたら CE。
@@ -43,11 +43,14 @@ def effective_cxxflags(env: Environment, problem: Problem) -> str:
 def include_dirs(problem: Problem) -> list[Path]:
     """-I に渡すディレクトリ。閉包の解決もこの順で探す。
 
+    問題のディレクトリを harness より先に置く。問題ごとに同じ名前のヘッダを
+    置いたら、そちらが勝つ方が使いやすい。
+
     third_party/simde は submodule を初期化していなくても外さない。有無で外すと
     cxxflags が変わってキーが変わり、手元と CI で別の記録が増える。存在しない
     -I はコンパイラが黙って無視する。
     """
-    return [LIB_DIR, problem.dir, SIMDE_DIR]
+    return [LIB_DIR, problem.dir, HARNESS_DIR, SIMDE_DIR]
 
 
 def _rel(path: Path) -> str:

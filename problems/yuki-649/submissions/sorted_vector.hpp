@@ -1,7 +1,7 @@
 #pragma once
 #include <algorithm>
 
-#include "common.hpp"
+#include "pj.hpp"
 
 // 整列した配列をそのまま持つ。insert は挿入位置を二分探索してから後ろをずらす
 // ので O(N)。K 番目は添字を引くだけで O(1)。比較の下限を置くための実装で、

@@ -121,7 +121,7 @@ def build_plan(
 
         cxxflags = build_mod.effective_cxxflags(env, problem)
         search_paths = build_mod.include_dirs(problem)
-        harness = key_mod.harness_hash(problem)
+        harness = key_mod.harness_hash(problem, search_paths)
         problem_h = key_mod.problem_hash(problem)
 
         for submission in submissions:

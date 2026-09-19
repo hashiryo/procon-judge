@@ -1,5 +1,5 @@
 #pragma once
-#include "common.hpp"
+#include "pj.hpp"
 
 // 非再帰のセグメント木。葉を [n, 2n) に置いて、親を i -> 2i, 2i+1 で持つ。
 // Fenwick tree と同じ O(log N) だが、1 クエリで触るノードが倍あり、

@@ -14,5 +14,7 @@ TESTCASE_CACHE_DIR = CACHE_DIR / "testcases"
 BUILD_CACHE_DIR = CACHE_DIR / "build"
 LIBRARY_CHECKER_DIR = CACHE_DIR / "library-checker-problems"
 LIB_DIR = ROOT / "lib"
+# すべての問題のハーネスと提出が共有するヘッダ。
+HARNESS_DIR = ROOT / "harness"
 SIMDE_DIR = ROOT / "third_party" / "simde"
 ENVIRONMENTS_TOML = ROOT / "environments.toml"

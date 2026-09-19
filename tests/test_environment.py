@@ -13,7 +13,7 @@ import yaml
 from pj import build as build_mod
 from pj import environment as env_mod
 from pj import problem as problem_mod
-from pj.paths import SIMDE_DIR
+from pj.paths import HARNESS_DIR, SIMDE_DIR
 
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = ROOT / ".github" / "workflows" / "judge.yml"
@@ -56,8 +56,15 @@ def test_effective_cxxflags_append_the_include_dirs():
     flags = build_mod.effective_cxxflags(env, problem)
     assert flags.startswith(env.cxxflags)
     assert flags.endswith(
-        "-Ilib -Iproblems/yosupo-point-add-range-sum -Ithird_party/simde"
+        "-Ilib -Iproblems/yosupo-point-add-range-sum -Iharness -Ithird_party/simde"
     )
+
+
+def test_the_problem_directory_wins_over_the_shared_harness():
+    """問題ごとに同じ名前のヘッダを置いたら、そちらを先に見る。"""
+    problem = problem_mod.load_by_id("yosupo-point-add-range-sum")
+    dirs = build_mod.include_dirs(problem)
+    assert dirs.index(problem.dir) < dirs.index(HARNESS_DIR)
 
 
 def test_simde_stays_in_the_include_dirs_even_if_it_is_not_checked_out():

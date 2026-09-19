@@ -64,14 +64,23 @@ def submission_hash(
     )
 
 
-def harness_hash(problem: Problem) -> str:
-    """kind = "raw" の問題は base.cpp を持たないので空文字列のハッシュにする。"""
+def harness_hash(problem: Problem, search_paths: Sequence[Path] = ()) -> str:
+    """base.cpp とその include 閉包からハッシュを作る。
+
+    kind = "raw" の問題は base.cpp を持たないので空文字列のハッシュにする。
+
+    閉包まで見るのは、共有のハーネスヘッダを書き換えたときに測り直しを
+    起こすため。名指しで足していた問題ごとの common.hpp も、base.cpp が
+    include していれば閉包から入る。
+    """
     if problem.harness_kind != "base":
         return EMPTY_HASH
-    return _sha256(
-        _normalized_file(problem.base_cpp),
-        _normalized_file(problem.dir / "common.hpp"),
-    )
+    found: Closure = closure(problem.base_cpp, search_paths)
+    parts = [_normalized_file(problem.base_cpp)]
+    for label, path in zip(found.labels, found.files, strict=True):
+        parts.append(label)
+        parts.append(_normalized_file(path))
+    return _sha256(*parts)
 
 
 def problem_hash(problem: Problem) -> str:

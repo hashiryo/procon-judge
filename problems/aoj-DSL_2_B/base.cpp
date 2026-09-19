@@ -13,19 +13,12 @@
 //
 // 計測区間にはクエリの処理だけを残す。入力の解析、Solver の構築、答えの整形は
 // すべて外に出してある。
-#include "common.hpp"
+#include "pj.hpp"
 
 #ifndef SUBMISSION_HPP
 #define SUBMISSION_HPP "submissions/naive.hpp"
 #endif
 #include SUBMISSION_HPP
-
-static void must_scan(int got, int want) {
-  if (got != want) {
-    fprintf(stderr, "input format error\n");
-    exit(1);
-  }
-}
 
 signed main() {
   int n, q;

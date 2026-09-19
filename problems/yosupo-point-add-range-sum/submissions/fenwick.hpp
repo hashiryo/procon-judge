@@ -1,5 +1,5 @@
 #pragma once
-#include "common.hpp"
+#include "pj.hpp"
 
 // Fenwick tree (Binary Indexed Tree)。更新も取得も O(log N)。
 struct Solver {
