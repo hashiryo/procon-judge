@@ -822,6 +822,14 @@ CI では `actions/checkout` で `path: .results` に `fetch-depth: 1` で置き
 
 library-checker の `generate.py` は Darwin と Windows のスタックサイズだけ自分で設定します。Linux は呼ぶ側の責任なので、`bash -c "ulimit -s unlimited && ..."` で囲んでから呼びます。深い再帰を書いたジェネレータがあり、既定の 8 MB では落ちます。移植元の `Library/scripts/lib/download.py` が同じことをしていました。macOS で `ulimit -s unlimited` は通らないので、そちらは囲みません。
 
+### アーティファクトの置き場をドットで始めません
+
+`upload-artifact` は隠しファイルを既定で除きます。最初 `--out .artifacts` にしていたら 1 件も上がらず、`collect` が 0 件で終わりました。`if-no-files-found: ignore` にしていたので、警告も出ずに黙って落ちていました。`${{ runner.temp }}/records` に置き換えて、`if-no-files-found` は `warn` にしました。全部スキップされた実行では 1 件も出ないので、失敗にはできません。
+
+### Linux の RSS は下駄が高いです
+
+ubuntu-24.04 のランナーで測ると、入力が 45 バイトの `example_00` でも 22760 KB 出ます。小さいケースは全部この値で揃うので、これがこのランナーの下限です。手元の macOS は同じケースで 1408 KB でした。ケースの大きさで動くぶんはこの上に乗ります (`max_random` で 29820 KB)。設計が言うとおり `mle_mb` をきつく設定しないでください。
+
 ### マトリクスは今のところ手書きです
 
 `.github/workflows/judge.yml` の matrix に `x64-gcc` と `ubuntu-24.04` を直に書いています。`environments.toml` と二重持ちですが、yml から toml を読むには matrix を作る前段のジョブが要ります。4 環境に広げる M5 でまとめて考えます。
