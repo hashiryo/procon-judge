@@ -15,7 +15,8 @@ from . import fetch
 from . import problem as problem_mod
 from . import run as run_mod
 from .fetch import mirror
-from .paths import RESULTS_DIR
+from .paths import RESULTS_DIR, SITE_DIR
+from .site import build as site_build
 from .store import Store
 
 
@@ -238,6 +239,18 @@ def cmd_records_append(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_site_build(args: argparse.Namespace) -> int:
+    store = Store(Path(args.store) if args.store else RESULTS_DIR)
+    out = Path(args.out) if args.out else SITE_DIR
+    summary = site_build.build(store, out)
+    print(
+        f"{summary.out} に問題 {summary.problems} 件 / 記録 {summary.records} 件 / "
+        f"ページ {summary.pages + 1} 枚",
+        file=sys.stderr,
+    )
+    return 0
+
+
 def cmd_records_list(args: argparse.Namespace) -> int:
     store = Store(Path(args.store) if args.store else RESULTS_DIR)
     for problem_id in store.problem_ids():
@@ -323,6 +336,14 @@ def build_parser() -> argparse.ArgumentParser:
     r_list.add_argument("--store")
     r_list.set_defaults(func=cmd_records_list)
 
+    site = sub.add_parser("site", help="サイト").add_subparsers(
+        dest="subcommand", required=True
+    )
+    site_b = site.add_parser("build", help="記録から静的なサイトを作る")
+    site_b.add_argument("--out", help=f"書き先 (既定 {SITE_DIR.name}/)")
+    site_b.add_argument("--store", help=f"記録を読む場所 (既定 {RESULTS_DIR.name}/)")
+    site_b.set_defaults(func=cmd_site_build)
+
     return parser
 
 
@@ -335,6 +356,7 @@ def main(argv: list[str] | None = None) -> int:
         env_mod.EnvironmentError_,
         fetch.FetchError,
         mirror.MirrorError,
+        site_build.SiteError,
     ) as e:
         return _die(str(e))
 

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>procon-judge</title>
+    <link rel="stylesheet" href="style.css{{STYLE_V}}" />
+  </head>
+  <body data-src="data/index.json{{DATA_V}}">
+    <h1>procon-judge</h1>
+    <p class="sub" id="sub">読み込み中</p>
+    <div class="wrap" id="wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>問題</th>
+            <th>取得元</th>
+            <th class="n">提出</th>
+            <th class="n">計測済み</th>
+            <th class="n">記録</th>
+            <th>最終更新</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <script src="index.js{{SCRIPT_V}}"></script>
+  </body>
+</html>

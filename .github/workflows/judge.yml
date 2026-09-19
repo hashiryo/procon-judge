@@ -134,6 +134,12 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      pages: write
+      id-token: write
+    # deploy-pages はこの名前の environment を要求する。
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
 
@@ -168,3 +174,15 @@ jobs:
           fi
           git commit -m "記録を追加 (${GITHUB_SHA::7})"
           git push origin HEAD:results
+
+      # サイトはビルド出力なので保存しない。記録から毎回作り直す。
+      - name: サイトを作る
+        run: uv run pj site build --store .results --out site
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+      - name: Pages へ出す
+        id: pages
+        uses: actions/deploy-pages@v5
