@@ -194,6 +194,11 @@ def cmd_run(args: argparse.Namespace) -> int:
         targets, env, machine, store.keys(),
         allow_fetch=not args.dry_run, refresh=args.refresh,
     )
+    for problem_id, reason in plan.failed:
+        print(
+            f"warning: {problem_id} のテストデータを取れません: {reason}",
+            file=sys.stderr,
+        )
     for submission, target in plan.unresolved:
         print(
             f"warning: {submission} の include {target!r} を解決できません",

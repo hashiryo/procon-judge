@@ -63,6 +63,8 @@ class Plan:
     skipped: tuple[Job, ...]
     pending: tuple[Target, ...]
     unresolved: tuple[tuple[str, str], ...]
+    # 取得に失敗した問題。(問題 id, 理由)
+    failed: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass
@@ -110,6 +112,7 @@ def build_plan(
     skipped: list[Job] = []
     pending: list[Target] = []
     unresolved: list[tuple[str, str]] = []
+    failed: list[tuple[str, str]] = []
 
     for problem, submissions in _group_by_problem(targets):
         cases_hash = fetch.cached_cases_hash(problem)
@@ -117,7 +120,14 @@ def build_plan(
             if not allow_fetch:
                 pending.extend((problem, s) for s in submissions)
                 continue
-            cases_hash = fetch.ensure(problem, refresh=refresh).cases_hash
+            try:
+                cases_hash = fetch.ensure(problem, refresh=refresh).cases_hash
+            except fetch.FetchError as e:
+                # 1 問取れなかっただけで、走れる問題の記録まで落とさない。
+                # 取りこぼしは次の実行が拾う。
+                failed.append((problem.id, str(e)))
+                pending.extend((problem, s) for s in submissions)
+                continue
 
         cxxflags = build_mod.effective_cxxflags(env, problem)
         search_paths = build_mod.include_dirs(problem)
@@ -156,6 +166,7 @@ def build_plan(
         skipped=tuple(skipped),
         pending=tuple(pending),
         unresolved=tuple(unresolved),
+        failed=tuple(failed),
     )
 
 

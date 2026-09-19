@@ -186,3 +186,43 @@ def test_uncached_testdata_defers_instead_of_fetching(tmp_path, local_env, machi
     assert plan.jobs == ()
     assert plan.skipped == ()
     assert len(plan.pending) == 1
+
+
+YUKI_TOML = """
+id = "tmp-yuki"
+title = "取得に失敗する問題"
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1"
+
+[compare]
+kind = "tokens"
+"""
+
+
+def test_a_problem_that_cannot_be_fetched_does_not_stop_the_others(
+    tmp_path, local_env, machine, monkeypatch
+):
+    """1 問取れないだけで、走れる問題の記録まで落とさない。"""
+    monkeypatch.delenv("YUKICODER_TOKEN", raising=False)
+    monkeypatch.delenv("TESTDATA_TOKEN", raising=False)
+
+    ok = make_problem(tmp_path, "int main() { return 0; }\n")
+    directory = tmp_path / "tmp-yuki"
+    directory.mkdir()
+    (directory / "problem.toml").write_text(YUKI_TOML)
+    (directory / "submissions").mkdir()
+    (directory / "submissions" / "sol.cpp").write_text("int main() {}\n")
+    bad = problem_mod.load(directory)
+
+    targets = [(ok, s) for s in ok.submissions()]
+    targets += [(bad, s) for s in bad.submissions()]
+    plan = run_mod.build_plan(targets, local_env, machine, set())
+
+    assert [job.problem.id for job in plan.jobs] == [ok.id]
+    assert [pid for pid, _ in plan.failed] == [bad.id]
+    assert [problem.id for problem, _ in plan.pending] == [bad.id]
