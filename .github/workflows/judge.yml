@@ -38,7 +38,8 @@ jobs:
           path: .results
           fetch-depth: 1
 
-      - uses: astral-sh/setup-uv@v10
+      # setup-uv は v8 以降、浮動のメジャータグを出していない。正確な版で固定する。
+      - uses: astral-sh/setup-uv@v10.1.0
         with:
           enable-cache: true
 
@@ -108,7 +109,7 @@ jobs:
           path: .results
           fetch-depth: 1
 
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.1.0
         with:
           enable-cache: true
 
