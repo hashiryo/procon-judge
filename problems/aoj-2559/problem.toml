@@ -1,0 +1,16 @@
+id = "aoj-2559"
+title = "Minimum Spanning Tree"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "aoj"
+name = "2559"
+
+[compare]
+kind = "tokens"
