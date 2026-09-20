@@ -1,0 +1,16 @@
+id = "yosupo-lca"
+title = "Lowest Common Ancestor"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "tree/lca"
+
+[compare]
+kind = "checker"

@@ -1,0 +1,16 @@
+id = "yosupo-range-affine-point-get"
+title = "Range Affine Point Get"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "data_structure/range_affine_point_get"
+
+[compare]
+kind = "checker"

@@ -1,0 +1,16 @@
+id = "yosupo-exp-of-formal-power-series"
+title = "Exp of Formal Power Series"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "polynomial/exp_of_formal_power_series"
+
+[compare]
+kind = "checker"

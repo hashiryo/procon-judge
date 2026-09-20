@@ -1,0 +1,16 @@
+id = "yosupo-vertex-add-path-sum"
+title = "Vertex Add Path Sum"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "tree/vertex_add_path_sum"
+
+[compare]
+kind = "checker"

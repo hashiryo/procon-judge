@@ -1,0 +1,25 @@
+#pragma once
+#include "common.hpp"
+#include "mylib/fft/FormalPowerSeries.hpp"
+
+// 係数を 1 つずつ遅延で求める relaxed convolution の実装。値を取り出すまで
+// 計算が始まらないので、計測区間で N 個の読み出しまでやる。読み出しを外に出すと
+// 何も測らないことになる。
+struct Solver {
+  using FPS = FormalPowerSeries<Mint>;
+
+  int n;
+  FPS f;
+  i64 m;
+  vector<Mint> b;
+
+  Solver(const vector<i64> &src, i64 m) : n((int)src.size()), f(to_mint(src)), m(m) {}
+
+  void run() {
+    FPS r = pow(f, m);
+    b.resize(n);
+    for (int i = 0; i < n; ++i) b[i] = r[i];
+  }
+
+  vector<i64> answer() const { return from_mint(b); }
+};

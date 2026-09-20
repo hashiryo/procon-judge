@@ -1,0 +1,16 @@
+id = "yosupo-pow-of-formal-power-series"
+title = "Pow of Formal Power Series"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "polynomial/pow_of_formal_power_series"
+
+[compare]
+kind = "checker"

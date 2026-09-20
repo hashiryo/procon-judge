@@ -1,0 +1,16 @@
+id = "yosupo-range-affine-range-sum"
+title = "Range Affine Range Sum"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "data_structure/range_affine_range_sum"
+
+[compare]
+kind = "checker"
