@@ -735,6 +735,8 @@ Pages のデプロイはサイト全体の差し替えです。変わった問�
 | M4 | テストデータの保管庫。AOJ と yukicoder の問題を足す | CI が原本を叩かずに走る |
 | M5 | 環境マトリクス | 4 環境の記録が揃う |
 | M6 | サイト生成と Pages | 順位表が見える |
+| M7 | ライブラリを通す | `mylib/...` を include する提出が 4 環境で AC になる |
+| M8 | 現行と参考と未計測を見分ける | ライブラリを触ると順位表の行が参考に落ちる |
 
 M1 の題材は Library Checker の `point_add_range_sum` を勧めます。テストデータがジェネレータから作れるので判定サイトへの依存が無く、チェッカが同梱されていて、`base.cpp` のインターフェースが素直です。
 
@@ -742,7 +744,7 @@ M1 の時点で `problem.toml`、`base.cpp`、`submissions/naive.hpp` を手で�
 
 ## 実装の状況
 
-M6 まで通っています。手元で `pj run --env local` が動き、2 回目は 0 件になります。main へ push すると CI が 4 環境で走って、`results` ブランチに記録が増え、サイトが https://hashiryo.github.io/procon-judge/ に出ます。AOJ のテストデータは保管庫から取るので、CI は judgedat を叩きません。
+M7 まで通っています。手元で `pj run --env local` が動き、2 回目は 0 件になります。main へ push すると CI が 4 環境で走って、`results` ブランチに記録が増え、サイトが https://hashiryo.github.io/procon-judge/ に出ます。AOJ のテストデータは保管庫から取るので、CI は judgedat を叩きません。`mylib/...` を include する提出も 4 環境で走っています。
 
 以下は段ごとの実装の記録です。決めたことと、踏んだ罠を書いてあります。
 
@@ -1115,6 +1117,45 @@ AtCoder で順位に意味があるのは、他人の提出が何千と並ぶか
 ### gitignore の site/ は pj/site/ にも当たります
 
 書き先を `site/` にしたので `.gitignore` に `site/` を足したら、`pj/site/` まで無視されてパッケージが commit から漏れかけました。`/site/` に直してあります。
+
+## M7 の実装の記録
+
+`mylib/...` を include する提出を 2 本入れて、ライブラリの経路に初めて電気を通しました。`lib/` を clone して `-I` に足す仕組みは M4 の時点で組んでありましたが、それを使う提出が 1 本も無かったので一度も通っていませんでした。提出は `problems/yosupo-point-add-range-sum/submissions/` に置きました。`lib-bit.hpp` が使うのは `mylib/data_structure/BinaryIndexedTree.hpp` です。`lib-segtree.hpp` は `mylib/data_structure/SegmentTree.hpp` を使います。手書きの `fenwick.hpp` と `segtree.hpp` が同じ構造なので、そのまま比較になります。4 環境とも AC でした。
+
+### 閉包はライブラリの中まで辿れています
+
+`lib-segtree.hpp` の記録の `includes` が 3 つになりました。`mylib/data_structure/SegmentTree.hpp`、`mylib/internal/detection_idiom.hpp`、`pj.hpp` です。`SegmentTree.hpp` が internal のヘッダを引いているので、ライブラリの中で 2 段辿っています。ここが繋がっていることが「ライブラリを直したら、それに依存する提出だけ測り直しになる」の前提です。
+
+### 手元の lib/ は自分で clone します
+
+`.gitignore` に `/lib/` を足しました。CI は実行のたびに clone しますが手元には無いので、無いままだとライブラリを使う提出が全部 include 未解決になります。
+
+```
+git clone --depth=1 https://github.com/hashiryo/Library.git lib
+```
+
+### include を解決できない提出は走らせません
+
+判定は clone の成否ではなく閉包の `unresolved` で行います。閉包が欠けたままキーを作ると別の意味のキーになりますし、そのまま走らせても CE の記録が残るだけだからです。ライブラリと関係ない綴り間違いも同じ扱いになりますが、走らせても CE なので困りません。飛ばした分は `Plan` の `blocked` に入って、要約に「include 未解決 N 件」、`--dry-run` では `block` の行として出ます。
+
+### local は Library の一部をコンパイルできません
+
+`lib-bit.hpp` は `local` (Apple clang + libc++) で CE になります。`BinaryIndexedTree.hpp` が `std::__lg` を使っていて、これは libstdc++ の拡張なので libc++ にありません。修飾名なのでテンプレートの定義時に解決されて、`find` を呼んでいなくても落ちます。CI の 4 環境は Ubuntu の clang も libstdc++ を使うので通ります。
+
+`mylib` 146 ファイルのうち、`std::__lg` を使うのは `BinaryIndexedTree.hpp` と `DiscreteLogarithm.hpp` の 2 つです。修飾なしの `__lg` は `Factors.hpp` と `mod_kth_root.hpp` の 2 つです。Library 側に `include/clang_compat.hpp` があって、`-include` で渡せば修飾なしの 2 つは埋まりますが、`std::` 付きの方は埋まりません。ここは Library の側の話なので、このリポジトリでは直しません。移植で Apple clang だけ通らない提出が出たら、この 4 ファイルを疑ってください。
+
+### 最初の比較
+
+`algo` の最大ケースをミリ秒で並べます。x64 は AMD EPYC 7763、arm は Neoverse-N2 です。
+
+| 提出 | x64-gcc | x64-clang | arm-gcc | arm-clang |
+| --- | --- | --- | --- | --- |
+| `fenwick.hpp` | 16.43 | 20.33 | 21.45 | 19.97 |
+| `lib-bit.hpp` | 18.03 | 17.47 | 19.11 | 19.21 |
+| `segtree.hpp` | 38.32 | 34.07 | 30.92 | 29.44 |
+| `lib-segtree.hpp` | 38.70 | 39.38 | 51.29 | 34.88 |
+
+BIT は手書きとライブラリがほぼ互角で、どちらが速いかは環境によって入れ替わります。SegmentTree はライブラリの方が遅く、arm-gcc では 1.66 倍です。差の出どころは調べていませんが、点加算に使っている `mul` が `set(i, op(get(i), x))` の形で `get` を 1 回余分に通るあたりが素直な疑いです。こういう差が判定として出てくるのが、このリポジトリで欲しかったものです。
 
 ## 既存リポジトリから移すもの
 
