@@ -1,0 +1,16 @@
+id = "aoj-2893"
+title = "Board"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "aoj"
+name = "2893"
+
+[compare]
+kind = "tokens"
