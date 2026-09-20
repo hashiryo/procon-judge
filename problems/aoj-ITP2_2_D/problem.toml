@@ -1,0 +1,16 @@
+id = "aoj-ITP2_2_D"
+title = "Vector II"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "aoj"
+name = "ITP2_2_D"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,16 @@
+id = "aoj-ITP2_4_B"
+title = "Rotate"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "aoj"
+name = "ITP2_4_B"
+
+[compare]
+kind = "tokens"

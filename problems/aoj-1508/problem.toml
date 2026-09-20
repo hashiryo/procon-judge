@@ -1,0 +1,16 @@
+id = "aoj-1508"
+title = 'Networking the "Death Star"'
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "aoj"
+name = "1508"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,16 @@
+id = "aoj-ALDS1_14_B"
+title = "String Search"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 256
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "aoj"
+name = "ALDS1_14_B"
+
+[compare]
+kind = "tokens"
