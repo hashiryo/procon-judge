@@ -22,10 +22,10 @@ from pathlib import Path
 
 from .. import environment as env_mod
 from .. import problem as problem_mod
+from ..freshness import Freshness
 from ..paths import ROOT
 from ..record import judge_sha
 from ..store import Store
-from .freshness import Freshness
 
 TEMPLATES = Path(__file__).resolve().parent / "templates"
 

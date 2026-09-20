@@ -12,6 +12,7 @@ from pathlib import Path
 
 from . import environment as env_mod
 from . import fetch
+from . import plan as plan_mod
 from . import problem as problem_mod
 from . import run as run_mod
 from .fetch import mirror
@@ -183,6 +184,74 @@ def _targets(args: argparse.Namespace) -> list[run_mod.Target]:
     return targets
 
 
+def _assigned(
+    targets: list[run_mod.Target],
+    env: env_mod.Environment,
+    store: Store,
+    args: argparse.Namespace,
+) -> list[run_mod.Target]:
+    """自分の担当の順に並べ直す。
+
+    並びは plan が決めたものと同じでないといけない。記録と問題定義と lib/
+    だけから決まるので、同じものを読めば同じ順になる。plan の出力を持ち回る
+    より、同じ関数を呼ぶ方がずれない。
+    """
+    # plan と同じ視野で並びを作る。--problem で絞っても順番は変えない。
+    envs = env_mod.load_all()
+    problems = [problem_mod.load(d) for d in problem_mod.all_problem_dirs()]
+    order = plan_mod.for_env(env, problems, envs, store).order
+    rank = {
+        problem_id: index
+        for index, problem_id in enumerate(
+            plan_mod.assignment(order, args.job, args.jobs)
+        )
+    }
+    # 束に入らなかった問題 (その環境では全モデル計測済み) はうしろに置く。
+    # 実際のモデルで未計測なら run がそこで拾う。
+    return sorted(targets, key=lambda t: rank.get(t[0].id, len(rank)))
+
+
+def cmd_plan(args: argparse.Namespace) -> int:
+    envs = env_mod.load_all()
+    problems = [problem_mod.load(d) for d in problem_mod.all_problem_dirs()]
+    store = Store(Path(args.store) if args.store else RESULTS_DIR)
+    # lib/ が無いとライブラリを使う提出の閉包が欠ける。欠けた閉包はキーを
+    # 誤らせるので、plan はそれを未計測と数えずに警告だけ出す。
+    if not LIB_DIR.is_dir():
+        print(
+            f"warning: {LIB_DIR.name}/ がありません。"
+            "ライブラリを使う提出は立てません",
+            file=sys.stderr,
+        )
+
+    plans = plan_mod.build(problems, envs, store, budget=args.budget)
+    for one in plans:
+        parts = [
+            f"モデル {len(one.models)} 種",
+            f"未計測 {one.expected:.1f} 件/モデル",
+            f"束 {len(one.bundles)} 件",
+            f"ジョブ {one.jobs} 本",
+        ]
+        print(f"{one.env.name}\t" + " / ".join(parts), file=sys.stderr)
+        for submission in one.unresolved:
+            print(
+                f"warning: {submission} の include を解決できません",
+                file=sys.stderr,
+            )
+        for submission in one.compile_errors:
+            print(
+                f"{one.env.name}\t{submission} は CE と分かっているので立てません",
+                file=sys.stderr,
+            )
+    matrix = plan_mod.matrix(plans)
+    print(json.dumps(matrix, ensure_ascii=False))
+    if args.github_output:
+        with Path(args.github_output).open("a") as f:
+            f.write(f"matrix={json.dumps(matrix, ensure_ascii=False)}\n")
+            f.write(f"any={'true' if matrix['include'] else 'false'}\n")
+    return 0
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     env = env_mod.load(args.env)
     machine = run_mod.Machine.detect(env)
@@ -191,6 +260,10 @@ def cmd_run(args: argparse.Namespace) -> int:
     # push するのは collect だけなので、run は store を書き換えない。
     out = Store(Path(args.out)) if args.out else store
     targets = _targets(args)
+    if args.jobs is not None:
+        if args.jobs < 1 or not 0 <= args.job < args.jobs:
+            return _die(f"--job {args.job} が --jobs {args.jobs} に収まりません")
+        targets = _assigned(targets, env, store, args)
 
     print(
         f"{env.name} / {machine.cpu_model} / {machine.compiler_version}",
@@ -199,6 +272,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     plan = run_mod.build_plan(
         targets, env, machine, store.keys(),
         allow_fetch=not args.dry_run, refresh=args.refresh,
+        budget=args.budget,
     )
     for problem_id, reason in plan.failed:
         print(
@@ -250,6 +324,8 @@ def _print_summary(plan: run_mod.Plan, dry_run: bool, *, file) -> None:
         parts.append(f"テストデータ未取得 {len(plan.pending)} 件")
     if plan.blocked:
         parts.append(f"include 未解決 {len(plan.blocked)} 件")
+    if plan.held:
+        parts.append(f"budget で見送り {len(plan.held)} 件")
     print(" / ".join(parts), file=file)
 
 
@@ -344,6 +420,19 @@ def build_parser() -> argparse.ArgumentParser:
     m_status.add_argument("--problem")
     m_status.set_defaults(func=cmd_mirror_status)
 
+    p_plan = sub.add_parser("plan", help="環境ごとのジョブの本数を決める")
+    p_plan.add_argument("--store", help=f"記録を読む場所 (既定 {RESULTS_DIR.name}/)")
+    p_plan.add_argument(
+        "--budget",
+        type=int,
+        default=plan_mod.DEFAULT_BUDGET,
+        help=f"1 ジョブで測る提出の上限 (既定 {plan_mod.DEFAULT_BUDGET})",
+    )
+    p_plan.add_argument(
+        "--github-output", help="matrix と any を書き足すファイル ($GITHUB_OUTPUT)"
+    )
+    p_plan.set_defaults(func=cmd_plan)
+
     p_run = sub.add_parser("run", help="実行して記録を出す")
     p_run.add_argument("--env", required=True)
     p_run.add_argument("--problem", help="省略すると全問題")
@@ -354,6 +443,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.add_argument("--store", help=f"記録を読む場所 (既定 {RESULTS_DIR.name}/)")
     p_run.add_argument("--out", help="記録の書き先 (既定は --store と同じ)")
     p_run.add_argument("--refresh", action="store_true", help="テストデータを取り直す")
+    p_run.add_argument(
+        "--job", type=int, default=0, help="何番目のジョブか (0 始まり)"
+    )
+    p_run.add_argument(
+        "--jobs", type=int, help="その環境で立っているジョブの本数。省略すると全部見る"
+    )
+    p_run.add_argument(
+        "--budget", type=int, help="走らせる提出の上限。省略すると打ち切らない"
+    )
     p_run.set_defaults(func=cmd_run)
 
     records = sub.add_parser("records", help="記録").add_subparsers(

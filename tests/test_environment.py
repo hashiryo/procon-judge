@@ -18,18 +18,13 @@ from pj.paths import HARNESS_DIR, SIMDE_DIR
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = ROOT / ".github" / "workflows" / "judge.yml"
 
-# environments.toml の cxx から、CI がどちらのツールチェインを入れるかが決まる。
-TOOLCHAIN_OF = {"g++": "gcc", "clang++": "clang"}
-
-
 def ci_envs() -> list[env_mod.Environment]:
     """CI で走らせる環境。runs_on = "self" は手元専用。"""
     return [e for e in env_mod.load_all() if e.runs_on != "self"]
 
 
-def matrix_entries() -> list[dict]:
-    workflow = yaml.safe_load(WORKFLOW.read_text())
-    return workflow["jobs"]["run"]["strategy"]["matrix"]["include"]
+def workflow() -> dict:
+    return yaml.safe_load(WORKFLOW.read_text())
 
 
 # --- environments.toml -----------------------------------------------------
@@ -76,21 +71,46 @@ def test_simde_stays_in_the_include_dirs_even_if_it_is_not_checked_out():
 # --- CI のマトリクス -------------------------------------------------------
 
 
-def test_matrix_covers_every_ci_environment():
-    """environments.toml に足して judge.yml を忘れると、その環境は黙って走らない。"""
-    assert {e.name for e in ci_envs()} == {m["env"] for m in matrix_entries()}
+def test_the_run_job_is_named_after_the_environment_and_the_number():
+    """# から後ろが YAML のコメントになって名前が切れていたことがある。"""
+    name = workflow()["jobs"]["run"]["name"]
+    assert "${{ matrix.env }}" in name
+    assert "${{ matrix.job }}" in name
 
 
-def test_matrix_runner_matches_the_definition():
-    runs_on = {e.name: e.runs_on for e in ci_envs()}
-    for entry in matrix_entries():
-        assert entry["runs_on"] == runs_on[entry["env"]]
+def test_the_matrix_comes_from_the_plan_job():
+    """手書きの matrix に戻すと、やることが 0 件でもジョブが立つ。"""
+    run = workflow()["jobs"]["run"]
+    assert run["needs"] == "plan"
+    assert run["strategy"]["matrix"] == "${{ fromJSON(needs.plan.outputs.matrix) }}"
+    assert run["if"] == "needs.plan.outputs.any == 'true'"
 
 
-def test_matrix_toolchain_matches_the_compiler():
-    toolchain = {e.name: TOOLCHAIN_OF[e.cxx.rsplit("-", 1)[0]] for e in ci_envs()}
-    for entry in matrix_entries():
-        assert entry["toolchain"] == toolchain[entry["env"]]
+def test_every_compiler_is_installed_by_the_workflow():
+    """cxx を上げて judge.yml を忘れると、その環境は毎回落ちる。"""
+    step = next(
+        s
+        for s in workflow()["jobs"]["run"]["steps"]
+        if s.get("name") == "コンパイラを入れる"
+    )
+    for env in ci_envs():
+        assert env.cxx in step["run"], env.name
+
+
+def test_the_matrix_toolchain_picks_one_of_the_branches():
+    """plan が出すツールチェインの名前で、入れる側が分岐している。"""
+    step = next(
+        s
+        for s in workflow()["jobs"]["run"]["steps"]
+        if s.get("name") == "コンパイラを入れる"
+    )
+    assert "${{ matrix.toolchain }}" in step["run"]
+    assert {env_mod.toolchain(e) for e in ci_envs()} == {"gcc", "clang"}
+
+
+def test_the_toolchain_is_read_off_the_compiler():
+    assert env_mod.toolchain(env_mod.load("x64-gcc")) == "gcc"
+    assert env_mod.toolchain(env_mod.load("arm-clang")) == "clang"
 
 
 # --- CPU モデルの検出 ------------------------------------------------------

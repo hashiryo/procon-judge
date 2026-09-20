@@ -1,7 +1,8 @@
 """走らせる対象を決めて、実行して、採点レコードを作る。
 
-CPU モデルはジョブが始まるまで分からないので、何を走らせるかの判定もここでやる。
-事前に計画を立てる別のジョブは要らない。
+CPU モデルはジョブが始まるまで分からないので、そのモデルで実際に何が未計測か
+の判定はここでやる。モデルに依存しない判断 (環境ごとのジョブの本数と、束を
+片付ける順番) は pj.plan が先に決める。
 """
 
 from __future__ import annotations
@@ -67,6 +68,8 @@ class Plan:
     failed: tuple[tuple[str, str], ...] = ()
     # include を解決できないので走らせなかった提出。
     blocked: tuple[Target, ...] = ()
+    # budget に達したので見もしなかった提出。次の実行が拾う。
+    held: tuple[Target, ...] = ()
 
 
 @dataclass
@@ -93,7 +96,9 @@ def _group_by_problem(targets: Iterable[Target]) -> list[tuple[Problem, list[Pat
     grouped: dict[str, tuple[Problem, list[Path]]] = {}
     for problem, submission in targets:
         grouped.setdefault(problem.id, (problem, []))[1].append(submission)
-    return [grouped[pid] for pid in sorted(grouped)]
+    # 渡された順を保つ。束の順は plan が重い順に決めていて、budget で打ち切る
+    # ときにどれが残るかがその順で決まる。ここで並べ直すと意味が変わる。
+    return list(grouped.values())
 
 
 def build_plan(
@@ -104,11 +109,16 @@ def build_plan(
     *,
     allow_fetch: bool = True,
     refresh: bool = False,
+    budget: int | None = None,
 ) -> Plan:
     """各提出のキーを計算して、記録にあるものを除く。
 
     キーには cases_hash が要る。手元のキャッシュに manifest があればそれで済むので、
     すべてスキップされる実行では 1 件も落とさない。キャッシュが無いときだけ取りに行く。
+
+    budget を渡すと、走らせる対象がその件数に達したところで見るのをやめる。
+    束の途中でも止める。budget は 6 時間で打ち切られないための上限なので、
+    大きい束に当たったときこそ効いてほしい。残りは次の実行が同じ順で拾う。
     """
     jobs: list[Job] = []
     skipped: list[Job] = []
@@ -116,6 +126,7 @@ def build_plan(
     unresolved: list[tuple[str, str]] = []
     failed: list[tuple[str, str]] = []
     blocked: list[Target] = []
+    held: list[Target] = []
 
     for problem, submissions in _group_by_problem(targets):
         cases_hash = fetch.cached_cases_hash(problem)
@@ -168,6 +179,17 @@ def build_plan(
                 cxxflags=cxxflags,
             )
             (skipped if job.key in known_keys else jobs).append(job)
+            if budget is not None and len(jobs) >= budget:
+                held.extend(_rest(targets, problem, submission))
+                return Plan(
+                    jobs=tuple(jobs),
+                    skipped=tuple(skipped),
+                    pending=tuple(pending),
+                    unresolved=tuple(unresolved),
+                    blocked=tuple(blocked),
+                    failed=tuple(failed),
+                    held=tuple(held),
+                )
 
     return Plan(
         jobs=tuple(jobs),
@@ -176,8 +198,18 @@ def build_plan(
         unresolved=tuple(unresolved),
         blocked=tuple(blocked),
         failed=tuple(failed),
+        held=tuple(held),
     )
 
+
+def _rest(
+    targets: Sequence[Target], problem: Problem, submission: Path
+) -> list[Target]:
+    """この提出より後ろに並んでいる対象。budget で止めたときの残り。"""
+    for index, target in enumerate(targets):
+        if target[0].id == problem.id and target[1] == submission:
+            return list(targets[index + 1 :])
+    return []
 
 
 def _judge_case(

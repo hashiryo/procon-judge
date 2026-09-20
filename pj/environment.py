@@ -11,6 +11,8 @@ from pathlib import Path
 
 from .paths import ENVIRONMENTS_TOML
 
+TOOLCHAINS = {"g++": "gcc", "clang++": "clang", "c++": "system"}
+
 
 class EnvironmentError_(Exception):
     """環境の定義か検出で失敗したときに投げる。"""
@@ -122,3 +124,18 @@ def cpu_model() -> str:
 
 def cpu_arch() -> str:
     return platform.machine()
+
+
+def toolchain(env: Environment) -> str:
+    """CI がどちらのコンパイラを入れるか。cxx の版の接尾辞を落として見る。
+
+    judge.yml に手で書いていたものを、ここから出すようにした。二重持ちだと
+    環境を足したときに片方だけ直して、その環境が黙って走らない。
+    """
+    base = env.cxx.rsplit("-", 1)[0]
+    if base not in TOOLCHAINS:
+        raise EnvironmentError_(
+            f"{env.name}: cxx {env.cxx!r} のツールチェインが分かりません "
+            f"(既知: {', '.join(sorted(TOOLCHAINS))})"
+        )
+    return TOOLCHAINS[base]

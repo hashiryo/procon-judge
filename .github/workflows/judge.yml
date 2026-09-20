@@ -31,16 +31,51 @@ jobs:
           enable-cache: true
       - run: uv run pytest -q
 
+  # CPU モデルはマシンが割り当たるまで分からないので、モデルに依存しない判断
+  # だけをここで済ませる。テストデータは 1 バイトも触らない。キーに要る
+  # cases_hash は既存の記録から借りる。
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      any: ${{ steps.plan.outputs.any }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - name: results を読む
+        uses: actions/checkout@v7
+        with:
+          ref: results
+          path: .results
+          fetch-depth: 1
+
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+
+      # 閉包を作るのに要る。取れないとライブラリを使う提出が立たなくなるので、
+      # そのぶんは次の実行が拾う。
+      - name: ライブラリを取る
+        continue-on-error: true
+        run: git clone --depth=1 https://github.com/hashiryo/Library.git lib
+
+      - name: 計画する
+        id: plan
+        run: uv run pj plan --store .results --github-output "$GITHUB_OUTPUT"
+
   run:
+    needs: plan
+    # やることが 0 件なら 1 本も立てない。空のマトリクスはエラーになるので、
+    # ここで止める。
+    if: needs.plan.outputs.any == 'true'
     strategy:
       fail-fast: false
-      matrix:
-        # environments.toml と二重持ちになる。ずれていないかは pytest で見ている。
-        include:
-          - { env: x64-gcc, runs_on: ubuntu-24.04, toolchain: gcc }
-          - { env: x64-clang, runs_on: ubuntu-24.04, toolchain: clang }
-          - { env: arm-gcc, runs_on: ubuntu-24.04-arm, toolchain: gcc }
-          - { env: arm-clang, runs_on: ubuntu-24.04-arm, toolchain: clang }
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    # 既定の名前には matrix の値が全部並ぶ。読める長さに切る。
+    # # から後ろを YAML のコメントにされるので、引用符で囲む。
+    name: "run (${{ matrix.env }} #${{ matrix.job }})"
     runs-on: ${{ matrix.runs_on }}
     steps:
       # arm では x86 の intrinsics を SIMDe で動かすので submodule が要る。
@@ -108,6 +143,9 @@ jobs:
         run: >
           uv run pj run
           --env ${{ matrix.env }}
+          --job ${{ matrix.job }}
+          --jobs ${{ matrix.jobs }}
+          --budget ${{ matrix.budget }}
           --store .results
           --out ${{ runner.temp }}/records
 
@@ -126,13 +164,15 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always() && steps.records.outputs.any == 'true'
         with:
-          name: records-${{ matrix.env }}
+          name: records-${{ matrix.env }}-${{ matrix.job }}
           path: ${{ runner.temp }}/records
           if-no-files-found: error
 
   collect:
-    needs: run
-    if: always()
+    needs: [plan, run]
+    # run が 1 本も立たなくても通す。lib/ が動けば参考の判定が変わるので、
+    # サイトは作り直す。
+    if: always() && needs.plan.result == 'success'
     runs-on: ubuntu-24.04
     permissions:
       contents: write

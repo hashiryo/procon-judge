@@ -10,8 +10,8 @@ from pj import build as build_mod
 from pj import environment as env_mod
 from pj import key as key_mod
 from pj import problem as problem_mod
+from pj.freshness import Freshness
 from pj.site import build as site_build
-from pj.site.freshness import Freshness
 from pj.store import Store
 
 

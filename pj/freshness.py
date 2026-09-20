@@ -18,10 +18,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from .. import build as build_mod
-from .. import key as key_mod
-from ..environment import Environment
-from ..problem import Problem
+from . import build as build_mod
+from . import key as key_mod
+from .environment import Environment
+from .problem import Problem
 
 
 class Freshness:
@@ -47,29 +47,53 @@ class Freshness:
             )
         return self._subs[path]
 
-    def current(self, record: dict) -> bool | None:
-        """今のソースで測った記録なら True、ソースが変わっていれば False。
+    def key_for(
+        self,
+        submission: str,
+        *,
+        cases_hash: str,
+        env: str,
+        compiler_version: str,
+        cpu_model: str,
+    ) -> str | None:
+        """今のソースでこの条件を測ったら付くはずのキー。
 
-        判定できないときは None を返す。提出のファイルが消えている、閉包が
-        欠けている (lib/ を取っていない)、環境の定義が消えている、のどれか。
-        分からないものを古い側に倒すと、ライブラリを取れなかった回に表が
-        丸ごと参考になってしまう。
+        作れないときは None を返す。提出のファイルが消えている、閉包が欠けて
+        いる (lib/ を取っていない)、環境の定義が消えている、のどれか。
+
+        機械側の 4 つは呼ぶ側が持ってくる。記録から借りれば「測ってからソース
+        側が変わったか」が見られるし、既知のモデルの値を入れれば「そのモデル
+        で測ったらどのキーになるか」が分かる。plan が後者を使う。
         """
-        submission = record.get("submission", "")
         sub = self._submission(submission)
         if sub is None or sub.unresolved:
             return None
-        cxxflags = self._cxxflags.get(record.get("env", ""))
+        cxxflags = self._cxxflags.get(env)
         if cxxflags is None:
             return None
-        return record.get("key") == key_mod.compute(
+        return key_mod.compute(
             submission=submission,
             submission_hash=sub.submission_hash,
             harness_hash=self._harness,
             problem_hash=self._problem_hash,
+            cases_hash=cases_hash,
+            env=env,
+            compiler_version=compiler_version,
+            cxxflags=cxxflags,
+            cpu_model=cpu_model,
+        )
+
+    def current(self, record: dict) -> bool | None:
+        """今のソースで測った記録なら True、ソースが変わっていれば False。
+
+        判定できないときは None を返す。分からないものを古い側に倒すと、
+        ライブラリを取れなかった回に表が丸ごと参考になってしまう。
+        """
+        expected = self.key_for(
+            record.get("submission", ""),
             cases_hash=record.get("cases_hash", ""),
             env=record.get("env", ""),
             compiler_version=record.get("compiler_version", ""),
-            cxxflags=cxxflags,
             cpu_model=record.get("cpu_model", ""),
         )
+        return None if expected is None else record.get("key") == expected
