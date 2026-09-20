@@ -102,8 +102,7 @@ table {
    表が動くのを止める。入りきらない中身は省略記号にして title に残す。 */
 table.fixed {
   table-layout: fixed;
-  /* 提出の列は残り幅をもらう。長い名前に参考の印を足しても収まる幅にする。 */
-  min-width: 1180px;
+  min-width: 1120px;
 }
 
 table.fixed th,
@@ -186,15 +185,17 @@ tbody tr.stale td.st {
   color: var(--text2);
 }
 
-/* 提出の列。名前だけを詰めて、印は押し出されないようにする。セル全体に
-   ellipsis を掛けると、長い名前のときに後ろの印が消える。 */
-td.sub {
+/* 提出の列。名前だけを詰めて、後ろの印は押し出されないようにする。セル全体に
+   ellipsis を掛けると、長い名前のときに印の方から先に消える。
+   flex は td ではなく中の div に掛ける。td を flex にすると table-cell では
+   なくなって行の高さに伸びず、この列だけ罫線がずれる。 */
+.namecell {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-td.sub .name {
+.namecell .name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

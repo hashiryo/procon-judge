@@ -55,6 +55,25 @@ function chip() {
   return span;
 }
 
+// 提出はどれも submissions/ の下にある。全行で同じなので列では落とす。
+// 元のパスは title と、ソースの列のリンクに残る。
+function shortName(path) {
+  return path.startsWith("submissions/") ? path.slice(12) : path;
+}
+
+// 提出の列。名前だけを詰めて、後ろの印が押し出されないようにする。flex は
+// td ではなく中の div に掛ける。td を flex にすると table-cell でなくなり、
+// 行の高さに伸びなくなって、この列だけ罫線がずれる。
+function nameCell(path, className, mark) {
+  const td = el("td");
+  td.title = path;
+  const wrap = el("div", null, "namecell");
+  wrap.append(el("span", shortName(path), className));
+  if (mark) wrap.append(mark);
+  td.append(wrap);
+  return td;
+}
+
 function statusCell(row) {
   const td = el("td", row.status, "st st-" + row.status);
   if (row.failed && row.failed.name) td.append(el("span", " " + row.failed.name, "dim"));
@@ -83,13 +102,8 @@ const COLUMNS = [
     label: "提出",
     text: true,
     value: (r) => r.submission,
-    cell: (r) => {
-      const td = el("td", null, "sub");
-      td.title = r.submission;
-      td.append(el("span", r.submission, "mono name"));
-      if (r.current === false) td.append(chip());
-      return td;
-    },
+    cell: (r) =>
+      nameCell(r.submission, "mono name", r.current === false ? chip() : null),
   },
   {
     id: "status",
@@ -264,10 +278,7 @@ function missingLine(name) {
   const tr = el("tr", null, "missing");
   for (const column of COLUMNS) {
     if (column.id === "submission") {
-      const td = el("td", null, "sub");
-      td.title = name;
-      td.append(el("span", name, "mono dim name"));
-      tr.append(td);
+      tr.append(nameCell(name, "mono dim name"));
     } else if (column.id === "status") {
       tr.append(el("td", "未計測", "dim"));
     } else {
