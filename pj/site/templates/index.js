@@ -20,10 +20,10 @@ function link(href, text) {
 
 async function main() {
   const data = await (await fetch(document.body.dataset.src)).json();
-  document.getElementById("sub").textContent =
-    "問題 " + data.problems.length +
-    " / 記録 " + data.record_count +
-    " / " + stamp(data.generated_at) + " 生成 (UTC)";
+  const bits = ["問題 " + data.problems.length, "記録 " + data.record_count];
+  if (data.stale_count) bits.push("参考 " + data.stale_count);
+  bits.push(stamp(data.generated_at) + " 生成 (UTC)");
+  document.getElementById("sub").textContent = bits.join(" / ");
 
   const body = document.getElementById("rows");
   if (data.problems.length === 0) {
@@ -40,9 +40,14 @@ async function main() {
     tr.append(first);
     tr.append(el("td", p.source, "dim"));
     tr.append(el("td", p.submissions, "n"));
-    const cover = el("td", p.measured + " / " + (p.measured + p.pending), "n");
-    if (p.pending > 0) cover.classList.add("dim");
+    // 分子は現行だけ。参考は測り直し待ちなので、埋まっている数に数えない。
+    const stale = p.stale || 0;
+    const cover = el(
+      "td", p.measured - stale + " / " + (p.measured + p.pending), "n"
+    );
+    if (p.pending > 0 || stale > 0) cover.classList.add("dim");
     tr.append(cover);
+    tr.append(el("td", stale || "-", stale ? "n" : "n dim"));
     tr.append(el("td", p.records, "n"));
     const updated = el("td", stamp(p.updated), "dim");
     updated.title = p.updated;

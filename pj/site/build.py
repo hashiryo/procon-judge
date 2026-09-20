@@ -25,6 +25,7 @@ from .. import problem as problem_mod
 from ..paths import ROOT
 from ..record import judge_sha
 from ..store import Store
+from .freshness import Freshness
 
 TEMPLATES = Path(__file__).resolve().parent / "templates"
 
@@ -61,6 +62,9 @@ class Cell:
     timestamp: str
     judge_sha: str | None
     failed: dict | None
+    # 今のソースで測った記録なら True、ソースが変わっていれば False。
+    # 判定できなければ None。
+    current: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -69,16 +73,23 @@ class Summary:
     problems: int
     records: int
     pages: int
+    stale: int = 0
 
 
-def collapse(records: Sequence[dict]) -> list[Cell]:
+def collapse(
+    records: Sequence[dict], freshness: Freshness | None = None
+) -> list[Cell]:
     """記録を (提出, 環境, CPU モデル) ごとに 1 行へ畳む。
 
     同じ組でもソースを書き換えればキーが変わって、別の測定になる。新しい方の
     キーだけを残す。残った記録が複数あるのは同じ条件を何度か測ったときなので、
     そこは最小値を採る。順位を最小値で決めておけば、あとで標本を積み始めても
     表示の側を書き直さずに済む。
+
+    現行のキーの記録があれば、時刻が古くてもそちらを採る。書き換えたものを
+    元に戻すと前のキーが復活するので、いちばん新しい記録が現行とは限らない。
     """
+    judge = freshness.current if freshness else (lambda record: None)
     groups: dict[tuple[str, str, str], list[tuple[int, dict]]] = {}
     for position, record in enumerate(records):
         group = (
@@ -90,8 +101,9 @@ def collapse(records: Sequence[dict]) -> list[Cell]:
 
     cells = []
     for (submission, env, cpu_model), items in groups.items():
+        pool = [item for item in items if judge(item[1]) is True] or items
         # 同じ時刻が並んだときは、ファイルの後ろにある方を新しいとみなす。
-        _, newest = max(items, key=lambda item: (item[1].get("timestamp") or "", item[0]))
+        _, newest = max(pool, key=lambda item: (item[1].get("timestamp") or "", item[0]))
         same = [r for _, r in items if r.get("key") == newest.get("key")]
         algo = [
             r["algo_time_max_ns"]
@@ -116,6 +128,7 @@ def collapse(records: Sequence[dict]) -> list[Cell]:
                 timestamp=max(r.get("timestamp") or "" for r in same),
                 judge_sha=newest.get("judge_sha"),
                 failed=_failed(newest),
+                current=judge(newest),
             )
         )
     return sorted(cells, key=lambda c: (c.env, c.cpu_model, c.submission))
@@ -208,6 +221,7 @@ def problem_payload(
                 "timestamp": c.timestamp,
                 "judge_sha": c.judge_sha,
                 "failed": c.failed,
+                "current": c.current,
             }
             for c in cells
         ],
@@ -295,9 +309,15 @@ def build(store: Store, out: Path) -> Summary:
             continue
         problems[loaded.id] = loaded
 
+    try:
+        envs = env_mod.load_all()
+    except (env_mod.EnvironmentError_, OSError):
+        envs = []
+
     ids = sorted(set(problems) | set(store.problem_ids()))
     rows = []
     total_records = 0
+    total_stale = 0
     pages = 0
 
     for problem_id in ids:
@@ -305,8 +325,9 @@ def build(store: Store, out: Path) -> Summary:
             continue
         records = list(store.read(problem_id))
         total_records += len(records)
-        cells = collapse(records)
         problem = problems.get(problem_id)
+        # 問題が repo から消えていれば、ソース側を作り直せないので判定しない。
+        cells = collapse(records, Freshness(problem, envs) if problem else None)
         payload = problem_payload(
             problem_id,
             problem,
@@ -338,6 +359,8 @@ def build(store: Store, out: Path) -> Summary:
 
         combos = len(payload["combos"])
         measured = len(cells)
+        stale = sum(1 for c in cells if c.current is False)
+        total_stale += stale
         rows.append(
             {
                 "id": problem_id,
@@ -345,6 +368,7 @@ def build(store: Store, out: Path) -> Summary:
                 "source": payload["source"],
                 "submissions": len(payload["submissions"]),
                 "measured": measured,
+                "stale": stale,
                 "pending": len(payload["submissions"]) * combos - measured,
                 "records": len(records),
                 "updated": max((c.timestamp for c in cells), default=""),
@@ -355,6 +379,7 @@ def build(store: Store, out: Path) -> Summary:
         "generated_at": generated_at,
         "judge_sha": judge_sha(),
         "record_count": total_records,
+        "stale_count": total_stale,
         "problems": rows,
     }
     data_v = _write(
@@ -367,4 +392,10 @@ def build(store: Store, out: Path) -> Summary:
             {"DATA_V": data_v, "STYLE_V": style_v, "SCRIPT_V": index_js_v},
         ),
     )
-    return Summary(out=out, problems=len(rows), records=total_records, pages=pages)
+    return Summary(
+        out=out,
+        problems=len(rows),
+        records=total_records,
+        pages=pages,
+        stale=total_stale,
+    )

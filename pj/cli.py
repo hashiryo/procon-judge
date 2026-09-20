@@ -15,7 +15,7 @@ from . import fetch
 from . import problem as problem_mod
 from . import run as run_mod
 from .fetch import mirror
-from .paths import RESULTS_DIR, SITE_DIR
+from .paths import LIB_DIR, RESULTS_DIR, SITE_DIR
 from .site import build as site_build
 from .store import Store
 
@@ -263,12 +263,23 @@ def cmd_records_append(args: argparse.Namespace) -> int:
 def cmd_site_build(args: argparse.Namespace) -> int:
     store = Store(Path(args.store) if args.store else RESULTS_DIR)
     out = Path(args.out) if args.out else SITE_DIR
+    # 古い記録かどうかは include 閉包を作り直して見る。lib/ が無いと
+    # ライブラリを使う提出の閉包が欠けて、判定できないまま現行として出る。
+    if not LIB_DIR.is_dir():
+        print(
+            f"warning: {LIB_DIR.name}/ がありません。"
+            "ライブラリを使う提出は古いかどうかを判定しません",
+            file=sys.stderr,
+        )
     summary = site_build.build(store, out)
-    print(
-        f"{summary.out} に問題 {summary.problems} 件 / 記録 {summary.records} 件 / "
+    parts = [
+        f"問題 {summary.problems} 件",
+        f"記録 {summary.records} 件",
         f"ページ {summary.pages + 1} 枚",
-        file=sys.stderr,
-    )
+    ]
+    if summary.stale:
+        parts.append(f"参考 {summary.stale} 件")
+    print(f"{summary.out} に " + " / ".join(parts), file=sys.stderr)
     return 0
 
 

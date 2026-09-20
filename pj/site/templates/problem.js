@@ -46,6 +46,15 @@ function linkCell(text, href, className) {
   return td;
 }
 
+// 測ってからソースが変わった行に付ける。順位には入れない。
+function chip() {
+  const span = el("span", "参考", "chip");
+  span.title =
+    "測ってからソースが変わっています。" +
+    "次にこの CPU モデルのランナーが当たったら測り直します";
+  return span;
+}
+
 function statusCell(row) {
   const td = el("td", row.status, "st st-" + row.status);
   if (row.failed && row.failed.name) td.append(el("span", " " + row.failed.name, "dim"));
@@ -75,8 +84,10 @@ const COLUMNS = [
     text: true,
     value: (r) => r.submission,
     cell: (r) => {
-      const td = el("td", r.submission, "mono");
+      const td = el("td", null, "sub");
       td.title = r.submission;
+      td.append(el("span", r.submission, "mono name"));
+      if (r.current === false) td.append(chip());
       return td;
     },
   },
@@ -178,6 +189,9 @@ function sortRows(rows) {
   const column = COLUMNS.find((c) => c.id === sortBy);
   const sign = ascending ? 1 : -1;
   return [...rows].sort((a, b) => {
+    // 参考は今のソースで測ったものではない。順位に混ぜず下にまとめる。
+    const fresh = (a.current === false ? 1 : 0) - (b.current === false ? 1 : 0);
+    if (fresh !== 0) return fresh;
     // どの列で並べても、通した実装が先。通っていないものを混ぜない。
     const passed = (a.status === "AC" ? 0 : 1) - (b.status === "AC" ? 0 : 1);
     if (passed !== 0) return passed;
@@ -224,24 +238,42 @@ function render() {
 
   const rows = DATA.rows.filter((r) => r.env === env && r.cpu_model === model);
   const measured = new Set(rows.map((r) => r.submission));
+  const missing = DATA.submissions.filter((s) => !measured.has(s));
+  const stale = rows.filter((r) => r.current === false).length;
+
   const body = document.getElementById("rows");
   body.replaceChildren();
   for (const row of sortRows(rows)) {
-    const tr = el("tr");
+    const tr = el("tr", null, row.current === false ? "stale" : null);
     for (const column of COLUMNS) tr.append(column.cell(row));
     body.append(tr);
   }
-  for (const name of DATA.submissions.filter((s) => !measured.has(s))) {
-    body.append(missingLine(name));
-  }
+  for (const name of missing) body.append(missingLine(name));
+
+  // 参考と未計測はどちらもランナー待ち。表のどこまでが現行かをここで出す。
+  document.getElementById("counts").replaceChildren(
+    el("span", "現行 " + (rows.length - stale)),
+    el("span", "参考 " + stale),
+    el("span", "未計測 " + missing.length)
+  );
 }
 
+// 記録が無い提出。行ごと落とすと、まだそのランナーが当たっていないだけなのか、
+// 提出が無いのかを見分けられない。行は残して値だけ空にする。
 function missingLine(name) {
-  const tr = el("tr");
-  tr.append(el("td", name, "mono dim"));
-  const cell = el("td", "未計測", "dim");
-  cell.colSpan = COLUMNS.length - 1;
-  tr.append(cell);
+  const tr = el("tr", null, "missing");
+  for (const column of COLUMNS) {
+    if (column.id === "submission") {
+      const td = el("td", null, "sub");
+      td.title = name;
+      td.append(el("span", name, "mono dim name"));
+      tr.append(td);
+    } else if (column.id === "status") {
+      tr.append(el("td", "未計測", "dim"));
+    } else {
+      tr.append(el("td", "-", column.text ? "dim" : "n dim"));
+    }
+  }
   return tr;
 }
 

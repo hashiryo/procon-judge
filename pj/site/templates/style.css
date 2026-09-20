@@ -102,7 +102,8 @@ table {
    表が動くのを止める。入りきらない中身は省略記号にして title に残す。 */
 table.fixed {
   table-layout: fixed;
-  min-width: 1120px;
+  /* 提出の列は残り幅をもらう。長い名前に参考の印を足しても収まる幅にする。 */
+  min-width: 1180px;
 }
 
 table.fixed th,
@@ -176,6 +177,38 @@ tbody tr:hover {
 
 .dim {
   color: var(--text2);
+}
+
+/* 参考の行。今のソースで測ったものではないので、状態の色も落として、
+   順位に並んでいるように見せない。 */
+tbody tr.stale td,
+tbody tr.stale td.st {
+  color: var(--text2);
+}
+
+/* 提出の列。名前だけを詰めて、印は押し出されないようにする。セル全体に
+   ellipsis を掛けると、長い名前のときに後ろの印が消える。 */
+td.sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+td.sub .name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 参考の印。名前の span だけを mono にしてあるので、印は本文の字。 */
+.chip {
+  flex: none;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text2);
+  font-size: 0.85em;
+  white-space: nowrap;
 }
 
 .empty {

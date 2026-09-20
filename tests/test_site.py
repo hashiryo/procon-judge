@@ -6,8 +6,12 @@ import json
 
 import pytest
 
+from pj import build as build_mod
+from pj import environment as env_mod
+from pj import key as key_mod
 from pj import problem as problem_mod
 from pj.site import build as site_build
+from pj.site.freshness import Freshness
 from pj.store import Store
 
 
@@ -228,3 +232,128 @@ def test_repo_url_is_none_when_the_remote_is_not_github(tmp_path, monkeypatch):
     monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
     root = make_repo(tmp_path, "git@ghe.example.invalid:team/thing.git")
     assert site_build.repo_url(root) is None
+
+
+# --- 現行 / 参考 の判定 ----------------------------------------------------
+
+FRESH_TOML = """
+id = "tmp-fresh"
+title = "t"
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"
+"""
+
+SOURCE = "int main() { return 0; }\n"
+
+
+@pytest.fixture
+def envs():
+    return env_mod.load_all()
+
+
+def fresh_problem(tmp_path):
+    directory = tmp_path / "tmp-fresh"
+    directory.mkdir()
+    (directory / "problem.toml").write_text(FRESH_TOML)
+    (directory / "submissions").mkdir()
+    (directory / "submissions" / "a.cpp").write_text(SOURCE)
+    return problem_mod.load(directory)
+
+
+def rewrite(problem, text):
+    (problem.dir / "submissions" / "a.cpp").write_text(text)
+
+
+def record_for(problem, env, submission="submissions/a.cpp"):
+    """今のソースをその環境で測ったことにした記録。"""
+    search = build_mod.include_dirs(problem)
+    cxxflags = build_mod.effective_cxxflags(env, problem)
+    sub = key_mod.submission_hash(problem.dir / submission, search)
+    key = key_mod.compute(
+        submission=submission,
+        submission_hash=sub.submission_hash,
+        harness_hash=key_mod.harness_hash(problem, search),
+        problem_hash=key_mod.problem_hash(problem),
+        cases_hash="h",
+        env=env.name,
+        compiler_version="g++-15",
+        cxxflags=cxxflags,
+        cpu_model="EPYC",
+    )
+    return rec(key=key, submission=submission, env=env.name, cxxflags=cxxflags)
+
+
+def test_a_record_of_the_current_source_is_current(tmp_path, envs):
+    problem = fresh_problem(tmp_path)
+    record = record_for(problem, envs[0])
+    assert Freshness(problem, envs).current(record) is True
+
+
+def test_editing_the_submission_makes_the_record_stale(tmp_path, envs):
+    problem = fresh_problem(tmp_path)
+    record = record_for(problem, envs[0])
+    rewrite(problem, "int main() { return 1; }\n")
+    assert Freshness(problem, envs).current(record) is False
+
+
+def test_reformatting_keeps_the_record_current(tmp_path, envs):
+    problem = fresh_problem(tmp_path)
+    record = record_for(problem, envs[0])
+    rewrite(problem, "\nint main() { return 0; }   \n\n")
+    assert Freshness(problem, envs).current(record) is True
+
+
+def test_an_unresolvable_include_cannot_be_judged(tmp_path, envs):
+    """lib/ を取っていない回に、表が丸ごと参考になっては困る。"""
+    problem = fresh_problem(tmp_path)
+    record = record_for(problem, envs[0])
+    rewrite(problem, '#include "nowhere/missing.hpp"\n' + SOURCE)
+    assert Freshness(problem, envs).current(record) is None
+
+
+def test_a_deleted_submission_cannot_be_judged(tmp_path, envs):
+    problem = fresh_problem(tmp_path)
+    record = record_for(problem, envs[0])
+    (problem.dir / "submissions" / "a.cpp").unlink()
+    assert Freshness(problem, envs).current(record) is None
+
+
+def test_a_record_from_an_unknown_env_cannot_be_judged(tmp_path, envs):
+    problem = fresh_problem(tmp_path)
+    record = record_for(problem, envs[0])
+    assert Freshness(problem, envs).current({**record, "env": "gone"}) is None
+
+
+def test_collapse_marks_the_cell(tmp_path, envs):
+    problem = fresh_problem(tmp_path)
+    record = record_for(problem, envs[0])
+    assert site_build.collapse([record], Freshness(problem, envs))[0].current is True
+    rewrite(problem, "int main() { return 1; }\n")
+    assert site_build.collapse([record], Freshness(problem, envs))[0].current is False
+
+
+def test_collapse_without_a_judge_leaves_the_cell_unknown():
+    assert site_build.collapse([rec()])[0].current is None
+
+
+def test_collapse_prefers_the_current_key_over_the_newest(tmp_path, envs):
+    """書き換えたものを元に戻すと、現行のキーの記録が最新ではなくなる。"""
+    problem = fresh_problem(tmp_path)
+    before = record_for(problem, envs[0])
+    rewrite(problem, "int main() { return 1; }\n")
+    after = record_for(problem, envs[0])
+    after["timestamp"] = "2026-02-01T00:00:00Z"
+    after["algo_time_max_ns"] = 9999
+    rewrite(problem, SOURCE)
+
+    cells = site_build.collapse([before, after], Freshness(problem, envs))
+    assert len(cells) == 1
+    assert cells[0].current is True
+    assert cells[0].algo_ns == 1000

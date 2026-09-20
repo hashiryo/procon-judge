@@ -175,6 +175,12 @@ jobs:
           git commit -m "記録を追加 (${GITHUB_SHA::7})"
           git push origin HEAD:results
 
+      # 記録が古くなっていないかは include 閉包を作り直して見るので、ここでも
+      # ライブラリが要る。取れなければライブラリを使う提出の判定だけが落ちる。
+      - name: ライブラリを取る
+        continue-on-error: true
+        run: git clone --depth=1 https://github.com/hashiryo/Library.git lib
+
       # サイトはビルド出力なので保存しない。記録から毎回作り直す。
       - name: サイトを作る
         run: uv run pj site build --store .results --out site
