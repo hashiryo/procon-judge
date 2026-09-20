@@ -1,6 +1,8 @@
 .cache/
 .results/
 /site/
+# CI が実行のたびに clone する。pin しないので git には置かない。
+/lib/
 .venv/
 __pycache__/
 *.pyc
