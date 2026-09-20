@@ -1,0 +1,16 @@
+id = "aoj-DSL_3_D"
+title = "Sliding Minimum Element"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "aoj"
+name = "DSL_3_D"
+
+[compare]
+kind = "tokens"

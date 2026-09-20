@@ -1,0 +1,16 @@
+id = "aoj-GRL_6_A"
+title = "Maximum Flow"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 256
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "aoj"
+name = "GRL_6_A"
+
+[compare]
+kind = "tokens"
