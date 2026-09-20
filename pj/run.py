@@ -59,7 +59,14 @@ class Job:
 
 
 @dataclass(frozen=True)
-class Plan:
+class Worklist:
+    """この回に走らせる対象と、走らせなかったものの内訳。
+
+    ジョブが始まる前に立てる pj.plan の計画とは別物。あちらは環境ごとの
+    ジョブの本数と束の順番を決め、こちらは引いたモデルで実際に何を走らせるかを
+    決める。
+    """
+
     jobs: tuple[Job, ...]
     skipped: tuple[Job, ...]
     pending: tuple[Target, ...]
@@ -101,7 +108,7 @@ def _group_by_problem(targets: Iterable[Target]) -> list[tuple[Problem, list[Pat
     return list(grouped.values())
 
 
-def build_plan(
+def build_worklist(
     targets: Sequence[Target],
     env: env_mod.Environment,
     machine: Machine,
@@ -110,7 +117,7 @@ def build_plan(
     allow_fetch: bool = True,
     refresh: bool = False,
     budget: int | None = None,
-) -> Plan:
+) -> Worklist:
     """各提出のキーを計算して、記録にあるものを除く。
 
     キーには cases_hash が要る。手元のキャッシュに manifest があればそれで済むので、
@@ -181,7 +188,7 @@ def build_plan(
             (skipped if job.key in known_keys else jobs).append(job)
             if budget is not None and len(jobs) >= budget:
                 held.extend(_rest(targets, problem, submission))
-                return Plan(
+                return Worklist(
                     jobs=tuple(jobs),
                     skipped=tuple(skipped),
                     pending=tuple(pending),
@@ -191,7 +198,7 @@ def build_plan(
                     held=tuple(held),
                 )
 
-    return Plan(
+    return Worklist(
         jobs=tuple(jobs),
         skipped=tuple(skipped),
         pending=tuple(pending),

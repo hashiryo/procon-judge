@@ -1,8 +1,13 @@
 """テストデータの取得。
 
-`.cache/testcases/<ハッシュ>/` に in/out のペアと manifest.json を置く。
-ハッシュは source と name から作る (取得する前に引ける必要があるため)。
-内容から作る cases_hash とは別物。
+`.cache/testcases/<source>/<name>/` に in/out のペアと manifest.json を置く。
+置き場は取得元と問題の名前だけで決まる。取得する前に引ける必要があるため。
+中身は関係しない。取り直して別の内容になっても、同じ場所に上書きされる。
+
+内容から作るのは cases_hash の方で、こちらはキーの材料になる。混ぜないこと。
+置き場が変わってもキーは動かないし、置き場が同じでもキーは動きうる。
+`local` だけはジェネレータと参照実装の中身で置き場を分ける。同じ問題 id から
+別の内容が出るため。
 """
 
 from __future__ import annotations
@@ -71,21 +76,47 @@ def cached_cases_hash(problem: Problem) -> str | None:
 
 
 def cache_dir_for(problem: Problem) -> Path:
-    """取得前に引けるキャッシュ先。source と name だけから決める。"""
+    """取得前に引けるキャッシュ先。source と name だけから決める。
+
+    ログに出る場所なので、読める形にしてある。ハッシュにすると cases_hash と
+    見分けがつかず、内容から決まっていると読み違える。
+    """
     td = problem.testdata
     if td.source == "local":
-        # local は name を持たない。ジェネレータと参照実装が変わったら別のキャッシュにする。
-        parts = [
-            "local",
-            problem.id,
-            str(td.count),
-            _sha256_file(problem.dir / td.generator),
-            _sha256_file(problem.dir / td.reference),
-        ]
-    else:
-        parts = [td.source, td.name]
-    digest = hashlib.sha256("\n".join(parts).encode()).hexdigest()[:16]
-    return TESTCASE_CACHE_DIR / digest
+        # local は判定サイトの名前を持たない。ジェネレータと参照実装が
+        # 変われば別の内容が出るので、そこだけ中身で分ける。
+        digest = hashlib.sha256(
+            "\n".join(
+                [
+                    str(td.count),
+                    _sha256_file(problem.dir / td.generator),
+                    _sha256_file(problem.dir / td.reference),
+                ]
+            ).encode()
+        ).hexdigest()[:16]
+        return TESTCASE_CACHE_DIR / "local" / _safe_parts(problem.id) / digest
+    # source = "none" は判定サイトの名前を持たない。中身も置かないが、
+    # ensure が場所を引くので落とさない。
+    return TESTCASE_CACHE_DIR / _safe_parts(td.source) / _safe_parts(
+        td.name or problem.id
+    )
+
+
+def _safe_parts(name: str) -> Path:
+    """名前をそのままパスにする。判定サイト側の文字列なので素通しにしない。
+
+    library_checker の name は `data_structure/point_add_range_sum` のように
+    区切りを含むので、階層はそのまま残す。
+    """
+    parts = []
+    for part in name.split("/"):
+        cleaned = "".join(c if c.isalnum() or c in "._-" else "_" for c in part)
+        cleaned = cleaned.lstrip(".")
+        if cleaned:
+            parts.append(cleaned)
+    if not parts:
+        raise FetchError(f"テストデータの名前からパスを作れません: {name!r}")
+    return Path(*parts)
 
 
 def _sha256_file(path: Path) -> str:
@@ -94,6 +125,30 @@ def _sha256_file(path: Path) -> str:
         for chunk in iter(lambda: f.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def _matches_manifest(cases: tuple[Case, ...], recorded: list[dict]) -> bool:
+    """手元のケースが manifest の書いたものと食い違っていないか。
+
+    食い違ったまま再利用すると、manifest の cases_hash をキーに使いながら
+    別の中身で走らせることになる。記録の意味が静かにずれる。
+
+    名前とサイズまでで見る。sha256 まで取ると毎回 100 MB 超を読み直すことに
+    なって、すべてスキップされる実行が重くなる。
+    """
+    if len(cases) != len(recorded):
+        return False
+    sizes = {entry["name"]: entry for entry in recorded}
+    for case in cases:
+        entry = sizes.get(case.name)
+        if entry is None:
+            return False
+        # 古い manifest はサイズを持たないことがある。そこは数だけで通す。
+        for path, key in ((case.in_path, "in_bytes"), (case.out_path, "out_bytes")):
+            want = entry.get(key)
+            if want is not None and path.stat().st_size != want:
+                return False
+    return True
 
 
 def collect_cases(directory: Path) -> tuple[Case, ...]:
@@ -168,7 +223,7 @@ def ensure(
     if not refresh and manifest_path.is_file():
         manifest = json.loads(manifest_path.read_text())
         cases = collect_cases(dest)
-        if cases and len(cases) == len(manifest["cases"]):
+        if cases and _matches_manifest(cases, manifest["cases"]):
             return Testcases(dir=dest, cases=cases, cases_hash=manifest["cases_hash"])
 
     # 保管庫から取れるなら原本を叩かない。レート制限と障害を経路から外す。

@@ -269,41 +269,41 @@ def cmd_run(args: argparse.Namespace) -> int:
         f"{env.name} / {machine.cpu_model} / {machine.compiler_version}",
         file=sys.stderr,
     )
-    plan = run_mod.build_plan(
+    worklist = run_mod.build_worklist(
         targets, env, machine, store.keys(),
         allow_fetch=not args.dry_run, refresh=args.refresh,
         budget=args.budget,
     )
-    for problem_id, reason in plan.failed:
+    for problem_id, reason in worklist.failed:
         print(
             f"warning: {problem_id} のテストデータを取れません: {reason}",
             file=sys.stderr,
         )
-    for submission, target in plan.unresolved:
+    for submission, target in worklist.unresolved:
         print(
             f"warning: {submission} の include {target!r} を解決できません",
             file=sys.stderr,
         )
-    if plan.blocked:
+    if worklist.blocked:
         print(
-            f"warning: include を解決できない {len(plan.blocked)} 件を飛ばしました。"
+            f"warning: include を解決できない {len(worklist.blocked)} 件を飛ばしました。"
             "ライブラリを取れていない可能性があります",
             file=sys.stderr,
         )
 
     if args.dry_run:
-        for job in plan.jobs:
+        for job in worklist.jobs:
             print(f"run \t{job.label}\t{job.key}")
-        for job in plan.skipped:
+        for job in worklist.skipped:
             print(f"skip\t{job.label}\t{job.key}")
-        for problem, submission in plan.pending:
+        for problem, submission in worklist.pending:
             print(f"fetch\t{problem.id}\t{submission.as_posix()}\t-")
-        for problem, submission in plan.blocked:
+        for problem, submission in worklist.blocked:
             print(f"block\t{problem.id}\t{submission.as_posix()}\t-")
     else:
-        for index, job in enumerate(plan.jobs, start=1):
+        for index, job in enumerate(worklist.jobs, start=1):
             print(
-                f"[{index}/{len(plan.jobs)}] {job.problem.id} / "
+                f"[{index}/{len(worklist.jobs)}] {job.problem.id} / "
                 f"{job.submission.as_posix()}",
                 file=sys.stderr,
             )
@@ -311,21 +311,21 @@ def cmd_run(args: argparse.Namespace) -> int:
             out.append(record)
             print(record.to_json(), flush=True)
 
-    _print_summary(plan, args.dry_run, file=sys.stderr)
+    _print_summary(worklist, args.dry_run, file=sys.stderr)
     # WA や TLE は判定であって失敗ではない。記録が出せたら 0 で返す。
     # ここを非ゼロにすると、CI の step が落ちて記録を取りこぼす。
     return 0
 
 
-def _print_summary(plan: run_mod.Plan, dry_run: bool, *, file) -> None:
+def _print_summary(worklist: run_mod.Worklist, dry_run: bool, *, file) -> None:
     verb = "実行予定" if dry_run else "実行"
-    parts = [f"{verb} {len(plan.jobs)} 件", f"スキップ {len(plan.skipped)} 件"]
-    if plan.pending:
-        parts.append(f"テストデータ未取得 {len(plan.pending)} 件")
-    if plan.blocked:
-        parts.append(f"include 未解決 {len(plan.blocked)} 件")
-    if plan.held:
-        parts.append(f"budget で見送り {len(plan.held)} 件")
+    parts = [f"{verb} {len(worklist.jobs)} 件", f"スキップ {len(worklist.skipped)} 件"]
+    if worklist.pending:
+        parts.append(f"テストデータ未取得 {len(worklist.pending)} 件")
+    if worklist.blocked:
+        parts.append(f"include 未解決 {len(worklist.blocked)} 件")
+    if worklist.held:
+        parts.append(f"budget で見送り {len(worklist.held)} 件")
     print(" / ".join(parts), file=file)
 
 
