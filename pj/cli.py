@@ -210,6 +210,12 @@ def cmd_run(args: argparse.Namespace) -> int:
             f"warning: {submission} の include {target!r} を解決できません",
             file=sys.stderr,
         )
+    if plan.blocked:
+        print(
+            f"warning: include を解決できない {len(plan.blocked)} 件を飛ばしました。"
+            "ライブラリを取れていない可能性があります",
+            file=sys.stderr,
+        )
 
     if args.dry_run:
         for job in plan.jobs:
@@ -218,6 +224,8 @@ def cmd_run(args: argparse.Namespace) -> int:
             print(f"skip\t{job.label}\t{job.key}")
         for problem, submission in plan.pending:
             print(f"fetch\t{problem.id}\t{submission.as_posix()}\t-")
+        for problem, submission in plan.blocked:
+            print(f"block\t{problem.id}\t{submission.as_posix()}\t-")
     else:
         for index, job in enumerate(plan.jobs, start=1):
             print(
@@ -240,6 +248,8 @@ def _print_summary(plan: run_mod.Plan, dry_run: bool, *, file) -> None:
     parts = [f"{verb} {len(plan.jobs)} 件", f"スキップ {len(plan.skipped)} 件"]
     if plan.pending:
         parts.append(f"テストデータ未取得 {len(plan.pending)} 件")
+    if plan.blocked:
+        parts.append(f"include 未解決 {len(plan.blocked)} 件")
     print(" / ".join(parts), file=file)
 
 

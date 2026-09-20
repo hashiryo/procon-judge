@@ -65,6 +65,8 @@ class Plan:
     unresolved: tuple[tuple[str, str], ...]
     # 取得に失敗した問題。(問題 id, 理由)
     failed: tuple[tuple[str, str], ...] = ()
+    # include を解決できないので走らせなかった提出。
+    blocked: tuple[Target, ...] = ()
 
 
 @dataclass
@@ -113,6 +115,7 @@ def build_plan(
     pending: list[Target] = []
     unresolved: list[tuple[str, str]] = []
     failed: list[tuple[str, str]] = []
+    blocked: list[Target] = []
 
     for problem, submissions in _group_by_problem(targets):
         cases_hash = fetch.cached_cases_hash(problem)
@@ -136,8 +139,13 @@ def build_plan(
 
         for submission in submissions:
             sub = key_mod.submission_hash(problem.dir / submission, search_paths)
-            for target in sub.unresolved:
-                unresolved.append((submission.as_posix(), target))
+            if sub.unresolved:
+                # 閉包が欠けたままではキーが別の意味になる。ライブラリを取れな
+                # かった回に CE の記録を残すより、解決できる回まで待つ方がよい。
+                for target in sub.unresolved:
+                    unresolved.append((submission.as_posix(), target))
+                blocked.append((problem, submission))
+                continue
             job = Job(
                 problem=problem,
                 submission=submission,
@@ -166,6 +174,7 @@ def build_plan(
         skipped=tuple(skipped),
         pending=tuple(pending),
         unresolved=tuple(unresolved),
+        blocked=tuple(blocked),
         failed=tuple(failed),
     )
 

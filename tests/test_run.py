@@ -226,3 +226,24 @@ def test_a_problem_that_cannot_be_fetched_does_not_stop_the_others(
     assert [job.problem.id for job in plan.jobs] == [ok.id]
     assert [pid for pid, _ in plan.failed] == [bad.id]
     assert [problem.id for problem, _ in plan.pending] == [bad.id]
+
+
+MISSING_INCLUDE = '#include "nowhere/missing.hpp"\nint main() { return 0; }\n'
+
+
+def test_unresolvable_include_blocks_the_submission(tmp_path, local_env, machine):
+    """閉包が欠けたままキーを作ると意味が変わる。走らせずに次の回へ回す。"""
+    problem = make_problem(tmp_path, MISSING_INCLUDE)
+    plan = plan_for(problem, local_env, machine)
+    assert plan.jobs == ()
+    assert [s.as_posix() for _, s in plan.blocked] == ["submissions/sol.cpp"]
+    assert plan.unresolved == (("submissions/sol.cpp", "nowhere/missing.hpp"),)
+
+
+def test_a_blocked_submission_does_not_stop_the_others(tmp_path, local_env, machine):
+    problem = make_problem(tmp_path, "int main() { return 0; }\n")
+    (problem.dir / "submissions" / "broken.cpp").write_text(MISSING_INCLUDE)
+    problem = problem_mod.load(problem.dir)
+    plan = plan_for(problem, local_env, machine)
+    assert [j.submission.as_posix() for j in plan.jobs] == ["submissions/sol.cpp"]
+    assert [s.as_posix() for _, s in plan.blocked] == ["submissions/broken.cpp"]
