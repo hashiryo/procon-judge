@@ -1,0 +1,16 @@
+id = "yosupo-range-chmin-chmax-add-range-sum"
+title = "Range Chmin Chmax Add Range Sum"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "data_structure/range_chmin_chmax_add_range_sum"
+
+[compare]
+kind = "checker"

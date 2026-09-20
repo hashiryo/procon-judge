@@ -1,0 +1,16 @@
+id = "yosupo-partition-function"
+title = "Partition Function"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "enumerative_combinatorics/partition_function"
+
+[compare]
+kind = "checker"

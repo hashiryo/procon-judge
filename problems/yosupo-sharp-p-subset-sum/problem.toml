@@ -1,0 +1,16 @@
+id = "yosupo-sharp-p-subset-sum"
+title = "#p Subset Sum"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "enumerative_combinatorics/sharp_p_subset_sum"
+
+[compare]
+kind = "checker"

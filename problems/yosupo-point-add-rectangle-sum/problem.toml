@@ -1,0 +1,16 @@
+id = "yosupo-point-add-rectangle-sum"
+title = "Point Add Rectangle Sum"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "data_structure/point_add_rectangle_sum"
+
+[compare]
+kind = "checker"

@@ -1,0 +1,16 @@
+id = "yosupo-bipartitematching"
+title = "Matching on Bipartite Graph"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "graph/bipartitematching"
+
+[compare]
+kind = "checker"

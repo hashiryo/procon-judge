@@ -1,0 +1,16 @@
+id = "yosupo-unionfind-with-potential"
+title = "Union Find with Potential"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 256
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "data_structure/unionfind_with_potential"
+
+[compare]
+kind = "checker"

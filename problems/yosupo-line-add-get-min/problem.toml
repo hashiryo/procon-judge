@@ -1,0 +1,16 @@
+id = "yosupo-line-add-get-min"
+title = "Line Add Get Min"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "data_structure/line_add_get_min"
+
+[compare]
+kind = "checker"

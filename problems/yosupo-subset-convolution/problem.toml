@@ -1,0 +1,16 @@
+id = "yosupo-subset-convolution"
+title = "Subset Convolution"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 2048
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "set_power_series/subset_convolution"
+
+[compare]
+kind = "checker"

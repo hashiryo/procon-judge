@@ -1,0 +1,16 @@
+id = "yosupo-assignment"
+title = "Assignment Problem"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "graph/assignment"
+
+[compare]
+kind = "checker"

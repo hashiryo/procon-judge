@@ -1,0 +1,16 @@
+id = "yosupo-sum-of-totient-function"
+title = "Sum of Totient Function"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "number_theory/sum_of_totient_function"
+
+[compare]
+kind = "checker"
