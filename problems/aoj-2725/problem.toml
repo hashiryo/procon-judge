@@ -1,0 +1,16 @@
+id = "aoj-2725"
+title = "Blue Forest"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "aoj"
+name = "2725"
+
+[compare]
+kind = "tokens"
