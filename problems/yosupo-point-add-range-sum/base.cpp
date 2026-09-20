@@ -19,8 +19,7 @@
 signed main() {
   int n, q;
   must_scan(scanf("%d %d", &n, &q), 2);
-  vector<i64> a(n);
-  for (auto &x : a) must_scan(scanf("%lld", &x), 1);
+  vector<i64> a = read_ints(n);
   vector<array<i64, 3>> qs(q);
   for (auto &e : qs) must_scan(scanf("%lld %lld %lld", &e[0], &e[1], &e[2]), 3);
 
@@ -35,13 +34,7 @@ signed main() {
   }
   auto t1 = chrono::steady_clock::now();
 
-  string out;
-  out.reserve(ans.size() * 20);
-  for (i64 v : ans) {
-    out += to_string(v);
-    out += '\n';
-  }
-  fwrite(out.data(), 1, out.size(), stdout);
+  print_all(ans);
 
   // 出力の整形まで含めたピークを読みたいので、計測値は最後に出す。
   report_metrics(

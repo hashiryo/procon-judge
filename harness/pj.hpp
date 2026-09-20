@@ -2,6 +2,7 @@
 // すべての問題のハーネスと提出が共通で使うもの。
 // bits/stdc++.h は Apple clang に無いので、必要なものを名指しで include する。
 #include <array>
+#include <cctype>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -25,6 +26,47 @@ inline void must_scan(int got, int want) {
     fprintf(stderr, "input format error\n");
     exit(1);
   }
+}
+
+// 空白で区切られた次のトークンを読む。長さが分からない入力 (文字列) 用。
+// scanf と同じ stdin を読むので、混ぜて使ってよい。
+inline string read_token() {
+  string s;
+  int c = getchar();
+  while (c != EOF && isspace(c)) c = getchar();
+  if (c == EOF) {
+    fprintf(stderr, "input format error\n");
+    exit(1);
+  }
+  while (c != EOF && !isspace(c)) {
+    s.push_back((char)c);
+    c = getchar();
+  }
+  return s;
+}
+
+// 整数を n 個読む。
+inline vector<i64> read_ints(int n) {
+  vector<i64> a(n);
+  for (auto &x : a) must_scan(scanf("%lld", &x), 1);
+  return a;
+}
+
+// 数の列を書く。既定は 1 行 1 個で、sep を渡すと区切りを変えられる。
+// 末尾は sep に関わらず改行にする。空なら何も書かない。
+//
+// 整形は計測区間の外に置きたいので、いったん文字列に溜めてから 1 回で書く。
+template <class T> inline void print_all(const vector<T> &v, char sep = '\n') {
+  if (v.empty()) return;
+  string out;
+  out.reserve(v.size() * 12);
+  for (size_t i = 0; i + 1 < v.size(); ++i) {
+    out += to_string(v[i]);
+    out += sep;
+  }
+  out += to_string(v.back());
+  out += '\n';
+  fwrite(out.data(), 1, out.size(), stdout);
 }
 
 // ピーク RSS を KB で返す。取れなければ -1。
