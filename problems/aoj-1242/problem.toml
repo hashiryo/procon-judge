@@ -1,0 +1,16 @@
+id = "aoj-1242"
+title = "Area of Polygons (Lattice)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 256
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "aoj"
+name = "1242"
+
+[compare]
+kind = "tokens"
