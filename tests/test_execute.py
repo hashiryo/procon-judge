@@ -60,3 +60,20 @@ def test_a_broken_report_falls_back():
         assert execute.peak_rss_kb({"max_rss_kb": value}, 2048) == execute._rss_to_kb(
             2048
         ), value
+
+
+def test_raise_stack_limit_soft_reaches_hard():
+    """スタックの上限を硬い方まで上げる。既定の 8 MB だと深い再帰が落ちる。"""
+    import resource
+
+    before = resource.getrlimit(resource.RLIMIT_STACK)
+    try:
+        execute.raise_stack_limit()
+        soft, hard = resource.getrlimit(resource.RLIMIT_STACK)
+        assert hard == before[1]
+        assert soft == hard
+        # 2 回目は何もしない。
+        execute.raise_stack_limit()
+        assert resource.getrlimit(resource.RLIMIT_STACK) == (soft, hard)
+    finally:
+        resource.setrlimit(resource.RLIMIT_STACK, before)

@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import platform
+import resource
 import signal
 import tempfile
 import threading
@@ -85,6 +86,29 @@ def parse_metrics(stderr_path: Path) -> dict:
     return metrics
 
 
+def raise_stack_limit() -> None:
+    """スタックの上限を硬い方まで上げる。
+
+    既定の 8 MB だと、再帰で木を辿る実装が深さ数十万で落ちる。判定サイトは
+    どこもスタックを縛らないので、そこに合わせる。縛ったままだと、問題とは
+    関係のない理由で再帰の実装だけが RE になり、比較にならない。
+
+    posix_spawn には exec 前に差し込む口が無いので、自分の上限を上げて子へ
+    継承させる。親のスタックは既に張られているので、上げても影響しない。
+    Linux では無制限、macOS では 64 MB 前後が硬い上限になる。
+
+    使うメモリが増えるわけではないので、mle_mb の後判定は変わらない。
+    """
+    soft, hard = resource.getrlimit(resource.RLIMIT_STACK)
+    if soft == hard:
+        return
+    try:
+        resource.setrlimit(resource.RLIMIT_STACK, (hard, hard))
+    except (ValueError, OSError):
+        # 上げられない環境では既定のままで走らせる。
+        pass
+
+
 def run(
     binary: Path,
     *,
@@ -98,6 +122,7 @@ def run(
     メモリは後判定にできるが時間はできない。無限ループの提出があると
     ジョブが埋まるので、その場で打ち切る。
     """
+    raise_stack_limit()
     stdout_path.parent.mkdir(parents=True, exist_ok=True)
     create = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
     file_actions = [
