@@ -319,3 +319,168 @@ def test_the_order_of_the_targets_is_kept(tmp_path, local_env, machine):
     targets += [(second, s) for s in second.submissions()]
     worklist = run_mod.build_worklist(targets, local_env, machine, set())
     assert [j.problem.id for j in worklist.jobs] == ["tmp-zzz", "tmp-aaa"]
+
+
+# --- 記録から借りて、測るものだけ取りに行く ---------------------------------
+
+
+def uncached_problem(tmp_path, name="tmp-uncached", submissions=("sol",)):
+    """取得していないテストデータを持つ問題。原本も存在しない。"""
+    directory = tmp_path / name
+    directory.mkdir()
+    (directory / "problem.toml").write_text(
+        UNCACHED_TOML.replace("tmp-uncached", name)
+    )
+    (directory / "submissions").mkdir()
+    for number, stem in enumerate(submissions):
+        (directory / "submissions" / f"{stem}.cpp").write_text(
+            f"int main() {{ return {number}; }}\n"
+        )
+    return problem_mod.load(directory)
+
+
+def keys_for(problem, env, machine, cases_hash, submissions=None):
+    """その cases_hash で測ったことにしたときのキー。"""
+    decided = run_mod._decide(
+        problem,
+        submissions if submissions is not None else problem.submissions(),
+        cases_hash, env, machine, set(),
+    )
+    return {job.key for job in decided.jobs}
+
+
+def test_nothing_to_run_means_nothing_to_fetch(tmp_path, local_env, machine):
+    """走らせるものが無い問題には、テストデータを 1 バイトも触らない。"""
+    problem = uncached_problem(tmp_path)
+    known = keys_for(problem, local_env, machine, "borrowed")
+    worklist = run_mod.build_worklist(
+        [(problem, s) for s in problem.submissions()],
+        local_env, machine, known,
+        borrowed={problem.id: "borrowed"},
+        allow_fetch=False,
+    )
+    assert worklist.jobs == ()
+    assert len(worklist.skipped) == 1
+    # 取りに行っていれば原本が無いので pending か failed に落ちる。
+    assert worklist.pending == ()
+    assert worklist.failed == ()
+
+
+def test_work_makes_it_fetch_after_all(tmp_path, local_env, machine):
+    """1 件でも走らせるなら、そこで初めて本物を取りに行く。"""
+    problem = uncached_problem(tmp_path)
+    worklist = run_mod.build_worklist(
+        [(problem, s) for s in problem.submissions()],
+        local_env, machine, set(),
+        borrowed={problem.id: "borrowed"},
+        allow_fetch=False,
+    )
+    assert worklist.jobs == ()
+    assert len(worklist.pending) == 1
+
+
+def test_without_borrowing_it_fetches_to_decide(tmp_path, local_env, machine):
+    """borrowed を渡さなければ今までどおり。判定のために取りに行く。"""
+    problem = uncached_problem(tmp_path)
+    known = keys_for(problem, local_env, machine, "borrowed")
+    worklist = run_mod.build_worklist(
+        [(problem, s) for s in problem.submissions()],
+        local_env, machine, known,
+        allow_fetch=False,
+    )
+    assert worklist.skipped == ()
+    assert len(worklist.pending) == 1
+
+
+def test_refresh_does_not_take_the_shortcut(tmp_path, local_env, machine):
+    """--refresh は疑って取り直す口。借りた値で早じまいさせない。"""
+    problem = uncached_problem(tmp_path)
+    known = keys_for(problem, local_env, machine, "borrowed")
+    worklist = run_mod.build_worklist(
+        [(problem, s) for s in problem.submissions()],
+        local_env, machine, known,
+        borrowed={problem.id: "borrowed"},
+        allow_fetch=False, refresh=True,
+    )
+    assert worklist.skipped == ()
+    assert len(worklist.pending) == 1
+
+
+def test_a_changed_workload_redoes_the_whole_problem(
+    tmp_path, local_env, machine, monkeypatch
+):
+    """取得した本物が借りた値と違ったら、その問題の判定をやり直す。
+
+    借りた値のままキーを作って走らせると、測った相手と記録が食い違う。
+    """
+    problem = uncached_problem(tmp_path, submissions=("a", "b"))
+    both = [s for s in problem.submissions()]
+    # a だけ「借りた値で測定済み」にしておく。b があるので取得まで進む。
+    known = keys_for(problem, local_env, machine, "borrowed", submissions=both[:1])
+    monkeypatch.setattr(
+        run_mod.fetch,
+        "ensure",
+        lambda p, **kw: run_mod.fetch.Testcases(
+            dir=tmp_path, cases=(), cases_hash="real"
+        ),
+    )
+    worklist = run_mod.build_worklist(
+        [(problem, s) for s in both],
+        local_env, machine, known,
+        borrowed={problem.id: "borrowed"},
+    )
+    # 本物のキーはどれも記録に無いので、a も測り直しに戻る。
+    assert len(worklist.jobs) == 2
+    assert worklist.skipped == ()
+    assert all(job.cases_hash == "real" for job in worklist.jobs)
+    assert worklist.moved == ((problem.id, "borrowed", "real"),)
+
+
+def test_a_matching_workload_keeps_the_decision(
+    tmp_path, local_env, machine, monkeypatch
+):
+    problem = uncached_problem(tmp_path, submissions=("a", "b"))
+    both = [s for s in problem.submissions()]
+    known = keys_for(problem, local_env, machine, "borrowed", submissions=both[:1])
+    monkeypatch.setattr(
+        run_mod.fetch,
+        "ensure",
+        lambda p, **kw: run_mod.fetch.Testcases(
+            dir=tmp_path, cases=(), cases_hash="borrowed"
+        ),
+    )
+    worklist = run_mod.build_worklist(
+        [(problem, s) for s in both],
+        local_env, machine, known,
+        borrowed={problem.id: "borrowed"},
+    )
+    assert len(worklist.jobs) == 1
+    assert len(worklist.skipped) == 1
+    assert worklist.moved == ()
+
+
+def test_a_problem_without_testdata_needs_no_borrowing(tmp_path, local_env, machine):
+    """compile_only は cases_hash が空文字で確定する。借りる必要が無い。"""
+    problem = make_problem(tmp_path, "int main() {}\n")
+    worklist = run_mod.build_worklist(
+        [(problem, s) for s in problem.submissions()],
+        local_env, machine, set(), borrowed={},
+    )
+    assert [job.cases_hash for job in worklist.jobs] == [""]
+
+
+def test_a_swapped_workload_stops_the_job(tmp_path, local_env, machine, monkeypatch):
+    """キーを決めたときと違う相手を測ると、記録が嘘をつく。"""
+    problem = uncached_problem(tmp_path)
+    decided = run_mod._decide(
+        problem, problem.submissions(), "decided", local_env, machine, set()
+    )
+    monkeypatch.setattr(
+        run_mod.fetch,
+        "ensure",
+        lambda p, **kw: run_mod.fetch.Testcases(
+            dir=tmp_path, cases=(), cases_hash="swapped"
+        ),
+    )
+    with pytest.raises(run_mod.fetch.FetchError):
+        run_mod.execute_job(decided.jobs[0])

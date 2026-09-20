@@ -104,6 +104,23 @@ def problem_hash(problem: Problem) -> str:
         },
         "compare": {"kind": problem.compare.kind},
     }
+    if problem.testdata.source == "local":
+        # ジェネレータと参照実装はリポジトリの中にあって、中身を変えれば出る
+        # ケースが変わる。ファイル名だけでは足りない。
+        #
+        # cases_hash なら拾えるが、あれは記録から借りることがある。借りた値は
+        # 古いままなので、リポジトリの中が原因の変化はそちらに載らない。
+        # 中にある原因はここへ、外にある原因 (判定サイトや上流のジェネレータ)
+        # は cases_hash へ、と分けておく。
+        #
+        # local のときだけ足す。すべての問題に足すと、既存の記録が全部
+        # 測り直しになる。
+        payload["testdata"]["generator_source"] = _sha256(
+            _normalized_file(problem.dir / problem.testdata.generator)
+        )
+        payload["testdata"]["reference_source"] = _sha256(
+            _normalized_file(problem.dir / problem.testdata.reference)
+        )
     canonical = json.dumps(
         payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
     )

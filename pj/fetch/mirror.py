@@ -80,6 +80,20 @@ def assets() -> list[dict]:
     return json.loads(proc.stdout).get("assets", [])
 
 
+_names: set[str] | None = None
+
+
+def asset_names(*, refresh: bool = False) -> set[str]:
+    """置いてあるアセットの名前。1 回引いて使い回す。
+
+    問題ごとに問い合わせると、135 問で 135 往復になる。
+    """
+    global _names
+    if _names is None or refresh:
+        _names = {entry["name"] for entry in assets()}
+    return _names
+
+
 def _archive_members(directory: Path) -> list[str]:
     names = sorted(
         p.name
@@ -121,20 +135,49 @@ def _run(cmd: list[str]) -> None:
         raise MirrorError(f"{' '.join(cmd)}: {proc.stderr.strip()}")
 
 
-def push(problem: Problem, directory: Path) -> None:
-    """1 問ぶんを保管庫へ上げる。他のアセットには触らない。"""
+def push(problem: Problem, directory: Path, *, force: bool = False) -> None:
+    """1 問ぶんを保管庫へ上げる。他のアセットには触らない。
+
+    既にあるものは上げ直さない。--clobber は消してから上げるので、run の
+    ジョブが同時に走ると、片方が消した先へもう片方が上げて 404 になり、
+    アセットが無い状態で残ることがある。実際に yuki-649 がそうなって、
+    翌日の実行が yukicoder の原本を叩き直していた。
+
+    force は取り直したテストデータで置き換えたいときだけ。人が 1 本で叩く
+    前提で、CI からは渡さない。
+    """
     name = asset_name(problem)
+    if not force and name in asset_names():
+        return
     with tempfile.TemporaryDirectory() as tmp:
         archive = Path(tmp) / name
         pack(directory, archive)
         size = archive.stat().st_size
-        _gh("release", "upload", TAG, str(archive), "--clobber")
+        args = ["release", "upload", TAG, str(archive)]
+        if force:
+            args.append("--clobber")
+        proc = _gh(*args, check=False)
+        if proc.returncode != 0:
+            # --clobber なしの upload は、既にあると失敗する。何も消さないので、
+            # 競り負けただけなら上がっている。
+            if not force and name in asset_names(refresh=True):
+                print(f"  保管庫は別のジョブが先に上げました: {name}", file=sys.stderr)
+                return
+            raise MirrorError(f"gh release upload: {proc.stderr.strip()}")
+    asset_names().add(name)
     print(f"  保管庫へ上げました: {name} ({size} bytes)", file=sys.stderr)
 
 
 def pull(problem: Problem, dest: Path) -> bool:
-    """保管庫から 1 問ぶん落とす。無ければ False を返す。"""
+    """保管庫から 1 問ぶん落とす。取れなければ False を返す。
+
+    まだ無いのか、あるのに取れなかったのかを区別して知らせる。どちらでも
+    呼ぶ側は原本へ落ちるが、後者は保管庫を置いた目的と逆なので黙らない。
+    """
     name = asset_name(problem)
+    if name not in asset_names():
+        print(f"  保管庫にはまだありません: {name}", file=sys.stderr)
+        return False
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         proc = _gh(
@@ -142,6 +185,10 @@ def pull(problem: Problem, dest: Path) -> bool:
         )
         archive = tmp_path / name
         if proc.returncode != 0 or not archive.is_file():
+            print(
+                f"  保管庫から取れませんでした: {name}: {proc.stderr.strip()}",
+                file=sys.stderr,
+            )
             return False
         staging = tmp_path / "unpacked"
         unpack(archive, staging)

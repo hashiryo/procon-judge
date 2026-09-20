@@ -8,8 +8,8 @@ CPU モデルはジョブが始まるまで分からないので、そのモデ�
 from __future__ import annotations
 
 import sys
-from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import build as build_mod
@@ -77,6 +77,8 @@ class Worklist:
     blocked: tuple[Target, ...] = ()
     # budget に達したので見もしなかった提出。次の実行が拾う。
     held: tuple[Target, ...] = ()
+    # テストデータが borrowed と違っていた問題。(問題 id, 借りた値, 本物)
+    moved: tuple[tuple[str, str, str], ...] = ()
 
 
 @dataclass
@@ -114,99 +116,182 @@ def build_worklist(
     machine: Machine,
     known_keys: set[str],
     *,
+    borrowed: Mapping[str, str] | None = None,
     allow_fetch: bool = True,
     refresh: bool = False,
     budget: int | None = None,
 ) -> Worklist:
     """各提出のキーを計算して、記録にあるものを除く。
 
-    キーには cases_hash が要る。手元のキャッシュに manifest があればそれで済むので、
-    すべてスキップされる実行では 1 件も落とさない。キャッシュが無いときだけ取りに行く。
+    キーには cases_hash が要るが、そのために毎回テストデータを落とすのは高い。
+    手元に manifest があればそれが本物なのでそれを使い、無ければ記録から借りた
+    値で仮に判定する。借りた値で「走らせるものが 0 件」と出た問題には、
+    テストデータを 1 バイトも触らない。
+
+    1 件でも走らせるなら、そこで初めて取得する。取得した本物が借りた値と違って
+    いたら、その問題の判定を本物で組み直す。どの記録にも無いキーになるので、
+    その問題の提出が全部未計測に戻る。
+
+    borrowed を渡さないと借用をしない。その場合は今までどおり、判定のために
+    テストデータを取りに行く。
 
     budget を渡すと、走らせる対象がその件数に達したところで見るのをやめる。
     束の途中でも止める。budget は 6 時間で打ち切られないための上限なので、
     大きい束に当たったときこそ効いてほしい。残りは次の実行が同じ順で拾う。
     """
-    jobs: list[Job] = []
-    skipped: list[Job] = []
-    pending: list[Target] = []
-    unresolved: list[tuple[str, str]] = []
-    failed: list[tuple[str, str]] = []
-    blocked: list[Target] = []
-    held: list[Target] = []
+    state = _State()
+    borrowed = borrowed or {}
 
     for problem, submissions in _group_by_problem(targets):
-        cases_hash = fetch.cached_cases_hash(problem)
-        if cases_hash is None or (refresh and fetch.needs_testdata(problem)):
-            if not allow_fetch:
-                pending.extend((problem, s) for s in submissions)
-                continue
-            try:
-                cases_hash = fetch.ensure(problem, refresh=refresh).cases_hash
-            except fetch.FetchError as e:
-                # 1 問取れなかっただけで、走れる問題の記録まで落とさない。
-                # 取りこぼしは次の実行が拾う。
-                failed.append((problem.id, str(e)))
-                pending.extend((problem, s) for s in submissions)
+        known = _known_cases_hash(problem, refresh=refresh)
+        if known is not None:
+            guess = known
+        elif refresh:
+            # --refresh は疑って取り直す口。借りた値で早じまいさせない。
+            guess = None
+        else:
+            guess = borrowed.get(problem.id)
+
+        if guess is not None:
+            decided = _decide(problem, submissions, guess, env, machine, known_keys)
+            if not decided.jobs or known is not None:
+                # 走らせるものが無いか、手元の manifest が本物か。どちらでも
+                # 取得は要らない。前者はテストデータに触らずに次の問題へ行く。
+                if state.absorb(decided, targets, budget):
+                    return state.finish()
                 continue
 
-        cxxflags = build_mod.effective_cxxflags(env, problem)
-        search_paths = build_mod.include_dirs(problem)
-        harness = key_mod.harness_hash(problem, search_paths)
-        problem_h = key_mod.problem_hash(problem)
+        if not allow_fetch:
+            state.pending.extend((problem, s) for s in submissions)
+            continue
+        try:
+            real = fetch.ensure(problem, refresh=refresh).cases_hash
+        except fetch.FetchError as e:
+            # 1 問取れなかっただけで、走れる問題の記録まで落とさない。
+            # 取りこぼしは次の実行が拾う。
+            state.failed.append((problem.id, str(e)))
+            state.pending.extend((problem, s) for s in submissions)
+            continue
 
-        for submission in submissions:
-            sub = key_mod.submission_hash(problem.dir / submission, search_paths)
-            if sub.unresolved:
-                # 閉包が欠けたままではキーが別の意味になる。ライブラリを取れな
-                # かった回に CE の記録を残すより、解決できる回まで待つ方がよい。
-                for target in sub.unresolved:
-                    unresolved.append((submission.as_posix(), target))
-                blocked.append((problem, submission))
-                continue
-            job = Job(
-                problem=problem,
-                submission=submission,
-                env=env,
-                machine=machine,
-                key=key_mod.compute(
-                    submission=submission.as_posix(),
-                    submission_hash=sub.submission_hash,
-                    harness_hash=harness,
-                    problem_hash=problem_h,
-                    cases_hash=cases_hash,
-                    env=env.name,
-                    compiler_version=machine.compiler_version,
-                    cxxflags=cxxflags,
-                    cpu_model=machine.cpu_model,
-                ),
+        if guess is None or real != guess:
+            if guess is not None:
+                state.moved.append((problem.id, guess, real))
+            decided = _decide(problem, submissions, real, env, machine, known_keys)
+        if state.absorb(decided, targets, budget):
+            return state.finish()
+
+    return state.finish()
+
+
+@dataclass
+class _Decision:
+    jobs: list[Job]
+    skipped: list[Job]
+    blocked: list[Target]
+    unresolved: list[tuple[str, str]]
+
+
+@dataclass
+class _State:
+    jobs: list[Job] = field(default_factory=list)
+    skipped: list[Job] = field(default_factory=list)
+    pending: list[Target] = field(default_factory=list)
+    unresolved: list[tuple[str, str]] = field(default_factory=list)
+    failed: list[tuple[str, str]] = field(default_factory=list)
+    blocked: list[Target] = field(default_factory=list)
+    held: list[Target] = field(default_factory=list)
+    moved: list[tuple[str, str, str]] = field(default_factory=list)
+
+    def absorb(
+        self,
+        decided: _Decision,
+        targets: Sequence[Target],
+        budget: int | None,
+    ) -> bool:
+        """1 問ぶんの判定を取り込む。budget に達したら True を返す。"""
+        self.skipped.extend(decided.skipped)
+        self.blocked.extend(decided.blocked)
+        self.unresolved.extend(decided.unresolved)
+        for job in decided.jobs:
+            self.jobs.append(job)
+            if budget is not None and len(self.jobs) >= budget:
+                self.held.extend(_rest(targets, job.problem, job.submission))
+                return True
+        return False
+
+    def finish(self) -> Worklist:
+        return Worklist(
+            jobs=tuple(self.jobs),
+            skipped=tuple(self.skipped),
+            pending=tuple(self.pending),
+            unresolved=tuple(self.unresolved),
+            blocked=tuple(self.blocked),
+            failed=tuple(self.failed),
+            held=tuple(self.held),
+            moved=tuple(self.moved),
+        )
+
+
+def _known_cases_hash(problem: Problem, *, refresh: bool) -> str | None:
+    """取得せずに分かる本物の cases_hash。
+
+    テストデータを持たない問題は空文字で、これも本物。--refresh のときは
+    手元のものを信じないので None にして取り直させる。
+    """
+    if not fetch.needs_testdata(problem):
+        return ""
+    if refresh:
+        return None
+    return fetch.cached_cases_hash(problem)
+
+
+def _decide(
+    problem: Problem,
+    submissions: Sequence[Path],
+    cases_hash: str,
+    env: env_mod.Environment,
+    machine: Machine,
+    known_keys: set[str],
+) -> _Decision:
+    """この cases_hash を前提に、走らせるものと飛ばすものを分ける。"""
+    cxxflags = build_mod.effective_cxxflags(env, problem)
+    search_paths = build_mod.include_dirs(problem)
+    harness = key_mod.harness_hash(problem, search_paths)
+    problem_h = key_mod.problem_hash(problem)
+    decided = _Decision(jobs=[], skipped=[], blocked=[], unresolved=[])
+
+    for submission in submissions:
+        sub = key_mod.submission_hash(problem.dir / submission, search_paths)
+        if sub.unresolved:
+            # 閉包が欠けたままではキーが別の意味になる。ライブラリを取れな
+            # かった回に CE の記録を残すより、解決できる回まで待つ方がよい。
+            for target in sub.unresolved:
+                decided.unresolved.append((submission.as_posix(), target))
+            decided.blocked.append((problem, submission))
+            continue
+        job = Job(
+            problem=problem,
+            submission=submission,
+            env=env,
+            machine=machine,
+            key=key_mod.compute(
+                submission=submission.as_posix(),
                 submission_hash=sub.submission_hash,
-                includes=sub.includes,
+                harness_hash=harness,
+                problem_hash=problem_h,
                 cases_hash=cases_hash,
+                env=env.name,
+                compiler_version=machine.compiler_version,
                 cxxflags=cxxflags,
-            )
-            (skipped if job.key in known_keys else jobs).append(job)
-            if budget is not None and len(jobs) >= budget:
-                held.extend(_rest(targets, problem, submission))
-                return Worklist(
-                    jobs=tuple(jobs),
-                    skipped=tuple(skipped),
-                    pending=tuple(pending),
-                    unresolved=tuple(unresolved),
-                    blocked=tuple(blocked),
-                    failed=tuple(failed),
-                    held=tuple(held),
-                )
-
-    return Worklist(
-        jobs=tuple(jobs),
-        skipped=tuple(skipped),
-        pending=tuple(pending),
-        unresolved=tuple(unresolved),
-        blocked=tuple(blocked),
-        failed=tuple(failed),
-        held=tuple(held),
-    )
+                cpu_model=machine.cpu_model,
+            ),
+            submission_hash=sub.submission_hash,
+            includes=sub.includes,
+            cases_hash=cases_hash,
+            cxxflags=cxxflags,
+        )
+        (decided.skipped if job.key in known_keys else decided.jobs).append(job)
+    return decided
 
 
 def _rest(
@@ -252,6 +337,14 @@ def execute_job(job: Job) -> Record:
     testcases = None
     if fetch.needs_testdata(problem):
         testcases = fetch.ensure(problem)
+        if testcases.cases_hash != job.cases_hash:
+            # キーを決めたときと違う相手を測ろうとしている。そのまま走らせると
+            # 記録の cases_hash が実際に測ったものと食い違う。記録が嘘をつく
+            # より、ここで止めた方がよい。既に出した記録は書き出し済み。
+            raise fetch.FetchError(
+                f"{problem.id}: テストデータが入れ替わりました "
+                f"({job.cases_hash} -> {testcases.cases_hash})"
+            )
         _log(f"  テストデータ {testcases.count} ケース ({testcases.dir})")
 
     _log(f"  {env.cxx} でコンパイルします")

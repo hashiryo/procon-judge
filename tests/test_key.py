@@ -228,3 +228,63 @@ def test_the_path_separates_identical_submissions():
     left = key_mod.compute(**{**FIELDS, "submission": "submissions/a.hpp"})
     right = key_mod.compute(**{**FIELDS, "submission": "submissions/b.hpp"})
     assert left != right
+
+
+# --- local のテストデータはリポジトリの中にある ------------------------------
+
+LOCAL_TOML = """
+id = "x"
+title = "T"
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "local"
+count = 5
+generator = "gen.py"
+reference = "ref.py"
+
+[compare]
+kind = "tokens"
+"""
+
+
+def make_local_problem(tmp_path, *, generator="print(1)\n", reference="print(2)\n"):
+    directory = tmp_path / "x"
+    directory.mkdir(exist_ok=True)
+    (directory / "problem.toml").write_text(LOCAL_TOML)
+    (directory / "gen.py").write_text(generator)
+    (directory / "ref.py").write_text(reference)
+    return problem_mod.load(directory)
+
+
+def test_problem_hash_follows_the_generator(tmp_path):
+    """plan は cases_hash を借りるので、ここが動かないとジョブが立たない。"""
+    problem = make_local_problem(tmp_path)
+    before = key_mod.problem_hash(problem)
+    (problem.dir / "gen.py").write_text("print(99)\n")
+    assert key_mod.problem_hash(problem_mod.load(problem.dir)) != before
+
+
+def test_problem_hash_follows_the_reference(tmp_path):
+    problem = make_local_problem(tmp_path)
+    before = key_mod.problem_hash(problem)
+    (problem.dir / "ref.py").write_text("print(99)\n")
+    assert key_mod.problem_hash(problem_mod.load(problem.dir)) != before
+
+
+def test_reformatting_the_generator_keeps_the_problem_hash(tmp_path):
+    """整形だけの変更で測り直さない。提出の扱いと揃える。"""
+    problem = make_local_problem(tmp_path, generator="print(1)\n")
+    before = key_mod.problem_hash(problem)
+    (problem.dir / "gen.py").write_text("print(1)   \n\n\n")
+    assert key_mod.problem_hash(problem_mod.load(problem.dir)) == before
+
+
+def test_other_sources_do_not_carry_the_generator(tmp_path):
+    """local 以外に足すと、既存の記録が全部測り直しになる。"""
+    problem = make_problem(tmp_path)
+    payload = key_mod.problem_hash(problem)
+    (tmp_path / "x" / "gen.py").write_text("print(1)\n")
+    assert key_mod.problem_hash(problem_mod.load(problem.dir)) == payload

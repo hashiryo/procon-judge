@@ -16,7 +16,7 @@ run の中に残す。ここが決めるのは、環境ごとに何本のジョ�
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
 from .environment import Environment, toolchain
@@ -94,8 +94,9 @@ def build(
     # Freshness は提出のハッシュを問題につき一度だけ作る。環境をまたいで
     # 使い回さないと、閉包を環境の数だけ辿り直すことになる。
     fresh = {p.id: Freshness(p, envs) for p in problems}
+    cases = store.cases_hashes()
     return [
-        _for_env(env, problems, records, fresh, keys, budget)
+        _for_env(env, problems, records, fresh, keys, budget, cases)
         for env in envs
         if env.runs_on != "self"
     ]
@@ -117,7 +118,7 @@ def for_env(
     keys = store.keys()
     records = {p.id: list(store.read(p.id)) for p in problems}
     fresh = {p.id: Freshness(p, envs) for p in problems}
-    return _for_env(env, problems, records, fresh, keys, budget)
+    return _for_env(env, problems, records, fresh, keys, budget, store.cases_hashes())
 
 
 def assignment(order: Sequence[str], job: int, jobs: int) -> list[str]:
@@ -171,6 +172,7 @@ def _for_env(
     fresh: dict[str, Freshness],
     keys: set[str],
     budget: int,
+    cases: Mapping[str, str],
 ) -> EnvPlan:
     models = _models(records, env.name)
     bundles: list[Bundle] = []
@@ -181,7 +183,9 @@ def _for_env(
         rows = records[problem.id]
         known_ce = _compile_errors(rows, fresh[problem.id], env.name)
         compile_errors |= {f"{problem.id}/{s}" for s in known_ce}
-        cases_hash = _borrow(rows, "cases_hash")
+        # 「いちばん新しい記録から」の規則は Store.cases_hashes が持つ。
+        # run も同じものを使う。二度書くと片方を直し忘れる。
+        cases_hash = cases.get(problem.id)
         candidates = [
             s.as_posix()
             for s in problem.submissions()

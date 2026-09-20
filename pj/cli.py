@@ -113,7 +113,12 @@ def cmd_fetch(args: argparse.Namespace) -> int:
         if not fetch.needs_testdata(p):
             print(f"{p.id}: テストデータを使いません")
             continue
-        testcases = fetch.ensure(p, refresh=args.refresh)
+        # --from-origin は保管庫を疑うとき用。判定サイトを叩くので既定では通らない。
+        testcases = fetch.ensure(
+            p,
+            refresh=args.refresh or args.from_origin,
+            allow_mirror=not args.from_origin,
+        )
         print(
             f"{p.id}: {testcases.count} cases  cases_hash={testcases.cases_hash}  "
             f"{testcases.dir}"
@@ -140,14 +145,14 @@ def cmd_mirror_push(args: argparse.Namespace) -> int:
     directory = fetch.cache_dir_for(p)
     if not (directory / fetch.MANIFEST_NAME).is_file():
         return _die(f"{p.id}: 先に pj fetch か pj testdata import をしてください")
-    mirror.push(p, directory)
+    mirror.push(p, directory, force=args.force)
     return 0
 
 
 def cmd_mirror_pull(args: argparse.Namespace) -> int:
     p = problem_mod.load_by_id(args.problem)
     if not mirror.pull(p, fetch.cache_dir_for(p)):
-        return _die(f"{p.id}: 保管庫にありません")
+        return _die(f"{p.id}: 保管庫から取れませんでした")
     return 0
 
 
@@ -271,9 +276,16 @@ def cmd_run(args: argparse.Namespace) -> int:
     )
     worklist = run_mod.build_worklist(
         targets, env, machine, store.keys(),
+        borrowed=store.cases_hashes(),
         allow_fetch=not args.dry_run, refresh=args.refresh,
         budget=args.budget,
     )
+    for problem_id, before, after in worklist.moved:
+        print(
+            f"warning: {problem_id} のテストデータが変わりました "
+            f"({before} -> {after})。この問題の記録は測り直しになります",
+            file=sys.stderr,
+        )
     for problem_id, reason in worklist.failed:
         print(
             f"warning: {problem_id} のテストデータを取れません: {reason}",
@@ -397,6 +409,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_fetch.add_argument("--problem")
     p_fetch.add_argument("--all", action="store_true", help="全問題")
     p_fetch.add_argument("--refresh", action="store_true", help="キャッシュを無視する")
+    p_fetch.add_argument(
+        "--from-origin",
+        action="store_true",
+        help="保管庫も飛ばして原本から取る。保管庫の中身を疑うとき用",
+    )
     p_fetch.set_defaults(func=cmd_fetch)
 
     testdata = sub.add_parser("testdata", help="テストデータ").add_subparsers(
@@ -412,6 +429,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     m_push = mirror_cmd.add_parser("push", help="保管庫へ上げる")
     m_push.add_argument("--problem", required=True)
+    m_push.add_argument(
+        "--force",
+        action="store_true",
+        help="既にあっても置き換える。取り直したデータに入れ替えるとき用",
+    )
     m_push.set_defaults(func=cmd_mirror_push)
     m_pull = mirror_cmd.add_parser("pull", help="保管庫から落とす")
     m_pull.add_argument("--problem", required=True)

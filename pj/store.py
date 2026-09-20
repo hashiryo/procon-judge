@@ -56,6 +56,27 @@ class Store:
                     found.add(key)
         return found
 
+    def cases_hashes(self) -> dict[str, str]:
+        """問題ごとの、いちばん新しい記録の cases_hash。
+
+        テストデータを落とさずにキーを組むために借りる。走らせるものが無い
+        回は、これで判断が付いてしまえば 1 バイトも取らずに済む。
+
+        借りた値は測った当時のもので、判定サイトや上流のジェネレータが動いて
+        いれば古い。だから実際に走らせるときは本物を取り直して突き合わせる。
+        リポジトリの中が原因の変化は problem_hash が拾うので、ここには載らない。
+        """
+        latest: dict[str, tuple[str, str]] = {}
+        for problem_id in self.problem_ids():
+            for record in self.read(problem_id):
+                value = record.get("cases_hash")
+                if value is None:
+                    continue
+                stamp = record.get("timestamp") or ""
+                if problem_id not in latest or stamp > latest[problem_id][0]:
+                    latest[problem_id] = (stamp, value)
+        return {pid: value for pid, (_, value) in latest.items()}
+
     def append(self, record: Record) -> None:
         """記録は必ず新しいキーのときだけ作られるので、重複の確認はしない。"""
         path = self.path_for(record.problem)

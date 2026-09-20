@@ -1,6 +1,9 @@
 """保管庫。固めて戻したときに cases_hash が変わらないことを押さえる。"""
 
+import json
 import shutil
+import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -106,3 +109,102 @@ def test_a_missing_token_says_so(monkeypatch, tmp_path):
     monkeypatch.delenv(mirror.TOKEN_ENV, raising=False)
     with pytest.raises(mirror.MirrorError, match=mirror.TOKEN_ENV):
         mirror.pull(make_problem(tmp_path), tmp_path / "dest")
+
+
+# --- 同時に走っても壊さない -------------------------------------------------
+
+
+class FakeGh:
+    """gh の代わり。呼ばれた引数を覚えて、置いてあるアセットを持つ。"""
+
+    def __init__(self, existing=()):
+        self.names = set(existing)
+        self.calls = []
+        self.upload_fails = False
+
+    def __call__(self, *args, check=True):
+        self.calls.append(args)
+        if args[:2] == ("release", "view"):
+            return _proc(0, json.dumps({"assets": [{"name": n} for n in self.names]}))
+        if args[:2] == ("release", "upload"):
+            name = Path(args[3]).name
+            if self.upload_fails:
+                return _proc(1, "", "HTTP 422: already_exists")
+            self.names.add(name)
+            return _proc(0, "")
+        if args[:2] == ("release", "download"):
+            return _proc(1, "", "release asset not found")
+        return _proc(0, "")
+
+
+def _proc(code, out, err=""):
+    return subprocess.CompletedProcess(["gh"], code, out, err)
+
+
+@pytest.fixture
+def fake_gh(monkeypatch):
+    gh = FakeGh()
+    monkeypatch.setattr(mirror, "_gh", gh)
+    monkeypatch.setattr(mirror, "_names", None)
+    return gh
+
+
+@needs_zstd
+def test_push_does_not_clobber(tmp_path, fake_gh):
+    """--clobber は消してから上げるので、同時に走るとアセットが消える。"""
+    problem = make_problem(tmp_path)
+    mirror.push(problem, make_cases(tmp_path / "cases"))
+    uploads = [c for c in fake_gh.calls if c[:2] == ("release", "upload")]
+    assert uploads and all("--clobber" not in c for c in uploads)
+
+
+@needs_zstd
+def test_push_skips_what_is_already_there(tmp_path, fake_gh):
+    problem = make_problem(tmp_path)
+    fake_gh.names.add(mirror.asset_name(problem))
+    mirror.push(problem, make_cases(tmp_path / "cases"))
+    assert not [c for c in fake_gh.calls if c[:2] == ("release", "upload")]
+
+
+@needs_zstd
+def test_push_with_force_clobbers(tmp_path, fake_gh):
+    """取り直したデータに入れ替えるときだけ。人が 1 本で叩く前提。"""
+    problem = make_problem(tmp_path)
+    fake_gh.names.add(mirror.asset_name(problem))
+    mirror.push(problem, make_cases(tmp_path / "cases"), force=True)
+    uploads = [c for c in fake_gh.calls if c[:2] == ("release", "upload")]
+    assert uploads and "--clobber" in uploads[0]
+
+
+@needs_zstd
+def test_losing_the_race_is_not_an_error(tmp_path, fake_gh, capsys):
+    """負けた側は何も消していない。上がっているので通す。"""
+    problem = make_problem(tmp_path)
+    name = mirror.asset_name(problem)
+    fake_gh.upload_fails = True
+    fake_gh.names.add(name)
+    mirror.asset_names(refresh=True).discard(name)  # 引いた時点では無かった
+    mirror.push(problem, make_cases(tmp_path / "cases"))
+    assert "別のジョブが先に上げました" in capsys.readouterr().err
+
+
+@needs_zstd
+def test_a_real_upload_failure_raises(tmp_path, fake_gh):
+    problem = make_problem(tmp_path)
+    fake_gh.upload_fails = True
+    with pytest.raises(mirror.MirrorError):
+        mirror.push(problem, make_cases(tmp_path / "cases"))
+
+
+def test_pull_says_when_it_is_not_there(tmp_path, fake_gh, capsys):
+    problem = make_problem(tmp_path)
+    assert mirror.pull(problem, tmp_path / "dest") is False
+    assert "まだありません" in capsys.readouterr().err
+
+
+def test_pull_says_when_it_could_not_download(tmp_path, fake_gh, capsys):
+    """あるはずのものが取れないのは、保管庫を置いた目的と逆。黙らない。"""
+    problem = make_problem(tmp_path)
+    fake_gh.names.add(mirror.asset_name(problem))
+    assert mirror.pull(problem, tmp_path / "dest") is False
+    assert "取れませんでした" in capsys.readouterr().err
