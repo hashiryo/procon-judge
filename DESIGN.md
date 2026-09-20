@@ -411,7 +411,7 @@ CI は既定ブランチを `lib/` へ clone して、その SHA を記録の `l
 
 ライブラリが取得できなくても問題は走ります。ライブラリを使わない提出があるからです。取得に失敗したら、ライブラリを include する提出だけを飛ばします。
 
-ライブラリ側の push からこちらを起こすには `repository_dispatch` を使います。`GITHUB_TOKEN` では別リポジトリが起こせないので、PAT をライブラリ側の secret に置く必要があります。
+ライブラリ側の push からこちらを起こすには `repository_dispatch` を使います。`GITHUB_TOKEN` では別リポジトリが起こせないので、PAT をライブラリ側の secret に置く必要があります。実装は M9 の記録に書いてあります。
 
 このリポジトリの結果はリポジトリの状態だけからは再現しません。ライブラリを HEAD で取るからです。再現性は記録の側が持ちます。`library_sha` と `judge_sha` があれば、そのときの入力が git から復元できます。
 
@@ -737,6 +737,7 @@ Pages のデプロイはサイト全体の差し替えです。変わった問�
 | M6 | サイト生成と Pages | 順位表が見える |
 | M7 | ライブラリを通す | `mylib/...` を include する提出が 4 環境で AC になる |
 | M8 | 現行と参考と未計測を見分ける | ライブラリを触ると順位表の行が参考に落ちる |
+| M9 | ライブラリの push でこちらが起きる | `mylib/` を直すと judge が走り出す |
 
 M1 の題材は Library Checker の `point_add_range_sum` を勧めます。テストデータがジェネレータから作れるので判定サイトへの依存が無く、チェッカが同梱されていて、`base.cpp` のインターフェースが素直です。
 
@@ -1206,6 +1207,24 @@ M6 では「`collect` のジョブは `cases_hash` も CPU モデルも持たな
 手元で作り直したところ、189 件の記録のうち 10 件が参考になりました。中身は x64-gcc の EPYC 9V45 と 9V74 に残っていた 9 月 19 日の記録で、ハーネスを `harness/pj.hpp` に出した回とメモリの測り方を変えた回よりも前のものです。x86 は 4 つのモデルに散るので、その 2 つにまだランナーが当たっていません。
 
 これは「汚染されたメモリ記録が一部の CPU モデルに残っている」として宿題に挙げていたものと同じ記録です。現役の顔で出ていたものが、参考として出るようになりました。
+
+## M9 の実装の記録
+
+`hashiryo/Library` の `master` に `mylib/` を含む push があると、向こうの `.github/workflows/procon-judge.yml` が `repository_dispatch` を投げます。こちらの `judge.yml` はそれで走ります。種別は `library-push` で、`judge.yml` の側でもその種別だけを受けるようにしてあります。トークンは Library の secret `JUDGE_DISPATCH_TOKEN` です。
+
+### dispatches の口に要るのは Contents の write です
+
+fine-grained な PAT で `POST /repos/{owner}/{repo}/dispatches` を叩くには、対象リポジトリの Contents に write が要ります。Actions ではありません。`POST /repos/{owner}/{repo}/actions/workflows/{id}/dispatches` の方が Actions の write です。
+
+つまり `repository_dispatch` を使う限り、このトークンは procon-judge に push もできます。Actions だけに絞りたければ、`judge.yml` が `workflow_dispatch` も受けているので、そちらに切り替えて Contents を read に落とせます。今は設計どおり `repository_dispatch` の側にしてあります。
+
+### 期限は付けていません
+
+期限を付けると、切れた日に合図が黙って止まります。03:00 の定期実行が記録の方は拾ってしまうので、止まったことに気づく手がかりが残りません。権限が 1 リポジトリぶんしかないので、期限なしで置いて、要らなくなったら消す形にしました。
+
+### mylib/ だけを見ます
+
+`paths` を `mylib/**` に絞ってあります。提出の include 閉包に入るのはそこだけなので、`test/` や docs を直してもこちらのキーは動きません。絞らないと、verify の結果をコミットするたびに 6 ジョブが空回りします。取りこぼしても定期実行が拾います。
 
 ## 既存リポジトリから移すもの
 

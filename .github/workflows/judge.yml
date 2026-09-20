@@ -3,7 +3,9 @@ name: judge
 on:
   push:
     branches: [main]
+  # Library の master への push。送り手は hashiryo/Library の procon-judge.yml。
   repository_dispatch:
+    types: [library-push]
   schedule:
     # 03:00 JST。取りこぼしを埋める。
     - cron: "0 18 * * *"
