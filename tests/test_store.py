@@ -46,6 +46,18 @@ def test_keys_collects_every_problem(tmp_path):
     assert store.keys() == {"k1", "k2"}
 
 
+def test_keys_does_not_look_at_the_status(tmp_path):
+    """スキップの判定はキーだけを見る。
+
+    同じソースを同じ条件で測り直しても結果は変わらないので、AC でない記録
+    でも再実行しない。直したときはソースが変わってキーも変わる。
+    """
+    store = Store(tmp_path)
+    for i, status in enumerate(("WA", "TLE", "MLE", "RE", "CE")):
+        store.append(make_record(key=f"k{i}", status=status))
+    assert store.keys() == {"k0", "k1", "k2", "k3", "k4"}
+
+
 def test_one_file_per_problem(tmp_path):
     store = Store(tmp_path)
     store.append(make_record(problem="a"))

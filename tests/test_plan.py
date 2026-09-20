@@ -214,6 +214,20 @@ def test_a_known_compile_error_is_not_planned_for_other_models(
     assert one.jobs == 0
 
 
+def test_a_compile_error_in_one_environment_does_not_suppress_another(
+    tmp_path, envs, ci_envs
+):
+    """CE になるかは環境で変わる。片方で落ちても、もう片方は立てる。"""
+    a, b = ci_envs[0], ci_envs[1]
+    problem = make_problem(tmp_path, "p1", submissions=("a",))
+    records = [record_for(problem, a, "submissions/a.cpp", status="CE")]
+    store = store_with(tmp_path, records)
+    assert plan_for(a, [problem], envs, store).compile_errors == (
+        "p1/submissions/a.cpp",
+    )
+    assert plan_for(b, [problem], envs, store).compile_errors == ()
+
+
 def test_a_stale_compile_error_does_not_suppress_anything(tmp_path, envs, ci_envs):
     """ソースを書き換えたあとの CE は、今のソースの話ではない。"""
     env = ci_envs[0]
