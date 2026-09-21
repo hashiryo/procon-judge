@@ -99,6 +99,17 @@ nav {
   margin-bottom: 12px;
 }
 
+input[type="search"] {
+  background: var(--c-bg);
+  color: var(--c-text);
+  border: 1px solid var(--c-divider);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font: inherit;
+  width: 320px;
+  max-width: 100%;
+}
+
 select {
   background: var(--c-bg);
   color: var(--c-text);
@@ -129,6 +140,14 @@ table.fixed th,
 table.fixed td {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 問題一覧の表。横に長くないので器に overflow を掛けず、見出し行を画面に
+   固定する。overflow のある器の中では sticky が器に対して効いてしまう。 */
+table.index thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 /* 並べ替えの印。出ていないときも場所を空けておく。 */

@@ -9,18 +9,15 @@
   <body data-src="data/index.json{{DATA_V}}">
     <h1>procon-judge</h1>
     <p class="sub" id="sub">読み込み中</p>
-    <div class="wrap" id="wrap">
-      <table>
+    <div class="controls">
+      <input id="filter" type="search" placeholder="id か題名で絞る" autocomplete="off" />
+      <span class="dim" id="shown"></span>
+    </div>
+    <div id="wrap">
+      <table class="index">
+        <!-- 見出しは index.js が作る。並べ替えの鍵と一緒に持たせるため。 -->
         <thead>
-          <tr>
-            <th>問題</th>
-            <th>取得元</th>
-            <th class="n">提出</th>
-            <th class="n">計測済み</th>
-            <th class="n">参考</th>
-            <th class="n">記録</th>
-            <th>最終更新 (UTC)</th>
-          </tr>
+          <tr id="head"></tr>
         </thead>
         <tbody id="rows"></tbody>
       </table>

@@ -587,3 +587,26 @@ def rec_cell(**over):
 
     current = over.pop("current", None)
     return replace(site_build.collapse([rec(**over)])[0], current=current)
+
+
+# --- 問題一覧 --------------------------------------------------------------
+
+
+def test_origin_is_the_known_prefix_or_own():
+    assert site_build.origin_of("yosupo-lca") == "yosupo"
+    assert site_build.origin_of("aoj-DSL_2_B") == "aoj"
+    assert site_build.origin_of("yuki-274") == "yuki"
+    assert site_build.origin_of("gf2-64") == "自作"
+    assert site_build.origin_of("warshall-floyd") == "自作"
+
+
+def test_index_counts_problems_per_origin(tmp_path, no_problem_dirs):
+    store = Store(tmp_path / "results")
+    for pid in ("yosupo-a", "yosupo-b", "aoj-1", "gf2-64"):
+        store.append_raw(pid, json.dumps(rec(problem=pid)))
+    out = tmp_path / "site"
+    site_build.build(store, out)
+    index = json.loads((out / "data" / "index.json").read_text())
+    assert index["origins"] == {"yosupo": 2, "aoj": 1, "自作": 1}
+    page = (out / "index.html").read_text()
+    assert 'id="filter"' in page

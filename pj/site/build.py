@@ -243,6 +243,27 @@ def submission_page(problem_id: str, submission: str) -> str | None:
     return f"submissions/{problem_id}/{name.as_posix()}.html"
 
 
+# id の接頭辞。問題の定義の表 (DESIGN.md の「problem.toml」) と同じ。無ければ自作。
+KNOWN_ORIGINS = ("yosupo", "aoj", "yuki", "atcoder", "loj", "hackerrank")
+OWN_ORIGIN = "自作"
+
+
+def origin_of(problem_id: str) -> str:
+    """問題一覧の件数を出どころごとに数えるための、id の接頭辞。"""
+    head = problem_id.split("-", 1)[0]
+    return head if "-" in problem_id and head in KNOWN_ORIGINS else OWN_ORIGIN
+
+
+def origin_counts(problem_ids: Sequence[str]) -> dict[str, int]:
+    """出どころごとの問題数。表の上の 1 行に出す。表は分けない。"""
+    counts: dict[str, int] = {}
+    for problem_id in problem_ids:
+        origin = origin_of(problem_id)
+        counts[origin] = counts.get(origin, 0) + 1
+    order = (*KNOWN_ORIGINS, OWN_ORIGIN)
+    return {name: counts[name] for name in order if name in counts}
+
+
 def problem_url(problem: problem_mod.Problem | None) -> str | None:
     """元の問題のページ。判定サイトから取っている問題だけ分かる。"""
     if problem is None:
@@ -905,6 +926,7 @@ def build(store: Store, out: Path) -> Summary:
         "judge_sha": sha,
         "record_count": total_records,
         "stale_count": total_stale,
+        "origins": origin_counts([row["id"] for row in rows]),
         "problems": rows,
     }
     data_v = _write(
