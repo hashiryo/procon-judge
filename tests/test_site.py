@@ -597,6 +597,8 @@ def test_origin_is_the_known_prefix_or_own():
     assert site_build.origin_of("yosupo-lca") == "yosupo"
     assert site_build.origin_of("aoj-DSL_2_B") == "aoj"
     assert site_build.origin_of("yuki-274") == "yuki"
+    assert site_build.origin_of("cses-2132") == "cses"
+    assert site_build.origin_of("joisc-2019-examination") == "joisc"
     assert site_build.origin_of("gf2-64") == "自作"
     assert site_build.origin_of("warshall-floyd") == "自作"
 

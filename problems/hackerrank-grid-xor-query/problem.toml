@@ -1,0 +1,16 @@
+id = "hackerrank-grid-xor-query"
+title = "Grid Xor Query"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "manual"
+name = "hackerrank-grid-xor-query"
+
+[compare]
+kind = "tokens"

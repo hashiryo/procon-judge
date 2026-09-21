@@ -1,0 +1,16 @@
+id = "cses-2132"
+title = "Increasing Array II"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "manual"
+name = "cses-2132"
+
+[compare]
+kind = "tokens"

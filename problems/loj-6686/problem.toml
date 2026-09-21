@@ -1,0 +1,16 @@
+id = "loj-6686"
+title = "Stupid GCD"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "manual"
+name = "loj-6686"
+
+[compare]
+kind = "tokens"
