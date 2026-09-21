@@ -610,3 +610,105 @@ def test_index_counts_problems_per_origin(tmp_path, no_problem_dirs):
     assert index["origins"] == {"yosupo": 2, "aoj": 1, "自作": 1}
     page = (out / "index.html").read_text()
     assert 'id="filter"' in page
+
+
+# --- テストデータの注意書き ------------------------------------------------
+
+LOCAL_TOML = """
+id = "tmp-local"
+title = "own cases"
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "local"
+count = 3
+generator = "gen.py"
+reference = "ref.py"
+
+[compare]
+kind = "tokens"
+"""
+
+NONE_TOML = FRESH_TOML.replace("tmp-fresh", "tmp-none")
+
+
+def local_problem(tmp_path):
+    directory = tmp_path / "tmp-local"
+    directory.mkdir()
+    (directory / "problem.toml").write_text(LOCAL_TOML)
+    (directory / "gen.py").write_text("print(1)\n")
+    (directory / "ref.py").write_text("print(1)\n")
+    (directory / "submissions").mkdir()
+    (directory / "submissions" / "a.cpp").write_text(SOURCE)
+    return problem_mod.load(directory)
+
+
+def none_problem(tmp_path):
+    directory = tmp_path / "tmp-none"
+    directory.mkdir()
+    (directory / "problem.toml").write_text(NONE_TOML)
+    (directory / "submissions").mkdir()
+    (directory / "submissions" / "a.cpp").write_text(SOURCE)
+    return problem_mod.load(directory)
+
+
+def test_own_testdata_gets_a_caution_note(tmp_path):
+    problem = local_problem(tmp_path)
+    payload = site_build.problem_payload("tmp-local", problem, [], "2026-01-01T00:00:00Z")
+    assert payload["source_label"] == "自作"
+    assert payload["official"] is False
+    assert payload["caution"] is True
+    assert "自作" in payload["note"] and "AC" in payload["note"]
+    assert payload["generator"] == "problems/tmp-local/gen.py"
+    assert payload["reference"] == "problems/tmp-local/ref.py"
+
+
+def test_compile_only_says_so(tmp_path):
+    problem = none_problem(tmp_path)
+    payload = site_build.problem_payload("tmp-none", problem, [], "2026-01-01T00:00:00Z")
+    assert payload["source_label"] == "無し (コンパイルのみ)"
+    assert payload["caution"] is True
+    assert "コンパイル" in payload["note"]
+    assert payload["generator"] is None
+
+
+def test_judge_testdata_has_no_note(tmp_path, envs):
+    problem = fresh_problem(tmp_path)
+    directory = problem.dir
+    (directory / "problem.toml").write_text(
+        FRESH_TOML.replace('source = "none"', 'source = "aoj"\nname = "0629"')
+        .replace('kind = "compile_only"', 'kind = "tokens"')
+    )
+    problem = problem_mod.load(directory)
+    payload = site_build.problem_payload("tmp-fresh", problem, [], "2026-01-01T00:00:00Z")
+    assert payload["source_label"] == "AOJ"
+    assert payload["official"] is True
+    assert payload["caution"] is False
+    assert payload["note"] is None
+
+
+def test_notes_reach_the_pages_and_the_header_json(tmp_path, fake_library, monkeypatch):
+    problem = local_problem(tmp_path)
+    (problem.dir / "submissions" / "a.cpp").write_text(
+        '#include "mylib/Tree.hpp"\nint main() { Tree t; return t.n; }\n'
+    )
+    problem = problem_mod.load(problem.dir)
+    monkeypatch.setattr(problem_mod, "all_problem_dirs", lambda: [problem.dir])
+    store = store_with(
+        tmp_path, [rec(problem="tmp-local", submission="submissions/a.cpp")],
+        problem_id="tmp-local",
+    )
+    out = tmp_path / "site"
+    site_build.build(store, out)
+
+    page = (out / "submissions" / "tmp-local" / "a.html").read_text()
+    assert 'class="notice warn"' in page and "テストケースは自作です" in page
+    assert "取得元 自作" in page
+    index = json.loads((out / "data" / "index.json").read_text())
+    assert index["problems"][0]["source_label"] == "自作"
+    assert index["problems"][0]["caution"] is True
+    tree = json.loads((out / "data" / "headers" / "mylib" / "Tree.hpp.json").read_text())
+    (entry,) = tree["submissions"]
+    assert entry["testdata"] == "local" and entry["official"] is False

@@ -257,6 +257,26 @@ tbody tr.stale td.st {
   padding: 16px 0;
 }
 
+/* テストデータの注意書き。判定サイトのものでない問題に出す。 */
+.notice {
+  border-left: 3px solid var(--c-divider);
+  background: var(--c-bg-soft);
+  color: var(--c-text-2);
+  padding: 6px 10px;
+  margin-bottom: 14px;
+  font-size: 0.9em;
+}
+
+/* 自作やコンパイルのみ。AC の意味が違うので目立たせる。 */
+.notice.warn {
+  border-left-color: var(--c-warn);
+  color: var(--c-text);
+}
+
+.warn {
+  color: var(--c-warn);
+}
+
 @media (max-width: 700px) {
   body {
     padding: 12px;

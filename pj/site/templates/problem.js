@@ -299,12 +299,32 @@ function missingLine(name) {
   return tr;
 }
 
+// 判定サイトのテストデータでない問題の注意書き。自作なら作るファイルへ飛べる。
+function renderNote() {
+  if (!DATA.note) return;
+  const p = el("p", DATA.note, DATA.caution ? "notice warn" : "notice");
+  const files = [
+    ["ジェネレータ", DATA.generator],
+    ["参照実装", DATA.reference],
+  ];
+  let first = true;
+  for (const [label, rel] of files) {
+    if (!rel || !DATA.repo || !DATA.judge_sha) continue;
+    p.append(first ? " " : " / ");
+    first = false;
+    const a = el("a", label);
+    a.href = DATA.repo + "/blob/" + DATA.judge_sha + "/" + rel;
+    p.append(a);
+  }
+  document.getElementById("meta").after(p);
+}
+
 async function main() {
   DATA = await (await fetch(document.body.dataset.src)).json();
   document.getElementById("title").textContent = DATA.title || DATA.id;
   document.getElementById("sub").textContent = DATA.id;
   const meta = [
-    el("span", "取得元 " + DATA.source),
+    el("span", "取得元 " + (DATA.source_label || DATA.source)),
     el("span", "比較 " + DATA.compare),
     el("span", "制限 " + DATA.tle_sec + " 秒 / " + DATA.mle_mb + " MB"),
     el("span", "ケース " + DATA.case_count),
@@ -318,6 +338,7 @@ async function main() {
     meta.push(original);
   }
   document.getElementById("meta").replaceChildren(...meta);
+  renderNote();
 
   if (DATA.combos.length === 0) {
     document.getElementById("wrap").replaceChildren(

@@ -47,8 +47,9 @@ const COLUMNS = [
     id: "source",
     label: "取得元",
     text: true,
-    value: (p) => p.source,
-    cell: (p) => el("td", p.source, "dim"),
+    value: (p) => p.source_label || p.source,
+    // 自作やコンパイルのみは色を変える。判定サイトのデータで測ったように見せない。
+    cell: (p) => el("td", p.source_label || p.source, p.caution ? "warn" : "dim"),
   },
   {
     id: "submissions",

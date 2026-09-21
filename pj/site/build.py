@@ -264,6 +264,54 @@ def origin_counts(problem_ids: Sequence[str]) -> dict[str, int]:
     return {name: counts[name] for name in order if name in counts}
 
 
+# 取得元の表示名。内部の名前 (local / none) をそのまま出すと、テストケースが
+# 判定サイトのものかどうかが読めない。
+SOURCE_LABELS = {
+    "library_checker": "Library Checker",
+    "aoj": "AOJ",
+    "yukicoder": "yukicoder",
+    "manual": "手動取り込み",
+    "local": "自作",
+    "none": "無し (コンパイルのみ)",
+}
+OFFICIAL_SOURCES = frozenset({"library_checker", "aoj", "yukicoder"})
+# 判定サイトのデータで測ったように見えては困るもの。注意書きを目立たせる。
+CAUTION_SOURCES = frozenset({"local", "none"})
+
+
+def source_label(source: str) -> str:
+    return SOURCE_LABELS.get(source, source)
+
+
+def testdata_note(problem: problem_mod.Problem | None) -> str | None:
+    """判定サイトのテストデータでない問題に出す注意書き。判定サイトのものなら None。
+
+    AtCoder のようにテストケースが公開されない問題は自作するしかないが、公式の
+    ケースで測ったように見えるのは避けたい。AC の意味が違うことをその場で言う。
+    """
+    if problem is None:
+        return None
+    td = problem.testdata
+    if td.source == "local":
+        return (
+            f"テストケースは自作です。ジェネレータ ({td.generator}) と参照実装 "
+            f"({td.reference}) で {td.count} ケースを作っています。判定サイトのデータ"
+            "ではないので、ここでの AC は元の問題の AC と同じ意味ではなく、時間と"
+            "メモリもこのケースに対する値です。"
+        )
+    if td.source == "none":
+        return (
+            "テストケースがありません。コンパイルが通るかだけを見ていて、AC は"
+            "それを表します。時間とメモリは測っていません。"
+        )
+    if td.source == "manual":
+        return (
+            "テストケースは手で取り込んだものです。出どころは問題の定義 "
+            "(problem.toml) を見てください。"
+        )
+    return None
+
+
 def problem_url(problem: problem_mod.Problem | None) -> str | None:
     """元の問題のページ。判定サイトから取っている問題だけ分かる。"""
     if problem is None:
@@ -309,11 +357,28 @@ def problem_payload(
     for cell in cells:
         cxxflags.setdefault(cell.env, cell.cxxflags)
 
+    source = problem.testdata.source if problem else ""
     return {
         "id": problem_id,
         "title": problem.title if problem else problem_id,
         "url": problem_url(problem),
-        "source": problem.testdata.source if problem else "",
+        "source": source,
+        "source_label": source_label(source),
+        "official": (source in OFFICIAL_SOURCES) if problem else None,
+        "caution": source in CAUTION_SOURCES,
+        "note": testdata_note(problem),
+        # 自作のケースを作るファイル。GitHub へ飛ばすのに使う。
+        "generator": (
+            f"problems/{problem_id}/{problem.testdata.generator}"
+            if problem and source == "local"
+            else None
+        ),
+        "reference": (
+            f"problems/{problem_id}/{problem.testdata.reference}"
+            if problem and source == "local" and problem.testdata.reference
+            else None
+        ),
+        "judge_sha": judge_sha(),
         "compare": problem.compare.kind if problem else "",
         "harness": problem.harness_kind if problem else "",
         "tle_sec": problem.limits.tle_sec if problem else 0,
@@ -372,6 +437,11 @@ class SubmissionPage:
     repo: str | None
     sha: str | None
     generated_at: str
+    # 判定サイトのテストデータでないときの注意書き。None なら出さない。
+    note: str | None = None
+    caution: bool = False
+    generator: str | None = None
+    reference: str | None = None
 
 
 def _ms(ns: int | None) -> str:
@@ -523,7 +593,7 @@ def submission_html(page: SubmissionPage, style_v: str) -> str:
         f'<span>問題 <a href="../../problems/{problem_html}">{esc(page.problem_id)}</a></span>',
     ]
     if page.source:
-        meta.append(f"<span>取得元 {esc(page.source)}</span>")
+        meta.append(f"<span>取得元 {esc(source_label(page.source))}</span>")
     if page.url:
         meta.append(f'<span><a href="{esc(page.url)}">原題</a></span>')
     stale = sum(1 for c in page.cells if c.current is False)
@@ -546,13 +616,29 @@ def submission_html(page: SubmissionPage, style_v: str) -> str:
             "PROBLEM_TITLE": esc(page.title),
             "NAME": esc(name),
             "SUBTITLE": subtitle,
-            "META": "".join(meta),
+            "META": "".join(meta) + _note_html(page),
             "ROWS": _rows_html(page),
             "INCLUDES": _includes_html(page.includes),
             "SOURCE": _source_html(page.source_text),
             "GENERATED": generated,
         },
     )
+
+
+def _note_html(page: SubmissionPage) -> str:
+    """テストデータの注意書き。自作ならジェネレータと参照実装へのリンクを添える。"""
+    if not page.note:
+        return ""
+    body = esc(page.note)
+    links = []
+    for label, rel in (("ジェネレータ", page.generator), ("参照実装", page.reference)):
+        href = _blob(page.repo, page.sha, rel) if rel else None
+        if href:
+            links.append(f'<a href="{esc(href)}">{label}</a>')
+    if links:
+        body += " " + " / ".join(links)
+    cls = "notice warn" if page.caution else "notice"
+    return f'</div><p class="{cls}">{body}</p><div class="meta">'
 
 
 def include_links(
@@ -669,12 +755,19 @@ def header_entry(
     direct: bool,
     cells: Sequence[Cell],
     env_names: Sequence[str],
+    *,
+    testdata: str = "",
+    official: bool | None = None,
 ) -> dict:
     return {
         "problem": problem_id,
         "title": title,
         "submission": submission,
         "direct": direct,
+        # テストデータの取得元と、それが判定サイトのものか。自作のケースで通した
+        # AC を判定サイトの AC と同じに見せないため。
+        "testdata": testdata,
+        "official": official,
         "page": page,
         "problem_page": f"problems/{problem_id}.html",
         "envs": env_summary(cells, env_names),
@@ -860,6 +953,10 @@ def build(store: Store, out: Path) -> Summary:
                         submission=submission,
                         cells=mine,
                         env_names=env_names,
+                        note=payload["note"],
+                        caution=payload["caution"],
+                        generator=payload["generator"],
+                        reference=payload["reference"],
                         includes=includes,
                         source_text=_read_source(problem, submission),
                         repo=repo,
@@ -877,6 +974,7 @@ def build(store: Store, out: Path) -> Summary:
                     header_entry(
                         problem_id, payload["title"], submission, page,
                         link.direct, mine, env_names,
+                        testdata=payload["source"], official=payload["official"],
                     )
                 )
                 header_library[link.label] = link.library
@@ -890,6 +988,8 @@ def build(store: Store, out: Path) -> Summary:
                 "id": problem_id,
                 "title": payload["title"],
                 "source": payload["source"],
+                "source_label": payload["source_label"],
+                "caution": payload["caution"],
                 "submissions": len(payload["submissions"]),
                 "measured": measured,
                 "stale": stale,
