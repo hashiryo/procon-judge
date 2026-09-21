@@ -481,7 +481,7 @@ TLE か MLE が出たら、残りのケースは走らせません。1 ケース
 
 拡張子は種別で分けます。`kind = "base"` の提出はハーネスから include されるので `.hpp` にします。`kind = "raw"` の提出はそれ自体が翻訳単位なので `.cpp` にします。`.cpp` を include する形にすると、エディタや clangd が単体でコンパイルしようとして誤ります。
 
-実行対象はこれだけにします。過去に置いていたものを再実行する仕組みは作りません。
+実行対象はこれだけにします。過去に置いていたものを再実行する仕組みは作りません。消した提出の記録は jsonl に残りますが、サイトには出しません。測り直せないので、参考のまま順位表に並び続けることになるからです (raw の問題をハーネスに作り替えると `lib.cpp` がこれになります)。
 
 提出のパスがそのまま安定した識別子になります。ライブラリの解説から張るリンクはこのパスで、そのページが最新の記録を描きます。
 
@@ -1440,7 +1440,7 @@ fine-grained な PAT で `POST /repos/{owner}/{repo}/dispatches` を叩くには
 
 `--budget` は走らせる提出の件数です。6 時間で打ち切られるとその回に測ったぶんを丸ごと落とすので、大きい束に当たったときこそ効いてほしく、束の切れ目は待ちません。止めた先は `held` に入れて件数だけ報告します。残りは次の実行が同じ順で拾います。
 
-いまの値は 1 環境あたり最大 5 本、1 ジョブ 40 件です。5 本は同時実行 20 を 4 環境で割った数です。40 件は仮置きで、849 件を移したあとの実測で決め直してください。
+いまの値は 1 環境あたり最大 5 本、1 ジョブ 100 件です。5 本は同時実行 20 を 4 環境で割った数です。100 件は raw 移行の CI の実測から決めました。40 件で 60 分前後 (保管庫からの取得と mylib のコンパイルが大半) だったので、100 件なら 2.5 時間ほどで 6 時間の上限の半分に収まります。
 
 ### 見積もりは順番にしか使いません
 
@@ -1591,6 +1591,22 @@ Library の注釈には `TLE 0.5` や `MLE 64` のように締めた値が書い
 ### 制限
 
 `tle_sec` は mul / sq / frob が 5 秒、div / pow / sqrt / log が 10 秒です。旧 judge は全部 5 秒でしたが、div の参照実装が x64 で 4.4 秒かかっていて、遅いマシンに当たると参照実装そのものが TLE になります。
+
+## 旧 judge の通常の問題の移植の記録
+
+旧 judge (hashiryo/judge) の `algos/` を持つ 35 問 (yosupo 33、自作 2) を base の問題として移しました。うち 23 問は raw で取り込んだ Library の verify と同じ問題だったので、その問題を base に作り替え、`lib.cpp` を廃止して Library を使う提出を `lib.hpp` に書き直しました。書き直しは 15 問で、旧 judge に Library を使う `mine.hpp` があった問題はそれを `lib.hpp` に改名しただけです。`yosupo-subset-convolution` は既にハーネスがあったので、旧 judge の 2 本にハーネスの形に合わせる薄い層を足しました。
+
+### 機械的に直したもの
+
+`base.cpp` は `algos/_common.hpp` を `pj.hpp` と `common.hpp` に、`ALGO_HPP` を `SUBMISSION_HPP` に、`ALGO_TIME_NS` の `fprintf` を末尾の `report_metrics` に置き換えました。`algos/_common.hpp` は問題ごとの `common.hpp` になり、`<bits/stdc++.h>` は名指しの include に変わりました。提出は `algos/*.hpp` をそのまま `submissions/` に移し、include のパスだけ直しています (`_common.hpp` → `../common.hpp`、gf2-64 の共有ヘッダ → `../../_shared/gf2-64/`)。インターフェース (`Det::run(n, a)` のような static 関数) は旧 judge のままです。`yosupo-unionfind` だけは提出の型名が Library の `UnionFind` とぶつかるので `Solver` に変えました。
+
+### 自作の 2 問は local にしました
+
+`mod-inv-prime` と `warshall-floyd` は判定サイトの問題ではないので `source = "local"` です。`warshall-floyd` の入力は `V W seed` の 3 つで距離行列はハーネスが LCG で作るので、`gen.py` は旧 judge の 15 ケースの組をそのまま返します。参照実装は旧 judge の素朴な実装 (`naive_fermat` と `naive`) です。
+
+### 制限
+
+`tle_sec` と `mle_mb` は、raw で入っていた問題は既存の値と旧 judge の値の大きい方、新しく入った問題は Library Checker の `timelimit` と旧 judge の値の大きい方にしました。
 
 ## 既存リポジトリから移すもの
 

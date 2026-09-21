@@ -1,0 +1,16 @@
+id = "yosupo-power-projection-of-set-power-series"
+title = "Power Projection of Set Power Series"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "set_power_series/power_projection_of_set_power_series"
+
+[compare]
+kind = "checker"

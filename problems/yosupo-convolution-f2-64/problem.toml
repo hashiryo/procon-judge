@@ -1,0 +1,16 @@
+id = "yosupo-convolution-f2-64"
+title = "Convolution (mathbbF2^64)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "convolution/convolution_F_2_64"
+
+[compare]
+kind = "checker"

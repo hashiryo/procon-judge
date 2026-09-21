@@ -1,0 +1,16 @@
+id = "yosupo-log-of-set-power-series"
+title = "Log of Set Power Series"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "set_power_series/log_of_set_power_series"
+
+[compare]
+kind = "checker"

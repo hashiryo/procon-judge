@@ -1,0 +1,18 @@
+id = "warshall-floyd"
+title = "Warshall-Floyd (全点対最短路)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 15
+reference = "submissions/naive.hpp"
+
+[compare]
+kind = "tokens"

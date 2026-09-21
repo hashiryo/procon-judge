@@ -1,0 +1,16 @@
+id = "yosupo-kth-root-integer"
+title = "Kth Root (Integer)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "number_theory/kth_root_integer"
+
+[compare]
+kind = "checker"

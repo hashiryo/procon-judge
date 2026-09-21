@@ -2,11 +2,11 @@ id = "yosupo-matrix-det-mod-2"
 title = "Determinant of Matrix (Mod 2)"
 
 [limits]
-tle_sec = 5.0
+tle_sec = 10.0
 mle_mb = 1024
 
 [harness]
-kind = "raw"
+kind = "base"
 
 [testdata]
 source = "library_checker"

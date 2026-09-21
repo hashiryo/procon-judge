@@ -1,0 +1,16 @@
+id = "yosupo-system-of-linear-equations-mod-2"
+title = "System of Linear Equations (Mod 2)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "linear_algebra/system_of_linear_equations_mod_2"
+
+[compare]
+kind = "checker"
