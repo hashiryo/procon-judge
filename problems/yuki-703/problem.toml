@@ -1,0 +1,16 @@
+id = "yuki-703"
+title = "Mirror Dungeon"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "yukicoder"
+name = "703"
+
+[compare]
+kind = "tokens"

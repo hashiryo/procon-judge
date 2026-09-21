@@ -1,0 +1,16 @@
+id = "yuki-705"
+title = "Mirror Dungeon Super Hard"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "yukicoder"
+name = "705"
+
+[compare]
+kind = "tokens"
