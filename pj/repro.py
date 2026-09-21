@@ -68,6 +68,8 @@ def repro(
     print(f"コンパイル完了 ({built.seconds:.1f}s, {built.binary.stat().st_size} bytes)", file=out)
 
     if not fetch.needs_testdata(problem):
+        if problem.compare.kind == "exit_code":
+            return _self_check(problem, submission, env, built.binary, out)
         print("テストデータを使わない問題です。組めたので終わります。", file=out)
         return 0
 
@@ -113,6 +115,31 @@ def repro(
         file=out,
     )
     return 1 if failures else 0
+
+
+def _self_check(
+    problem: Problem, submission: Path, env: env_mod.Environment, binary: Path, out: TextIO
+) -> int:
+    """exit_code の問題。空の入力で 1 回走らせて、終了コードを見る。"""
+    name = run_mod.SELF_CHECK_CASE
+    work = work_dir(problem, submission, env.name)
+    actual, stderr = work / f"{name}.out", work / f"{name}.err"
+    execute.warmup(binary, tle_sec=problem.limits.tle_sec)
+    result = execute.run(
+        binary, stdin_path=None, stdout_path=actual, stderr_path=stderr,
+        tle_sec=problem.limits.tle_sec,
+    )
+    status, detail = run_mod.judge_exit_code(result, problem, stderr)
+    print(f"  {status:3} {name}  {result.wall_ms} ms  {result.max_rss_kb} KB", file=out)
+    if status == "AC":
+        print("\n終了コード 0 で走り切りました", file=out)
+        return 0
+    print(f"\n--- {name}: {status} ({result.wall_ms} ms, {result.max_rss_kb} KB)", file=out)
+    if detail:
+        print(detail, file=out)
+    print(f"標準出力   {actual}", file=out)
+    print(f"stderr     {stderr}", file=out)
+    return 1
 
 
 def _report(report: CaseReport, out: TextIO) -> None:

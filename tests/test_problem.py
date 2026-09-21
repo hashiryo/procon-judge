@@ -74,6 +74,18 @@ def test_none_source_requires_compile_only(tmp_path):
         problem_mod.load(make(tmp_path, "x", body))
 
 
+def test_none_source_accepts_exit_code(tmp_path):
+    body = MINIMAL.format(id="x").replace('kind = "compile_only"', 'kind = "exit_code"')
+    p = problem_mod.load(make(tmp_path, "x", body))
+    assert p.compare.kind == "exit_code"
+
+
+def test_exit_code_requires_none_source(tmp_path):
+    body = with_source("x", "aoj", "1").replace('kind = "compile_only"', 'kind = "exit_code"')
+    with pytest.raises(problem_mod.ProblemError, match="exit_code"):
+        problem_mod.load(make(tmp_path, "x", body))
+
+
 def test_submissions_skip_underscore_prefix(tmp_path):
     directory = make(tmp_path, "x")
     (directory / "submissions").mkdir()

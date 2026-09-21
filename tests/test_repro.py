@@ -82,6 +82,23 @@ def test_repro_stops_after_building_a_compile_only_problem(tmp_path, local_env):
     assert "組めたので終わります" in text
 
 
+def test_repro_runs_an_exit_code_problem_once(tmp_path, local_env):
+    directory = tmp_path / "tmp-raw"
+    directory.mkdir()
+    (directory / "problem.toml").write_text(
+        RAW_TOML.replace('kind = "compile_only"', 'kind = "exit_code"')
+    )
+    (directory / "submissions").mkdir()
+    (directory / "submissions" / "sol.cpp").write_text(
+        "#include <cassert>\nint main() { assert(false); }\n"
+    )
+    problem = problem_mod.load(directory)
+    code, text = run_repro(problem, local_env)
+    assert code == 1
+    assert "RE  self" in text
+    assert "stderr" in text
+
+
 def test_unified_diff_is_capped(tmp_path):
     expected = tmp_path / "e"
     actual = tmp_path / "a"

@@ -864,7 +864,7 @@ Pages のデプロイはサイト全体の差し替えです。変わった問�
 | `state.json` | jsonl の走査が遅くなってから |
 | 保管庫 | AOJ や yukicoder の問題を足すとき |
 | `aoj`、`yukicoder`、`manual` の取得 | 同じとき |
-| `compare.kind` の `float` と `exit_code` | 必要な問題が出てから |
+| `compare.kind` の `float` | 必要な問題が出てから |
 | ヘッダ別の JSON | 最初の `mylib/...` を使う提出を移すとき |
 | 提出ページと `pj bundle` | 時系列を見たくなってから |
 | コメント除去の正規化 | 余分な再実行が気になってから |
@@ -1510,6 +1510,26 @@ source = "https://github.com/hashiryo/Library/blob/{sha}/mylib/{path}"
 ### 順位表の側
 
 `data/problems/<id>.json` に `pages` (提出 → 提出ページのパス)、`url` (元の問題のページ)、行ごとの `reason` を足しました。`url` は取得元が判定サイトのときだけ分かります。順位表の提出名はリンクになり、参考の印の title に理由が入ります。
+
+## exit_code の実装の記録
+
+`compare.kind = "exit_code"` を入れました。最初の `raw` の問題でもあります。題材は Library の `test/sample_test/` にある STANDALONE のテストで、提出が入力と期待出力を自分で持っていて `assert` で確かめます。ファイルはそのまま `submissions/<名前>.cpp` に置けます。`competitive-verifier` のコメント行だけ落としています。
+
+### 1 回だけ走らせて、ケースの名前は self にします
+
+テストケースが無いので、空の標準入力で 1 回走らせます。TLE と MLE と RE の判定は `judge_case` と同じで、そこを `judge_limits` に切り出して共有しました。走り切って終了コードが 0 なら AC です。記録の形は他の問題と同じにして、`case_count` を 1、ケースの名前を `self` にしています。`failed_cases` とサイトの「失敗」の節がそのまま使えます。計測区間が無いので `algo_time_ns` は残りません。空打ちは他の問題と同じにしています。
+
+### 落ちたときは stderr の末尾を添えます
+
+期待出力が無いので、落ちたときの手がかりは stderr しかありません。`assert` の文言がそこに出るので、`failed_case.detail` に `signal 6` などの状態に続けて stderr の末尾を入れます。長さの上限は差分と同じ `DIFF_HEAD_CHARS` です。
+
+### 組み合わせは source = "none" に限ります
+
+`exit_code` は `testdata.source = "none"` の問題でしか使えないようにしました。テストデータがあるのに終了コードだけ見る形に意味が無いからです。逆に `none` で使える比較は `compile_only` と `exit_code` の 2 つです。
+
+### サイトの表示
+
+取得元のラベルは `無し (自己検証)` で、注意書きは「提出が自分で持っている入出力で検証して、終了コード 0 で走り切れば AC」です。`compile_only` の「コンパイルのみ」と区別しないと、走らせていないように読めます。`pj repro` も 1 回走らせて、落ちたときは stderr の場所を出します。
 
 ## 既存リポジトリから移すもの
 

@@ -1,0 +1,15 @@
+id = "atcoder-typical90-bp"
+title = "068 - Paired Information"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

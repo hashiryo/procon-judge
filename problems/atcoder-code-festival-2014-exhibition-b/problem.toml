@@ -1,0 +1,15 @@
+id = "atcoder-code-festival-2014-exhibition-b"
+title = "カッコつけ"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

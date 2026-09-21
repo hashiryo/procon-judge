@@ -1,0 +1,15 @@
+id = "atcoder-soundhound2018-summer-final-e"
+title = "Hash Swapping"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

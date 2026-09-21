@@ -1,0 +1,15 @@
+id = "yuki-1421"
+title = "国勢調査 (Hard)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

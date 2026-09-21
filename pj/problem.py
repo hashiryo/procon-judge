@@ -15,8 +15,8 @@ TESTDATA_SOURCES = frozenset(
     {"library_checker", "aoj", "yukicoder", "manual", "local", "none"}
 )
 PLANNED_TESTDATA_SOURCES: frozenset[str] = frozenset()
-COMPARE_KINDS = frozenset({"tokens", "checker", "compile_only"})
-PLANNED_COMPARE_KINDS = frozenset({"float", "exit_code"})
+COMPARE_KINDS = frozenset({"tokens", "checker", "compile_only", "exit_code"})
+PLANNED_COMPARE_KINDS = frozenset({"float"})
 
 # id の接頭辞は問題そのものの出どころを表す (DESIGN.md「problem.toml」)。判定サイトから
 # 取るテストデータはその出どころの問題にしか付かないので、食い違っていたらどちらかが
@@ -164,8 +164,13 @@ def load(problem_dir: Path) -> Problem:
 
     if source == "none":
         _require(
-            kind == "compile_only",
-            f"{toml_path}: testdata.source = 'none' で使える compare.kind は 'compile_only' です",
+            kind in ("compile_only", "exit_code"),
+            f"{toml_path}: testdata.source = 'none' で使える compare.kind は 'compile_only' か 'exit_code' です",
+        )
+    if kind == "exit_code":
+        _require(
+            source == "none",
+            f"{toml_path}: compare.kind = 'exit_code' は testdata.source = 'none' の問題で使います",
         )
 
     if harness_kind == "base":

@@ -675,6 +675,18 @@ def test_compile_only_says_so(tmp_path):
     assert payload["generator"] is None
 
 
+def test_exit_code_says_so(tmp_path):
+    problem = none_problem(tmp_path)
+    (problem.dir / "problem.toml").write_text(
+        NONE_TOML.replace('kind = "compile_only"', 'kind = "exit_code"')
+    )
+    problem = problem_mod.load(problem.dir)
+    payload = site_build.problem_payload("tmp-none", problem, [], "2026-01-01T00:00:00Z")
+    assert payload["source_label"] == "無し (自己検証)"
+    assert payload["caution"] is True
+    assert "終了コード" in payload["note"]
+
+
 def test_judge_testdata_has_no_note(tmp_path, envs):
     problem = fresh_problem(tmp_path)
     directory = problem.dir

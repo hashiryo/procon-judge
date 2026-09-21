@@ -282,7 +282,10 @@ OFFICIAL_SOURCES = frozenset({"library_checker", "aoj", "yukicoder"})
 CAUTION_SOURCES = frozenset({"local", "none"})
 
 
-def source_label(source: str) -> str:
+def source_label(source: str, compare_kind: str = "") -> str:
+    # none は「走らせない」と「提出が自分で検証する」の 2 通りあるので、比較の種別で分ける。
+    if source == "none" and compare_kind == "exit_code":
+        return "無し (自己検証)"
     return SOURCE_LABELS.get(source, source)
 
 
@@ -303,6 +306,11 @@ def testdata_note(problem: problem_mod.Problem | None) -> str | None:
             "メモリもこのケースに対する値です。"
         )
     if td.source == "none":
+        if problem.compare.kind == "exit_code":
+            return (
+                "テストケースがありません。提出が自分で持っている入出力で検証して、"
+                "終了コード 0 で走り切れば AC です。時間とメモリはその 1 回のものです。"
+            )
         return (
             "テストケースがありません。コンパイルが通るかだけを見ていて、AC は"
             "それを表します。時間とメモリは測っていません。"
@@ -366,7 +374,7 @@ def problem_payload(
         "title": problem.title if problem else problem_id,
         "url": problem_url(problem),
         "source": source,
-        "source_label": source_label(source),
+        "source_label": source_label(source, problem.compare.kind if problem else ""),
         "official": (source in OFFICIAL_SOURCES) if problem else None,
         "caution": source in CAUTION_SOURCES,
         "note": testdata_note(problem),
@@ -446,6 +454,9 @@ class SubmissionPage:
     caution: bool = False
     generator: str | None = None
     reference: str | None = None
+    # 取得元の表示名。空なら source から作る。none は比較の種別で表示が変わるので、
+    # problem_payload が決めたものを持ち回る。
+    source_label: str = ""
 
 
 def _ms(ns: int | None) -> str:
@@ -650,7 +661,7 @@ def submission_html(page: SubmissionPage, style_v: str) -> str:
         f'<span>問題 <a href="../../problems/{problem_html}">{esc(page.problem_id)}</a></span>',
     ]
     if page.source:
-        meta.append(f"<span>取得元 {esc(source_label(page.source))}</span>")
+        meta.append(f"<span>取得元 {esc(page.source_label or source_label(page.source))}</span>")
     if page.url:
         meta.append(f'<span><a href="{esc(page.url)}">原題</a></span>')
     stale = sum(1 for c in page.cells if c.current is False)
@@ -1009,6 +1020,7 @@ def build(store: Store, out: Path) -> Summary:
                         title=payload["title"],
                         url=payload["url"],
                         source=payload["source"],
+                        source_label=payload["source_label"],
                         submission=submission,
                         cells=mine,
                         env_names=env_names,

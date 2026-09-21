@@ -34,10 +34,16 @@ def machine(local_env):
     return run_mod.Machine.detect(local_env)
 
 
-def make_problem(tmp_path, source):
+# 自己検証の提出。空の入力で走らせて終了コードだけを見る。
+EXIT_TOML = RAW_TOML.replace('kind = "compile_only"', 'kind = "exit_code"').replace(
+    'title = "compile only"', 'title = "exit code"'
+)
+
+
+def make_problem(tmp_path, source, toml=RAW_TOML):
     directory = tmp_path / "tmp-raw"
     directory.mkdir()
-    (directory / "problem.toml").write_text(RAW_TOML)
+    (directory / "problem.toml").write_text(toml)
     (directory / "submissions").mkdir()
     (directory / "submissions" / "sol.cpp").write_text(source)
     return problem_mod.load(directory)
@@ -62,6 +68,29 @@ def test_compiling_submission_is_ac(tmp_path, local_env, machine):
     assert record.cpu_model
     assert record.key == worklist.jobs[0].key
     assert "-I" in record.cxxflags
+
+
+def test_exit_code_runs_once_and_is_ac_on_zero(tmp_path, local_env, machine):
+    problem = make_problem(tmp_path, "int main() { return 0; }\n", toml=EXIT_TOML)
+    record = run_mod.execute_job(worklist_for(problem, local_env, machine).jobs[0])
+    assert record.status == "AC"
+    assert record.case_count == 1
+    assert record.algo_time_max_ns is None
+    assert record.failed_cases == []
+    assert record.failed_case is None
+    assert record.binary_bytes and record.binary_bytes > 0
+
+
+def test_exit_code_nonzero_is_re_with_stderr(tmp_path, local_env, machine):
+    source = '#include <cstdio>\nint main() { std::fputs("boom\\n", stderr); return 3; }\n'
+    problem = make_problem(tmp_path, source, toml=EXIT_TOML)
+    record = run_mod.execute_job(worklist_for(problem, local_env, machine).jobs[0])
+    assert record.status == "RE"
+    assert record.case_count == 1
+    assert record.failed_cases == [run_mod.SELF_CHECK_CASE]
+    assert record.failed_case is not None
+    assert "exit 3" in record.failed_case.detail
+    assert "boom" in record.failed_case.detail
 
 
 def test_broken_submission_is_ce(tmp_path, local_env, machine):

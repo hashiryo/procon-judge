@@ -316,14 +316,12 @@ def _rest(
     return []
 
 
-def judge_case(
-    result: execute.RunResult,
-    case: fetch.Case,
-    problem: Problem,
-    actual_path: Path,
-    checker: Path | None,
-) -> tuple[str, str]:
-    """1 ケースの状態と、失敗したときの説明を返す。"""
+# exit_code の問題で 1 回だけ走らせる「ケース」の名前。記録の failed_cases とサイトに出る。
+SELF_CHECK_CASE = "self"
+
+
+def judge_limits(result: execute.RunResult, problem: Problem) -> tuple[str, str] | None:
+    """TLE / MLE / RE なら (状態, 説明) を返す。走り切っていれば None。"""
     if result.timed_out:
         return "TLE", f"{problem.limits.tle_sec} 秒を超えました"
     if result.max_rss_kb > problem.limits.mle_mb * 1024:
@@ -332,6 +330,19 @@ def judge_case(
         if result.term_signal is not None:
             return "RE", f"signal {result.term_signal}"
         return "RE", f"exit {result.exit_code}"
+    return None
+
+
+def judge_case(
+    result: execute.RunResult,
+    case: fetch.Case,
+    problem: Problem,
+    actual_path: Path,
+    checker: Path | None,
+) -> tuple[str, str]:
+    """1 ケースの状態と、失敗したときの説明を返す。"""
+    if (limit := judge_limits(result, problem)) is not None:
+        return limit
     verdict = compare_mod.compare(
         problem.compare.kind,
         input_path=case.in_path,
@@ -340,6 +351,60 @@ def judge_case(
         checker=checker,
     )
     return ("AC" if verdict.ok else "WA"), verdict.detail
+
+
+def judge_exit_code(
+    result: execute.RunResult, problem: Problem, stderr_path: Path
+) -> tuple[str, str]:
+    """exit_code の判定。走り切って終了コードが 0 なら AC。
+
+    期待出力が無いので、落ちたときの手がかりは stderr しかない。assert の文言が
+    そこに出るので、説明に末尾を添える。
+    """
+    limit = judge_limits(result, problem)
+    if limit is None:
+        return "AC", "exit 0"
+    status, detail = limit
+    tail = _stderr_tail(stderr_path)
+    return status, f"{detail}\n{tail}" if tail else detail
+
+
+def _stderr_tail(path: Path, limit: int = compare_mod.DIFF_HEAD_CHARS) -> str:
+    try:
+        text = path.read_text(errors="replace").strip()
+    except OSError:
+        return ""
+    return text[-limit:]
+
+
+def _self_check(job: Job, binary: Path, base: dict, binary_bytes: int) -> Record:
+    """exit_code の問題を 1 回走らせる。入力は空で、終了コードだけを見る。
+
+    テストケースが無いので、時間とメモリはこの 1 回のもの。計測区間は無いので
+    algo_time_ns は残らない。
+    """
+    problem, submission, env = job.problem, job.submission, job.env
+    work = _work_dir(problem, submission, env.name)
+    actual_path, stderr_path = work / "stdout", work / "stderr"
+    execute.warmup(binary, tle_sec=problem.limits.tle_sec)
+    result = execute.run(
+        binary,
+        stdin_path=None,
+        stdout_path=actual_path,
+        stderr_path=stderr_path,
+        tle_sec=problem.limits.tle_sec,
+    )
+    status, detail = judge_exit_code(result, problem, stderr_path)
+    head = detail.splitlines()[0] if detail else ""
+    _log(
+        f"    {status:3} {SELF_CHECK_CASE}  {result.wall_ms} ms  {result.max_rss_kb} KB"
+        + (f"  {head}" if status != "AC" else "")
+    )
+    outcome = CaseOutcome(
+        name=SELF_CHECK_CASE, status=status, time_ms=result.wall_ms,
+        memory_kb=result.max_rss_kb, algo_time_ns=result.algo_time_ns, detail=detail,
+    )
+    return _summarize(base, [outcome], binary_bytes)
 
 
 def execute_job(job: Job) -> Record:
@@ -364,7 +429,7 @@ def execute_job(job: Job) -> Record:
 
     base = {
         **describe(job),
-        "case_count": testcases.count if testcases else 0,
+        "case_count": testcases.count if testcases else int(problem.compare.kind == "exit_code"),
         "library_sha": library_sha(),
         "judge_sha": judge_sha(),
         "source_bytes": (problem.dir / submission).stat().st_size,
@@ -396,6 +461,8 @@ def execute_job(job: Job) -> Record:
 
     binary_bytes = built.binary.stat().st_size
     if testcases is None:
+        if problem.compare.kind == "exit_code":
+            return _self_check(job, built.binary, base, binary_bytes)
         return Record(
             **base, status="AC", time_max_ms=0, time_total_ms=0,
             algo_time_max_ns=None, algo_time_total_ns=None, memory_max_kb=0,
