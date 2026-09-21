@@ -1,5 +1,5 @@
 id = "aoj-DSL_2_B"
-title = "Range Sum Query"
+title = "Range Sum Query (RSQ)"
 
 [limits]
 tle_sec = 5.0

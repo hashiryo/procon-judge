@@ -1,5 +1,5 @@
 id = "yosupo-unionfind-with-potential-non-commutative-group"
-title = "Union Find with Potential (Non-Commutative Group)"
+title = "Unionfind with Potential (Non-Commutative Group)"
 
 [limits]
 tle_sec = 5.0

@@ -1,5 +1,5 @@
 id = "aoj-DSL_3_D"
-title = "Sliding Minimum Element"
+title = "Sliding Minimum Elements"
 
 [limits]
 tle_sec = 5.0

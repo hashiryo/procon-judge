@@ -1,5 +1,5 @@
 id = "aoj-3024"
-title = "Sequence Swapping"
+title = "RMQ 2"
 
 [limits]
 tle_sec = 5.0

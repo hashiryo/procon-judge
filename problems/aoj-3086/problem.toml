@@ -1,5 +1,5 @@
 id = "aoj-3086"
-title = "Rearranging a Sequence"
+title = "Partition"
 
 [limits]
 tle_sec = 5.0

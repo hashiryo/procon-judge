@@ -1,5 +1,5 @@
 id = "aoj-1242"
-title = "Area of Polygons (Lattice)"
+title = "Area of Polygons"
 
 [limits]
 tle_sec = 5.0

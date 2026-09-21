@@ -15,6 +15,7 @@ from . import fetch
 from . import plan as plan_mod
 from . import problem as problem_mod
 from . import run as run_mod
+from . import titles as titles_mod
 from .fetch import mirror
 from .paths import LIB_DIR, RESULTS_DIR, SITE_DIR
 from .site import build as site_build
@@ -85,6 +86,52 @@ def cmd_problems_check(args: argparse.Namespace) -> int:
     if failed:
         print(f"\n{failed} 件が通りませんでした", file=sys.stderr)
     return 1 if failed else 0
+
+
+def cmd_problems_titles(args: argparse.Namespace) -> int:
+    """題名を判定サイトの名前と突き合わせる。--fix で problem.toml を書き換える。"""
+    directories = problem_mod.all_problem_dirs()
+    if args.problem:
+        directories = [d for d in directories if d.name == args.problem]
+        if not directories:
+            return _die(f"問題 {args.problem!r} がありません")
+    titles = titles_mod.Titles()
+    mismatched = failed = 0
+    for directory in directories:
+        try:
+            p = problem_mod.load(directory)
+        except problem_mod.ProblemError as e:
+            print(f"NG  {directory.name}: {e}")
+            failed += 1
+            continue
+        try:
+            official = titles.official(p)
+        except titles_mod.TitleError as e:
+            print(f"??  {p.id}: 取れませんでした: {e}")
+            failed += 1
+            continue
+        if official is None:
+            print(f"--  {p.id}  ({p.testdata.source} には判定サイトの名前が無い)")
+            continue
+        if official == p.title:
+            print(f"OK  {p.id}  {p.title}")
+            continue
+        if args.fix:
+            try:
+                titles_mod.rewrite_title(directory / "problem.toml", official)
+            except titles_mod.TitleError as e:
+                print(f"NG  {p.id}: {e}")
+                failed += 1
+                continue
+            print(f"FIX {p.id}  {p.title!r} -> {official!r}")
+        else:
+            print(f"NG  {p.id}  {p.title!r} (判定サイトは {official!r})")
+            mismatched += 1
+    if mismatched:
+        print(f"\n{mismatched} 件が判定サイトと違います。--fix で書き換えます", file=sys.stderr)
+    if failed:
+        print(f"\n{failed} 件を確かめられませんでした", file=sys.stderr)
+    return 1 if (mismatched or failed) else 0
 
 
 def cmd_submissions_list(args: argparse.Namespace) -> int:
@@ -399,6 +446,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_check = problems.add_parser("check", help="problem.toml の検証")
     p_check.add_argument("--problem")
     p_check.set_defaults(func=cmd_problems_check)
+    p_titles = problems.add_parser("titles", help="題名を判定サイトの名前と突き合わせる")
+    p_titles.add_argument("--problem")
+    p_titles.add_argument("--fix", action="store_true", help="problem.toml を書き換える")
+    p_titles.set_defaults(func=cmd_problems_titles)
 
     submissions = sub.add_parser("submissions", help="提出").add_subparsers(
         dest="subcommand", required=True

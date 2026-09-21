@@ -135,6 +135,8 @@ kind = "checker"
 
 `id` はディレクトリ名と一致させます。検証で一致しなければエラーにします。
 
+`title` は表示にだけ使い、鍵には入りません。判定サイトから取っている問題は、`pj problems titles --fix` で判定サイトの名前に揃えます。手で書くと違う名前を付けてしまいます。移植のとき AOJ の 36 問のうち 24 問と yukicoder の 3 問がそうなっていて、AOJ の旧 API が消えていたので気づくのが遅れました。AOJ は新しいサイトの一覧の API から、yukicoder は問題の API から、Library Checker は `info.toml` から取ります。`local` や `manual` や `none` の問題には判定サイトの名前が無いので、手で付けます。
+
 id は `<出どころ>-<問題>` の形にします。出どころはテストデータの取得元ではなく、問題そのものがどこの問題かです。AtCoder の問題は `source = "none"` になりますが、id は `atcoder-` で始めます。
 
 | 出どころ | 接頭辞 | 例 |
@@ -645,6 +647,7 @@ arm では SIMDe を使います。手元の Mac が arm で提出先が x86 な
 ```
 pj problems list [--json]
 pj problems check                            problem.toml の検証
+pj problems titles [--fix]                   題名を判定サイトの名前と突き合わせる
 pj submissions list [--problem ID]
 pj fetch [--problem ID] [--all]              テストデータ取得
 pj testdata import --problem ID --dir PATH   手元で落としたものを取り込む

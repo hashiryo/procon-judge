@@ -1,5 +1,5 @@
 id = "aoj-3072"
-title = "Dice Game"
+title = "Coin and Die"
 
 [limits]
 tle_sec = 5.0
