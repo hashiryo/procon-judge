@@ -307,3 +307,21 @@ pre.source {
   line-height: 1.45;
   tab-size: 4;
 }
+
+/* ソースの色。Library が使っている shiki の github-light / github-dark と同じ値。
+   文法は解かないので、キーワード、文字列、数、コメント、指令、呼び出しの名前だけ。 */
+.hl-c { color: #6a737d; }
+.hl-k { color: #d73a49; }
+.hl-s { color: #032f62; }
+.hl-n { color: #005cc5; }
+.hl-f { color: #6f42c1; }
+.hl-p { color: #d73a49; }
+
+@media (prefers-color-scheme: dark) {
+  .hl-c { color: #8b949e; }
+  .hl-k { color: #ff7b72; }
+  .hl-s { color: #a5d6ff; }
+  .hl-n { color: #79c0ff; }
+  .hl-f { color: #d2a8ff; }
+  .hl-p { color: #ff7b72; }
+}

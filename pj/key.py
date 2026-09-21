@@ -31,7 +31,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -98,16 +98,24 @@ def normalize(text: str) -> str:
     return "\n".join(line for line in lines if line)
 
 
+def lex(text: str) -> Iterator[tuple[str, str]]:
+    """ソースを (種類, 文字列) の列にする。空白もコメントも落とさず、全部繋ぐと元に戻る。
+
+    種類は directive / space / comment / raw / string / char / number / ident /
+    punct のどれか。正規化とサイトの色付けの両方がこれを使う。
+    """
+    for match in _TOKEN_RE.finditer(text):
+        yield match.lastgroup or "punct", match.group()
+
+
 def tokenize(text: str) -> list[str]:
     """C++ のソースをトークンの列にする。コメントと空白は落とす。"""
     # 行継続はプリプロセッサが最初に繋ぐので、ここでも先に繋ぐ。
     text = text.replace("\r\n", "\n").replace("\\\n", "")
     out: list[str] = []
-    for match in _TOKEN_RE.finditer(text):
-        kind = match.lastgroup
+    for kind, piece in lex(text):
         if kind in ("space", "comment"):
             continue
-        piece = match.group()
         out.append(_squash_directive(piece) if kind == "directive" else piece)
     return out
 

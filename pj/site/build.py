@@ -35,6 +35,7 @@ from ..freshness import Diff, Freshness
 from ..paths import ROOT
 from ..record import judge_sha, library_sha
 from ..store import Store
+from .highlight import highlight
 
 TEMPLATES = Path(__file__).resolve().parent / "templates"
 
@@ -484,7 +485,7 @@ def _includes_html(links: Sequence[IncludeLink] | None) -> str:
 def _source_html(text: str | None) -> str:
     if text is None:
         return '<p class="empty">提出のファイルが今のリポジトリにありません。</p>'
-    return f'<pre class="source mono">{esc(text)}</pre>'
+    return f'<pre class="source mono">{highlight(text)}</pre>'
 
 
 def submission_html(page: SubmissionPage, style_v: str) -> str:
