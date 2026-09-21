@@ -1,0 +1,16 @@
+id = "yuki-950"
+title = "行列累乗"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "950"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,13 @@
+#include <iostream>
+#include "mylib/algebra/ModInt.hpp"
+#include "mylib/number_theory/DirichletSeries.hpp"
+using namespace std;
+signed main() {
+ cin.tie(0);
+ ios::sync_with_stdio(0);
+ using Mint= ModInt<998244353>;
+ uint64_t n;
+ cin >> n;
+ cout << (Mint(1) / (Mint(2) - get_1<Mint>(n))).sum() << '\n';
+ return 0;
+}

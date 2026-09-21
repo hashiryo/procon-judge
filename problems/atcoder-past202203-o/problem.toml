@@ -1,0 +1,16 @@
+id = "atcoder-past202203-o"
+title = "O - 3-Permutation"
+url = "https://atcoder.jp/contests/past202203-open/tasks/past202203_o"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

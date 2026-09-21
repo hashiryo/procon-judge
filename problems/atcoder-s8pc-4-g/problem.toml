@@ -1,0 +1,16 @@
+id = "atcoder-s8pc-4-g"
+title = "G - Get the Salary of Atcoder"
+url = "https://atcoder.jp/contests/s8pc-4/tasks/s8pc_4_g"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

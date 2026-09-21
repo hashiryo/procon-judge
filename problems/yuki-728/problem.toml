@@ -1,0 +1,16 @@
+id = "yuki-728"
+title = "ギブ and テイク"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "728"
+
+[compare]
+kind = "tokens"

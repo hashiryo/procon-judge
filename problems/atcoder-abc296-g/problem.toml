@@ -1,0 +1,16 @@
+id = "atcoder-abc296-g"
+title = "G - Polygon and Points"
+url = "https://atcoder.jp/contests/abc296/tasks/abc296_g"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

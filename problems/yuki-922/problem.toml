@@ -1,0 +1,16 @@
+id = "yuki-922"
+title = "東北きりきざむたん"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "922"
+
+[compare]
+kind = "tokens"

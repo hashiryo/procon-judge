@@ -1,0 +1,16 @@
+id = "yosupo-division-of-polynomials"
+title = "Division of Polynomials"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "polynomial/division_of_polynomials"
+
+[compare]
+kind = "checker"

@@ -1,0 +1,16 @@
+id = "yosupo-shift-of-sampling-points-of-polynomial"
+title = "Shift of Sampling Points of Polynomial"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "polynomial/shift_of_sampling_points_of_polynomial"
+
+[compare]
+kind = "checker"

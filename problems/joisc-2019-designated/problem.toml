@@ -1,0 +1,17 @@
+id = "joisc-2019-designated"
+title = "joisc-2019-designated"
+url = "https://www2.ioi-jp.org/camp/2019/2019-sp-tasks/day3/designated.pdf"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "joisc-2019-designated"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,16 @@
+id = "yosupo-counting-eulerian-circuits"
+title = "Counting Eulerian Circuits"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "graph/counting_eulerian_circuits"
+
+[compare]
+kind = "checker"

@@ -1,0 +1,17 @@
+id = "loj-2340"
+title = "loj-2340"
+url = "https://loj.ac/p/2340"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "loj-2340"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,16 @@
+id = "yosupo-enumerate-primes"
+title = "Enumerate Primes"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 2048
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "number_theory/enumerate_primes"
+
+[compare]
+kind = "checker"

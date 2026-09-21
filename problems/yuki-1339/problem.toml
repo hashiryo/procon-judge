@@ -1,0 +1,16 @@
+id = "yuki-1339"
+title = "循環小数"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1339"
+
+[compare]
+kind = "tokens"

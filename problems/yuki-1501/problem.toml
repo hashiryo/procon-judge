@@ -1,0 +1,16 @@
+id = "yuki-1501"
+title = "酔歩"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1501"
+
+[compare]
+kind = "tokens"

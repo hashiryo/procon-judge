@@ -1,0 +1,16 @@
+id = "yosupo-dynamic-tree-subtree-add-subtree-sum"
+title = "Dynamic Tree Subtree Add Subtree Sum"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "tree/dynamic_tree_subtree_add_subtree_sum"
+
+[compare]
+kind = "checker"

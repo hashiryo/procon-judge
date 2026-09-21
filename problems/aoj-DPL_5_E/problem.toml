@@ -1,0 +1,16 @@
+id = "aoj-DPL_5_E"
+title = "Balls and Boxes 5"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "DPL_5_E"
+
+[compare]
+kind = "tokens"

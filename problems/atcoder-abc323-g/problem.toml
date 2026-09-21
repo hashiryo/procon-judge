@@ -1,0 +1,16 @@
+id = "atcoder-abc323-g"
+title = "G - Inversion of Tree"
+url = "https://atcoder.jp/contests/abc323/tasks/abc323_g"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

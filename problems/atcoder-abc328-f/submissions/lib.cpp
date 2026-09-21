@@ -1,0 +1,20 @@
+// ポテンシャルUF
+#include <iostream>
+#include "mylib/data_structure/UnionFind_Potentialized.hpp"
+using namespace std;
+signed main() {
+ cin.tie(0);
+ ios::sync_with_stdio(0);
+ int N, Q;
+ cin >> N >> Q;
+ UnionFind_Potentialized<long long> uf(N);
+ vector<int> S;
+ for(int i= 0; i < Q; ++i) {
+  int a, b, d;
+  cin >> a >> b >> d, --a, --b;
+  if(uf.unite(a, b, d)) S.push_back(i + 1);
+ }
+ for(int i= 0, m= S.size(); i < m; ++i) cout << (i ? " " : "") << S[i];
+ cout << '\n';
+ return 0;
+}

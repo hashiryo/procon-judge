@@ -1,0 +1,16 @@
+id = "atcoder-abc310-g"
+title = "G - Takahashi And Pass-The-Ball Game"
+url = "https://atcoder.jp/contests/abc310/tasks/abc310_g"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

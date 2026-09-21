@@ -297,6 +297,11 @@ def problem_hash(problem: Problem) -> str:
         },
         "compare": {"kind": problem.compare.kind},
     }
+    if problem.compare.kind == "float":
+        # 許容誤差を変えれば判定が変わる。float のときだけ足す。全問題に足すと
+        # 既存の記録が測り直しになる。
+        payload["compare"]["abs_tol"] = problem.compare.abs_tol
+        payload["compare"]["rel_tol"] = problem.compare.rel_tol
     if problem.testdata.source == "local":
         # ジェネレータと参照実装はリポジトリの中にあって、中身を変えれば出る
         # ケースが変わる。ファイル名だけでは足りない。

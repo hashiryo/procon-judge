@@ -1,0 +1,16 @@
+id = "yuki-665"
+title = "Bernoulli Bernoulli"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "665"
+
+[compare]
+kind = "tokens"

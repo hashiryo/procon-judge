@@ -1,0 +1,16 @@
+id = "aoj-0273"
+title = "Cats Going Straight II"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "0273"
+
+[compare]
+kind = "tokens"

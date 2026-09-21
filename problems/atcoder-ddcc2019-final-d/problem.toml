@@ -1,0 +1,16 @@
+id = "atcoder-ddcc2019-final-d"
+title = "D - DISCO!"
+url = "https://atcoder.jp/contests/ddcc2019-final/tasks/ddcc2019_final_d"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

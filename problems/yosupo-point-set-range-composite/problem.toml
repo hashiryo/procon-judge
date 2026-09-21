@@ -1,0 +1,16 @@
+id = "yosupo-point-set-range-composite"
+title = "Point Set Range Composite"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "data_structure/point_set_range_composite"
+
+[compare]
+kind = "checker"

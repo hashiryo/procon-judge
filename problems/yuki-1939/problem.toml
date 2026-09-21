@@ -1,0 +1,16 @@
+id = "yuki-1939"
+title = "Numbered Colorful Balls"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1939"
+
+[compare]
+kind = "tokens"

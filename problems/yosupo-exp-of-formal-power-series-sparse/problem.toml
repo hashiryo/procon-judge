@@ -1,0 +1,16 @@
+id = "yosupo-exp-of-formal-power-series-sparse"
+title = "Exp of Formal Power Series (Sparse)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "polynomial/exp_of_formal_power_series_sparse"
+
+[compare]
+kind = "checker"

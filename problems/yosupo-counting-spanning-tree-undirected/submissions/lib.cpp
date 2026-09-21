@@ -1,0 +1,23 @@
+#include <iostream>
+#include <vector>
+#include "mylib/algebra/LU_Decomposition.hpp"
+#include "mylib/algebra/ModInt.hpp"
+using namespace std;
+signed main() {
+ cin.tie(0);
+ ios::sync_with_stdio(0);
+ using Mint= ModInt<998244353>;
+ int N, M;
+ cin >> N >> M;
+ Matrix<Mint> A(N, N);
+ for(int i= 0; i < M; ++i) {
+  int u, v;
+  cin >> u >> v;
+  A[u][u]+= 1;
+  A[v][v]+= 1;
+  A[u][v]-= 1;
+  A[v][u]-= 1;
+ }
+ cout << LU_Decomposition(A.submatrix_rm({0}, {0})).det() << '\n';
+ return 0;
+}

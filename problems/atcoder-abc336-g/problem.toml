@@ -1,0 +1,16 @@
+id = "atcoder-abc336-g"
+title = "G - 16 Integers"
+url = "https://atcoder.jp/contests/abc336/tasks/abc336_g"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

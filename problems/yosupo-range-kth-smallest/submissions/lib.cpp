@@ -1,0 +1,19 @@
+#include <iostream>
+#include <vector>
+#include "mylib/data_structure/WaveletMatrix.hpp"
+using namespace std;
+signed main() {
+ cin.tie(0);
+ ios::sync_with_stdio(0);
+ int N, Q;
+ cin >> N >> Q;
+ vector<int> a(N);
+ for(int i= 0; i < N; i++) cin >> a[i];
+ WaveletMatrix wm(a);
+ while(Q--) {
+  int l, r, k;
+  cin >> l >> r >> k;
+  cout << wm.kth_smallest(l, r, k) << "\n";
+ }
+ return 0;
+}

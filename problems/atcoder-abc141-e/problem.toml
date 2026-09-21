@@ -1,0 +1,16 @@
+id = "atcoder-abc141-e"
+title = "E - Who Says a Pun?"
+url = "https://atcoder.jp/contests/abc141/tasks/abc141_e"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

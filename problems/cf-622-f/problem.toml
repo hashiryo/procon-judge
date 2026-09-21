@@ -1,0 +1,17 @@
+id = "cf-622-f"
+title = "cf-622-f"
+url = "https://codeforces.com/contest/622/problem/F"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "cf-622-f"
+
+[compare]
+kind = "tokens"

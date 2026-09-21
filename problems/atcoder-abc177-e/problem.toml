@@ -1,0 +1,16 @@
+id = "atcoder-abc177-e"
+title = "E - Coprime"
+url = "https://atcoder.jp/contests/abc177/tasks/abc177_e"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

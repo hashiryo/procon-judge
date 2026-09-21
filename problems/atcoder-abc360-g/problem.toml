@@ -1,0 +1,16 @@
+id = "atcoder-abc360-g"
+title = "G - Suitable Edit for LIS"
+url = "https://atcoder.jp/contests/abc360/tasks/abc360_g"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

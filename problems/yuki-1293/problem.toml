@@ -1,0 +1,16 @@
+id = "yuki-1293"
+title = "2種類の道路"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1293"
+
+[compare]
+kind = "tokens"

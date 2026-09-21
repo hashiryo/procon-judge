@@ -1,0 +1,16 @@
+id = "atcoder-abc179-c"
+title = "C - A x B + C"
+url = "https://atcoder.jp/contests/abc179/tasks/abc179_c"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

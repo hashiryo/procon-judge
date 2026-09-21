@@ -52,10 +52,11 @@ def test_asset_name_is_derived_from_the_problem_id(tmp_path):
     assert mirror.asset_name(problem) == "aoj-DSL_2_B.tar.zst"
 
 
-def test_regenerable_sources_are_not_mirrored(tmp_path):
-    # ジェネレータから決定的に作れるものは保管しない。容量を食うだけ。
-    assert mirror.REGENERABLE_SOURCES == {"library_checker", "local"}
-    assert not mirror.should_mirror(make_problem(tmp_path, "a", "library_checker"))
+def test_only_local_is_not_mirrored(tmp_path):
+    # リポジトリの中から生成するものだけ保管しない。library_checker も生成し直せるが、
+    # 130 問で 10 GB を超えて actions/cache に載らないので保管する (再現性は pin が持つ)。
+    assert mirror.REGENERABLE_SOURCES == {"local"}
+    assert mirror.should_mirror(make_problem(tmp_path, "a", "library_checker"))
     assert mirror.should_mirror(make_problem(tmp_path, "c", "aoj"))
     assert mirror.should_mirror(make_problem(tmp_path, "d", "yukicoder"))
     assert mirror.should_mirror(make_problem(tmp_path, "e", "manual"))

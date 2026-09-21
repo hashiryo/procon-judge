@@ -1,0 +1,16 @@
+id = "atcoder-abc253-h"
+title = "Ex - We Love Forest"
+url = "https://atcoder.jp/contests/abc253/tasks/abc253_h"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

@@ -1,0 +1,16 @@
+id = "atcoder-s8pc-2-e"
+title = "atcoder-s8pc-2-e"
+url = "https://atcoder.jp/contests/s8pc_2/tasks/s8pc_2_e"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

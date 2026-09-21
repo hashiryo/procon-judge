@@ -1,0 +1,18 @@
+id = "aoj-2626"
+title = "Gravity Point"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "2626"
+
+[compare]
+kind = "float"
+abs_tol = 1e-08
+rel_tol = 1e-08

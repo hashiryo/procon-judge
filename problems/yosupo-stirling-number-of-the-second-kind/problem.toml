@@ -1,0 +1,16 @@
+id = "yosupo-stirling-number-of-the-second-kind"
+title = "Stirling Number of the Second Kind"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "enumerative_combinatorics/stirling_number_of_the_second_kind"
+
+[compare]
+kind = "checker"

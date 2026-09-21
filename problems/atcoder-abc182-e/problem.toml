@@ -1,0 +1,16 @@
+id = "atcoder-abc182-e"
+title = "E - Akari"
+url = "https://atcoder.jp/contests/abc182/tasks/abc182_e"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

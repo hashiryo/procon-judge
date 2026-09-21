@@ -1,0 +1,17 @@
+id = "loj-6787"
+title = "loj-6787"
+url = "https://loj.ac/p/6787"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "loj-6787"
+
+[compare]
+kind = "tokens"

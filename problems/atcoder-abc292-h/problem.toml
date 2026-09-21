@@ -1,0 +1,16 @@
+id = "atcoder-abc292-h"
+title = "Ex - Rating Estimator"
+url = "https://atcoder.jp/contests/abc292/tasks/abc292_h"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

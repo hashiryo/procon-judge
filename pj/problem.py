@@ -15,8 +15,8 @@ TESTDATA_SOURCES = frozenset(
     {"library_checker", "aoj", "yukicoder", "manual", "local", "none"}
 )
 PLANNED_TESTDATA_SOURCES: frozenset[str] = frozenset()
-COMPARE_KINDS = frozenset({"tokens", "checker", "compile_only", "exit_code"})
-PLANNED_COMPARE_KINDS = frozenset({"float"})
+COMPARE_KINDS = frozenset({"tokens", "float", "checker", "compile_only", "exit_code"})
+PLANNED_COMPARE_KINDS: frozenset[str] = frozenset()
 
 # id の接頭辞は問題そのものの出どころを表す (DESIGN.md「problem.toml」)。判定サイトから
 # 取るテストデータはその出どころの問題にしか付かないので、食い違っていたらどちらかが
@@ -50,6 +50,9 @@ class Testdata:
 @dataclass(frozen=True)
 class Compare:
     kind: str = "tokens"
+    # kind = "float" の許容誤差。絶対誤差か相対誤差のどちらかに収まれば同じとみなす。
+    abs_tol: float = 0.0
+    rel_tol: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -61,6 +64,9 @@ class Problem:
     limits: Limits
     testdata: Testdata
     compare: Compare
+    # 元の問題のページ。判定サイトから取る問題は source と name から組めるので書かない。
+    # none (AtCoder や自己検証) と manual の問題だけが持つ。表示にしか使わない。
+    url: str = ""
     raw: dict = field(repr=False, default_factory=dict)
 
     @property
@@ -160,7 +166,21 @@ def load(problem_dir: Path) -> Problem:
         kind in COMPARE_KINDS,
         f"{toml_path}: compare.kind {kind!r} は {sorted(COMPARE_KINDS)} のいずれかです",
     )
-    compare = Compare(kind=kind)
+    compare = Compare(
+        kind=kind,
+        abs_tol=float(cmp_raw.get("abs_tol", 0.0)),
+        rel_tol=float(cmp_raw.get("rel_tol", 0.0)),
+    )
+    if kind == "float":
+        _require(
+            compare.abs_tol > 0 or compare.rel_tol > 0,
+            f"{toml_path}: compare.kind = 'float' には正の abs_tol か rel_tol が必要です",
+        )
+    else:
+        _require(
+            "abs_tol" not in cmp_raw and "rel_tol" not in cmp_raw,
+            f"{toml_path}: abs_tol と rel_tol は compare.kind = 'float' でだけ使います",
+        )
 
     if source == "none":
         _require(
@@ -187,6 +207,7 @@ def load(problem_dir: Path) -> Problem:
         limits=limits,
         testdata=testdata,
         compare=compare,
+        url=str(raw.get("url", "")),
         raw=raw,
     )
 

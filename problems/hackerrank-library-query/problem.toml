@@ -1,0 +1,17 @@
+id = "hackerrank-library-query"
+title = "hackerrank-library-query"
+url = "https://www.hackerrank.com/challenges/library-query/problem"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "hackerrank-library-query"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,16 @@
+id = "yuki-1418"
+title = "Sum of Sum of Subtree Size"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1418"
+
+[compare]
+kind = "tokens"

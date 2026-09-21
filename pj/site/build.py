@@ -247,7 +247,10 @@ def submission_page(problem_id: str, submission: str) -> str | None:
 
 
 # id の接頭辞。問題の定義の表 (DESIGN.md の「problem.toml」) と同じ。無ければ自作。
-KNOWN_ORIGINS = ("yosupo", "aoj", "yuki", "atcoder", "loj", "hackerrank", "cses", "joisc")
+KNOWN_ORIGINS = (
+    "yosupo", "aoj", "yuki", "atcoder", "loj", "hackerrank", "cses", "joisc",
+    "cf", "ojuz", "codechef", "kattis", "luogu",
+)
 OWN_ORIGIN = "自作"
 
 
@@ -327,6 +330,9 @@ def problem_url(problem: problem_mod.Problem | None) -> str | None:
     """元の問題のページ。判定サイトから取っている問題だけ分かる。"""
     if problem is None:
         return None
+    if problem.url:
+        # none と manual の問題は source から組めないので、problem.toml に書いてある。
+        return problem.url
     source, name = problem.testdata.source, problem.testdata.name
     if source == "library_checker":
         return f"https://judge.yosupo.jp/problem/{name.rsplit('/', 1)[-1]}"

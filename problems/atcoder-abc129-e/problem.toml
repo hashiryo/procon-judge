@@ -1,0 +1,16 @@
+id = "atcoder-abc129-e"
+title = "E - Sum Equals Xor"
+url = "https://atcoder.jp/contests/abc129/tasks/abc129_e"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

@@ -1,0 +1,16 @@
+id = "aoj-0269"
+title = "East Wind"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "0269"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,16 @@
+id = "yuki-1907"
+title = "DETERMINATION"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1907"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,17 @@
+id = "hackerrank-cutting-the-string"
+title = "hackerrank-cutting-the-string"
+url = "https://www.hackerrank.com/contests/101hack50/challenges/cutting-the-string"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "hackerrank-cutting-the-string"
+
+[compare]
+kind = "tokens"

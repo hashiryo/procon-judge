@@ -1,0 +1,16 @@
+id = "yuki-737"
+title = "PopCount"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "737"
+
+[compare]
+kind = "tokens"

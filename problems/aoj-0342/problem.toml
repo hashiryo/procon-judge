@@ -1,0 +1,18 @@
+id = "aoj-0342"
+title = "Road Planning"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "0342"
+
+[compare]
+kind = "float"
+abs_tol = 1e-08
+rel_tol = 1e-08

@@ -1,0 +1,17 @@
+id = "hackerrank-morgan-and-a-string"
+title = "hackerrank-morgan-and-a-string"
+url = "https://www.hackerrank.com/challenges/morgan-and-a-string"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "hackerrank-morgan-and-a-string"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,16 @@
+id = "yuki-310"
+title = "2文字しりとり"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "310"
+
+[compare]
+kind = "tokens"

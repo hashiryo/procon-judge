@@ -1,0 +1,16 @@
+id = "atcoder-abc276-g"
+title = "G - Count Sequences"
+url = "https://atcoder.jp/contests/abc276/tasks/abc276_g"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

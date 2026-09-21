@@ -1,0 +1,16 @@
+id = "atcoder-abc330-f"
+title = "F - Minimize Bounding  Square"
+url = "https://atcoder.jp/contests/abc330/tasks/abc330_f"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

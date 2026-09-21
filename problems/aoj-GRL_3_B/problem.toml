@@ -1,0 +1,16 @@
+id = "aoj-GRL_3_B"
+title = "Bridges"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "GRL_3_B"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,16 @@
+id = "yuki-1153"
+title = "ねこちゃんゲーム"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1153"
+
+[compare]
+kind = "tokens"

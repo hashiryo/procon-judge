@@ -1,0 +1,18 @@
+id = "aoj-CGL_7_I"
+title = "Area of Intersection between Two Circles"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "CGL_7_I"
+
+[compare]
+kind = "float"
+abs_tol = 1e-06
+rel_tol = 1e-06

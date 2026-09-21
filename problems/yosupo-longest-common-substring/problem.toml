@@ -1,0 +1,16 @@
+id = "yosupo-longest-common-substring"
+title = "Longest Common Substring"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "string/longest_common_substring"
+
+[compare]
+kind = "checker"

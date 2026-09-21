@@ -1,0 +1,16 @@
+id = "yuki-685"
+title = "Logical Operations"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "685"
+
+[compare]
+kind = "tokens"

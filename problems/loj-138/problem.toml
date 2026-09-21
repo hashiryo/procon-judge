@@ -1,0 +1,17 @@
+id = "loj-138"
+title = "loj-138"
+url = "https://loj.ac/p/138"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "loj-138"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,16 @@
+id = "cf-gym102576-c"
+title = "cf-gym102576-c"
+url = "https://codeforces.com/gym/102576/problem/C"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

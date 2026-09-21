@@ -1,0 +1,16 @@
+id = "yosupo-dynamic-tree-vertex-add-path-sum"
+title = "Dynamic Tree Vertex Add Path Sum"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "tree/dynamic_tree_vertex_add_path_sum"
+
+[compare]
+kind = "checker"

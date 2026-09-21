@@ -1,0 +1,18 @@
+id = "aoj-2972"
+title = "All your base are belong to us"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "2972"
+
+[compare]
+kind = "float"
+abs_tol = 0.0001
+rel_tol = 0.0001

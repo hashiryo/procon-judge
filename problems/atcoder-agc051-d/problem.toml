@@ -1,0 +1,16 @@
+id = "atcoder-agc051-d"
+title = "atcoder-agc051-d"
+url = "https://atcoder.jp/contests/goodbyeday2/tasks/agc051_d"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

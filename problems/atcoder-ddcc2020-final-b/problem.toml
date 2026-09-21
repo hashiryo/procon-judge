@@ -1,0 +1,16 @@
+id = "atcoder-ddcc2020-final-b"
+title = "B - Hawker on Graph"
+url = "https://atcoder.jp/contests/ddcc2020-final/tasks/ddcc2020_final_b"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

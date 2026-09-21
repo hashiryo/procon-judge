@@ -1,0 +1,16 @@
+id = "yosupo-sum-of-floor-of-linear"
+title = "Sum of Floor of Linear"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "number_theory/sum_of_floor_of_linear"
+
+[compare]
+kind = "checker"

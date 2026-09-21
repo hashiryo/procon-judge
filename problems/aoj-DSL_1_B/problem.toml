@@ -1,0 +1,16 @@
+id = "aoj-DSL_1_B"
+title = "Weighted Union Find Trees"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "DSL_1_B"
+
+[compare]
+kind = "tokens"

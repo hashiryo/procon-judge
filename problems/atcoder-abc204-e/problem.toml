@@ -1,0 +1,16 @@
+id = "atcoder-abc204-e"
+title = "E - Rush Hour 2"
+url = "https://atcoder.jp/contests/abc204/tasks/abc204_e"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

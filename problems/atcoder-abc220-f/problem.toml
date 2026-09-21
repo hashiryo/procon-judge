@@ -1,0 +1,16 @@
+id = "atcoder-abc220-f"
+title = "F - Distance Sums 2"
+url = "https://atcoder.jp/contests/abc220/tasks/abc220_f"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

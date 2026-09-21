@@ -1,0 +1,16 @@
+id = "yosupo-tetration-mod"
+title = "Tetration Mod"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "number_theory/tetration_mod"
+
+[compare]
+kind = "checker"

@@ -1,0 +1,16 @@
+id = "atcoder-abc154-e"
+title = "E - Almost Everywhere Zero"
+url = "https://atcoder.jp/contests/abc154/tasks/abc154_e"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

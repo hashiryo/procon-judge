@@ -1,0 +1,17 @@
+id = "loj-154"
+title = "loj-154"
+url = "https://loj.ac/p/154"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "loj-154"
+
+[compare]
+kind = "tokens"

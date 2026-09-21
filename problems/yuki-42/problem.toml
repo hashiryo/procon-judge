@@ -1,0 +1,16 @@
+id = "yuki-42"
+title = "貯金箱の溜息"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "42"
+
+[compare]
+kind = "tokens"

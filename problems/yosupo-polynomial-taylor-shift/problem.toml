@@ -1,0 +1,16 @@
+id = "yosupo-polynomial-taylor-shift"
+title = "Polynomial Taylor Shift"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "polynomial/polynomial_taylor_shift"
+
+[compare]
+kind = "checker"

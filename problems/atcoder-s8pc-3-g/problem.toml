@@ -1,0 +1,16 @@
+id = "atcoder-s8pc-3-g"
+title = "atcoder-s8pc-3-g"
+url = "https://atcoder.jp/contests/s8pc_3/tasks/s8pc_3_g"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

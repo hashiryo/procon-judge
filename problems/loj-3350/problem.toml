@@ -1,0 +1,17 @@
+id = "loj-3350"
+title = "loj-3350"
+url = "https://loj.ac/p/3350"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "loj-3350"
+
+[compare]
+kind = "tokens"

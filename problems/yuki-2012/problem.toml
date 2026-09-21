@@ -1,0 +1,16 @@
+id = "yuki-2012"
+title = "Largest Triangle"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "2012"
+
+[compare]
+kind = "tokens"

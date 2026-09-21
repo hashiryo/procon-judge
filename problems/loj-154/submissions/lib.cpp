@@ -1,0 +1,17 @@
+#include <iostream>
+#include <vector>
+#include "mylib/algebra/ModInt.hpp"
+#include "mylib/algebra/set_power_series.hpp"
+using namespace std;
+signed main() {
+ cin.tie(0);
+ ios::sync_with_stdio(false);
+ using Mint= ModInt<998244353>;
+ int n, m, k;
+ cin >> n >> m >> k;
+ vector<Mint> f(1 << n, 0);
+ for(int s; m--;) cin >> s, f[s]+= 1;
+ vector<Mint> F(k + 1, 1);
+ cout << sps::egf_comp(F, f)[(1 << n) - 1] << '\n';
+ return 0;
+}

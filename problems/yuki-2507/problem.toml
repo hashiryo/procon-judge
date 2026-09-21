@@ -1,0 +1,16 @@
+id = "yuki-2507"
+title = "Yet Another Subgraph Counting"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "2507"
+
+[compare]
+kind = "tokens"

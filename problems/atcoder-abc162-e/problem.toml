@@ -1,0 +1,16 @@
+id = "atcoder-abc162-e"
+title = "E - Sum of gcd of Tuples (Hard)"
+url = "https://atcoder.jp/contests/abc162/tasks/abc162_e"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

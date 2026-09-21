@@ -208,3 +208,143 @@ def test_the_cases_hash_moves_when_the_content_moves(tmp_path):
 def test_an_unusable_name_is_refused(tmp_path):
     with pytest.raises(fetch.FetchError):
         fetch.cache_dir_for(make(tmp_path, "p1", "aoj", "///"))
+
+
+# --- pin と保管庫 -----------------------------------------------------------
+
+
+@pytest.fixture
+def isolated_cache(tmp_path, monkeypatch):
+    monkeypatch.setattr(fetch, "TESTCASE_CACHE_DIR", tmp_path / "cache")
+    return tmp_path / "cache"
+
+
+def _fake_generate(commit):
+    from pj.fetch import library_checker
+
+    def generate(problem, dest):
+        dest.mkdir(parents=True, exist_ok=True)
+        (dest / "a.in").write_text("1\n")
+        (dest / "a.out").write_text("2\n")
+        return {library_checker.UPSTREAM_KEY: commit}
+
+    return generate
+
+
+def test_the_manifest_carries_extra_fields(tmp_path):
+    cases = cases_in(tmp_path, {"a": ("1\n", "2\n")})
+    fetch.write_manifest(tmp_path, cases, "library_checker", "x", {"upstream_commit": "abc"})
+    manifest = json.loads((tmp_path / fetch.MANIFEST_NAME).read_text())
+    assert manifest["upstream_commit"] == "abc"
+    assert manifest["cases_hash"]
+
+
+def test_a_local_cache_from_an_old_pin_is_rebuilt(tmp_path, isolated_cache, monkeypatch):
+    """pin を動かしたら、手元にあるものでも作り直す。"""
+    from pj.fetch import library_checker, mirror
+
+    monkeypatch.setattr(library_checker, "pinned_commit", lambda: "new")
+    monkeypatch.setattr(mirror, "available", lambda: False)
+    calls = []
+
+    def generate(problem, dest):
+        calls.append(problem.id)
+        return _fake_generate("new")(problem, dest)
+
+    monkeypatch.setattr(library_checker, "fetch", generate)
+    problem = make(tmp_path, "yosupo-x", "library_checker", "data_structure/x")
+
+    first = fetch.ensure(problem)
+    assert calls == ["yosupo-x"]
+    manifest = json.loads((first.dir / fetch.MANIFEST_NAME).read_text())
+    assert manifest[library_checker.UPSTREAM_KEY] == "new"
+
+    # 同じ pin なら手元のものを使う。
+    fetch.ensure(problem)
+    assert calls == ["yosupo-x"]
+
+    # pin が動いたら作り直す。
+    monkeypatch.setattr(library_checker, "pinned_commit", lambda: "newer")
+    monkeypatch.setattr(library_checker, "fetch", lambda p, d: (calls.append(p.id), _fake_generate("newer")(p, d))[1])
+    fetch.ensure(problem)
+    assert calls == ["yosupo-x", "yosupo-x"]
+
+
+def test_a_stale_mirror_asset_is_rebuilt_and_replaced(tmp_path, isolated_cache, monkeypatch):
+    """保管庫のものが古い pin なら、作り直して置き換える (force)。"""
+    from pj.fetch import library_checker, mirror
+
+    monkeypatch.setattr(library_checker, "pinned_commit", lambda: "new")
+    monkeypatch.setattr(library_checker, "fetch", _fake_generate("new"))
+    monkeypatch.setattr(mirror, "available", lambda: True)
+
+    def pull(problem, dest):
+        dest.mkdir(parents=True, exist_ok=True)
+        (dest / "a.in").write_text("1\n")
+        (dest / "a.out").write_text("2\n")
+        (dest / fetch.MANIFEST_NAME).write_text(
+            json.dumps({"cases_hash": "x", library_checker.UPSTREAM_KEY: "old"})
+        )
+        return True
+
+    pushes = []
+    monkeypatch.setattr(mirror, "pull", pull)
+    monkeypatch.setattr(mirror, "push", lambda p, d, force=False: pushes.append(force))
+    problem = make(tmp_path, "yosupo-x", "library_checker", "data_structure/x")
+
+    result = fetch.ensure(problem)
+    assert pushes == [True]
+    manifest = json.loads((result.dir / fetch.MANIFEST_NAME).read_text())
+    assert manifest[library_checker.UPSTREAM_KEY] == "new"
+
+
+def test_a_current_mirror_asset_is_used_as_is(tmp_path, isolated_cache, monkeypatch):
+    from pj.fetch import library_checker, mirror
+
+    monkeypatch.setattr(library_checker, "pinned_commit", lambda: "new")
+    monkeypatch.setattr(
+        library_checker, "fetch", lambda p, d: pytest.fail("原本を叩いてはいけない")
+    )
+    monkeypatch.setattr(mirror, "available", lambda: True)
+
+    def pull(problem, dest):
+        dest.mkdir(parents=True, exist_ok=True)
+        (dest / "a.in").write_text("1\n")
+        (dest / "a.out").write_text("2\n")
+        (dest / fetch.MANIFEST_NAME).write_text(
+            json.dumps({"cases_hash": "x", library_checker.UPSTREAM_KEY: "new"})
+        )
+        return True
+
+    monkeypatch.setattr(mirror, "pull", pull)
+    monkeypatch.setattr(mirror, "push", lambda p, d, force=False: pytest.fail("上げ直さない"))
+    problem = make(tmp_path, "yosupo-x", "library_checker", "data_structure/x")
+
+    result = fetch.ensure(problem)
+    manifest = json.loads((result.dir / fetch.MANIFEST_NAME).read_text())
+    # 書き直した manifest にも上流のコミットが残る。
+    assert manifest[library_checker.UPSTREAM_KEY] == "new"
+    assert manifest["cases_hash"] == result.cases_hash
+
+
+def test_other_sources_do_not_care_about_the_pin(tmp_path, isolated_cache, monkeypatch):
+    from pj.fetch import mirror
+
+    monkeypatch.setattr(mirror, "available", lambda: False)
+    problem = make(tmp_path, "aoj-x", "aoj", "x")
+    dest = fetch.cache_dir_for(problem)
+    dest.mkdir(parents=True)
+    cases = cases_in(dest, {"a": ("1\n", "2\n")})
+    fetch.write_manifest(dest, cases, "aoj", "x")
+    monkeypatch.setattr(fetch, "_fetch_from_origin", lambda p, d: pytest.fail("取り直さない"))
+    assert fetch.ensure(problem).cases_hash == fetch.compute_cases_hash(cases)
+
+
+def test_evict_removes_the_cache_directory(tmp_path, isolated_cache):
+    problem = make(tmp_path, "aoj-x", "aoj", "x")
+    dest = fetch.cache_dir_for(problem)
+    dest.mkdir(parents=True)
+    (dest / "a.in").write_text("1\n")
+    fetch.evict(problem)
+    assert not dest.exists()
+    fetch.evict(problem)  # 無くても平気

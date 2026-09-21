@@ -1,0 +1,16 @@
+id = "yuki-8030"
+title = "ミラー・ラビン素数判定法のテスト"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "8030"
+
+[compare]
+kind = "tokens"

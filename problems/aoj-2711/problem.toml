@@ -1,0 +1,16 @@
+id = "aoj-2711"
+title = "Nearly Cyclic String"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "2711"
+
+[compare]
+kind = "tokens"

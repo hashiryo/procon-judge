@@ -1,0 +1,16 @@
+id = "yosupo-exp-of-set-power-series"
+title = "Exp of Set Power Series"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "set_power_series/exp_of_set_power_series"
+
+[compare]
+kind = "checker"

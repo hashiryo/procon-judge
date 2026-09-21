@@ -1,0 +1,16 @@
+id = "yosupo-static-range-inversions-query"
+title = "Static Range Inversions Query"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "data_structure/static_range_inversions_query"
+
+[compare]
+kind = "checker"

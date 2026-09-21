@@ -1,0 +1,16 @@
+id = "atcoder-arc097-f"
+title = "atcoder-arc097-f"
+url = "https://atcoder.jp/contests/arc097/tasks/arc097_f"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

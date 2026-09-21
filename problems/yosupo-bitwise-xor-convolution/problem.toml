@@ -1,0 +1,16 @@
+id = "yosupo-bitwise-xor-convolution"
+title = "Bitwise Xor Convolution"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "convolution/bitwise_xor_convolution"
+
+[compare]
+kind = "checker"

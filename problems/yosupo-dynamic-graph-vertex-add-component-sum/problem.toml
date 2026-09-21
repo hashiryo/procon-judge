@@ -1,0 +1,16 @@
+id = "yosupo-dynamic-graph-vertex-add-component-sum"
+title = "Dynamic Graph Vertex Add Component Sum"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "graph/dynamic_graph_vertex_add_component_sum"
+
+[compare]
+kind = "checker"

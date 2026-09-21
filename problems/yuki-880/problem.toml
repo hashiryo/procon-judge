@@ -1,0 +1,16 @@
+id = "yuki-880"
+title = "Yet Another Segment Tree Problem"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "880"
+
+[compare]
+kind = "tokens"

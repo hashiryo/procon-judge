@@ -1,0 +1,16 @@
+id = "yuki-430"
+title = "文字列検索"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "430"
+
+[compare]
+kind = "tokens"

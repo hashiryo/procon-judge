@@ -130,3 +130,28 @@ def test_source_without_a_prefix_never_warns(tmp_path):
     body = with_source("aoj-DSL_2_B", "manual")
     p = problem_mod.load(make(tmp_path, "aoj-DSL_2_B", body))
     assert problem_mod.warnings(p) == []
+
+
+def test_float_needs_a_tolerance(tmp_path):
+    body = MINIMAL.format(id="x").replace('source = "none"', 'source = "aoj"\nname = "1"')
+    body = body.replace('kind = "compile_only"', 'kind = "float"')
+    with pytest.raises(problem_mod.ProblemError, match="abs_tol"):
+        problem_mod.load(make(tmp_path, "x", body))
+    p = problem_mod.load(
+        make(tmp_path, "y", body.replace('id = "x"', 'id = "y"') + "abs_tol = 1e-6\nrel_tol = 1e-6\n")
+    )
+    assert p.compare.kind == "float"
+    assert p.compare.abs_tol == 1e-6 and p.compare.rel_tol == 1e-6
+
+
+def test_tolerances_belong_to_float_only(tmp_path):
+    body = MINIMAL.format(id="x") + "abs_tol = 1e-6\n"
+    with pytest.raises(problem_mod.ProblemError, match="float"):
+        problem_mod.load(make(tmp_path, "x", body))
+
+
+def test_url_is_optional_and_kept(tmp_path):
+    p = problem_mod.load(make(tmp_path, "x"))
+    assert p.url == ""
+    body = MINIMAL.format(id="y").replace('title = "T"', 'title = "T"\nurl = "https://atcoder.jp/contests/abc1/tasks/abc1_a"')
+    assert problem_mod.load(make(tmp_path, "y", body)).url.endswith("abc1_a")

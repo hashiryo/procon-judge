@@ -1,0 +1,16 @@
+id = "yuki-1260"
+title = "たくさんの多項式"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1260"
+
+[compare]
+kind = "tokens"

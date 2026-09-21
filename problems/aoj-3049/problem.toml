@@ -1,0 +1,18 @@
+id = "aoj-3049"
+title = "A Polygon And Circles"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "3049"
+
+[compare]
+kind = "float"
+abs_tol = 1e-05
+rel_tol = 1e-05

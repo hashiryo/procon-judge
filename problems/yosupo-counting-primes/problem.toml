@@ -1,0 +1,16 @@
+id = "yosupo-counting-primes"
+title = "Counting Primes"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "number_theory/counting_primes"
+
+[compare]
+kind = "checker"

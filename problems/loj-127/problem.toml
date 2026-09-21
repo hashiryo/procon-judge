@@ -1,0 +1,17 @@
+id = "loj-127"
+title = "loj-127"
+url = "https://loj.ac/p/127"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "loj-127"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,16 @@
+id = "yuki-1276"
+title = "3枚のカード"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1276"
+
+[compare]
+kind = "tokens"

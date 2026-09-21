@@ -1,0 +1,16 @@
+id = "aoj-1549"
+title = "Hard Beans"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "1549"
+
+[compare]
+kind = "tokens"

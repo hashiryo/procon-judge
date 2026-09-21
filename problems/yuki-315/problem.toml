@@ -1,0 +1,16 @@
+id = "yuki-315"
+title = "世界のなんとか3.5"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "315"
+
+[compare]
+kind = "tokens"

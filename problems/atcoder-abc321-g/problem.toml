@@ -1,0 +1,16 @@
+id = "atcoder-abc321-g"
+title = "G - Electric Circuit"
+url = "https://atcoder.jp/contests/abc321/tasks/abc321_g"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

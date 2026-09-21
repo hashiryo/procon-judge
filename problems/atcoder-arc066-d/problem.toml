@@ -1,0 +1,16 @@
+id = "atcoder-arc066-d"
+title = "F - Contest with Drinks Hard"
+url = "https://atcoder.jp/contests/arc066/tasks/arc066_d"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

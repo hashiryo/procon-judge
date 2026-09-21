@@ -1,0 +1,16 @@
+id = "atcoder-arc090-d"
+title = "F - Number of Digits"
+url = "https://atcoder.jp/contests/arc090/tasks/arc090_d"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

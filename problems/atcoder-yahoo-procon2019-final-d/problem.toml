@@ -1,0 +1,16 @@
+id = "atcoder-yahoo-procon2019-final-d"
+title = "D - Dangerous Hopscotch"
+url = "https://atcoder.jp/contests/yahoo-procon2019-final/tasks/yahoo_procon2019_final_d"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

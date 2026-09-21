@@ -73,7 +73,7 @@ def repro(
         print("テストデータを使わない問題です。組めたので終わります。", file=out)
         return 0
 
-    testcases = fetch.ensure(problem)
+    testcases = fetch.ensure(problem, env=env)
     cases = list(testcases.cases)
     if case is not None:
         cases = [c for c in cases if c.name == case]

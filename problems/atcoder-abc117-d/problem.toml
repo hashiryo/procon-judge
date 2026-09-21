@@ -1,0 +1,16 @@
+id = "atcoder-abc117-d"
+title = "D - XXOR"
+url = "https://atcoder.jp/contests/abc117/tasks/abc117_d"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

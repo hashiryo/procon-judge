@@ -1,0 +1,16 @@
+id = "yosupo-segment-add-get-min"
+title = "Segment Add Get Min"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "data_structure/segment_add_get_min"
+
+[compare]
+kind = "checker"

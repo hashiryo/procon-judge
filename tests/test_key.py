@@ -431,3 +431,31 @@ def test_other_sources_do_not_carry_the_generator(tmp_path):
     payload = key_mod.problem_hash(problem)
     (tmp_path / "x" / "gen.py").write_text("print(1)\n")
     assert key_mod.problem_hash(problem_mod.load(problem.dir)) == payload
+
+
+def test_problem_hash_follows_the_tolerance_only_for_float(tmp_path):
+    """許容誤差は float のときだけ鍵に入る。ほかの問題の鍵を動かさないため。"""
+    from pj import problem as problem_mod
+
+    base = """
+id = "f"
+title = "T"
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "1"
+
+[compare]
+kind = "float"
+abs_tol = 1e-6
+rel_tol = 1e-6
+"""
+    directory = tmp_path / "f"
+    directory.mkdir()
+    (directory / "problem.toml").write_text(base)
+    before = key_mod.problem_hash(problem_mod.load(directory))
+    (directory / "problem.toml").write_text(base.replace("abs_tol = 1e-6", "abs_tol = 1e-3"))
+    assert key_mod.problem_hash(problem_mod.load(directory)) != before

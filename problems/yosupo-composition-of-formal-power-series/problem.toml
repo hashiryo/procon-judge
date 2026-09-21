@@ -1,0 +1,16 @@
+id = "yosupo-composition-of-formal-power-series"
+title = "Composition of Formal Power Series"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "polynomial/composition_of_formal_power_series"
+
+[compare]
+kind = "checker"

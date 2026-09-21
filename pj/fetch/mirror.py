@@ -27,9 +27,16 @@ TOKEN_ENV = "TESTDATA_TOKEN"
 
 GH_TIMEOUT_SEC = 600
 
-# ジェネレータから決定的に作れる取得元は保管しない。容量を食うだけで、
-# 保管庫から取っても生成しても同じものが出る。
-REGENERABLE_SOURCES = frozenset({"library_checker", "local"})
+# リポジトリの中から生成する取得元は保管しない。ジェネレータも参照実装も git に
+# 入っていて、生成は安い。library_checker も生成し直せるが保管する。1 問 100 MB
+# 前後で 130 問を超えると actions/cache には載らず、再生成は数十秒から数分かかる。
+# 再現性は testdata.toml の pin が持つので、保管庫に入れても中身が凍る心配はない
+# (pin が動けば作り直して置き換える)。
+REGENERABLE_SOURCES = frozenset({"local"})
+
+# Release のアセットは 1 ファイル 2 GiB まで。超えるものは上げずに、要るたびに
+# 作り直す (convolution_mod_large は 12 GB 出るので、そもそも問題として入れていない)。
+ASSET_MAX_BYTES = 2 * 1024**3
 
 # アーカイブに入れるもの。checker.bin のような手元で作った成果物は入れない。
 ARCHIVE_SUFFIXES = (".in", ".out")
@@ -143,8 +150,9 @@ def push(problem: Problem, directory: Path, *, force: bool = False) -> None:
     アセットが無い状態で残ることがある。実際に yuki-649 がそうなって、
     翌日の実行が yukicoder の原本を叩き直していた。
 
-    force は取り直したテストデータで置き換えたいときだけ。人が 1 本で叩く
-    前提で、CI からは渡さない。
+    force は取り直したテストデータで置き換えたいときだけ。人が 1 本で叩くか、
+    library_checker の pin が動いて古いアセットを作り直したときに CI が渡す。
+    どちらも意図した置き換えで、取り直しの競り合いではない。
     """
     name = asset_name(problem)
     if not force and name in asset_names():
@@ -153,6 +161,13 @@ def push(problem: Problem, directory: Path, *, force: bool = False) -> None:
         archive = Path(tmp) / name
         pack(directory, archive)
         size = archive.stat().st_size
+        if size > ASSET_MAX_BYTES:
+            print(
+                f"  {name} は {size} bytes で Release の上限 {ASSET_MAX_BYTES} を"
+                "超えるので保管しません。要るたびに作り直します",
+                file=sys.stderr,
+            )
+            return
         args = ["release", "upload", TAG, str(archive)]
         if force:
             args.append("--clobber")

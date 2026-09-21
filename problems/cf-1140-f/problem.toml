@@ -1,0 +1,16 @@
+id = "cf-1140-f"
+title = "cf-1140-f"
+url = "https://codeforces.com/contest/1140/problem/F"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

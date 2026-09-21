@@ -1,0 +1,16 @@
+#include <iostream>
+#include "mylib/geometry/Segment.hpp"
+using namespace std;
+signed main() {
+ cin.tie(0);
+ ios::sync_with_stdio(false);
+ using namespace geo;
+ int q;
+ cin >> q;
+ while(q--) {
+  Segment<long double> s, t;
+  cin >> s.p >> s.q >> t.p >> t.q;
+  cout << (intersection(s, t) != DISJOINT) << '\n';
+ }
+ return 0;
+}

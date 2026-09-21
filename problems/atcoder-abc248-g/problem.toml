@@ -1,0 +1,16 @@
+id = "atcoder-abc248-g"
+title = "G - GCD cost on the tree"
+url = "https://atcoder.jp/contests/abc248/tasks/abc248_g"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 2048
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

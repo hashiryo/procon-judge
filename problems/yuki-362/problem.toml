@@ -1,0 +1,16 @@
+id = "yuki-362"
+title = "門松ナンバー"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "362"
+
+[compare]
+kind = "tokens"

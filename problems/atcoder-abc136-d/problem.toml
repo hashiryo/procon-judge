@@ -1,0 +1,16 @@
+id = "atcoder-abc136-d"
+title = "D - Gathering Children"
+url = "https://atcoder.jp/contests/abc136/tasks/abc136_d"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

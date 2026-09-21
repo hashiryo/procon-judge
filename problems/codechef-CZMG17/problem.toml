@@ -1,0 +1,16 @@
+id = "codechef-CZMG17"
+title = "codechef-CZMG17"
+url = "https://www.codechef.com/problems/CZMG17"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

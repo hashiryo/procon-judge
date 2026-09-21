@@ -1,0 +1,18 @@
+id = "aoj-CGL_4_A"
+title = "Convex Hull"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "CGL_4_A"
+
+[compare]
+kind = "float"
+abs_tol = 1e-08
+rel_tol = 1e-08

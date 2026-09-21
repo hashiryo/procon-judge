@@ -1,0 +1,16 @@
+id = "yuki-2065"
+title = "Sum of Min"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "2065"
+
+[compare]
+kind = "tokens"

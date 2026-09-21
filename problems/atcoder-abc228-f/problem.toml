@@ -1,0 +1,16 @@
+id = "atcoder-abc228-f"
+title = "F - Stamp Game"
+url = "https://atcoder.jp/contests/abc228/tasks/abc228_f"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

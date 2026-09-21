@@ -1,0 +1,16 @@
+id = "yuki-2122"
+title = "黄金比で擬似乱数生成"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "2122"
+
+[compare]
+kind = "tokens"

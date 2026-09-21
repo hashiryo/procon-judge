@@ -1,0 +1,24 @@
+#include <iostream>
+#include <vector>
+#include "mylib/data_structure/PersistentArray.hpp"
+#include "mylib/data_structure/UnionFind_Persistent.hpp"
+using namespace std;
+signed main() {
+ cin.tie(0);
+ ios::sync_with_stdio(0);
+ int N, Q;
+ cin >> N >> Q;
+ vector<UnionFind_Persistent> uf(Q + 1);
+ uf[0]= UnionFind_Persistent(N);
+ for(int i= 1; i <= Q; i++) {
+  int t, k, u, v;
+  cin >> t >> k >> u >> v;
+  k++;
+  if(t) {
+   cout << uf[k].connected(u, v) << '\n';
+  } else {
+   uf[i]= uf[k];
+   uf[i].unite(u, v);
+  }
+ }
+}

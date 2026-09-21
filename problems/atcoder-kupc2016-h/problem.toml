@@ -1,0 +1,16 @@
+id = "atcoder-kupc2016-h"
+title = "H - WAAAAAAAAAAAAALL"
+url = "https://atcoder.jp/contests/kupc2016/tasks/kupc2016_h"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

@@ -1,0 +1,16 @@
+id = "atcoder-abc212-g"
+title = "G - Power Pair"
+url = "https://atcoder.jp/contests/abc212/tasks/abc212_g"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

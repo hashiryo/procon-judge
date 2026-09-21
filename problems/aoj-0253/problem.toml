@@ -1,0 +1,18 @@
+id = "aoj-0253"
+title = "Ant Nest"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "0253"
+
+[compare]
+kind = "float"
+abs_tol = 1e-05
+rel_tol = 1e-05

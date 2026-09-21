@@ -1,0 +1,17 @@
+id = "hackerrank-ashton-and-string"
+title = "hackerrank-ashton-and-string"
+url = "https://www.hackerrank.com/challenges/ashton-and-string"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "hackerrank-ashton-and-string"
+
+[compare]
+kind = "tokens"

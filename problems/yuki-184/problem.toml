@@ -1,0 +1,16 @@
+id = "yuki-184"
+title = "たのしい排他的論理和(HARD)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "184"
+
+[compare]
+kind = "tokens"

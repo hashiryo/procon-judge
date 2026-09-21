@@ -1,0 +1,16 @@
+id = "aoj-2257"
+title = "Sakura Poetry"
+
+[limits]
+tle_sec = 8.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "2257"
+
+[compare]
+kind = "tokens"

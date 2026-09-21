@@ -1,0 +1,16 @@
+id = "yosupo-suffixarray"
+title = "Suffix Array"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "string/suffixarray"
+
+[compare]
+kind = "checker"

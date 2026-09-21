@@ -117,16 +117,10 @@ jobs:
             clang++-21 --version
           fi
 
-      # 7 日使われないと消えるので、消えても再取得できる形にしてある。
-      # テストデータはただのテキストで環境に依存しないので、キーに env を入れない。
-      # キーの v3 はキャッシュの世代。まっさらから取り直させたいときに上げる。
-      - name: テストデータのキャッシュ
-        uses: actions/cache@v6
-        with:
-          path: .cache/testcases
-          key: testcases-v3-${{ hashFiles('problems/*/problem.toml') }}
-          restore-keys: |
-            testcases-v3-
+      # テストデータの actions/cache は置かない。全問題ぶんを 1 つの塊で持つと
+      # 10 GB を超えて載らないし、1 問しか要らない回でも塊ごと落とすことになる。
+      # 走らせる問題のぶんだけ保管庫から落とし (1 問 1 アセット)、測り終えたら
+      # 捨てる (--evict-testdata)。ランナーの disk は 14 GB ほどしか無い。
 
       # pin しない。実行のたびに最新を取る。
       # 取れなくても、ライブラリを使わない提出は走る。
@@ -146,6 +140,7 @@ jobs:
           --job ${{ matrix.job }}
           --jobs ${{ matrix.jobs }}
           --budget ${{ matrix.budget }}
+          --evict-testdata
           --store .results
           --out ${{ runner.temp }}/records
 

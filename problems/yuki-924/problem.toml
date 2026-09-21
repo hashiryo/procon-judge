@@ -1,0 +1,16 @@
+id = "yuki-924"
+title = "紲星"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "924"
+
+[compare]
+kind = "tokens"

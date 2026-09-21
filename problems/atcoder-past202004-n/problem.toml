@@ -1,0 +1,16 @@
+id = "atcoder-past202004-n"
+title = "N - Building Construction"
+url = "https://atcoder.jp/contests/past202004-open/tasks/past202004_n"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

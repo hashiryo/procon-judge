@@ -96,6 +96,7 @@ procon-judge/
       gen.py                ジェネレータ (source = "local" のとき)
       reference.hpp         期待出力を作る参照実装 (同上)
       checker.cpp           独自チェッカ (自分で書くときだけ)
+    _shared/<名前>/         問題をまたいで提出が使うヘッダ (gf2-64 のベンチ)。problem.toml が無いので問題ではない
   harness/
     pj.hpp                  全問題のハーネスと提出が共有するもの
   third_party/
@@ -146,7 +147,19 @@ id は `<出どころ>-<問題>` の形にします。出どころはテスト�
 | yukicoder | `yuki-` | `yuki-1234` |
 | AtCoder | `atcoder-` | `atcoder-abc123-d` |
 | LOJ | `loj-` | `loj-6620` |
-| 自作 | 付けません | `gf2-64`、`warshall-floyd` |
+| HackerRank | `hackerrank-` | `hackerrank-cube-loving-numbers` |
+| CSES | `cses-` | `cses-2132` |
+| JOI 春合宿 | `joisc-` | `joisc-2019-examination` |
+| Codeforces | `cf-` | `cf-1140-f`、`cf-gym102576-c` |
+| oj.uz | `ojuz-` | `ojuz-APIO16_fireworks` |
+| CodeChef | `codechef-` | `codechef-CCDSAP` |
+| Kattis | `kattis-` | `kattis-conquertheworld` |
+| Luogu | `luogu-` | `luogu-P5055` |
+| 自作 | 付けません | `gf2-64`、`warshall-floyd`、`constexpr-modint` |
+
+`pj problems import` はこの表のとおりに URL から id を作ります。yosupo と atcoder は URL の名前の `_` を `-` に、AOJ と yukicoder は判定サイトの id をそのまま使います。入出力を持たない自己検証のテスト (`STANDALONE`) は、普通のコメントに書いてある元の問題の URL から id を取り、無ければファイル名をそのまま id にします。
+
+`url` は元の問題のページで、表示にだけ使います。判定サイトから取る問題は `source` と `name` から組めるので書きません。書くのは `source = "none"` (AtCoder、自己検証) と `source = "manual"` の問題だけです。AtCoder の題名は API が無いのでこの URL のページから取ります。
 
 `pj problems check` は `testdata.source` が `library_checker`、`aoj`、`yukicoder` のときに接頭辞が合っているかを見て、合わなければ警告します。判定サイトから取るテストデータはその出どころの問題にしか付かないからです。エラーにはしません。逆向きは縛りません。`aoj-` の問題のテストデータを `local` や `manual` で持つのは正しい形です。
 
@@ -241,7 +254,9 @@ RSS には実行ファイルと libc の共有ページが入るので、何も�
 
 既存の判定サイトのテストデータがそのまま使えます。ハーネスが判定サイトの入力形式で読んで出力形式で書くので、テストデータを加工する必要がありません。この形を選んだ一番の理由です。
 
-`kind = "raw"` は逃げ道です。提出が `main()` ごと持ちます。対話式の問題、オンラインクエリの問題、それと入出力を持たない自己検証の提出で使います。計測区間が無いので `algo_time_ns` は記録されず、プロセス全体の時間だけ取ります。
+`kind = "raw"` は、実装が 1 本しかない verify の置き場です。提出が `main()` ごと持ち、判定サイトの入出力をそのまま読み書きします。比べる相手がいないのでハーネスを書いても速さの情報は出ず、正しさと「この環境でも通る」だけを持ちます。2 本目の実装が来た問題だけをハーネスに書き直します。計測区間が無いので `algo_time_ns` は記録されず、プロセス全体の時間だけ取ります。入出力を持たない自己検証の提出 (`compare.kind = "exit_code"`) もこの形です。Library の `test/**/*.test.cpp` は `pj problems import` で機械的にこの形になります。
+
+対話式の問題は raw でも動きません。実行はファイルから stdin を流すだけで、判定側と会話する配管が無いからです。オンラインクエリの問題は base で扱えます (`yuki-649` がその例)。以前はこの 2 つを raw の用途に挙げていましたが、どちらも成り立っていませんでした。
 
 入力を全部メモリに読むので、メモリ使用量は元の問題の想定と変わります。`mle_mb` は「このハーネスでの制限」として扱ってください。元の判定サイトの制限と一致させる意味はありません。
 
@@ -305,12 +320,14 @@ include 一式と `i64` などの型別名のほかに、次の 5 つがあり�
 
 | source | 説明 | 追加の項目 |
 | --- | --- | --- |
-| `library_checker` | `yosupo06/library-checker-problems` を clone して生成します | `name` に問題のパス |
+| `library_checker` | `yosupo06/library-checker-problems` を `testdata.toml` のコミットで clone して生成します | `name` に問題のパス |
 | `aoj` | judgedat の API から取得します | `name` に問題 ID |
 | `yukicoder` | API から取得します。トークンが必要です | `name` に問題 ID |
 | `manual` | 保管庫と手動の取り込みだけを使います。原本を叩きません | `name` に識別子 |
 | `local` | リポジトリ内で生成します | `generator`、`count`、`reference` |
 | `none` | テストデータを使いません | なし |
+
+`library_checker` の clone は `testdata.toml` に書いたコミットに固定します。master の HEAD を追うと、上流がジェネレータを直したときにケースの中身が変わり、`cases_hash` が動いてその問題の記録が黙って測り直しになります。ジェネレータは seed 固定なので、同じコミットなら同じバイト列が出ます (`partition_function` の in と out を消して作り直し、同じ `cases_hash` が出ることを確かめました)。pin を動かすのは意図的な操作で、そのときも中身が変わった問題だけが測り直しになります。GitHub はコミットを名指しで fetch できるので、履歴は 1 段しか取りません (2.7 MB、1 秒ほど)。
 
 `local` の書き方です。
 
@@ -326,7 +343,9 @@ reference = "reference.hpp"   # kind = "base" なら提出と同じ形
 
 `local` は `name` を持ちません。キャッシュのハッシュは問題 id から作ります。加えて `gen.py` の内容、参照実装の内容、`count` を混ぜてください。ジェネレータを直したときに、古い生成結果が使い回されるのを防ぐためです。
 
-`kind = "base"` の問題では、参照実装も提出と同じ形にしてください。`reference` に `.hpp` を指定します。ハーネスと一緒にコンパイルして期待出力を作ります。こうすると入力の解析を二重に書かなくて済みます。`kind = "raw"` の問題なら、参照実装は単体で動く `.cpp` になります。
+`kind = "base"` の問題では、参照実装も提出と同じ形にしてください。`reference` に `.hpp` を指定します。ハーネスと一緒にコンパイルして期待出力を作ります。こうすると入力の解析を二重に書かなくて済みます。`kind = "raw"` の問題なら、参照実装は単体で動く `.cpp` になります。参照実装を `submissions/reference.hpp` に置いて `reference` にそのパスを書けば、期待出力を作るものがそのまま順位表の 1 行になります (`gf2-64-*` はこの形)。
+
+参照実装はそのジョブの環境のコンパイラで組みます (`pj fetch` は `--env`、既定は `local`)。期待出力は決定的な計算なのでコンパイラに依らず、キャッシュは環境をまたいで共有します。参照実装は素朴に書いてよいので、実行の打ち切りは提出の `tle_sec` ではなく 600 秒です。ケースの名前は `seed_000` からの連番です。
 
 `none` はテストデータを持たない問題です。使い方が 2 通りあります。自己検証の提出なら `compare.kind = "exit_code"` にして、空の標準入力で走らせて終了コードを見ます。入力を読む提出なら `compare.kind = "compile_only"` にします。実行せず、コンパイルだけを見ます。
 
@@ -336,7 +355,7 @@ AtCoder は 2024 年 12 月からテストケースの公開が停止してい�
 
 置き場を読める形にしてあるのは、ログに出るからです。ハッシュにすると `cases_hash` と見分けがつかず、内容から決まっていると読み違えます。
 
-CI では actions/cache で持ち越します。キャッシュは 7 日使われないと消えるので、消えても再取得できる形にしておきます。消えても起きるのは再取得と再生成だけで、同じ内容が出れば `cases_hash` も同じなので測り直しにはなりません。
+CI では持ち越しません。走らせる問題のぶんだけ保管庫から落とし、その問題を測り終えたら捨てます (`pj run --evict-testdata`)。ランナーの disk は 14 GB ほどしか無く、1 ジョブで数十問を測るからです。以前は全問題ぶんを actions/cache に 1 つの塊で置いていましたが、Library Checker の問題を 128 問入れると 10 GB を超えて載らず、1 問しか要らない回でも塊ごと復元することになるのでやめました。手元のキャッシュはそのまま残ります。
 
 取得の実装は既存のコードを移植してください。判定サイトごとの癖が入っているので、書き直すと同じ罠を踏みます。参照するファイルは次のとおりです。
 
@@ -377,6 +396,8 @@ AOJ の judgedat は大きいケースを切り詰めて返すことがありま
 
 リアルタイムで取得できない取得元があります。取得できるものでも、毎回原本を叩くのは遅くなります。レート制限と障害が経路に入り込みます。だから一度落としたテストデータは自分の置き場に保管します。
 
+生成し直せる `library_checker` も保管します。1 問 100 MB 前後で 128 問なら 10 GB を超え、再生成は 1 問 10 秒から 1 分かかります。再現性は pin が持ち、速さと問題ごとの粒度は保管庫が持つ、という分担です。保管庫に入れると中身が凍るという心配は pin が解きます。アセットの manifest には生成に使った上流のコミットが書いてあり、pin と違えば作り直して置き換えます。`local` だけは保管しません。ジェネレータも参照実装もリポジトリの中にあって、生成が安いからです。
+
 置き場は private リポジトリの Release アセットにします。リポジトリ名は `procon-judge-testdata` にして private で作ります。タグは 1 本だけ用意して、そこへアセットを足していきます。判定システム側からは PAT で読みます。secret 名は `TESTDATA_TOKEN` にします。
 
 この形を選ぶ理由は 4 つです。
@@ -390,7 +411,7 @@ AOJ の judgedat は大きいケースを切り詰めて返すことがありま
 
 アップロードとダウンロードはアセット単位です。1 問足すときは upload 1 回で済みます。他のアセットに触らず、コミットも発生しません。落とすときは `-p` でパターンを指定すると、その 1 個だけ取れます。
 
-**`--clobber` は使いません。** あれは消してから上げるので、run のジョブが同時に走ると、片方が消した先へもう片方が上げて 404 になり、アセットが無い状態で残ります。実際に `yuki-649` がそうなって、翌日の実行が yukicoder の原本を叩き直していました。既にあるものは上げ直さず、無いときだけ `--clobber` なしで上げます。競り負けても何も消えていないので、負けた側は通すだけで済みます。取り直したデータに入れ替えるのは人が 1 本で叩く操作なので、`pj mirror push --force` に残してあります。
+**`--clobber` は使いません。** あれは消してから上げるので、run のジョブが同時に走ると、片方が消した先へもう片方が上げて 404 になり、アセットが無い状態で残ります。実際に `yuki-649` がそうなって、翌日の実行が yukicoder の原本を叩き直していました。既にあるものは上げ直さず、無いときだけ `--clobber` なしで上げます。競り負けても何も消えていないので、負けた側は通すだけで済みます。取り直したデータに入れ替えるのは人が 1 本で叩く操作なので、`pj mirror push --force` に残してあります。例外は `library_checker` の pin が動いたときで、古い pin のアセットは CI が作り直して置き換えます。これも意図した置き換えで、取り直しの競り合いではありません。
 
 取れなかったときは理由を出します。まだ無いのか、あるのに取れなかったのかで意味が違います。どちらでも呼ぶ側は原本へ落ちますが、後者は保管庫を置いた目的と逆なので黙らせません。上の `yuki-649` が 1 日気づかれなかったのは、ここが黙っていたからです。
 
@@ -408,12 +429,11 @@ gh release view testdata --json assets -R hashiryo/procon-judge-testdata
 
 | 段 | 置き場 | 備考 |
 | --- | --- | --- |
-| 1 | `.cache/testcases/` | 手元のキャッシュ |
-| 2 | actions/cache | CI のキャッシュ。7 日使われないと消えます |
-| 3 | 保管庫 | private リポジトリの Release アセット |
-| 4 | 原本 | 判定サイトの API またはジェネレータ |
+| 1 | `.cache/testcases/` | 手元のキャッシュ。CI のランナーは持たずに始まります |
+| 2 | 保管庫 | private リポジトリの Release アセット |
+| 3 | 原本 | 判定サイトの API またはジェネレータ |
 
-4 まで到達したら、成功したあとに 3 へ上げます。一度保管すれば、CI が原本を叩かなくなります。
+3 まで到達したら、成功したあとに 2 へ上げます。一度保管すれば、CI が原本を叩かなくなります。`library_checker` は 1 と 2 で見つけたものが pin と違えば 3 へ進み、2 のものは置き換えます。
 
 `cases_hash` はケースの内容から計算してください。取得経路に依存させてはいけません。保管庫と原本のどちらから取っても同じ値になる必要があります。違う値になると、キーが一致しません。キャッシュが無駄に消えます。
 
@@ -425,9 +445,9 @@ gh release view testdata --json assets -R hashiryo/procon-judge-testdata
 
 以降は CI が保管庫から取るので、原本に触りません。
 
-容量の見積もりです。Library Checker の 161 問はジェネレータで作るので保管が不要です。AtCoder の 172 問は入手できません。残るのは AOJ 222、yukicoder 192、その他 50 ほどで、合わせて 460 問前後です。圧縮して 1 問あたり数 MB なら、全体で数 GB に収まります。Release アセットは 1 ファイル 2 GB までなので余裕があります。
+容量の見積もりです。Library Checker は 1 問 100 MB 前後 (最大は `convolution_mod_2_64` の 565 MB) が 128 問で 12 GB ほど、AOJ 222 と yukicoder 192 とその他 50 ほどは圧縮して 1 問あたり数 MB から数十 MB です。AtCoder の 172 問は入手できません。Release アセットは 1 ファイル 2 GiB までで、リリース全体の上限はありません。超えるものは上げずに要るたびに作り直します (`mirror.ASSET_MAX_BYTES`)。Library Checker の `convolution_mod_large` は 12 GB 出るので、問題として入れていません。
 
-actions/cache だけで済ませてはいけません。7 日で消えるので durable ではありません。既存の Library が `tc.zip` を Release へ置いているのは、それに気づいた結果です。
+actions/cache は使いません。7 日で消えるので durable ではなく、全問題ぶんの塊は 10 GB の上限に当たります。既存の Library が `tc.zip` を Release へ置いているのは、前者に気づいた結果です。
 
 Cloudflare R2 は 10 GB まで無料で egress も無料なので候補になります。ただし認証が 1 つ増えます。GitHub で足りるので使いません。
 
@@ -467,7 +487,7 @@ TLE か MLE が出たら、残りのケースは走らせません。1 ケース
 
 先頭が `_` のファイルは提出として扱いません。共通ヘッダの置き場に使います。
 
-慣習として、`lib` を「自分のライブラリを使った提出」の名前にします。ただし `pj` はこの名前に意味を持たせません。ライブラリとの紐付けは include の一覧から導きます。
+慣習として、`lib` を「自分のライブラリを使った提出」の名前にします。ただし `pj` はこの名前に意味を持たせません。ライブラリとの紐付けは include の一覧から導きます。`pj problems import` が verify のファイルから作る raw の提出も `lib.cpp` で、同じ問題に実装が複数あれば `lib-<実装>.cpp` です。
 
 ## ライブラリの取得
 
@@ -651,6 +671,8 @@ arm では SIMDe を使います。手元の Mac が arm で提出先が x86 な
 pj problems list [--json]
 pj problems check                            problem.toml の検証
 pj problems titles [--fix]                   題名を判定サイトの名前と突き合わせる
+pj problems import PATH... [--single-only] [--dry-run]
+                                             competitive-verifier のテストを raw の問題として取り込む
 pj submissions list [--problem ID]
 pj fetch [--problem ID] [--all]              テストデータ取得
 pj testdata import --problem ID --dir PATH   手元で落としたものを取り込む
@@ -658,6 +680,7 @@ pj mirror push --problem ID                  保管庫へ上げる
 pj mirror pull --problem ID                  保管庫から落とす
 pj mirror status                             問題ごとの保管状況
 pj run  --env NAME [--bundles FILE] [--budget N]  実行して記録を出す
+pj run  ... --evict-testdata                 測り終えた問題のテストデータを捨てる (CI のランナー用)
 pj run  --dry-run --env NAME                 走らせる対象を出すだけ
 pj run  --problem ID --submission PATH --env NAME   1 件だけ走らせる
 pj records append <dir>...                   まとめて results の jsonl へ追記する
@@ -735,7 +758,7 @@ CPU モデルはジョブが始まってマシンが割り当たった瞬間に�
 2. `results` ブランチを `fetch-depth: 1` で読みます。
 3. ライブラリを HEAD で取得します。
 4. マシンの CPU モデルを検出します。**ここで初めて分かります。**
-5. 渡された束を順に見て、そのモデルで未計測の提出だけを走らせます。テストデータはその時点で取りに行きます。
+5. 渡された束を順に見て、そのモデルで未計測の提出だけを走らせます。テストデータはその時点で保管庫から落とし、その問題を測り終えたら捨てます。
 6. `--budget` の件数に達したら止めて、記録をアーティファクトにアップロードします。
 7. 束が尽きても budget が余っていれば、リストの次の束へ進みます。
 
@@ -759,7 +782,7 @@ CPU モデルはジョブが始まってマシンが割り当たった瞬間に�
 | 1 ジョブの実行時間 | 6 時間 |
 | 同時実行ジョブ数 | 20 (Free) |
 | 1 実行あたりの matrix | 256 ジョブ |
-| キャッシュ | 1 リポジトリ 10 GB。7 日使われないと失効 |
+| actions/cache | 1 リポジトリ 10 GB。7 日使われないと失効。全問題ぶんの塊は載らないので使っていません |
 
 `--budget` はこの 6 時間のためにあります。上限に当たるとジョブが打ち切られて、最後のアップロードまで辿り着きません。その回に測ったぶんを丸ごと落とします。必ず終わって記録を上げるところまで行かせるための上限です。
 
@@ -902,7 +925,7 @@ M1 の時点で `problem.toml`、`base.cpp`、`submissions/naive.hpp` を手で�
 
 ## 実装の状況
 
-M10 まで通っています。手元で `pj run --env local` が動き、2 回目は 0 件になります。main へ push すると `plan` が仕事のある環境だけを数えて、その本数ぶんの `run` が立ち、`results` ブランチに記録が増えて、サイトが https://hashiryo.github.io/procon-judge/ に出ます。仕事が 0 件の環境にはジョブが立ちません。AOJ のテストデータは保管庫から取るので、CI は judgedat を叩きません。`mylib/...` を include する提出も 4 環境で走っていて、Library の `mylib/` を直すとこちらが起きます。
+M10 まで通っています。手元で `pj run --env local` が動き、2 回目は 0 件になります。main へ push すると `plan` が仕事のある環境だけを数えて、その本数ぶんの `run` が立ち、`results` ブランチに記録が増えて、サイトが https://hashiryo.github.io/procon-judge/ に出ます。仕事が 0 件の環境にはジョブが立ちません。AOJ のテストデータは保管庫から取るので、CI は judgedat を叩きません。Library Checker のテストデータも保管庫から取り、無ければ `testdata.toml` のコミットで生成して上げます。`mylib/...` を include する提出も 4 環境で走っていて、Library の `mylib/` を直すとこちらが起きます。
 
 以下は段ごとの実装の記録です。決めたことと、踏んだ罠を書いてあります。
 
@@ -1530,6 +1553,44 @@ source = "https://github.com/hashiryo/Library/blob/{sha}/mylib/{path}"
 ### サイトの表示
 
 取得元のラベルは `無し (自己検証)` で、注意書きは「提出が自分で持っている入出力で検証して、終了コード 0 で走り切れば AC」です。`compile_only` の「コンパイルのみ」と区別しないと、走らせていないように読めます。`pj repro` も 1 回走らせて、落ちたときは stderr の場所を出します。
+
+## raw 移行の実装の記録
+
+Library の `test/**/*.test.cpp` のうち、ハーネスを書いて移していないものを `kind = "raw"` で取り込みました。`pj problems import` が competitive-verifier の注釈 (`PROBLEM` の URL、`TLE`、`MLE`、`ERROR`、`STANDALONE`、`IGNORE`) から id と取得元と制限と比較を出し、注釈の行だけを落としたファイルを `submissions/lib.cpp` に置きます (同じ問題に実装が複数あれば `lib-<実装>.cpp`)。内訳は yosupo 102 問、AOJ 142 問、yukicoder 104 問、AtCoder 133 問 (compile_only、うち 28 問は実装が複数)、自己検証 48 問 (alone 16 + sample_test 32、exit_code)、手で取り込む判定サイト 40 問 (manual) です。題名は Library Checker が `info.toml`、AOJ と yukicoder が API、AtCoder がページの `<title>` で、manual の問題は id のままです。
+
+`ERROR` の注釈は `compare.kind = "float"` になり、絶対と相対の両方に同じ値を置きます。`float` の許容誤差は問題定義のハッシュに入りますが、float の問題にだけ足すので、ほかの問題の鍵は動きません。AOJ の制限は一覧の API (`problemTimeLimit` は秒、`problemMemoryLimit` は KB) から取り、5 秒と 512 MB より下には締めません。
+
+### 制限は判定サイトの値にしました
+
+Library の注釈には `TLE 0.5` や `MLE 64` のように締めた値が書いてありますが、採りません。ここは劣化を pass/fail で見る場所ではなく、時間とメモリは数字として記録に残ります。締めた値で TLE にすると、1 つのキーは 1 回しか測られないので、たまたま遅かった回の TLE がキーが変わるまで残ります。`tle_sec` は `info.toml` の `timelimit`、`mle_mb` は Library Checker の 1024 MB です。ただし注釈の方が大きいときは注釈に合わせます。Library が通ると知っている値だからです (`enumerate_primes` は 1.1 GB 使うので 2048)。
+
+### convolution_mod_large は入れていません
+
+テストデータが 12 GB 出ます (54 ケース、N と M が 2^24)。Release のアセットは 2 GiB までなので保管できず、ランナーの disk (14 GB ほど) にも収まりません。Library の verify に残したままです。
+
+### pin と保管庫と actions/cache
+
+この取り込みで Library Checker の問題が 26 問から 128 問になり、テストデータが 3 GB から 12 GB を超えます。actions/cache の塊は 10 GB に載らず、載っても 1 問しか要らない回に全部復元することになります。保管庫に 1 問 1 アセットで置いて要る問題だけ落とし、測り終えたら捨てる形にしました。保管庫に入れると中身が凍るので、`library-checker-problems` のコミットを `testdata.toml` に固定して、manifest に生成に使ったコミットを書き、pin と違えば作り直して置き換えます。手元の `.cache/testcases/` は消しません。
+
+### 生成したケースは clone から移します
+
+`generate.py` は問題のディレクトリの `in/` と `out/` に書きます。コピーすると同じものを 2 度持つので、キャッシュへ移して clone の側は空にします。`generate.py` は in と out が揃っていなければ作り直すので、次に要るときも困りません。
+
+## local と gf2-64 のベンチの実装の記録
+
+`source = "local"` を実装して (`pj/fetch/local.py`)、最初の問題として旧 judge の `gf2-64` の 10 問を移しました。`gen.py` を seed 1 つずつ `uv run --script` で走らせて入力を作り、参照実装をハーネスと一緒に組んで期待出力を作ります。ここまで local の問題が 1 つも無かったので、設計にはあって実装が無い状態でした。
+
+### 問題をまたぐヘッダは problems/_shared/ に置きます
+
+旧 judge の `gf2-64/_shared/` (共通の型と定数、`sq` や `frob` の部品、塔の基底変換の表) を `problems/_shared/gf2-64/` に移しました。`-I` を足すとキーが動くので足さず、提出は `../../_shared/gf2-64/...` の相対パスで include します。閉包の解決は include した側のディレクトリから探すので、この形でも辿れます。ラベルは `problems/_shared/gf2-64/sq.hpp` のようにリポジトリからの相対になり、提出ページでは GitHub へ飛びます。`_common.hpp` の `<bits/stdc++.h>` は Apple clang に無いので、名指しの include に置き換えました。
+
+### 代表だけを移しました
+
+旧 judge の 190 本を全部は移しません。問題ごとに `reference` と手法の族ごとの最良 (旧 judge の記録 17705 件から x64-g++ の最小値で選びました) を 3 本から 8 本、合わせて 47 本です。`log` には reference が無く、素直な BSGS の `pclmul.hpp` を参照実装にしました。インターフェースは旧 judge の `GF2_64Op::run` のままにして、提出の書き換えを include のパスだけにしています。Library に GF(2^64) の型ができたら `lib-*.hpp` を並べるのが、型を登録する門になります (roadmap)。
+
+### 制限
+
+`tle_sec` は mul / sq / frob が 5 秒、div / pow / sqrt / log が 10 秒です。旧 judge は全部 5 秒でしたが、div の参照実装が x64 で 4.4 秒かかっていて、遅いマシンに当たると参照実装そのものが TLE になります。
 
 ## 既存リポジトリから移すもの
 

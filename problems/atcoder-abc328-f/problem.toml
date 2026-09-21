@@ -1,0 +1,16 @@
+id = "atcoder-abc328-f"
+title = "F - Good Set Query"
+url = "https://atcoder.jp/contests/abc328/tasks/abc328_f"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

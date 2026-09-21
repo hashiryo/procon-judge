@@ -1,0 +1,16 @@
+id = "aoj-ALDS1_14_D"
+title = "Multiple String Matching"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "ALDS1_14_D"
+
+[compare]
+kind = "tokens"

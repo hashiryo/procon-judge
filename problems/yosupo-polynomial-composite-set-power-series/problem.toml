@@ -1,0 +1,16 @@
+id = "yosupo-polynomial-composite-set-power-series"
+title = "Polynomial Composite Set Power Series"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "set_power_series/polynomial_composite_set_power_series"
+
+[compare]
+kind = "checker"

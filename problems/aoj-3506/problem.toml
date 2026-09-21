@@ -1,0 +1,16 @@
+id = "aoj-3506"
+title = "Connect the dots"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "3506"
+
+[compare]
+kind = "tokens"

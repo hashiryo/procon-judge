@@ -1,0 +1,16 @@
+id = "yosupo-matrix-det-mod-2"
+title = "Determinant of Matrix (Mod 2)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "linear_algebra/matrix_det_mod_2"
+
+[compare]
+kind = "checker"

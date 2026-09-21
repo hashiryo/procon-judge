@@ -1,0 +1,16 @@
+id = "yosupo-counting-spanning-tree-directed"
+title = "Counting Spanning Trees (Directed)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "graph/counting_spanning_tree_directed"
+
+[compare]
+kind = "checker"

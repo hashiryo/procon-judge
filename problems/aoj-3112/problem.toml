@@ -1,0 +1,16 @@
+id = "aoj-3112"
+title = "Substring Decomposition"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "3112"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,14 @@
+#include <iostream>
+#include "mylib/counting/FactorialPrecalculation.hpp"
+#include "mylib/algebra/ModInt.hpp"
+using namespace std;
+signed main() {
+ cin.tie(0);
+ ios::sync_with_stdio(false);
+ int n, k;
+ cin >> n >> k;
+ using Mint= ModInt<int(1e9 + 7)>;
+ using F= FactorialPrecalculation<Mint>;
+ cout << F::nHr(k, n - k) << '\n';
+ return 0;
+}

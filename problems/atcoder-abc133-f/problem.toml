@@ -1,0 +1,16 @@
+id = "atcoder-abc133-f"
+title = "F - Colorful Tree"
+url = "https://atcoder.jp/contests/abc133/tasks/abc133_f"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

@@ -1,0 +1,16 @@
+id = "yuki-803"
+title = "Very Limited Xor Subset"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "803"
+
+[compare]
+kind = "tokens"

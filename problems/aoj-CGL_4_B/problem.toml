@@ -1,0 +1,18 @@
+id = "aoj-CGL_4_B"
+title = "Diameter of a Convex Polygon"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "CGL_4_B"
+
+[compare]
+kind = "float"
+abs_tol = 1e-08
+rel_tol = 1e-08

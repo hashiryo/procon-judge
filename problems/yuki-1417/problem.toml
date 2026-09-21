@@ -1,0 +1,16 @@
+id = "yuki-1417"
+title = "100の倍数かつ正整数(2)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1417"
+
+[compare]
+kind = "tokens"

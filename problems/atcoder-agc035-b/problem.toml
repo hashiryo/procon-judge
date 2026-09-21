@@ -1,0 +1,16 @@
+id = "atcoder-agc035-b"
+title = "B - Even Degrees"
+url = "https://atcoder.jp/contests/agc035/tasks/agc035_b"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

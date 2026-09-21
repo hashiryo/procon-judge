@@ -1,0 +1,16 @@
+id = "yuki-1145"
+title = "Sums of Powers"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1145"
+
+[compare]
+kind = "tokens"

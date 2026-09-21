@@ -1,0 +1,16 @@
+id = "yosupo-sqrt-of-formal-power-series-sparse"
+title = "Sqrt of Formal Power Series (Sparse)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "polynomial/sqrt_of_formal_power_series_sparse"
+
+[compare]
+kind = "checker"

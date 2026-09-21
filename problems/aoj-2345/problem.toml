@@ -1,0 +1,18 @@
+id = "aoj-2345"
+title = "Network Reliability"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "2345"
+
+[compare]
+kind = "float"
+abs_tol = 1e-09
+rel_tol = 1e-09

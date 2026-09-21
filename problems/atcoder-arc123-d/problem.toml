@@ -1,0 +1,16 @@
+id = "atcoder-arc123-d"
+title = "D - Inc, Dec - Decomposition"
+url = "https://atcoder.jp/contests/arc123/tasks/arc123_d"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

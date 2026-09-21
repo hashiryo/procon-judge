@@ -1,0 +1,16 @@
+id = "atcoder-abc240-h"
+title = "Ex - Sequence of Substrings"
+url = "https://atcoder.jp/contests/abc240/tasks/abc240_h"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

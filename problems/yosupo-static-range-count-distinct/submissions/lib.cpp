@@ -1,0 +1,19 @@
+#include <iostream>
+#include <vector>
+#include "mylib/data_structure/RangeCountDistinct.hpp"
+using namespace std;
+signed main() {
+ cin.tie(0);
+ ios::sync_with_stdio(0);
+ int N, Q;
+ cin >> N >> Q;
+ vector<int> a(N);
+ for(int i= 0; i < N; ++i) cin >> a[i];
+ RangeCountDistinct rcd(a);
+ while(Q--) {
+  int l, r;
+  cin >> l >> r;
+  cout << rcd.count(l, r) << '\n';
+ }
+ return 0;
+}

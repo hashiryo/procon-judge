@@ -1,0 +1,16 @@
+id = "yuki-8046"
+title = "yukicoderの過去問"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "8046"
+
+[compare]
+kind = "tokens"

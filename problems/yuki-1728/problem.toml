@@ -1,0 +1,16 @@
+id = "yuki-1728"
+title = "[Cherry 3rd Tune] Bullet"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1728"
+
+[compare]
+kind = "tokens"

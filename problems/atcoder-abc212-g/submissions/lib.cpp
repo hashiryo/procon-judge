@@ -1,0 +1,17 @@
+#include <iostream>
+#include "mylib/algebra/ModInt.hpp"
+#include "mylib/number_theory/ArrayOnDivisors.hpp"
+using namespace std;
+signed main() {
+ cin.tie(0);
+ ios::sync_with_stdio(false);
+ using Mint= ModInt<998244353>;
+ long long P;
+ cin >> P;
+ ArrayOnDivisors<long long, Mint> a(P - 1);
+ a.set_totient();
+ Mint ans= 1;
+ for(auto [d, phi]: a) ans+= phi * d;
+ cout << ans << '\n';
+ return 0;
+}

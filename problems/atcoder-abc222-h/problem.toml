@@ -1,0 +1,16 @@
+id = "atcoder-abc222-h"
+title = "H - Beautiful Binary Tree"
+url = "https://atcoder.jp/contests/abc222/tasks/abc222_h"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

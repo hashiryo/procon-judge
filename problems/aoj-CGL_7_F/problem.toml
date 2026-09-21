@@ -1,0 +1,18 @@
+id = "aoj-CGL_7_F"
+title = "Tangent to a Circle"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "CGL_7_F"
+
+[compare]
+kind = "float"
+abs_tol = 1e-08
+rel_tol = 1e-08

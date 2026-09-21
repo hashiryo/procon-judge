@@ -1,0 +1,16 @@
+id = "aoj-2624"
+title = "Graph Automata Player"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "2624"
+
+[compare]
+kind = "tokens"

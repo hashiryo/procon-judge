@@ -1,0 +1,16 @@
+id = "yuki-1901"
+title = "bitwise xor convolution (characteristic 2)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1901"
+
+[compare]
+kind = "tokens"

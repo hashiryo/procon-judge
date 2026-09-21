@@ -1,0 +1,16 @@
+id = "yosupo-convolution-mod-1000000007"
+title = "Convolution (Mod 1,000,000,007)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "convolution/convolution_mod_1000000007"
+
+[compare]
+kind = "checker"

@@ -1,0 +1,16 @@
+id = "yuki-981"
+title = "一般冪乗根"
+
+[limits]
+tle_sec = 6.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "981"
+
+[compare]
+kind = "tokens"

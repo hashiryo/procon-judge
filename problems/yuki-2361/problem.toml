@@ -1,0 +1,16 @@
+id = "yuki-2361"
+title = "Many String Compare Queries"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "2361"
+
+[compare]
+kind = "tokens"

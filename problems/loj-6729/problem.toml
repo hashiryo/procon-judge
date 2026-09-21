@@ -1,0 +1,17 @@
+id = "loj-6729"
+title = "loj-6729"
+url = "https://loj.ac/p/6729"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "loj-6729"
+
+[compare]
+kind = "tokens"

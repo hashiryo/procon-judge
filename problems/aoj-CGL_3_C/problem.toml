@@ -1,0 +1,16 @@
+id = "aoj-CGL_3_C"
+title = "Polygon-Point Containment"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "CGL_3_C"
+
+[compare]
+kind = "tokens"

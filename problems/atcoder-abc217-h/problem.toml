@@ -1,0 +1,16 @@
+id = "atcoder-abc217-h"
+title = "H - Snuketoon"
+url = "https://atcoder.jp/contests/abc217/tasks/abc217_h"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

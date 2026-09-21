@@ -1,0 +1,16 @@
+id = "yuki-1569"
+title = "Nixoracci's Number"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1569"
+
+[compare]
+kind = "tokens"

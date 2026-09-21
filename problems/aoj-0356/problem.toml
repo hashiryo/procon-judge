@@ -1,0 +1,18 @@
+id = "aoj-0356"
+title = "Evening"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "0356"
+
+[compare]
+kind = "float"
+abs_tol = 1e-07
+rel_tol = 1e-07

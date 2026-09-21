@@ -1,0 +1,16 @@
+id = "yuki-738"
+title = "平らな農地"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "738"
+
+[compare]
+kind = "tokens"

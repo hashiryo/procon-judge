@@ -1,0 +1,16 @@
+id = "aoj-2644"
+title = "Longest Match"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "2644"
+
+[compare]
+kind = "tokens"

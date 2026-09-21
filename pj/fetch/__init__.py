@@ -16,6 +16,7 @@ import hashlib
 import json
 import shutil
 import sys
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -173,13 +174,25 @@ def compute_cases_hash(cases: tuple[Case, ...]) -> str:
     return h.hexdigest()[:16]
 
 
-def write_manifest(directory: Path, cases: tuple[Case, ...], source: str, name: str) -> str:
+def write_manifest(
+    directory: Path,
+    cases: tuple[Case, ...],
+    source: str,
+    name: str,
+    extra: Mapping[str, object] | None = None,
+) -> str:
+    """manifest を書いて cases_hash を返す。
+
+    extra は取得元が足す項目。library_checker は生成に使った上流のコミットを
+    入れて、pin が動いたときに古いものだと分かるようにする。
+    """
     cases_hash = compute_cases_hash(cases)
     manifest = {
         "source": source,
         "name": name,
         "fetched_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "cases_hash": cases_hash,
+        **dict(extra or {}),
         "cases": [
             {
                 "name": c.name,
@@ -208,11 +221,18 @@ def ensure(
     refresh: bool = False,
     allow_mirror: bool = True,
     push_mirror: bool = True,
+    env=None,
 ) -> Testcases:
     """テストデータを用意して返す。
 
-    探索の順は、手元のキャッシュ (CI では actions/cache が復元する)、保管庫、
-    原本。原本まで行ったら、成功したあとに保管庫へ上げる。
+    探索の順は、手元のキャッシュ、保管庫、原本。原本まで行ったら、成功した
+    あとに保管庫へ上げる。CI のランナーは手元のキャッシュを持たずに始まるので、
+    走らせる問題のぶんだけ保管庫から落とす。
+
+    library_checker は pin で作ったものだけを使う。手元や保管庫にあるものが
+    古い pin で作られていれば作り直し、保管庫のものは置き換える。
+
+    env は local の参照実装を組むコンパイラ。渡さなければ環境 local のもの。
     """
     source = problem.testdata.source
     if source == "none":
@@ -221,39 +241,99 @@ def ensure(
     dest = cache_dir_for(problem)
     manifest_path = dest / MANIFEST_NAME
     if not refresh and manifest_path.is_file():
-        manifest = json.loads(manifest_path.read_text())
+        manifest = _read_manifest(dest)
         cases = collect_cases(dest)
-        if cases and _matches_manifest(cases, manifest["cases"]):
-            return Testcases(dir=dest, cases=cases, cases_hash=manifest["cases_hash"])
+        if cases and _matches_manifest(cases, manifest.get("cases", [])):
+            if _is_current(problem, manifest):
+                return Testcases(dir=dest, cases=cases, cases_hash=manifest["cases_hash"])
+            print(f"  手元の {problem.id} は古い pin で作ったものです。作り直します",
+                  file=sys.stderr)
 
     # 保管庫から取れるなら原本を叩かない。レート制限と障害を経路から外す。
+    replace = False
     if allow_mirror and mirror.should_mirror(problem) and mirror.available():
         try:
             if mirror.pull(problem, dest):
-                return _finish(problem, dest, source)
+                pulled = _read_manifest(dest)
+                if _is_current(problem, pulled):
+                    return _finish(problem, dest, source, extra=_carried(pulled))
+                # pin を動かしたのは意図的な操作なので、CI からでも置き換える。
+                print(
+                    f"  保管庫の {problem.id} は古い pin で作ったものです。"
+                    "作り直して置き換えます",
+                    file=sys.stderr,
+                )
+                replace = True
         except mirror.MirrorError as e:
             print(f"  保管庫から取れませんでした: {e}", file=sys.stderr)
 
-    _fetch_from_origin(problem, dest)
-    result = _finish(problem, dest, source)
+    extra = _fetch_from_origin(problem, dest, env=env)
+    result = _finish(problem, dest, source, extra=extra)
 
     # 一度保管すれば、次からは原本を叩かない。
     if push_mirror and mirror.should_mirror(problem) and mirror.available():
         try:
-            mirror.push(problem, dest)
+            mirror.push(problem, dest, force=replace)
         except mirror.MirrorError as e:
             print(f"  保管庫へ上げられませんでした: {e}", file=sys.stderr)
 
     return result
 
 
-def _fetch_from_origin(problem: Problem, dest: Path) -> None:
+def evict(problem: Problem) -> None:
+    """手元のキャッシュからその問題のテストデータを消す。
+
+    CI のランナーは disk が 14 GB ほどしか無い。1 ジョブで数十問を測るので、
+    測り終えた問題のぶんは捨てていく。保管庫にあるので、次に要るときは落とせる。
+    """
+    directory = cache_dir_for(problem)
+    if directory.exists():
+        shutil.rmtree(directory)
+
+
+def _read_manifest(directory: Path) -> dict:
+    try:
+        data = json.loads((directory / MANIFEST_NAME).read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _is_current(problem: Problem, manifest: dict) -> bool:
+    """手元や保管庫にあるものが、いま取るべきものと同じか。
+
+    library_checker だけは pin があるので、manifest に書いた上流のコミットと
+    突き合わせる。ほかの取得元は判定サイトの今の中身が正で、こちらから新旧を
+    言えない。
+    """
+    if problem.testdata.source != "library_checker":
+        return True
+    from . import library_checker
+
+    return library_checker.is_current(manifest)
+
+
+def _carried(manifest: dict) -> dict:
+    """保管庫から取ったものの manifest を書き直すとき、持ち越す項目。"""
+    from . import library_checker
+
+    key = library_checker.UPSTREAM_KEY
+    return {key: manifest[key]} if key in manifest else {}
+
+
+def _fetch_from_origin(problem: Problem, dest: Path, env=None) -> dict | None:
+    """原本から取る。manifest に足す項目があれば返す。"""
     source = problem.testdata.source
+    if source == "local":
+        from . import local
+
+        local.fetch(problem, dest, env)
+        return None
     if source == "library_checker":
         from . import library_checker
 
-        library_checker.fetch(problem, dest)
-    elif source == "aoj":
+        return library_checker.fetch(problem, dest)
+    if source == "aoj":
         from . import aoj
 
         aoj.fetch(problem, dest)
@@ -267,9 +347,12 @@ def _fetch_from_origin(problem: Problem, dest: Path) -> None:
         manual.fetch(problem, dest)
     else:
         raise FetchError(f"testdata.source {source!r} の取得はまだ実装していません")
+    return None
 
 
-def _finish(problem: Problem, dest: Path, source: str) -> Testcases:
+def _finish(
+    problem: Problem, dest: Path, source: str, extra: Mapping[str, object] | None = None
+) -> Testcases:
     """取れたものを数えて manifest を書き直す。
 
     cases_hash はケースの内容から計算する。保管庫と原本のどちらから取っても
@@ -278,7 +361,7 @@ def _finish(problem: Problem, dest: Path, source: str) -> Testcases:
     cases = collect_cases(dest)
     if not cases:
         raise FetchError(f"{dest} にケースがありません")
-    cases_hash = write_manifest(dest, cases, source, problem.testdata.name)
+    cases_hash = write_manifest(dest, cases, source, problem.testdata.name, extra)
     return Testcases(dir=dest, cases=cases, cases_hash=cases_hash)
 
 

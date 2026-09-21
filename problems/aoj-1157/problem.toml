@@ -1,0 +1,18 @@
+id = "aoj-1157"
+title = "Roll-A-Big-Ball"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "1157"
+
+[compare]
+kind = "float"
+abs_tol = 0.0001
+rel_tol = 0.0001

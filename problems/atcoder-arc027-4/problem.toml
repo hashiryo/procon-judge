@@ -1,0 +1,16 @@
+id = "atcoder-arc027-4"
+title = "D - ぴょんぴょんトレーニング"
+url = "https://atcoder.jp/contests/arc027/tasks/arc027_4"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

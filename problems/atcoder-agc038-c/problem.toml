@@ -1,0 +1,16 @@
+id = "atcoder-agc038-c"
+title = "C - LCMs"
+url = "https://atcoder.jp/contests/agc038/tasks/agc038_c"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

@@ -1,0 +1,16 @@
+id = "atcoder-abc236-g"
+title = "G - Good Vertices"
+url = "https://atcoder.jp/contests/abc236/tasks/abc236_g"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

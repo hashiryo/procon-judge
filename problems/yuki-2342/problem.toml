@@ -1,0 +1,16 @@
+id = "yuki-2342"
+title = "Triple Tree Query (Hard)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "2342"
+
+[compare]
+kind = "tokens"

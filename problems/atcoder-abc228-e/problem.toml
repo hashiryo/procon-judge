@@ -1,0 +1,16 @@
+id = "atcoder-abc228-e"
+title = "E - Integer Sequence Fair"
+url = "https://atcoder.jp/contests/abc228/tasks/abc228_e"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

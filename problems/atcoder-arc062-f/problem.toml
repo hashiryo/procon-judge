@@ -1,0 +1,16 @@
+id = "atcoder-arc062-f"
+title = "atcoder-arc062-f"
+url = "https://atcoder.jp/contests/arc062/tasks/arc062_f"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

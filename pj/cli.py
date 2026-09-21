@@ -12,6 +12,7 @@ from pathlib import Path
 
 from . import environment as env_mod
 from . import fetch
+from . import migrate as migrate_mod
 from . import plan as plan_mod
 from . import problem as problem_mod
 from . import repro as repro_mod
@@ -135,6 +136,28 @@ def cmd_problems_titles(args: argparse.Namespace) -> int:
     return 1 if (mismatched or failed) else 0
 
 
+def cmd_problems_import(args: argparse.Namespace) -> int:
+    """competitive-verifier のテストを raw の問題として取り込む。"""
+    try:
+        files = migrate_mod.collect_files([Path(p) for p in args.paths])
+    except migrate_mod.MigrateError as e:
+        return _die(str(e))
+    existing = {d.name for d in problem_mod.all_problem_dirs()}
+    items = migrate_mod.plan(
+        files,
+        existing=existing,
+        single_only=args.single_only,
+        titles=titles_mod.Titles(),
+    )
+    migrate_mod.report(items, dry_run=args.dry_run)
+    if args.dry_run:
+        return 0
+    for item in items:
+        if not item.skipped:
+            migrate_mod.write(item)
+    return 0
+
+
 def cmd_submissions_list(args: argparse.Namespace) -> int:
     directories = problem_mod.all_problem_dirs()
     if args.problem:
@@ -166,6 +189,7 @@ def cmd_fetch(args: argparse.Namespace) -> int:
             p,
             refresh=args.refresh or args.from_origin,
             allow_mirror=not args.from_origin,
+            env=env_mod.load(args.env),
         )
         print(
             f"{p.id}: {testcases.count} cases  cases_hash={testcases.cases_hash}  "
@@ -361,15 +385,21 @@ def cmd_run(args: argparse.Namespace) -> int:
         for problem, submission in worklist.blocked:
             print(f"block\t{problem.id}\t{submission.as_posix()}\t-")
     else:
-        for index, job in enumerate(worklist.jobs, start=1):
+        jobs = worklist.jobs
+        for index, job in enumerate(jobs, start=1):
             print(
-                f"[{index}/{len(worklist.jobs)}] {job.problem.id} / "
+                f"[{index}/{len(jobs)}] {job.problem.id} / "
                 f"{job.submission.as_posix()}",
                 file=sys.stderr,
             )
             record = run_mod.execute_job(job)
             out.append(record)
             print(record.to_json(), flush=True)
+            # 同じ問題の提出は続けて並ぶので、最後の 1 本を測ったらそのテストデータを
+            # 捨てられる。ランナーの disk のためで、手元では渡さない。
+            last_of_problem = index == len(jobs) or jobs[index].problem.id != job.problem.id
+            if args.evict_testdata and last_of_problem:
+                fetch.evict(job.problem)
 
     _print_summary(worklist, args.dry_run, file=sys.stderr)
     # WA や TLE は判定であって失敗ではない。記録が出せたら 0 で返す。
@@ -467,6 +497,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_titles.add_argument("--problem")
     p_titles.add_argument("--fix", action="store_true", help="problem.toml を書き換える")
     p_titles.set_defaults(func=cmd_problems_titles)
+    p_import = problems.add_parser(
+        "import", help="competitive-verifier のテストを raw の問題として取り込む"
+    )
+    p_import.add_argument("paths", nargs="+", metavar="PATH", help="*.test.cpp かそのディレクトリ")
+    p_import.add_argument(
+        "--single-only", action="store_true", help="実装が 1 本の問題だけを取り込む"
+    )
+    p_import.add_argument("--dry-run", action="store_true", help="計画を出すだけ")
+    p_import.set_defaults(func=cmd_problems_import)
 
     submissions = sub.add_parser("submissions", help="提出").add_subparsers(
         dest="subcommand", required=True
@@ -483,6 +522,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--from-origin",
         action="store_true",
         help="保管庫も飛ばして原本から取る。保管庫の中身を疑うとき用",
+    )
+    p_fetch.add_argument(
+        "--env", default="local", help="local の参照実装を組む環境 (既定 local)"
     )
     p_fetch.set_defaults(func=cmd_fetch)
 
@@ -544,6 +586,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.add_argument(
         "--budget", type=int, help="走らせる提出の上限。省略すると打ち切らない"
     )
+    p_run.add_argument(
+        "--evict-testdata",
+        action="store_true",
+        help="測り終えた問題のテストデータを手元のキャッシュから消す (CI のランナー用)",
+    )
     p_run.set_defaults(func=cmd_run)
 
     p_repro = sub.add_parser(
@@ -587,6 +634,7 @@ def main(argv: list[str] | None = None) -> int:
         env_mod.EnvironmentError_,
         fetch.FetchError,
         mirror.MirrorError,
+        migrate_mod.MigrateError,
         site_build.SiteError,
     ) as e:
         return _die(str(e))

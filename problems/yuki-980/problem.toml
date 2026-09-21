@@ -1,0 +1,16 @@
+id = "yuki-980"
+title = "Fibonacci Convolution Hard"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "980"
+
+[compare]
+kind = "tokens"

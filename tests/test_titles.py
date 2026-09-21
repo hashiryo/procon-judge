@@ -110,3 +110,41 @@ def test_rewrite_without_a_title_line_fails(tmp_path):
     path.write_text('id = "x"\n')
     with pytest.raises(titles_mod.TitleError):
         titles_mod.rewrite_title(path, "t")
+
+
+def test_aoj_limits_come_from_the_list(monkeypatch):
+    from pj import titles as titles_mod
+
+    page = [
+        {"id": "2603", "name": "Problem A", "problemTimeLimit": 8, "problemMemoryLimit": 262144},
+        {"id": "DSL_2_B", "name": "RSQ", "problemTimeLimit": 1, "problemMemoryLimit": 131072},
+    ]
+    monkeypatch.setattr(titles_mod, "_get_json", lambda url: page)
+    titles = titles_mod.Titles()
+    assert titles.aoj_names() == {"2603": "Problem A", "DSL_2_B": "RSQ"}
+    assert titles.aoj_limits("2603") == (8.0, 256)
+    assert titles.aoj_limits("DSL_2_B") == (1.0, 128)
+    assert titles.aoj_limits("nope") is None
+
+
+def test_atcoder_title_comes_from_the_page(monkeypatch):
+    from pj import titles as titles_mod
+
+    monkeypatch.setattr(
+        titles_mod, "_get_html",
+        lambda url: "<html><head><title>\n068 - Paired Information（★5）\n</title></head></html>",
+    )
+    assert titles_mod.atcoder_title("https://atcoder.jp/contests/typical90/tasks/typical90_bp") == (
+        "068 - Paired Information（★5）"
+    )
+
+    class Probe:
+        class testdata:
+            source = "none"
+            name = ""
+
+        url = "https://atcoder.jp/contests/typical90/tasks/typical90_bp"
+
+    assert titles_mod.Titles().official(Probe()) == "068 - Paired Information（★5）"
+    Probe.url = "https://codeforces.com/contest/1/problem/A"
+    assert titles_mod.Titles().official(Probe()) is None

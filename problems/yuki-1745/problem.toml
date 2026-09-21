@@ -1,0 +1,16 @@
+id = "yuki-1745"
+title = "Selfish Spies 2 (à la Princess' Perfectionism)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1745"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,24 @@
+// ポテンシャルUF
+#include <iostream>
+#include "mylib/data_structure/UnionFind_Potentialized.hpp"
+using namespace std;
+signed main() {
+ cin.tie(0);
+ ios::sync_with_stdio(0);
+ int n, q;
+ cin >> n >> q;
+ UnionFind_Potentialized<int> uf(n);
+ for(int i= 0; i < q; i++) {
+  int c, x, y;
+  cin >> c >> x >> y;
+  if(c) {
+   if(uf.connected(x, y)) cout << uf.diff(x, y) << "\n";
+   else cout << "?\n";
+  } else {
+   int z;
+   cin >> z;
+   uf.unite(x, y, z);
+  }
+ }
+ return 0;
+}

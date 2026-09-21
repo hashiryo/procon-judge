@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -43,6 +44,46 @@ def compare_tokens(actual_path: Path, expected_path: Path) -> CompareResult:
     return CompareResult(True, f"{len(actual)} tokens")
 
 
+def _as_float(token: str) -> float | None:
+    try:
+        value = float(token)
+    except ValueError:
+        return None
+    return value if math.isfinite(value) else None
+
+
+def compare_float(
+    actual_path: Path, expected_path: Path, *, abs_tol: float, rel_tol: float
+) -> CompareResult:
+    """トークン比較で、数値は誤差を許す。
+
+    絶対誤差か相対誤差のどちらかが収まれば同じとみなす。AtCoder や
+    competitive-verifier の ERROR と同じ規則。数値でないトークンは文字列で比べる。
+    """
+    actual, expected = _tokens(actual_path), _tokens(expected_path)
+    for i, (a, e) in enumerate(zip(actual, expected)):
+        if a == e:
+            continue
+        x, y = _as_float(a), _as_float(e)
+        if x is None or y is None:
+            return CompareResult(
+                False, f"token {i}: expected {_abbrev(e)!r}, found {_abbrev(a)!r}"
+            )
+        diff = abs(x - y)
+        if diff <= abs_tol or diff <= rel_tol * abs(y):
+            continue
+        return CompareResult(
+            False,
+            f"token {i}: expected {_abbrev(e)}, found {_abbrev(a)} (diff {diff:.3g}, "
+            f"abs_tol {abs_tol:g}, rel_tol {rel_tol:g})",
+        )
+    if len(actual) != len(expected):
+        return CompareResult(
+            False, f"token count: expected {len(expected)}, found {len(actual)}"
+        )
+    return CompareResult(True, f"{len(actual)} tokens")
+
+
 def compare_checker(
     checker: Path, input_path: Path, actual_path: Path, expected_path: Path
 ) -> CompareResult:
@@ -67,9 +108,13 @@ def compare(
     actual_path: Path,
     expected_path: Path,
     checker: Path | None = None,
+    abs_tol: float = 0.0,
+    rel_tol: float = 0.0,
 ) -> CompareResult:
     if kind == "tokens":
         return compare_tokens(actual_path, expected_path)
+    if kind == "float":
+        return compare_float(actual_path, expected_path, abs_tol=abs_tol, rel_tol=rel_tol)
     if kind == "checker":
         if checker is None:
             return CompareResult(False, "checker が用意できていません")

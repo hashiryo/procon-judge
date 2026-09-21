@@ -1,0 +1,16 @@
+id = "atcoder-abc266-h"
+title = "Ex - Snuke Panic (2D)"
+url = "https://atcoder.jp/contests/abc266/tasks/abc266_h"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

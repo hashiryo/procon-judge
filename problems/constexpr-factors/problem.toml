@@ -1,0 +1,15 @@
+id = "constexpr-factors"
+title = "constexpr-factors"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

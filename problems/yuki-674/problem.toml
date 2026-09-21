@@ -1,0 +1,16 @@
+id = "yuki-674"
+title = "n連勤"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "674"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,16 @@
+id = "atcoder-abc172-d"
+title = "D - Sum of Divisors"
+url = "https://atcoder.jp/contests/abc172/tasks/abc172_d"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

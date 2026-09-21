@@ -172,7 +172,7 @@ def build_worklist(
             state.pending.extend((problem, s) for s in submissions)
             continue
         try:
-            real = fetch.ensure(problem, refresh=refresh).cases_hash
+            real = fetch.ensure(problem, refresh=refresh, env=env).cases_hash
         except fetch.FetchError as e:
             # 1 問取れなかっただけで、走れる問題の記録まで落とさない。
             # 取りこぼしは次の実行が拾う。
@@ -349,6 +349,8 @@ def judge_case(
         actual_path=actual_path,
         expected_path=case.out_path,
         checker=checker,
+        abs_tol=problem.compare.abs_tol,
+        rel_tol=problem.compare.rel_tol,
     )
     return ("AC" if verdict.ok else "WA"), verdict.detail
 
@@ -413,7 +415,7 @@ def execute_job(job: Job) -> Record:
 
     testcases = None
     if fetch.needs_testdata(problem):
-        testcases = fetch.ensure(problem)
+        testcases = fetch.ensure(problem, env=env)
         if testcases.cases_hash != job.cases_hash:
             # キーを決めたときと違う相手を測ろうとしている。そのまま走らせると
             # 記録の cases_hash が実際に測ったものと食い違う。記録が嘘をつく

@@ -1,0 +1,16 @@
+id = "aoj-DPL_3_B"
+title = "Largest Rectangle"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "DPL_3_B"
+
+[compare]
+kind = "tokens"

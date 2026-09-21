@@ -1,0 +1,16 @@
+id = "yuki-1371"
+title = "交換門松列・松"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1371"
+
+[compare]
+kind = "tokens"

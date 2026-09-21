@@ -1,0 +1,17 @@
+id = "hackerrank-minimum-history-query"
+title = "hackerrank-minimum-history-query"
+url = "https://www.hackerrank.com/contests/happy-query-contest/challenges/minimum-history-query"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "hackerrank-minimum-history-query"
+
+[compare]
+kind = "tokens"

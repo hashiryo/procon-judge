@@ -1,0 +1,16 @@
+id = "yosupo-enumerate-palindromes"
+title = "Enumerate Palindromes"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "string/enumerate_palindromes"
+
+[compare]
+kind = "checker"

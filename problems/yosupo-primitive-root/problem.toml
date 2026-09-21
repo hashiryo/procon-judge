@@ -1,0 +1,16 @@
+id = "yosupo-primitive-root"
+title = "Primitive Root"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "number_theory/primitive_root"
+
+[compare]
+kind = "checker"

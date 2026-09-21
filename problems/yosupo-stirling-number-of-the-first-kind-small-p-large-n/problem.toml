@@ -1,0 +1,16 @@
+id = "yosupo-stirling-number-of-the-first-kind-small-p-large-n"
+title = "Stirling Number of the First Kind (Small p, Large n)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "enumerative_combinatorics/stirling_number_of_the_first_kind_small_p_large_n"
+
+[compare]
+kind = "checker"

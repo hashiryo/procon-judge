@@ -1,0 +1,16 @@
+id = "codechef-CCDSAP"
+title = "codechef-CCDSAP"
+url = "https://www.codechef.com/problems/CCDSAP"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

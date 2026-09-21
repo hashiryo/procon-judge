@@ -1,0 +1,16 @@
+id = "atcoder-abc201-e"
+title = "E - Xor Distances"
+url = "https://atcoder.jp/contests/abc201/tasks/abc201_e"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

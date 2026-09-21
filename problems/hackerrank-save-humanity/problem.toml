@@ -1,0 +1,17 @@
+id = "hackerrank-save-humanity"
+title = "hackerrank-save-humanity"
+url = "https://www.hackerrank.com/challenges/save-humanity"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "hackerrank-save-humanity"
+
+[compare]
+kind = "tokens"

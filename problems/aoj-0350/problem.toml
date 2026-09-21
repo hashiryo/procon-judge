@@ -1,0 +1,16 @@
+id = "aoj-0350"
+title = "Irreducible Fractionalization"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "0350"
+
+[compare]
+kind = "tokens"

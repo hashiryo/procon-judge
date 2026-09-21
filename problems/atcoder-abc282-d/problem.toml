@@ -1,0 +1,16 @@
+id = "atcoder-abc282-d"
+title = "D - Make Bipartite 2"
+url = "https://atcoder.jp/contests/abc282/tasks/abc282_d"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

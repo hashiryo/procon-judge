@@ -1,0 +1,17 @@
+id = "hackerrank-string-function-calculation"
+title = "hackerrank-string-function-calculation"
+url = "https://www.hackerrank.com/challenges/string-function-calculation"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "hackerrank-string-function-calculation"
+
+[compare]
+kind = "tokens"

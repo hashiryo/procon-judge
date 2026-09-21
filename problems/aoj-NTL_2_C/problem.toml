@@ -1,0 +1,16 @@
+id = "aoj-NTL_2_C"
+title = "Multiplication of Big Integers"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "NTL_2_C"
+
+[compare]
+kind = "tokens"

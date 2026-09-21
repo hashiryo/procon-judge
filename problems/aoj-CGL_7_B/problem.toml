@@ -1,0 +1,18 @@
+id = "aoj-CGL_7_B"
+title = "Incircle of a Triangle"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "CGL_7_B"
+
+[compare]
+kind = "float"
+abs_tol = 1e-08
+rel_tol = 1e-08

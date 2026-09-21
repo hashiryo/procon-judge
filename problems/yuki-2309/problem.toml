@@ -1,0 +1,16 @@
+id = "yuki-2309"
+title = "[Cherry 5th Tune D] 夏の先取り"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "2309"
+
+[compare]
+kind = "tokens"

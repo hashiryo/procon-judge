@@ -1,0 +1,16 @@
+id = "yuki-992"
+title = "最長増加部分列の数え上げ"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "992"
+
+[compare]
+kind = "tokens"

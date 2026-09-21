@@ -1,0 +1,16 @@
+id = "yuki-1242"
+title = "高橋君とすごろく"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1242"
+
+[compare]
+kind = "tokens"

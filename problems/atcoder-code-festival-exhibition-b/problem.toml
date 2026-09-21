@@ -1,0 +1,16 @@
+id = "atcoder-code-festival-exhibition-b"
+title = "B - カッコつけ"
+url = "https://atcoder.jp/contests/code-festival-2014-exhibition/tasks/code_festival_exhibition_b"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

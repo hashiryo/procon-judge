@@ -1,0 +1,16 @@
+id = "atcoder-abc228-d"
+title = "D - Linear Probing"
+url = "https://atcoder.jp/contests/abc228/tasks/abc228_d"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

@@ -1,0 +1,16 @@
+id = "yosupo-nim-product-64"
+title = "Nim Product (mathbbF2^64)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "number_theory/nim_product_64"
+
+[compare]
+kind = "checker"

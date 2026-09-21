@@ -1,0 +1,17 @@
+id = "loj-2072"
+title = "loj-2072"
+url = "https://loj.ac/p/2072"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "loj-2072"
+
+[compare]
+kind = "tokens"

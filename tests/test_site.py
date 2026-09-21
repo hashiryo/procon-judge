@@ -613,6 +613,8 @@ def test_index_counts_problems_per_origin(tmp_path, no_problem_dirs):
     assert index["origins"] == {"yosupo": 2, "aoj": 1, "自作": 1}
     page = (out / "index.html").read_text()
     assert 'id="filter"' in page
+    # 実装が 1 本の raw の問題を外して順位表のある問題だけを見る口。
+    assert 'id="multi"' in page
 
 
 # --- テストデータの注意書き ------------------------------------------------
@@ -784,3 +786,24 @@ def test_problem_payload_carries_the_failed_cases():
     cell = site_build.collapse([rec(status="RE", failed_cases=["x", "y"])])[0]
     payload = site_build.problem_payload("p", None, [cell], "2026-01-01T00:00:00Z")
     assert payload["rows"][0]["failed_cases"] == ["x", "y"]
+
+
+def test_problem_url_prefers_the_written_url(tmp_path):
+    from pj import problem as problem_mod
+
+    directory = tmp_path / "atcoder-abc1-a"
+    directory.mkdir()
+    (directory / "problem.toml").write_text(
+        'id = "atcoder-abc1-a"\ntitle = "A"\nurl = "https://atcoder.jp/contests/abc1/tasks/abc1_a"\n'
+        '\n[harness]\nkind = "raw"\n\n[testdata]\nsource = "none"\n\n[compare]\nkind = "compile_only"\n'
+    )
+    assert site_build.problem_url(problem_mod.load(directory)) == (
+        "https://atcoder.jp/contests/abc1/tasks/abc1_a"
+    )
+
+
+def test_origin_of_knows_the_manual_judges():
+    assert site_build.origin_of("cf-1140-f") == "cf"
+    assert site_build.origin_of("ojuz-APIO16_fireworks") == "ojuz"
+    assert site_build.origin_of("luogu-P5055") == "luogu"
+    assert site_build.origin_of("mat-unit-test") == site_build.OWN_ORIGIN

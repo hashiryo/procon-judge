@@ -1,0 +1,16 @@
+id = "atcoder-dwango2016qual-e"
+title = "E - 花火"
+url = "https://atcoder.jp/contests/dwango2016-prelims/tasks/dwango2016qual_e"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

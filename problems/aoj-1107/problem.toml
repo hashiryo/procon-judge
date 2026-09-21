@@ -1,0 +1,16 @@
+id = "aoj-1107"
+title = "Spiral Footrace"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "1107"
+
+[compare]
+kind = "tokens"

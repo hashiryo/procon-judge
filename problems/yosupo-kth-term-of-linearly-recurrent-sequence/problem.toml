@@ -1,0 +1,16 @@
+id = "yosupo-kth-term-of-linearly-recurrent-sequence"
+title = "Kth term of Linearly Recurrent Sequence"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "other/kth_term_of_linearly_recurrent_sequence"
+
+[compare]
+kind = "checker"

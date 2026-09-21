@@ -1,0 +1,19 @@
+#include <iostream>
+#include <vector>
+#include "mylib/algebra/ModInt.hpp"
+#include "mylib/fft/bostan_mori.hpp"
+using namespace std;
+signed main() {
+ cin.tie(0);
+ ios::sync_with_stdio(false);
+ using Mint= ModInt<998244353>;
+ int d;
+ cin >> d;
+ std::uint64_t k;
+ cin >> k;
+ std::vector<Mint> a(d), c(d);
+ for(int i= 0; i < d; i++) cin >> a[i];
+ for(int i= 0; i < d; i++) cin >> c[i];
+ cout << linear_recurrence(c, a, k) << '\n';
+ return 0;
+}

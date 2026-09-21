@@ -1,0 +1,16 @@
+id = "yosupo-binomial-coefficient"
+title = "Binomial Coefficient"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "enumerative_combinatorics/binomial_coefficient"
+
+[compare]
+kind = "checker"

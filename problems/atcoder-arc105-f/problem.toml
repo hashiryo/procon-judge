@@ -1,0 +1,16 @@
+id = "atcoder-arc105-f"
+title = "F - Lights Out on Connected Graph"
+url = "https://atcoder.jp/contests/arc105/tasks/arc105_f"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

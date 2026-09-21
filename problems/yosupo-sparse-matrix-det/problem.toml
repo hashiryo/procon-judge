@@ -1,0 +1,16 @@
+id = "yosupo-sparse-matrix-det"
+title = "Determinant of Sparse Matrix"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "linear_algebra/sparse_matrix_det"
+
+[compare]
+kind = "checker"

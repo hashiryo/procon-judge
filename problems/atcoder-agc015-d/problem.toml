@@ -1,0 +1,16 @@
+id = "atcoder-agc015-d"
+title = "D - A or...or B Problem"
+url = "https://atcoder.jp/contests/agc015/tasks/agc015_d"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

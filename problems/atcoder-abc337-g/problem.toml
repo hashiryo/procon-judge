@@ -1,0 +1,16 @@
+id = "atcoder-abc337-g"
+title = "G - Tree Inversion"
+url = "https://atcoder.jp/contests/abc337/tasks/abc337_g"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

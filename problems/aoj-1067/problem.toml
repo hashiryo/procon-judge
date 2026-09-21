@@ -1,0 +1,16 @@
+id = "aoj-1067"
+title = "Cutting a Chocolate"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "1067"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,16 @@
+id = "atcoder-abc134-e"
+title = "E - Sequence Decomposing"
+url = "https://atcoder.jp/contests/abc134/tasks/abc134_e"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

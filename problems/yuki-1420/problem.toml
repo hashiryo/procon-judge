@@ -1,0 +1,16 @@
+id = "yuki-1420"
+title = "国勢調査 (Easy)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1420"
+
+[compare]
+kind = "tokens"

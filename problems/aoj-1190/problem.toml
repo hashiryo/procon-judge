@@ -1,0 +1,18 @@
+id = "aoj-1190"
+title = "Anchored Balloon"
+
+[limits]
+tle_sec = 8.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "1190"
+
+[compare]
+kind = "float"
+abs_tol = 1e-06
+rel_tol = 1e-06

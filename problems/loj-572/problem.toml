@@ -1,0 +1,17 @@
+id = "loj-572"
+title = "loj-572"
+url = "https://loj.ac/p/572"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "loj-572"
+
+[compare]
+kind = "tokens"

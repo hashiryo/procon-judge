@@ -1,0 +1,17 @@
+id = "hackerrank-drawing-rectangles"
+title = "hackerrank-drawing-rectangles"
+url = "https://www.hackerrank.com/contests/university-codesprint-4/challenges/drawing-rectangles"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "hackerrank-drawing-rectangles"
+
+[compare]
+kind = "tokens"

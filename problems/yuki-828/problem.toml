@@ -1,0 +1,16 @@
+id = "yuki-828"
+title = "全方位神童数"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "828"
+
+[compare]
+kind = "tokens"

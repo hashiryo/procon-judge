@@ -99,6 +99,13 @@ nav {
   margin-bottom: 12px;
 }
 
+.controls .check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
 input[type="search"] {
   background: var(--c-bg);
   color: var(--c-text);

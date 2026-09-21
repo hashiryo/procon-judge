@@ -1,0 +1,16 @@
+id = "atcoder-tkppc6-1-n"
+title = "N - Jump and Walk"
+url = "https://atcoder.jp/contests/tkppc6-1/tasks/tkppc6_1_n"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

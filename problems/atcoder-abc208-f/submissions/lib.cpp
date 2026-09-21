@@ -1,0 +1,17 @@
+#include <iostream>
+#include "mylib/algebra/ModInt.hpp"
+#include "mylib/algebra/sample_points_shift.hpp"
+#include "mylib/number_theory/enumerate_primes.hpp"
+using namespace std;
+signed main() {
+ cin.tie(0);
+ ios::sync_with_stdio(false);
+ using Mint= ModInt<int(1e9 + 7)>;
+ long long N, M, K;
+ cin >> N >> M >> K;
+ auto y= pow_table<Mint>(M + K, K);
+ for(int i= M; i--;)
+  for(int j= 0; j < M + K; ++j) y[j + 1]+= y[j];
+ cout << sample_points_shift<Mint>(y, N) << '\n';
+ return 0;
+}

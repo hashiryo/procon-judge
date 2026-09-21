@@ -1,0 +1,16 @@
+id = "aoj-CGL_1_C"
+title = "Counter-Clockwise"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "CGL_1_C"
+
+[compare]
+kind = "tokens"

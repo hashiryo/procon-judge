@@ -1,0 +1,16 @@
+id = "yosupo-maximum-independent-set"
+title = "Maximum Independent Set"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "graph/maximum_independent_set"
+
+[compare]
+kind = "checker"

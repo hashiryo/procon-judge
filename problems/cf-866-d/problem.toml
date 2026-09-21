@@ -1,0 +1,16 @@
+id = "cf-866-d"
+title = "cf-866-d"
+url = "https://codeforces.com/contest/866/problem/D"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

@@ -1,0 +1,16 @@
+id = "aoj-3032"
+title = "Combine Two Elements"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "3032"
+
+[compare]
+kind = "tokens"

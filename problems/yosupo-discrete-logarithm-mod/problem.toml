@@ -1,0 +1,16 @@
+id = "yosupo-discrete-logarithm-mod"
+title = "Discrete Logarithm"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "number_theory/discrete_logarithm_mod"
+
+[compare]
+kind = "checker"

@@ -1,0 +1,16 @@
+id = "atcoder-abc160-f"
+title = "F - Distributing Integers"
+url = "https://atcoder.jp/contests/abc160/tasks/abc160_f"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

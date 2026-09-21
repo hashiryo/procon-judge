@@ -1,0 +1,16 @@
+id = "atcoder-utpc2012-12"
+title = "L - じょうしょうツリー"
+url = "https://atcoder.jp/contests/utpc2012/tasks/utpc2012_12"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

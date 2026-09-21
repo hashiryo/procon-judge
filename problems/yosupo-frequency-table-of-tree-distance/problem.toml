@@ -1,0 +1,16 @@
+id = "yosupo-frequency-table-of-tree-distance"
+title = "Frequency Table of Tree Distance"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "tree/frequency_table_of_tree_distance"
+
+[compare]
+kind = "checker"

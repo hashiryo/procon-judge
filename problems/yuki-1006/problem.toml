@@ -1,0 +1,16 @@
+id = "yuki-1006"
+title = "Share an Integer"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1006"
+
+[compare]
+kind = "tokens"

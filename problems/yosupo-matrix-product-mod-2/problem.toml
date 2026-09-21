@@ -1,0 +1,16 @@
+id = "yosupo-matrix-product-mod-2"
+title = "Matrix Product (Mod 2)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "linear_algebra/matrix_product_mod_2"
+
+[compare]
+kind = "checker"

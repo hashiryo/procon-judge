@@ -19,3 +19,5 @@ HARNESS_DIR = ROOT / "harness"
 SIMDE_DIR = ROOT / "third_party" / "simde"
 ENVIRONMENTS_TOML = ROOT / "environments.toml"
 LIBRARIES_TOML = ROOT / "libraries.toml"
+# 外にある取得元の版 (library-checker-problems のコミット)。
+TESTDATA_TOML = ROOT / "testdata.toml"

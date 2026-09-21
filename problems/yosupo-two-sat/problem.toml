@@ -1,0 +1,16 @@
+id = "yosupo-two-sat"
+title = "2 Sat"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "other/two_sat"
+
+[compare]
+kind = "checker"

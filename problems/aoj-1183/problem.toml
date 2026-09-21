@@ -1,0 +1,18 @@
+id = "aoj-1183"
+title = "Chain-Confined Path"
+
+[limits]
+tle_sec = 8.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "1183"
+
+[compare]
+kind = "float"
+abs_tol = 0.0001
+rel_tol = 0.0001

@@ -1,0 +1,16 @@
+id = "aoj-0425"
+title = "Chemical Substance Alpha"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "0425"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,17 @@
+id = "joisc-2010-sp-day2-21-2"
+title = "joisc-2010-sp-day2-21-2"
+url = "https://www2.ioi-jp.org/camp/2010/2010-sp-tasks/2010-sp-day2_21.pdf#2"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "joisc-2010-sp-day2-21-2"
+
+[compare]
+kind = "tokens"

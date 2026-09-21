@@ -1,0 +1,17 @@
+id = "joisc-2011-sp-day3-2"
+title = "joisc-2011-sp-day3-2"
+url = "https://www2.ioi-jp.org/camp/2011/2011-sp-tasks/2011-sp-day3.pdf#2"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "joisc-2011-sp-day3-2"
+
+[compare]
+kind = "tokens"

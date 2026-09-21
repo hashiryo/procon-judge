@@ -1,0 +1,16 @@
+id = "yosupo-bipartite-edge-coloring"
+title = "Edge Coloring of Bipartite Graph"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "graph/bipartite_edge_coloring"
+
+[compare]
+kind = "checker"

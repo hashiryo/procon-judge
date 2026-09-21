@@ -1,0 +1,16 @@
+id = "atcoder-abc213-f"
+title = "F - Common Prefixes"
+url = "https://atcoder.jp/contests/abc213/tasks/abc213_f"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

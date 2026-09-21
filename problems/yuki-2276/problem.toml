@@ -1,0 +1,16 @@
+id = "yuki-2276"
+title = "I Want AC"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "2276"
+
+[compare]
+kind = "tokens"

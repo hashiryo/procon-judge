@@ -1,0 +1,16 @@
+id = "aoj-3022"
+title = "Cluster Network"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "3022"
+
+[compare]
+kind = "tokens"

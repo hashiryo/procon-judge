@@ -1,0 +1,16 @@
+id = "aoj-1605"
+title = "Bridge Construction Planning"
+
+[limits]
+tle_sec = 8.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "1605"
+
+[compare]
+kind = "tokens"

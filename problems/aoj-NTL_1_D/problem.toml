@@ -1,0 +1,16 @@
+id = "aoj-NTL_1_D"
+title = "Euler's Phi Function"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "NTL_1_D"
+
+[compare]
+kind = "tokens"

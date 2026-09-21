@@ -1,0 +1,16 @@
+id = "ojuz-LMIO19_bulves"
+title = "ojuz-LMIO19_bulves"
+url = "https://oj.uz/problem/view/LMIO19_bulves"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

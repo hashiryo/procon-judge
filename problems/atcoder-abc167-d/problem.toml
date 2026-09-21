@@ -1,0 +1,16 @@
+id = "atcoder-abc167-d"
+title = "D - Teleporter"
+url = "https://atcoder.jp/contests/abc167/tasks/abc167_d"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

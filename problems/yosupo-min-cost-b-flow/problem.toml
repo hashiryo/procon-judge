@@ -1,0 +1,16 @@
+id = "yosupo-min-cost-b-flow"
+title = "Minimum Cost b-flow"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "graph/min_cost_b_flow"
+
+[compare]
+kind = "checker"

@@ -1,0 +1,17 @@
+id = "loj-6714"
+title = "loj-6714"
+url = "https://loj.ac/p/6714"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "loj-6714"
+
+[compare]
+kind = "tokens"

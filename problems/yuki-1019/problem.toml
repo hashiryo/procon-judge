@@ -1,0 +1,16 @@
+id = "yuki-1019"
+title = "最小格子三角形"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1019"
+
+[compare]
+kind = "tokens"

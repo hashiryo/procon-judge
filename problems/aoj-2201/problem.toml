@@ -1,0 +1,16 @@
+id = "aoj-2201"
+title = "Immortal Jewels"
+
+[limits]
+tle_sec = 8.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "2201"
+
+[compare]
+kind = "tokens"

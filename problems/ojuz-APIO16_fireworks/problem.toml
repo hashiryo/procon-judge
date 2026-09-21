@@ -1,0 +1,16 @@
+id = "ojuz-APIO16_fireworks"
+title = "ojuz-APIO16_fireworks"
+url = "https://oj.uz/problem/view/APIO16_fireworks"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

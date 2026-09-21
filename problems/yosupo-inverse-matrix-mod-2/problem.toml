@@ -1,0 +1,16 @@
+id = "yosupo-inverse-matrix-mod-2"
+title = "Inverse Matrix (Mod 2)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "linear_algebra/inverse_matrix_mod_2"
+
+[compare]
+kind = "checker"

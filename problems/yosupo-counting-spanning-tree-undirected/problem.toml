@@ -1,0 +1,16 @@
+id = "yosupo-counting-spanning-tree-undirected"
+title = "Counting Spanning Trees (Undirected)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "graph/counting_spanning_tree_undirected"
+
+[compare]
+kind = "checker"

@@ -1,0 +1,16 @@
+id = "yuki-925"
+title = "紲星 Extra"
+
+[limits]
+tle_sec = 7.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "925"
+
+[compare]
+kind = "tokens"

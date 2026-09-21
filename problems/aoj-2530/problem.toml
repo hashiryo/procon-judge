@@ -1,0 +1,16 @@
+id = "aoj-2530"
+title = "Reverse Game"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "2530"
+
+[compare]
+kind = "tokens"

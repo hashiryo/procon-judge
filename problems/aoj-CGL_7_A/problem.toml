@@ -1,0 +1,16 @@
+id = "aoj-CGL_7_A"
+title = "Intersection"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "CGL_7_A"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,16 @@
+id = "atcoder-arc116-c"
+title = "C - Multiple Sequences"
+url = "https://atcoder.jp/contests/arc116/tasks/arc116_c"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

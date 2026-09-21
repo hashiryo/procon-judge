@@ -1,0 +1,16 @@
+id = "atcoder-wtf19-c2"
+title = "C2 - Triangular Lamps Hard"
+url = "https://atcoder.jp/contests/wtf19/tasks/wtf19_c2"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

@@ -1,0 +1,16 @@
+id = "aoj-3170"
+title = "Freqs"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "3170"
+
+[compare]
+kind = "tokens"

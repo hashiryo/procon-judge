@@ -1,0 +1,16 @@
+id = "luogu-P5586"
+title = "luogu-P5586"
+url = "https://www.luogu.com.cn/problem/P5586"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"

@@ -1,0 +1,17 @@
+id = "cf-gym103373-i"
+title = "cf-gym103373-i"
+url = "https://codeforces.com/gym/103373/problem/I"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "cf-gym103373-i"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,17 @@
+id = "hackerrank-range-counting-query"
+title = "hackerrank-range-counting-query"
+url = "https://www.hackerrank.com/contests/happy-query-contest/challenges/range-counting-query"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "hackerrank-range-counting-query"
+
+[compare]
+kind = "tokens"

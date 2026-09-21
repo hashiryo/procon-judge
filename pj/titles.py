@@ -11,8 +11,10 @@ AOJ の旧 API (judgeapi.u-aizu.ac.jp) は 410 Gone で消えている。新し�
 
 from __future__ import annotations
 
+import html
 import json
 import re
+import time
 import tomllib
 import urllib.request
 from pathlib import Path
@@ -42,6 +44,34 @@ def _get_text(url: str) -> str:
         raise TitleError(f"{url}: {e}") from e
 
 
+# AtCoder は続けて叩くと 429 を返す (133 問の取り込みで 72 問が落ちた)。要求の間隔を空ける。
+PAGE_INTERVAL_SEC = 1.5
+_last_page_at = 0.0
+
+
+def _get_html(url: str) -> str:
+    """ページの HTML。AtCoder は UA の無い要求を通さないので付け、間隔も空ける。"""
+    global _last_page_at
+    wait = _last_page_at + PAGE_INTERVAL_SEC - time.monotonic()
+    if wait > 0:
+        time.sleep(wait)
+    _last_page_at = time.monotonic()
+    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (procon-judge)"})
+    try:
+        with urllib.request.urlopen(request, timeout=TIMEOUT_SEC) as resp:
+            return resp.read().decode("utf-8", errors="replace")
+    except Exception as e:
+        raise TitleError(f"{url}: {e}") from e
+
+
+def atcoder_title(url: str) -> str:
+    """AtCoder の問題ページの <title>。API が無いのでページから取る。"""
+    m = re.search(r"<title>(.*?)</title>", _get_html(url), re.DOTALL)
+    if not m or not m.group(1).strip():
+        raise TitleError(f"{url}: <title> が読めません")
+    return html.unescape(m.group(1)).strip()
+
+
 def _get_json(url: str):
     try:
         return json.loads(_get_text(url))
@@ -58,7 +88,7 @@ class Titles:
     """取得元ごとの題名。AOJ の一覧は 1 回だけ取って使い回す。"""
 
     def __init__(self) -> None:
-        self._aoj: dict[str, str] | None = None
+        self._aoj: dict[str, dict] | None = None
 
     def official(self, problem: Problem) -> str | None:
         """判定サイトの名前。判定サイトの問題でなければ None。"""
@@ -76,21 +106,39 @@ class Titles:
             return title
         if source == "library_checker":
             return plain(_library_checker_title(name))
+        url = getattr(problem, "url", "")
+        if url and "atcoder.jp/contests/" in url:
+            # ケースが取れないので source は none だが、題名はページから取れる。
+            return atcoder_title(url)
         return None
 
-    def aoj_names(self) -> dict[str, str]:
+    def aoj_entries(self) -> dict[str, dict]:
+        """AOJ の一覧を id で引く形にしたもの。名前のほかに制限も持っている。"""
         if self._aoj is None:
-            names: dict[str, str] = {}
+            entries: dict[str, dict] = {}
             for page in range(100):
                 chunk = _get_json(AOJ_LIST.format(page=page, size=AOJ_PAGE_SIZE))
                 if not isinstance(chunk, list):
                     raise TitleError("AOJ の一覧が配列ではありません")
                 for entry in chunk:
-                    names[str(entry["id"])] = str(entry["name"])
+                    entries[str(entry["id"])] = entry
                 if len(chunk) < AOJ_PAGE_SIZE:
                     break
-            self._aoj = names
+            self._aoj = entries
         return self._aoj
+
+    def aoj_names(self) -> dict[str, str]:
+        return {pid: str(entry["name"]) for pid, entry in self.aoj_entries().items()}
+
+    def aoj_limits(self, name: str) -> tuple[float, int] | None:
+        """AOJ の制限 (秒, MB)。一覧の problemTimeLimit は秒、problemMemoryLimit は KB。"""
+        entry = self.aoj_entries().get(name)
+        if entry is None:
+            return None
+        try:
+            return float(entry["problemTimeLimit"]), int(entry["problemMemoryLimit"]) // 1024
+        except (KeyError, TypeError, ValueError):
+            return None
 
 
 def _library_checker_title(name: str) -> str:

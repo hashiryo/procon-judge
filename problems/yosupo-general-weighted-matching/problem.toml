@@ -1,0 +1,16 @@
+id = "yosupo-general-weighted-matching"
+title = "General Weighted Matching"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "graph/general_weighted_matching"
+
+[compare]
+kind = "checker"

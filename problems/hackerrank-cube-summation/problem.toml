@@ -1,0 +1,17 @@
+id = "hackerrank-cube-summation"
+title = "hackerrank-cube-summation"
+url = "https://www.hackerrank.com/challenges/cube-summation"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "hackerrank-cube-summation"
+
+[compare]
+kind = "tokens"

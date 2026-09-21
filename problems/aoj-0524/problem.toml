@@ -1,0 +1,16 @@
+id = "aoj-0524"
+title = "Searching Constellation"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "0524"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,16 @@
+id = "yuki-1303"
+title = "Inconvenient Kingdom"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1303"
+
+[compare]
+kind = "tokens"

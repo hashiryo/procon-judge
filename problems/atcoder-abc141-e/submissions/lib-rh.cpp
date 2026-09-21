@@ -1,0 +1,35 @@
+#include <iostream>
+#include <string>
+#include <set>
+#include "mylib/misc/Pointwise.hpp"
+#include "mylib/string/RollingHash.hpp"
+#include "mylib/misc/rng.hpp"
+#include "mylib/algebra/ModInt.hpp"
+using namespace std;
+signed main() {
+ cin.tie(0);
+ ios::sync_with_stdio(0);
+ using Mint= ModInt<998244353>;
+ using K= Pointwise<Mint, Mint>;
+ using RH= RollingHash<K>;
+ RH::init({rng(), rng()});
+ int N;
+ cin >> N;
+ string S;
+ cin >> S;
+ RH rh(S);
+ multiset<K> st;
+ int ok= 0, ng= N / 2 + 1;
+ while(ng - ok > 1) {
+  int x= (ok + ng) / 2;
+  st.clear();
+  bool isok= false;
+  for(int i= x; i + x <= N; ++i) {
+   st.insert(rh.sub(i - x, x).hash());
+   isok|= st.count(rh.sub(i, x).hash());
+  }
+  (isok ? ok : ng)= x;
+ }
+ cout << ok << '\n';
+ return 0;
+}

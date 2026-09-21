@@ -1,0 +1,16 @@
+id = "atcoder-abc250-g"
+title = "G - Stonks"
+url = "https://atcoder.jp/contests/abc250/tasks/abc250_g"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

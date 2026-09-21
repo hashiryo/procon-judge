@@ -1,0 +1,18 @@
+id = "aoj-1066"
+title = "Legend of Storia"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "1066"
+
+[compare]
+kind = "float"
+abs_tol = 1e-08
+rel_tol = 1e-08

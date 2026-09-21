@@ -1,0 +1,16 @@
+id = "yuki-2654"
+title = "[Cherry 6th Tune] Re: start! (Black Sheep)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "2654"
+
+[compare]
+kind = "tokens"

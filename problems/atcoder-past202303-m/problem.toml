@@ -1,0 +1,16 @@
+id = "atcoder-past202303-m"
+title = "M - Put Away"
+url = "https://atcoder.jp/contests/past202303-open/tasks/past202303_m"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

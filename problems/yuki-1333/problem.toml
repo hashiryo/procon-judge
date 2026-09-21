@@ -1,0 +1,16 @@
+id = "yuki-1333"
+title = "Squared Sum"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1333"
+
+[compare]
+kind = "tokens"

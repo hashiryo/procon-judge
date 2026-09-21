@@ -1,0 +1,16 @@
+id = "atcoder-arc182-c"
+title = "C - Sum of Number of Divisors of Product"
+url = "https://atcoder.jp/contests/arc182/tasks/arc182_c"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

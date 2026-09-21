@@ -1,0 +1,16 @@
+id = "atcoder-abc274-h"
+title = "Ex - XOR Sum of Arrays"
+url = "https://atcoder.jp/contests/abc274/tasks/abc274_h"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"

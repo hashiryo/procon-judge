@@ -97,6 +97,9 @@ let DATA = null;
 let sortBy = "id";
 let ascending = true;
 let query = "";
+// 提出が 2 本以上の問題だけを見る。実装が 1 本の raw の問題は正しさしか持たないので、
+// 順位を見たいときは邪魔になる。
+let multiOnly = false;
 
 function compare(a, b, column) {
   const x = column.value(a);
@@ -105,6 +108,7 @@ function compare(a, b, column) {
 }
 
 function matches(p) {
+  if (multiOnly && p.submissions < 2) return false;
   if (!query) return true;
   const q = query.toLowerCase();
   return p.id.toLowerCase().includes(q) || (p.title || "").toLowerCase().includes(q);
@@ -144,7 +148,7 @@ function render() {
     body.append(tr);
   }
   document.getElementById("shown").textContent =
-    query ? rows.length + " / " + DATA.problems.length + " 件" : "";
+    query || multiOnly ? rows.length + " / " + DATA.problems.length + " 件" : "";
 }
 
 async function main() {
@@ -169,6 +173,11 @@ async function main() {
   const filter = document.getElementById("filter");
   filter.addEventListener("input", () => {
     query = filter.value.trim();
+    render();
+  });
+  const multi = document.getElementById("multi");
+  multi.addEventListener("change", () => {
+    multiOnly = multi.checked;
     render();
   });
   renderHead();
