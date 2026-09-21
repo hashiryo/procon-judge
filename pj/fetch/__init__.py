@@ -244,10 +244,13 @@ def ensure(
         manifest = _read_manifest(dest)
         cases = collect_cases(dest)
         if cases and _matches_manifest(cases, manifest.get("cases", [])):
-            if _is_current(problem, manifest):
+            if not _is_current(problem, manifest):
+                print(f"  手元の {problem.id} は古い pin で作ったものです。作り直します",
+                      file=sys.stderr)
+            elif _lacks_checker(problem, dest):
+                print(f"  手元の {problem.id} に checker.cpp が無いので作り直します", file=sys.stderr)
+            else:
                 return Testcases(dir=dest, cases=cases, cases_hash=manifest["cases_hash"])
-            print(f"  手元の {problem.id} は古い pin で作ったものです。作り直します",
-                  file=sys.stderr)
 
     # 保管庫から取れるなら原本を叩かない。レート制限と障害を経路から外す。
     replace = False
@@ -255,15 +258,24 @@ def ensure(
         try:
             if mirror.pull(problem, dest):
                 pulled = _read_manifest(dest)
-                if _is_current(problem, pulled):
+                if not _is_current(problem, pulled):
+                    # pin を動かしたのは意図的な操作なので、CI からでも置き換える。
+                    print(
+                        f"  保管庫の {problem.id} は古い pin で作ったものです。"
+                        "作り直して置き換えます",
+                        file=sys.stderr,
+                    )
+                    replace = True
+                elif _lacks_checker(problem, dest):
+                    # チェッカを入れずに上げたアセットが残っている。作り直して置き換える。
+                    print(
+                        f"  保管庫の {problem.id} に checker.cpp が入っていません。"
+                        "作り直して置き換えます",
+                        file=sys.stderr,
+                    )
+                    replace = True
+                else:
                     return _finish(problem, dest, source, extra=_carried(pulled))
-                # pin を動かしたのは意図的な操作なので、CI からでも置き換える。
-                print(
-                    f"  保管庫の {problem.id} は古い pin で作ったものです。"
-                    "作り直して置き換えます",
-                    file=sys.stderr,
-                )
-                replace = True
         except mirror.MirrorError as e:
             print(f"  保管庫から取れませんでした: {e}", file=sys.stderr)
 
@@ -289,6 +301,15 @@ def evict(problem: Problem) -> None:
     directory = cache_dir_for(problem)
     if directory.exists():
         shutil.rmtree(directory)
+
+
+def _lacks_checker(problem: Problem, directory: Path) -> bool:
+    """compare.kind = "checker" なのにチェッカのソースが無いか。
+
+    Library Checker が同梱するものを使うので、テストデータと一緒に置いてある
+    必要がある。無いまま走らせると判定器が組めず、その問題は測れない。
+    """
+    return problem.compare.kind == "checker" and not (directory / "checker.cpp").is_file()
 
 
 def _read_manifest(directory: Path) -> dict:

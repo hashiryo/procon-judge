@@ -348,3 +348,53 @@ def test_evict_removes_the_cache_directory(tmp_path, isolated_cache):
     fetch.evict(problem)
     assert not dest.exists()
     fetch.evict(problem)  # 無くても平気
+
+
+def test_aoj_truncation_is_only_when_shorter():
+    """header の inputSize は末尾の改行を数えないことがある。長い方は切り詰めではない。"""
+    from pj.fetch import aoj
+
+    assert aoj._short(b"1 2\n", 5) is True
+    assert aoj._short(b"1 2\n", 4) is False
+    assert aoj._short(b"1 2\n", 3) is False
+    assert aoj._short(b"1 2\n", None) is False
+
+
+def test_a_mirror_asset_without_the_checker_is_rebuilt(tmp_path, isolated_cache, monkeypatch):
+    """checker を入れずに上げたアセットは、作り直して置き換える。"""
+    from pj.fetch import library_checker, mirror
+
+    monkeypatch.setattr(library_checker, "pinned_commit", lambda: "new")
+
+    def generate(problem, dest):
+        extra = _fake_generate("new")(problem, dest)
+        (dest / "checker.cpp").write_text("int main() {}\n")
+        return extra
+
+    monkeypatch.setattr(library_checker, "fetch", generate)
+    monkeypatch.setattr(mirror, "available", lambda: True)
+
+    def pull(problem, dest):
+        dest.mkdir(parents=True, exist_ok=True)
+        (dest / "a.in").write_text("1\n")
+        (dest / "a.out").write_text("2\n")
+        (dest / fetch.MANIFEST_NAME).write_text(
+            json.dumps({"cases_hash": "x", library_checker.UPSTREAM_KEY: "new"})
+        )
+        return True
+
+    pushes = []
+    monkeypatch.setattr(mirror, "pull", pull)
+    monkeypatch.setattr(mirror, "push", lambda p, d, force=False: pushes.append(force))
+    directory = tmp_path / "yosupo-x"
+    directory.mkdir()
+    (directory / "problem.toml").write_text(
+        TOML.format(id="yosupo-x", source="library_checker", name="data_structure/x").replace(
+            'kind = "tokens"', 'kind = "checker"'
+        )
+    )
+    problem = problem_mod.load(directory)
+
+    result = fetch.ensure(problem)
+    assert pushes == [True]
+    assert result.checker_source() is not None

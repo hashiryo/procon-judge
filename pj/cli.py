@@ -392,9 +392,16 @@ def cmd_run(args: argparse.Namespace) -> int:
                 f"{job.submission.as_posix()}",
                 file=sys.stderr,
             )
-            record = run_mod.execute_job(job)
-            out.append(record)
-            print(record.to_json(), flush=True)
+            try:
+                record = run_mod.execute_job(job)
+            except fetch.FetchError as e:
+                # テストデータや判定器が用意できなかった。1 件のために残りを落とさず、
+                # 飛ばして次へ。取りこぼしは次の実行が拾う。
+                print(f"warning: {job.problem.id} / {job.submission.as_posix()} を飛ばします: {e}",
+                      file=sys.stderr)
+            else:
+                out.append(record)
+                print(record.to_json(), flush=True)
             # 同じ問題の提出は続けて並ぶので、最後の 1 本を測ったらそのテストデータを
             # 捨てられる。ランナーの disk のためで、手元では渡さない。
             last_of_problem = index == len(jobs) or jobs[index].problem.id != job.problem.id

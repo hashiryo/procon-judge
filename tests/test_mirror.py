@@ -76,10 +76,14 @@ def test_pack_and_unpack_keep_the_cases_hash(tmp_path):
 
 
 @needs_zstd
-def test_the_archive_holds_only_cases_and_the_manifest(tmp_path):
+def test_the_archive_holds_cases_the_manifest_and_the_checker_sources(tmp_path):
+    """チェッカのソースは入れる (無いと保管庫から取った問題で判定器が組めない)。
+    手元で組んだ checker.bin は入れない。"""
     source = make_cases(tmp_path / "cases", count=2)
-    (source / "checker.bin").write_bytes(b"\x7fELF not a test case")
+    (source / "checker-x86_64.bin").write_bytes(b"\x7fELF not a test case")
     (source / "checker.cpp").write_text("int main() {}\n")
+    (source / "testlib.h").write_text("// testlib\n")
+    (source / "params.h").write_text("#define N 1\n")
 
     archive = tmp_path / "a.tar.zst"
     mirror.pack(source, archive)
@@ -88,7 +92,8 @@ def test_the_archive_holds_only_cases_and_the_manifest(tmp_path):
 
     names = sorted(p.name for p in restored.iterdir())
     assert names == [
-        "case_00.in", "case_00.out", "case_01.in", "case_01.out", "manifest.json"
+        "case_00.in", "case_00.out", "case_01.in", "case_01.out",
+        "checker.cpp", "manifest.json", "params.h", "testlib.h",
     ]
 
 

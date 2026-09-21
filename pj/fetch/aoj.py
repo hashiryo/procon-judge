@@ -67,4 +67,9 @@ def fetch(problem: Problem, dest: Path) -> None:
 
 
 def _short(data: bytes, expected_size: object) -> bool:
-    return isinstance(expected_size, int) and len(data) != expected_size
+    """header の大きさより短ければ切り詰められている。
+
+    header の inputSize は末尾の改行を数えていないことがあり、落としたものが
+    1 バイト長いのは普通に起きる (aoj-2644 の 00-sample1 など)。長い方は疑わない。
+    """
+    return isinstance(expected_size, int) and len(data) < expected_size

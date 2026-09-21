@@ -38,8 +38,11 @@ REGENERABLE_SOURCES = frozenset({"local"})
 # 作り直す (convolution_mod_large は 12 GB 出るので、そもそも問題として入れていない)。
 ASSET_MAX_BYTES = 2 * 1024**3
 
-# アーカイブに入れるもの。checker.bin のような手元で作った成果物は入れない。
-ARCHIVE_SUFFIXES = (".in", ".out")
+# アーカイブに入れるもの。ケースのほかに、Library Checker が同梱するチェッカの
+# ソース (checker.cpp、testlib.h、生成で作られる params.h) も入れる。入れ忘れると
+# 保管庫から取った問題で判定器が組めない (最初の CI で 16 ジョブがそれで落ちた)。
+# checker.bin のような手元で作った成果物は入れない。
+ARCHIVE_SUFFIXES = (".in", ".out", ".cpp", ".h", ".hpp")
 ARCHIVE_EXTRA = ("manifest.json",)
 
 
