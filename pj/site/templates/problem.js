@@ -47,12 +47,20 @@ function linkCell(text, href, className) {
 }
 
 // 測ってからソースが変わった行に付ける。順位には入れない。
-function chip() {
+// 何が変わったかは記録から分かるので title に出す。古い記録には無い。
+function chip(reason) {
   const span = el("span", "参考", "chip");
   span.title =
-    "測ってからソースが変わっています。" +
-    "次にこの CPU モデルのランナーが当たったら測り直します";
+    "測ってからソースが変わっています" +
+    (reason ? " (" + reason + ")" : "") +
+    "。次にこの CPU モデルのランナーが当たったら測り直します";
   return span;
+}
+
+// 提出ページ。data/problems/<id>.json の pages に、サイトのルートからのパスで入る。
+function pageHref(submission) {
+  const page = DATA.pages && DATA.pages[submission];
+  return page ? "../" + page : null;
 }
 
 // 提出はどれも submissions/ の下にある。全行で同じなので列では落とす。
@@ -68,7 +76,10 @@ function nameCell(path, className, mark) {
   const td = el("td");
   td.title = path;
   const wrap = el("div", null, "namecell");
-  wrap.append(el("span", shortName(path), className));
+  const href = pageHref(path);
+  const name = el(href ? "a" : "span", shortName(path), className);
+  if (href) name.href = href;
+  wrap.append(name);
   if (mark) wrap.append(mark);
   td.append(wrap);
   return td;
@@ -103,7 +114,7 @@ const COLUMNS = [
     text: true,
     value: (r) => r.submission,
     cell: (r) =>
-      nameCell(r.submission, "mono name", r.current === false ? chip() : null),
+      nameCell(r.submission, "mono name", r.current === false ? chip(r.reason) : null),
   },
   {
     id: "status",
@@ -292,13 +303,21 @@ async function main() {
   DATA = await (await fetch(document.body.dataset.src)).json();
   document.getElementById("title").textContent = DATA.title || DATA.id;
   document.getElementById("sub").textContent = DATA.id;
-  document.getElementById("meta").replaceChildren(
+  const meta = [
     el("span", "取得元 " + DATA.source),
     el("span", "比較 " + DATA.compare),
     el("span", "制限 " + DATA.tle_sec + " 秒 / " + DATA.mle_mb + " MB"),
     el("span", "ケース " + DATA.case_count),
-    el("span", "提出 " + DATA.submissions.length)
-  );
+    el("span", "提出 " + DATA.submissions.length),
+  ];
+  if (DATA.url) {
+    const original = el("span");
+    const a = el("a", "原題");
+    a.href = DATA.url;
+    original.append(a);
+    meta.push(original);
+  }
+  document.getElementById("meta").replaceChildren(...meta);
 
   if (DATA.combos.length === 0) {
     document.getElementById("wrap").replaceChildren(

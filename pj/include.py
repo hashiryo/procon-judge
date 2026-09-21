@@ -63,6 +63,27 @@ def _resolve(target: str, from_dir: Path, search_paths: Sequence[Path]) -> Path 
     return None
 
 
+def direct(entry: Path, search_paths: Sequence[Path]) -> tuple[str, ...]:
+    """entry が直接 include しているもののラベル。解決できたものだけ。
+
+    閉包の中で「その提出の主題」と「巻き込まれただけ」を分けるのに使う。
+    提出が名指ししているヘッダが主題で、それ以外は経由。
+    """
+    entry = entry.resolve()
+    try:
+        text = entry.read_text(errors="replace")
+    except OSError:
+        return ()
+    labels = []
+    for target in scan(text):
+        path = _resolve(target, entry.parent, search_paths)
+        if path is not None and path != entry:
+            label = label_for(path, search_paths)
+            if label not in labels:
+                labels.append(label)
+    return tuple(labels)
+
+
 def closure(entry: Path, search_paths: Sequence[Path]) -> Closure:
     """entry から辿れる include をすべて集める。
 

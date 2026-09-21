@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{TITLE}} - procon-judge</title>
+    <link rel="stylesheet" href="../../style.css{{STYLE_V}}" />
+  </head>
+  <body>
+    <nav>
+      <a href="../../index.html">← 問題一覧</a> /
+      <a href="../../problems/{{PROBLEM_HTML}}">{{PROBLEM_TITLE}}</a>
+    </nav>
+    <h1 class="mono">{{NAME}}</h1>
+    <p class="sub">{{SUBTITLE}}</p>
+    <div class="meta">{{META}}</div>
+
+    <h2>記録</h2>
+    <p class="note">行は (環境, CPU モデル) の組。同じ組を何度か測っていれば最小値で、標本の数を出す。参考は測ってからソースが変わった記録で、何が変わったかを横に出す。</p>
+    <div class="wrap">
+      <table class="fixed submission">
+        <colgroup>
+          <col style="width: 95px" />
+          <col style="width: 200px" />
+          <col style="width: 130px" />
+          <col style="width: 95px" />
+          <col style="width: 100px" />
+          <col style="width: 85px" />
+          <col style="width: 50px" />
+          <col />
+          <col style="width: 150px" />
+          <col style="width: 90px" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>環境</th>
+            <th>CPU</th>
+            <th>状態</th>
+            <th class="n">algo 最大</th>
+            <th class="n">実時間 最大</th>
+            <th class="n">メモリ</th>
+            <th class="n">標本</th>
+            <th>現行</th>
+            <th>計測 (UTC)</th>
+            <th>コミット</th>
+          </tr>
+        </thead>
+        <tbody>{{ROWS}}</tbody>
+      </table>
+    </div>
+
+    <h2>include</h2>
+    {{INCLUDES}}
+
+    <h2>ソース</h2>
+    {{SOURCE}}
+
+    <p class="sub">{{GENERATED}}</p>
+  </body>
+</html>

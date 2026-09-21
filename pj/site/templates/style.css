@@ -227,3 +227,63 @@ tbody tr.stale td.st {
     padding: 5px 6px;
   }
 }
+
+/* --- 提出ページ ------------------------------------------------------- */
+
+h2 {
+  font-size: 1.05em;
+  color: var(--text2);
+  margin: 22px 0 8px;
+}
+
+h1.mono {
+  font-size: 1.25em;
+}
+
+.note {
+  color: var(--text2);
+  font-size: 0.85em;
+  margin-bottom: 10px;
+}
+
+/* 提出ページの表。幅を決めない列は「現行」で、参考の理由がそこに入る。
+   CPU モデルの名前は長いので、こちらは幅を決めて読める分を確保する。 */
+table.submission {
+  min-width: 1160px;
+}
+
+/* 参考の理由。チップの横に小さく。 */
+.reason {
+  color: var(--text2);
+  font-size: 0.85em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* include の一覧。主題と経由で 2 つの列を持つ。 */
+.includes {
+  list-style: none;
+  font-size: 0.9em;
+}
+
+.includes li {
+  padding: 2px 0;
+  overflow-wrap: anywhere;
+}
+
+.includes .lib {
+  color: var(--text2);
+  margin-left: 8px;
+  font-size: 0.85em;
+}
+
+pre.source {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  font-size: 0.85em;
+  line-height: 1.45;
+  tab-size: 4;
+}

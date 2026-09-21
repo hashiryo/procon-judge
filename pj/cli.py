@@ -364,6 +364,8 @@ def cmd_site_build(args: argparse.Namespace) -> int:
         f"問題 {summary.problems} 件",
         f"記録 {summary.records} 件",
         f"ページ {summary.pages + 1} 枚",
+        f"提出ページ {summary.submission_pages} 枚",
+        f"ヘッダ {summary.headers} 件",
     ]
     if summary.stale:
         parts.append(f"参考 {summary.stale} 件")

@@ -3,6 +3,12 @@
 ページごとに必要な形の JSON をここで作る。ブラウザが取るのは 1 ページにつき
 2 個だけで、結合も反転もすべて生成の側で済ませる。1 つの大きい JSON を
 読ませると、記録が増えたときに携帯で開けなくなる。
+
+ページは 3 種類ある。問題一覧 (index.html) と順位表 (problems/<id>.html) は
+テンプレートに JSON を読ませて JavaScript が描く。提出ページ
+(submissions/<id>/<name>.html) は切り替えが無いので、ここで HTML まで埋める。
+ヘッダごとの逆引き (data/headers/<ラベル>.json) はページではなく、ライブラリ側の
+サイトが表示時に読む JSON。
 """
 
 from __future__ import annotations
@@ -18,13 +24,16 @@ import urllib.parse
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
+from .. import build as build_mod
 from .. import environment as env_mod
+from .. import include as include_mod
+from .. import libraries as lib_mod
 from .. import problem as problem_mod
-from ..freshness import Freshness
+from ..freshness import Diff, Freshness
 from ..paths import ROOT
-from ..record import judge_sha
+from ..record import judge_sha, library_sha
 from ..store import Store
 
 TEMPLATES = Path(__file__).resolve().parent / "templates"
@@ -36,6 +45,8 @@ MARKER = ".pj-site"
 DETAIL_CHARS = 200
 
 PLACEHOLDER = re.compile(r"\{\{(\w+)\}\}")
+
+esc = html.escape
 
 
 class SiteError(Exception):
@@ -65,6 +76,24 @@ class Cell:
     # 今のソースで測った記録なら True、ソースが変わっていれば False。
     # 判定できなければ None。
     current: bool | None = None
+    # 参考に落ちた理由。current が False のときだけ入る。
+    reason: Diff | None = None
+
+
+@dataclass(frozen=True)
+class IncludeLink:
+    """提出ページの include の欄の 1 行。"""
+
+    label: str
+    href: str | None
+    # ラベルを持つライブラリの名前。無ければこのリポジトリのファイル。
+    library: str | None
+    # ライブラリのソースへのリンク。ページとは別に置く。
+    source_href: str | None
+    # 提出が直接 include しているか (主題)。そうでなければ経由。
+    direct: bool
+    # 解決できなかった include。
+    missing: bool = False
 
 
 @dataclass(frozen=True)
@@ -74,6 +103,8 @@ class Summary:
     records: int
     pages: int
     stale: int = 0
+    submission_pages: int = 0
+    headers: int = 0
 
 
 def collapse(
@@ -110,6 +141,7 @@ def collapse(
             for r in same
             if r.get("algo_time_max_ns") is not None
         ]
+        current = judge(newest)
         cells.append(
             Cell(
                 submission=submission,
@@ -128,10 +160,34 @@ def collapse(
                 timestamp=max(r.get("timestamp") or "" for r in same),
                 judge_sha=newest.get("judge_sha"),
                 failed=_failed(newest),
-                current=judge(newest),
+                current=current,
+                reason=(
+                    freshness.diff(newest)
+                    if freshness is not None and current is False
+                    else None
+                ),
             )
         )
     return sorted(cells, key=lambda c: (c.env, c.cpu_model, c.submission))
+
+
+def describe_diff(diff: Diff | None) -> str | None:
+    """参考の理由を 1 行の日本語にする。"""
+    if diff is None:
+        return None
+    if not diff.known:
+        return "理由は記録に無い"
+    parts = []
+    if diff.changed:
+        parts.append("変更 " + ", ".join(diff.changed))
+    if diff.added:
+        parts.append("追加 " + ", ".join(diff.added))
+    if diff.removed:
+        parts.append("削除 " + ", ".join(diff.removed))
+    names = {"problem": "problem.toml", "cxxflags": "cxxflags"}
+    for setting in diff.settings:
+        parts.append(names.get(setting, setting) + " が変わった")
+    return " / ".join(parts)
 
 
 def _failed(record: dict) -> dict | None:
@@ -156,6 +212,48 @@ def _safe_id(problem_id: str) -> bool:
     return bool(problem_id) and not (
         problem_id.startswith(".") or "/" in problem_id or "\\" in problem_id
     )
+
+
+def _safe_label(label: str) -> bool:
+    """閉包のラベルをそのまま data/headers/ の下のパスにしてよいか。"""
+    parts = PurePosixPath(label).parts
+    return bool(parts) and not label.startswith("/") and all(
+        p not in ("", ".", "..") and not p.startswith(".") and "\\" not in p
+        for p in parts
+    )
+
+
+def submission_page(problem_id: str, submission: str) -> str | None:
+    """提出ページの、サイトのルートからのパス。作れなければ None。
+
+    提出の名前は submissions/ を外して拡張子を落としたもの。
+    submissions/lib-segtree.hpp なら submissions/<id>/lib-segtree.html になる。
+    """
+    if not _safe_id(problem_id):
+        return None
+    parts = PurePosixPath(submission).parts
+    if parts and parts[0] == "submissions":
+        parts = parts[1:]
+    if not parts or any(
+        p in ("", ".", "..") or p.startswith(".") or "\\" in p for p in parts
+    ):
+        return None
+    name = PurePosixPath(*parts).with_suffix("")
+    return f"submissions/{problem_id}/{name.as_posix()}.html"
+
+
+def problem_url(problem: problem_mod.Problem | None) -> str | None:
+    """元の問題のページ。判定サイトから取っている問題だけ分かる。"""
+    if problem is None:
+        return None
+    source, name = problem.testdata.source, problem.testdata.name
+    if source == "library_checker":
+        return f"https://judge.yosupo.jp/problem/{name.rsplit('/', 1)[-1]}"
+    if source == "aoj":
+        return f"https://onlinejudge.u-aizu.ac.jp/problems/{name}"
+    if source == "yukicoder":
+        return f"https://yukicoder.me/problems/no/{name}"
+    return None
 
 
 def problem_payload(
@@ -192,6 +290,7 @@ def problem_payload(
     return {
         "id": problem_id,
         "title": problem.title if problem else problem_id,
+        "url": problem_url(problem),
         "source": problem.testdata.source if problem else "",
         "compare": problem.compare.kind if problem else "",
         "harness": problem.harness_kind if problem else "",
@@ -201,6 +300,8 @@ def problem_payload(
         "generated_at": generated_at,
         "repo": repo,
         "submissions": submissions,
+        # 提出ページへの、サイトのルートからのパス。作れない提出は None。
+        "pages": {s: submission_page(problem_id, s) for s in submissions},
         "combos": sorted(
             combos.values(),
             key=lambda c: (order.get(c["env"], len(order)), c["env"], c["cpu_model"]),
@@ -222,10 +323,352 @@ def problem_payload(
                 "judge_sha": c.judge_sha,
                 "failed": c.failed,
                 "current": c.current,
+                "reason": describe_diff(c.reason),
             }
             for c in cells
         ],
     }
+
+
+# --- 提出ページ ---------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class SubmissionPage:
+    """提出ページ 1 枚ぶんの材料。"""
+
+    problem_id: str
+    title: str
+    url: str | None
+    source: str  # 取得元
+    submission: str
+    cells: Sequence[Cell]
+    # 記録が無くても行を出す環境。CI の環境の名前を environments.toml の順で。
+    env_names: Sequence[str]
+    includes: Sequence[IncludeLink] | None
+    source_text: str | None
+    repo: str | None
+    sha: str | None
+    generated_at: str
+
+
+def _ms(ns: int | None) -> str:
+    return "-" if ns is None else f"{ns / 1e6:.2f} ms"
+
+
+def _mb(kb: int) -> str:
+    return f"{kb / 1024:.1f} MB" if kb else "-"
+
+
+def _stamp(iso: str) -> str:
+    return iso[:16].replace("T", " ") if iso else ""
+
+
+def _blob(repo: str | None, sha: str | None, rel: str) -> str | None:
+    if not repo or not sha:
+        return None
+    return f"{repo}/blob/{sha}/{rel}"
+
+
+def _submission_rel(problem_id: str, submission: str) -> str:
+    return f"problems/{problem_id}/{submission}"
+
+
+def _cell_row(page: SubmissionPage, c: Cell) -> str:
+    failed = ""
+    title = ""
+    if c.failed and c.failed.get("name"):
+        failed = f' <span class="dim">{esc(c.failed["name"])}</span>'
+    if c.failed and c.failed.get("detail"):
+        title = f' title="{esc(c.failed["detail"])}"'
+    status = f'<td class="st st-{esc(c.status)}"{title}>{esc(c.status)}{failed}</td>'
+
+    if c.current is True:
+        fresh = "<td>現行</td>"
+    elif c.current is False:
+        reason = describe_diff(c.reason) or ""
+        fresh = (
+            '<td><span class="chip">参考</span> '
+            f'<span class="reason" title="{esc(reason)}">{esc(reason)}</span></td>'
+        )
+    else:
+        fresh = '<td class="dim" title="今のソースと比べられませんでした">-</td>'
+
+    commit = "-"
+    href = _blob(page.repo, c.judge_sha, _submission_rel(page.problem_id, page.submission))
+    if c.judge_sha:
+        short = esc(c.judge_sha[:7])
+        commit = f'<a class="mono" href="{esc(href)}">{short}</a>' if href else short
+
+    algo_class = "n" if c.status == "AC" else "n dim"
+    row_class = ' class="stale"' if c.current is False else ""
+    return (
+        f"<tr{row_class}>"
+        f"<td>{esc(c.env)}</td>"
+        f'<td title="{esc(c.cpu_model)}">{esc(c.cpu_model)}</td>'
+        f"{status}"
+        f'<td class="{algo_class}">{_ms(c.algo_ns)}</td>'
+        f'<td class="n">{c.wall_ms} ms</td>'
+        f'<td class="n">{_mb(c.rss_kb)}</td>'
+        f'<td class="n">{c.samples}</td>'
+        f"{fresh}"
+        f'<td class="dim" title="{esc(c.timestamp)}">{esc(_stamp(c.timestamp))}</td>'
+        f"<td>{commit}</td>"
+        "</tr>"
+    )
+
+
+def _missing_row(env: str) -> str:
+    return (
+        '<tr class="missing">'
+        f"<td>{esc(env)}</td>"
+        '<td class="dim">-</td>'
+        '<td class="dim">未計測</td>'
+        '<td class="n dim">-</td><td class="n dim">-</td><td class="n dim">-</td>'
+        '<td class="n dim">-</td><td class="dim">-</td><td class="dim">-</td>'
+        '<td class="dim">-</td>'
+        "</tr>"
+    )
+
+
+def _rows_html(page: SubmissionPage) -> str:
+    order = {name: index for index, name in enumerate(page.env_names)}
+    cells = sorted(
+        page.cells, key=lambda c: (order.get(c.env, len(order)), c.env, c.cpu_model)
+    )
+    rows = [_cell_row(page, c) for c in cells]
+    measured = {c.env for c in cells}
+    rows += [_missing_row(env) for env in page.env_names if env not in measured]
+    if not rows:
+        return '<tr><td colspan="10" class="empty">まだ記録がありません。</td></tr>'
+    return "".join(rows)
+
+
+def _include_list(links: Sequence[IncludeLink]) -> str:
+    if not links:
+        return '<p class="empty">なし</p>'
+    items = []
+    for link in links:
+        label = esc(link.label)
+        if link.href:
+            body = f'<a class="mono" href="{esc(link.href)}">{label}</a>'
+        else:
+            body = f'<span class="mono">{label}</span>'
+        tail = ""
+        if link.missing:
+            tail = '<span class="lib">見つからない</span>'
+        elif link.library:
+            tail = f'<span class="lib">{esc(link.library)}</span>'
+            if link.source_href:
+                tail += f' <a class="lib" href="{esc(link.source_href)}">src</a>'
+        items.append(f"<li>{body}{tail}</li>")
+    return '<ul class="includes">' + "".join(items) + "</ul>"
+
+
+def _includes_html(links: Sequence[IncludeLink] | None) -> str:
+    if links is None:
+        return (
+            '<p class="empty">提出のファイルが今のリポジトリに無いので、'
+            "include は分かりません。</p>"
+        )
+    direct = [l for l in links if l.direct]
+    via = [l for l in links if not l.direct]
+    return (
+        '<p class="note">主題 (提出が直接 include しているもの)</p>'
+        + _include_list(direct)
+        + '<p class="note">経由 (主題から辿って入るもの)</p>'
+        + _include_list(via)
+    )
+
+
+def _source_html(text: str | None) -> str:
+    if text is None:
+        return '<p class="empty">提出のファイルが今のリポジトリにありません。</p>'
+    return f'<pre class="source mono">{esc(text)}</pre>'
+
+
+def submission_html(page: SubmissionPage, style_v: str) -> str:
+    """提出ページの HTML。切り替えが無いので JavaScript は使わない。"""
+    problem_html = urllib.parse.quote(page.problem_id) + ".html"
+    rel = _submission_rel(page.problem_id, page.submission)
+    github = _blob(page.repo, page.sha, rel)
+
+    subtitle = f'<span class="mono">{esc(rel)}</span>'
+    if github:
+        subtitle += f' / <a href="{esc(github)}">GitHub</a>'
+
+    meta = [
+        f'<span>問題 <a href="../../problems/{problem_html}">{esc(page.problem_id)}</a></span>',
+    ]
+    if page.source:
+        meta.append(f"<span>取得元 {esc(page.source)}</span>")
+    if page.url:
+        meta.append(f'<span><a href="{esc(page.url)}">原題</a></span>')
+    stale = sum(1 for c in page.cells if c.current is False)
+    meta.append(f"<span>記録 {len(page.cells)} 組</span>")
+    if stale:
+        meta.append(f"<span>参考 {stale}</span>")
+
+    generated = f"{esc(_stamp(page.generated_at))} 生成 (UTC)"
+    if page.sha:
+        generated += f" / judge {esc(page.sha[:7])}"
+
+    name = page.submission.removeprefix("submissions/")
+
+    return _render(
+        "submission.html",
+        {
+            "TITLE": esc(f"{name} - {page.title}"),
+            "STYLE_V": style_v,
+            "PROBLEM_HTML": problem_html,
+            "PROBLEM_TITLE": esc(page.title),
+            "NAME": esc(name),
+            "SUBTITLE": subtitle,
+            "META": "".join(meta),
+            "ROWS": _rows_html(page),
+            "INCLUDES": _includes_html(page.includes),
+            "SOURCE": _source_html(page.source_text),
+            "GENERATED": generated,
+        },
+    )
+
+
+def include_links(
+    problem: problem_mod.Problem,
+    submission: str,
+    libraries: Sequence[lib_mod.Library],
+    *,
+    repo: str | None,
+    sha: str | None,
+    lib_sha: str | None,
+) -> list[IncludeLink] | None:
+    """提出ページの include の欄。提出のファイルが無ければ None。
+
+    ライブラリのヘッダは説明ページへ、このリポジトリのファイルは GitHub へ飛ばす。
+    どちらかはラベルの接頭辞で決める。pj はライブラリが何かを知らない。
+    """
+    source = problem.dir / submission
+    if not source.is_file():
+        return None
+    search = build_mod.include_dirs(problem)
+    found = include_mod.closure(source, search)
+    direct = set(include_mod.direct(source, search))
+
+    links = []
+    for label, path in zip(found.labels, found.files, strict=True):
+        library = lib_mod.find(label, list(libraries))
+        if library is not None:
+            href = library.page_url(label)
+            source_href = library.source_url(label, lib_sha)
+            name = library.name
+        else:
+            try:
+                rel = path.resolve().relative_to(ROOT).as_posix()
+            except ValueError:
+                rel = None
+            href = _blob(repo, sha, rel) if rel else None
+            source_href = None
+            name = None
+        links.append(
+            IncludeLink(
+                label=label,
+                href=href,
+                library=name,
+                source_href=source_href,
+                direct=label in direct,
+            )
+        )
+    for target in found.unresolved:
+        links.append(
+            IncludeLink(
+                label=target, href=None, library=None, source_href=None,
+                direct=True, missing=True,
+            )
+        )
+    return links
+
+
+def _read_source(problem: problem_mod.Problem | None, submission: str) -> str | None:
+    if problem is None:
+        return None
+    path = problem.dir / submission
+    try:
+        return path.read_text(errors="replace")
+    except OSError:
+        return None
+
+
+# --- ヘッダごとの逆引き ---------------------------------------------------------
+
+
+def env_summary(cells: Sequence[Cell], env_names: Sequence[str]) -> list[dict]:
+    """1 提出の記録を環境ごとに畳む。ライブラリ側のサイトが表に出す単位。
+
+    同じ環境でも CPU モデルが複数あるので、状態は全部 AC のときだけ AC、
+    現行は全部現行のときだけ True にする。記録の無い環境も行に出す。
+    """
+    by_env: dict[str, list[Cell]] = {}
+    for cell in cells:
+        by_env.setdefault(cell.env, []).append(cell)
+    names = list(env_names) + sorted(e for e in by_env if e not in env_names)
+    out = []
+    for env in names:
+        group = by_env.get(env)
+        if not group:
+            out.append({"env": env, "status": None, "current": None, "models": 0,
+                        "algo_ns": None})
+            continue
+        bad = [c.status for c in group if c.status != "AC"]
+        flags = [c.current for c in group]
+        if any(f is False for f in flags):
+            current: bool | None = False
+        elif any(f is None for f in flags):
+            current = None
+        else:
+            current = True
+        algo = [c.algo_ns for c in group if c.status == "AC" and c.algo_ns is not None]
+        out.append(
+            {
+                "env": env,
+                "status": bad[0] if bad else "AC",
+                "current": current,
+                "models": len(group),
+                "algo_ns": min(algo) if algo else None,
+            }
+        )
+    return out
+
+
+def header_entry(
+    problem_id: str,
+    title: str,
+    submission: str,
+    page: str,
+    direct: bool,
+    cells: Sequence[Cell],
+    env_names: Sequence[str],
+) -> dict:
+    return {
+        "problem": problem_id,
+        "title": title,
+        "submission": submission,
+        "direct": direct,
+        "page": page,
+        "problem_page": f"problems/{problem_id}.html",
+        "envs": env_summary(cells, env_names),
+    }
+
+
+def site_url() -> str | None:
+    """このサイトの URL。Pages の project site の形。CI でだけ分かる。"""
+    slug = os.environ.get("GITHUB_REPOSITORY")
+    if not slug or "/" not in slug:
+        return None
+    owner, repo = slug.split("/", 1)
+    return f"https://{owner.lower()}.github.io/{repo}/"
+
+
+# --- 書き出し ----------------------------------------------------------------
 
 
 def _write(path: Path, text: str) -> str:
@@ -240,16 +683,19 @@ def _write(path: Path, text: str) -> str:
 
 
 def _render(template: str, values: dict[str, str]) -> str:
+    """テンプレートの {{NAME}} を埋める。
+
+    埋める前に目印の集合を照らし合わせる。埋めたあとの文字列を見ないのは、
+    提出のソースに {{1}} のような波括弧の並びが普通に出るため。置き換えは
+    1 回の走査で行い、埋めた値の中の目印を二度読みしない。
+    """
     text = (TEMPLATES / template).read_text()
-    for name, value in values.items():
-        token = "{{" + name + "}}"
-        if token not in text:
-            raise SiteError(f"{template} に {token} がありません")
-        text = text.replace(token, value)
-    left = PLACEHOLDER.search(text)
-    if left:
-        raise SiteError(f"{template} の {left.group(0)} を埋めていません")
-    return text
+    names = set(PLACEHOLDER.findall(text))
+    for name in sorted(set(values) - names):
+        raise SiteError(f"{template} に {{{{{name}}}}} がありません")
+    for name in sorted(names - set(values)):
+        raise SiteError(f"{template} の {{{{{name}}}}} を埋めていません")
+    return PLACEHOLDER.sub(lambda m: values[m.group(1)], text)
 
 
 def _prepare(out: Path) -> None:
@@ -295,6 +741,12 @@ def build(store: Store, out: Path) -> Summary:
         datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     )
     repo = repo_url()
+    sha = judge_sha()
+    lib_sha = library_sha()
+    try:
+        libraries = lib_mod.load_all()
+    except lib_mod.LibrariesError as e:
+        raise SiteError(str(e)) from e
     _prepare(out)
 
     style_v = _write(out / "style.css", (TEMPLATES / "style.css").read_text())
@@ -313,12 +765,18 @@ def build(store: Store, out: Path) -> Summary:
         envs = env_mod.load_all()
     except (env_mod.EnvironmentError_, OSError):
         envs = []
+    # 記録が無くても提出ページに行を出す環境。手元専用の local は出さない。
+    env_names = [e.name for e in envs if e.runs_on != "self"]
 
     ids = sorted(set(problems) | set(store.problem_ids()))
     rows = []
     total_records = 0
     total_stale = 0
     pages = 0
+    submission_pages = 0
+    # ラベル -> そのヘッダを閉包に持つ提出の一覧。ライブラリのヘッダだけ。
+    headers: dict[str, list[dict]] = {}
+    header_library: dict[str, str] = {}
 
     for problem_id in ids:
         if not _safe_id(problem_id):
@@ -357,6 +815,50 @@ def build(store: Store, out: Path) -> Summary:
         )
         pages += 1
 
+        for submission in payload["submissions"]:
+            page = payload["pages"][submission]
+            if page is None:
+                continue
+            mine = [c for c in cells if c.submission == submission]
+            includes = (
+                include_links(
+                    problem, submission, libraries, repo=repo, sha=sha, lib_sha=lib_sha
+                )
+                if problem
+                else None
+            )
+            _write(
+                out / page,
+                submission_html(
+                    SubmissionPage(
+                        problem_id=problem_id,
+                        title=payload["title"],
+                        url=payload["url"],
+                        source=payload["source"],
+                        submission=submission,
+                        cells=mine,
+                        env_names=env_names,
+                        includes=includes,
+                        source_text=_read_source(problem, submission),
+                        repo=repo,
+                        sha=sha,
+                        generated_at=generated_at,
+                    ),
+                    style_v,
+                ),
+            )
+            submission_pages += 1
+            for link in includes or ():
+                if link.library is None or link.missing or not _safe_label(link.label):
+                    continue
+                headers.setdefault(link.label, []).append(
+                    header_entry(
+                        problem_id, payload["title"], submission, page,
+                        link.direct, mine, env_names,
+                    )
+                )
+                header_library[link.label] = link.library
+
         combos = len(payload["combos"])
         measured = len(cells)
         stale = sum(1 for c in cells if c.current is False)
@@ -375,9 +877,31 @@ def build(store: Store, out: Path) -> Summary:
             }
         )
 
+    site = site_url()
+    for label, entries in headers.items():
+        _write(
+            out / "data" / "headers" / f"{label}.json",
+            json.dumps(
+                {
+                    "header": label,
+                    "library": header_library[label],
+                    "generated_at": generated_at,
+                    "judge_sha": sha,
+                    "library_sha": lib_sha,
+                    # ページのパスはサイトのルートからの相対。これを前に付ける。
+                    "site": site,
+                    "environments": env_names,
+                    "submissions": sorted(
+                        entries, key=lambda e: (e["problem"], e["submission"])
+                    ),
+                },
+                ensure_ascii=False,
+            ),
+        )
+
     index = {
         "generated_at": generated_at,
-        "judge_sha": judge_sha(),
+        "judge_sha": sha,
         "record_count": total_records,
         "stale_count": total_stale,
         "problems": rows,
@@ -398,4 +922,6 @@ def build(store: Store, out: Path) -> Summary:
         records=total_records,
         pages=pages,
         stale=total_stale,
+        submission_pages=submission_pages,
+        headers=len(headers),
     )

@@ -1,0 +1,16 @@
+# 提出が include するライブラリと、そのヘッダへ外向きに張るリンク。
+#
+# pj はライブラリが何かを知らない。閉包に出てきたラベルの接頭辞がここに合えば、
+# 提出ページの include の欄からそのライブラリの説明ページへ飛ばし、ヘッダごとの
+# 逆引き JSON (data/headers/<ラベル>.json) を出す。合わなければこのリポジトリの
+# ファイルとして GitHub へ飛ばす。
+#
+# {path} はラベルから接頭辞を除いたもの (data_structure/SegmentTree.hpp)、
+# {stem} はさらに拡張子を落としたもの (data_structure/SegmentTree)、
+# {sha} は測ったときのライブラリのコミット (記録の library_sha)。
+
+[[library]]
+name = "Library"
+prefix = "mylib/"
+page = "https://hashiryo.github.io/Library/{stem}.html"
+source = "https://github.com/hashiryo/Library/blob/{sha}/mylib/{path}"

@@ -357,3 +357,233 @@ def test_collapse_prefers_the_current_key_over_the_newest(tmp_path, envs):
     assert len(cells) == 1
     assert cells[0].current is True
     assert cells[0].algo_ns == 1000
+
+
+# --- 提出ページ ------------------------------------------------------------
+
+
+def test_submission_page_is_the_leaderboard_transposed(tmp_path, no_problem_dirs):
+    """1 提出を固定して (環境, CPU モデル) を並べる。記録の無い CI の環境も行に出す。"""
+    out = tmp_path / "site"
+    site_build.build(
+        store_with(
+            tmp_path,
+            [rec(), rec(env="arm-gcc", cpu_model="Neoverse-N2", status="TLE")],
+        ),
+        out,
+    )
+    page = (out / "submissions" / "p" / "a.html").read_text()
+    assert "EPYC" in page and "Neoverse-N2" in page
+    assert "st-AC" in page and "st-TLE" in page
+    assert "未計測" in page  # x64-clang と arm-clang には記録が無い
+    assert "{{" not in page
+
+
+def test_submission_page_name_drops_the_prefix_and_the_suffix():
+    assert site_build.submission_page("p", "submissions/lib-a.hpp") == "submissions/p/lib-a.html"
+    assert site_build.submission_page("p", "submissions/x/y.cpp") == "submissions/p/x/y.html"
+    assert site_build.submission_page("p", "submissions/../evil.hpp") is None
+    assert site_build.submission_page("../p", "submissions/a.hpp") is None
+
+
+def test_problem_payload_maps_submissions_to_their_pages(tmp_path, no_problem_dirs):
+    out = tmp_path / "site"
+    site_build.build(store_with(tmp_path, [rec()]), out)
+    data = json.loads((out / "data" / "problems" / "p.json").read_text())
+    assert data["pages"] == {"submissions/a.hpp": "submissions/p/a.html"}
+
+
+def test_render_tolerates_braces_in_the_values():
+    """提出のソースには {{1}} のような並びが普通に出る。埋めた値は見ない。"""
+    page = site_build._render(
+        "submission.html",
+        {
+            "TITLE": "t", "STYLE_V": "", "PROBLEM_HTML": "p.html", "PROBLEM_TITLE": "P",
+            "NAME": "a", "SUBTITLE": "", "META": "", "ROWS": "", "INCLUDES": "",
+            "SOURCE": "<pre>int x{{1}};</pre>", "GENERATED": "",
+        },
+    )
+    assert "int x{{1}};" in page
+
+
+def test_render_rejects_an_unknown_value():
+    with pytest.raises(site_build.SiteError):
+        site_build._render("index.html", {"DATA_V": "", "STYLE_V": "", "SCRIPT_V": "", "X": ""})
+
+
+def test_describe_diff_names_files_and_settings():
+    from pj.freshness import Diff
+
+    assert site_build.describe_diff(None) is None
+    assert site_build.describe_diff(Diff()) == "理由は記録に無い"
+    text = site_build.describe_diff(
+        Diff(changed=("a.hpp",), added=("b.hpp",), removed=("c.hpp",), settings=("problem",))
+    )
+    assert text == "変更 a.hpp / 追加 b.hpp / 削除 c.hpp / problem.toml が変わった"
+
+
+def test_problem_url_knows_the_judges(tmp_path):
+    def with_source(source, name):
+        directory = tmp_path / f"q-{name.replace('/', '-')}"
+        directory.mkdir()
+        (directory / "problem.toml").write_text(
+            FRESH_TOML.replace('source = "none"', f'source = "{source}"\nname = "{name}"')
+            .replace('id = "tmp-fresh"', f'id = "{directory.name}"')
+        )
+        (directory / "submissions").mkdir()
+        return problem_mod.load(directory)
+
+    assert (
+        site_build.problem_url(with_source("library_checker", "tree/lca"))
+        == "https://judge.yosupo.jp/problem/lca"
+    )
+    assert (
+        site_build.problem_url(with_source("aoj", "DSL_2_B"))
+        == "https://onlinejudge.u-aizu.ac.jp/problems/DSL_2_B"
+    )
+    assert (
+        site_build.problem_url(with_source("yukicoder", "274"))
+        == "https://yukicoder.me/problems/no/274"
+    )
+    assert site_build.problem_url(None) is None
+
+
+# --- include の欄と、ヘッダごとの逆引き ---------------------------------------
+
+
+@pytest.fixture
+def fake_library(tmp_path, monkeypatch):
+    """tmp の lib/ を探索パスの先頭に置き、その接頭辞をライブラリとして登録する。"""
+    lib = tmp_path / "lib"
+    (lib / "mylib" / "internal").mkdir(parents=True)
+    (lib / "mylib" / "internal" / "helper.hpp").write_text("int helper();\n")
+    (lib / "mylib" / "Tree.hpp").write_text(
+        '#include "mylib/internal/helper.hpp"\nstruct Tree { int n = helper(); };\n'
+    )
+    from pj import libraries as lib_mod
+    from pj.paths import HARNESS_DIR, SIMDE_DIR
+
+    monkeypatch.setattr(
+        build_mod, "include_dirs", lambda problem: [lib, problem.dir, HARNESS_DIR, SIMDE_DIR]
+    )
+    monkeypatch.setattr(
+        lib_mod,
+        "load_all",
+        lambda path=None: [
+            lib_mod.Library(
+                name="Library",
+                prefix="mylib/",
+                page="https://lib.invalid/{stem}.html",
+                source="https://github.com/x/Library/blob/{sha}/mylib/{path}",
+            )
+        ],
+    )
+    return lib
+
+
+def lib_problem(tmp_path):
+    directory = tmp_path / "tmp-lib"
+    directory.mkdir()
+    (directory / "problem.toml").write_text(FRESH_TOML.replace("tmp-fresh", "tmp-lib"))
+    (directory / "common.hpp").write_text("int shared();\n")
+    (directory / "submissions").mkdir()
+    (directory / "submissions" / "lib-tree.cpp").write_text(
+        '#include "common.hpp"\n#include "mylib/Tree.hpp"\nint main() { Tree t; return t.n; }\n'
+    )
+    (directory / "submissions" / "plain.cpp").write_text("int main() { return 0; }\n")
+    return problem_mod.load(directory)
+
+
+def test_include_links_split_direct_from_via(tmp_path, fake_library):
+    problem = lib_problem(tmp_path)
+    from pj import libraries as lib_mod
+
+    links = site_build.include_links(
+        problem, "submissions/lib-tree.cpp", lib_mod.load_all(),
+        repo="https://github.com/x/judge", sha="abc", lib_sha="lib123",
+    )
+    by_label = {link.label: link for link in links}
+    assert set(by_label) == {"common.hpp", "mylib/Tree.hpp", "mylib/internal/helper.hpp"}
+    assert by_label["mylib/Tree.hpp"].direct is True
+    assert by_label["mylib/internal/helper.hpp"].direct is False
+    assert by_label["mylib/Tree.hpp"].href == "https://lib.invalid/Tree.html"
+    assert by_label["mylib/Tree.hpp"].source_href.endswith("/blob/lib123/mylib/Tree.hpp")
+    assert by_label["mylib/Tree.hpp"].library == "Library"
+    # このリポジトリのファイルは GitHub の blob へ。
+    assert by_label["common.hpp"].library is None
+    assert by_label["common.hpp"].href is None or "/blob/abc/" in by_label["common.hpp"].href
+
+
+def test_include_links_report_unresolved_includes(tmp_path, fake_library):
+    problem = lib_problem(tmp_path)
+    (problem.dir / "submissions" / "plain.cpp").write_text('#include "nowhere.hpp"\n')
+    links = site_build.include_links(
+        problem, "submissions/plain.cpp", [], repo=None, sha=None, lib_sha=None
+    )
+    assert [(l.label, l.missing) for l in links] == [("nowhere.hpp", True)]
+
+
+def test_include_links_are_none_without_the_file(tmp_path, fake_library):
+    problem = lib_problem(tmp_path)
+    assert (
+        site_build.include_links(
+            problem, "submissions/gone.cpp", [], repo=None, sha=None, lib_sha=None
+        )
+        is None
+    )
+
+
+def test_build_writes_one_json_per_library_header(tmp_path, fake_library, monkeypatch):
+    problem = lib_problem(tmp_path)
+    monkeypatch.setattr(problem_mod, "all_problem_dirs", lambda: [problem.dir])
+    store = store_with(
+        tmp_path,
+        [rec(problem="tmp-lib", submission="submissions/lib-tree.cpp")],
+        problem_id="tmp-lib",
+    )
+    out = tmp_path / "site"
+    summary = site_build.build(store, out)
+
+    assert summary.headers == 2
+    assert summary.submission_pages == 2
+    tree = json.loads((out / "data" / "headers" / "mylib" / "Tree.hpp.json").read_text())
+    helper = json.loads(
+        (out / "data" / "headers" / "mylib" / "internal" / "helper.hpp.json").read_text()
+    )
+    # 問題ごとの common.hpp は名前が問題をまたいで衝突するので、逆引きは出さない。
+    assert not (out / "data" / "headers" / "common.hpp.json").exists()
+
+    (entry,) = tree["submissions"]
+    assert entry["problem"] == "tmp-lib"
+    assert entry["submission"] == "submissions/lib-tree.cpp"
+    assert entry["direct"] is True
+    assert entry["page"] == "submissions/tmp-lib/lib-tree.html"
+    assert helper["submissions"][0]["direct"] is False
+    assert tree["environments"] == [e.name for e in env_mod.load_all() if e.runs_on != "self"]
+
+    page = (out / "submissions" / "tmp-lib" / "lib-tree.html").read_text()
+    assert "https://lib.invalid/Tree.html" in page
+    assert "主題" in page and "経由" in page
+    assert "Tree t;" in page  # ソースを埋め込む
+
+
+def test_env_summary_folds_models_into_environments():
+    cells = [
+        rec_cell(env="x64-gcc", cpu_model="A", status="AC", current=True),
+        rec_cell(env="x64-gcc", cpu_model="B", status="TLE", current=False),
+        rec_cell(env="arm-gcc", cpu_model="N2", status="AC", current=True),
+    ]
+    summary = {row["env"]: row for row in site_build.env_summary(cells, ["x64-gcc", "arm-gcc", "arm-clang"])}
+    assert summary["x64-gcc"]["status"] == "TLE"
+    assert summary["x64-gcc"]["current"] is False
+    assert summary["x64-gcc"]["models"] == 2
+    assert summary["arm-gcc"] == {"env": "arm-gcc", "status": "AC", "current": True, "models": 1, "algo_ns": 1000}
+    assert summary["arm-clang"]["status"] is None
+
+
+def rec_cell(**over):
+    """collapse を通した Cell に current だけ上書きしたもの。"""
+    from dataclasses import replace
+
+    current = over.pop("current", None)
+    return replace(site_build.collapse([rec(**over)])[0], current=current)
