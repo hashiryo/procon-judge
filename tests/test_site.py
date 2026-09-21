@@ -807,3 +807,26 @@ def test_origin_of_knows_the_manual_judges():
     assert site_build.origin_of("ojuz-APIO16_fireworks") == "ojuz"
     assert site_build.origin_of("luogu-P5055") == "luogu"
     assert site_build.origin_of("mat-unit-test") == site_build.OWN_ORIGIN
+
+
+def test_records_of_removed_submissions_are_hidden(tmp_path, monkeypatch):
+    """raw から base へ作り替えると lib.cpp が消える。測り直せない記録は順位表に並べない。"""
+    directory = tmp_path / "p"
+    (directory / "submissions").mkdir(parents=True)
+    (directory / "problem.toml").write_text(
+        'id = "p"\ntitle = "P"\n\n[harness]\nkind = "raw"\n\n[testdata]\nsource = "none"\n\n'
+        '[compare]\nkind = "compile_only"\n'
+    )
+    (directory / "submissions" / "a.cpp").write_text("int main() {}\n")
+    monkeypatch.setattr(problem_mod, "all_problem_dirs", lambda: [directory])
+    store = store_with(
+        tmp_path,
+        [rec(submission="submissions/a.cpp"), rec(key="k2", submission="submissions/gone.cpp")],
+    )
+    out = tmp_path / "site"
+    summary = site_build.build(store, out)
+    payload = json.loads((out / "data" / "problems" / "p.json").read_text())
+    assert payload["submissions"] == ["submissions/a.cpp"]
+    assert {r["submission"] for r in payload["rows"]} == {"submissions/a.cpp"}
+    assert summary.records == 1
+    assert not (out / "submissions" / "p" / "gone.html").exists()

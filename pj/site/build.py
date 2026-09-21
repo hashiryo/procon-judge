@@ -353,8 +353,10 @@ def problem_payload(
 ) -> dict:
     """problems/<id>.html が読む JSON。"""
     order = _env_order()
+    # 問題が repo にあれば今の提出だけを出す。消した提出の記録は jsonl に残るが、
+    # 測り直せないので順位表には並べない。問題ごと消えていれば記録の提出を出す。
     defined = [s.as_posix() for s in problem.submissions()] if problem else []
-    submissions = sorted(set(defined) | {c.submission for c in cells})
+    submissions = sorted(defined) if problem else sorted({c.submission for c in cells})
 
     combos: dict[tuple[str, str], dict] = {}
     for cell in cells:
@@ -973,8 +975,12 @@ def build(store: Store, out: Path) -> Summary:
         if not _safe_id(problem_id):
             continue
         records = list(store.read(problem_id))
-        total_records += len(records)
         problem = problems.get(problem_id)
+        if problem is not None:
+            # 消した提出 (raw から base へ作り替えたときの lib.cpp など) の記録は隠す。
+            current = {s.as_posix() for s in problem.submissions()}
+            records = [r for r in records if r.get("submission") in current]
+        total_records += len(records)
         # 問題が repo から消えていれば、ソース側を作り直せないので判定しない。
         cells = collapse(records, Freshness(problem, envs) if problem else None)
         payload = problem_payload(
