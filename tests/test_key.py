@@ -58,7 +58,150 @@ def test_normalize_keeps_indentation():
     assert key_mod.normalize("  a\n") == "  a"
 
 
+# --- tokenize / normalize_cxx ------------------------------------------------
+
+
+def same(a, b):
+    return key_mod.normalize_cxx(a) == key_mod.normalize_cxx(b)
+
+
+def test_comments_are_dropped():
+    assert key_mod.tokenize("int a; // c\n/* d\n e */ int b;") == [
+        "int", "a", ";", "int", "b", ";",
+    ]
+
+
+def test_formatting_is_ignored():
+    assert same("int f(){return 1;}", "int f() {\n  return 1;\n}\n")
+
+
+def test_a_comment_only_change_is_not_a_change():
+    assert same("int f();", "// doc\nint f(); /* trailing */")
+
+
+def test_punctuators_take_the_longest_match():
+    """記号を 1 文字ずつにすると a + +b と a ++b が同じになる。"""
+    assert not same("a + +b", "a ++b")
+    assert key_mod.tokenize("a>>=b; x->*y; a<=>b; p::q") == [
+        "a", ">>=", "b", ";", "x", "->*", "y", ";", "a", "<=>", "b", ";", "p", "::", "q",
+    ]
+
+
+def test_a_directive_line_is_one_token():
+    assert key_mod.tokenize("#define F(x) x\nint a;") == ["#define F(x) x", "int", "a", ";"]
+
+
+def test_a_directive_keeps_the_space_before_the_paren():
+    """#define F(x) は関数形式、#define F (x) は置換列に (x) を持つ。別物。"""
+    assert not same("#define F(x) x", "#define F (x) x")
+
+
+def test_a_directive_collapses_its_whitespace():
+    assert same("#  define  X   1 // c\n", "#define X 1\n")
+    assert same('#include "a.hpp" /* k */ // c', '#include "a.hpp"')
+
+
+def test_a_comment_marker_inside_a_string_is_kept():
+    assert key_mod.tokenize('s = "http://x"; // c') == ["s", "=", '"http://x"', ";"]
+    assert key_mod.tokenize('#define U "http://x" // c') == ['#define U "http://x"']
+
+
+def test_a_raw_string_is_one_token():
+    assert key_mod.tokenize('R"(a\n*/ b)" x') == ['R"(a\n*/ b)"', "x"]
+    assert key_mod.tokenize('LR"q(a)"q)q" y') == ['LR"q(a)"q)q"', "y"]
+
+
+def test_escapes_end_no_literal():
+    assert key_mod.tokenize("c = '\\'' ; s = \"a\\\"b\";") == [
+        "c", "=", "'\\''", ";", "s", "=", '"a\\"b"', ";",
+    ]
+
+
+def test_literal_prefixes_stay_attached():
+    assert key_mod.tokenize("u8\"x\" L'y' U\"z\"") == ['u8"x"', "L'y'", 'U"z"']
+
+
+def test_a_user_defined_suffix_stays_attached():
+    assert not same('"a"_s', '"a" _s')
+    assert key_mod.tokenize("1.5_km") == ["1.5_km"]
+
+
+def test_numbers_follow_the_preprocessor_grammar():
+    assert key_mod.tokenize("x = 1e+5 + 0x1p-3 + 1'000'000 + .5f;") == [
+        "x", "=", "1e+5", "+", "0x1p-3", "+", "1'000'000", "+", ".5f", ";",
+    ]
+
+
+def test_line_continuations_are_joined_first():
+    assert same("#define X \\\n  1\n", "#define X 1\n")
+    assert same("in\\\nt a;", "int a;")
+
+
+def test_crlf_and_lf_tokenize_alike():
+    assert same("int a;\r\nint b;\r\n", "int a;\nint b;\n")
+
+
+def test_only_cxx_files_are_tokenized(tmp_path):
+    """Python は字下げに意味があるので、空白を捨ててはいけない。"""
+    cxx = tmp_path / "a.hpp"
+    py = tmp_path / "gen.py"
+    cxx.write_text("if (x) {\n  a();\n}\n")
+    before = key_mod.normalize_file(cxx)
+    cxx.write_text("if (x) {\na();\n}\n")
+    assert key_mod.normalize_file(cxx) == before
+
+    py.write_text("if x:\n  a()\n")
+    before = key_mod.normalize_file(py)
+    py.write_text("if x:\na()\n")
+    assert key_mod.normalize_file(py) != before
+
+
 # --- submission_hash -------------------------------------------------------
+
+
+def test_a_comment_only_change_keeps_the_hash(tmp_path):
+    source = tmp_path / "sol.hpp"
+    source.write_text("int f() { return 1; }\n")
+    before = key_mod.submission_hash(source, [tmp_path]).submission_hash
+    source.write_text("// explains f\nint f() { return 1; /* one */ }\n")
+    assert key_mod.submission_hash(source, [tmp_path]).submission_hash == before
+
+
+def test_file_hashes_cover_the_entry_and_the_closure(tmp_path):
+    (tmp_path / "dep.hpp").write_text("int g();\n")
+    source = tmp_path / "sol.hpp"
+    source.write_text('#include "dep.hpp"\nint f();\n')
+    files = dict(key_mod.submission_hash(source, [tmp_path]).file_hashes)
+    assert set(files) == {"sol.hpp", "dep.hpp"}
+    assert all(len(h) == key_mod.FILE_HASH_CHARS for h in files.values())
+
+
+def test_editing_a_header_moves_only_its_file_hash(tmp_path):
+    (tmp_path / "dep.hpp").write_text("int g();\n")
+    source = tmp_path / "sol.hpp"
+    source.write_text('#include "dep.hpp"\nint f();\n')
+    before = dict(key_mod.submission_hash(source, [tmp_path]).file_hashes)
+    (tmp_path / "dep.hpp").write_text("int g(int);\n")
+    after = dict(key_mod.submission_hash(source, [tmp_path]).file_hashes)
+    assert after["sol.hpp"] == before["sol.hpp"]
+    assert after["dep.hpp"] != before["dep.hpp"]
+
+
+def test_harness_key_names_its_files(tmp_path):
+    shared = tmp_path / "harness"
+    shared.mkdir()
+    (shared / "pj.hpp").write_text("int a;\n")
+    problem = make_problem(
+        tmp_path, harness="base", base_cpp='#include "pj.hpp"\nint main() {}\n'
+    )
+    harness = key_mod.harness_key(problem, [problem.dir, shared])
+    assert set(dict(harness.file_hashes)) == {"base.cpp", "pj.hpp"}
+    assert harness.harness_hash == key_mod.harness_hash(problem, [problem.dir, shared])
+
+
+def test_a_raw_harness_has_no_files(tmp_path):
+    problem = make_problem(tmp_path, harness="raw")
+    assert key_mod.harness_key(problem).file_hashes == ()
 
 
 def test_formatting_only_change_keeps_the_hash(tmp_path):
@@ -125,11 +268,11 @@ def test_base_harness_follows_common_hpp(tmp_path):
         tmp_path,
         harness="base",
         base_cpp='#include "common.hpp"\nint main() {}\n',
-        common="// a\n",
+        common="int a;\n",
     )
     paths = [problem.dir]
     before = key_mod.harness_hash(problem, paths)
-    (problem.dir / "common.hpp").write_text("// b\n")
+    (problem.dir / "common.hpp").write_text("int b;\n")
     assert key_mod.harness_hash(problem, paths) != before
 
 
@@ -137,13 +280,13 @@ def test_base_harness_follows_the_shared_header(tmp_path):
     """共有のハーネスヘッダを書き換えたら測り直しが起きてほしい。"""
     shared = tmp_path / "harness"
     shared.mkdir()
-    (shared / "pj.hpp").write_text("// a\n")
+    (shared / "pj.hpp").write_text("int a;\n")
     problem = make_problem(
         tmp_path, harness="base", base_cpp='#include "pj.hpp"\nint main() {}\n'
     )
     paths = [problem.dir, shared]
     before = key_mod.harness_hash(problem, paths)
-    (shared / "pj.hpp").write_text("// b\n")
+    (shared / "pj.hpp").write_text("int b;\n")
     assert key_mod.harness_hash(problem, paths) != before
 
 
@@ -153,10 +296,10 @@ def test_base_harness_ignores_formatting(tmp_path):
     )
     shared = tmp_path / "harness"
     shared.mkdir()
-    (shared / "pj.hpp").write_text("// a\n")
+    (shared / "pj.hpp").write_text("int a;\n")
     paths = [problem.dir, shared]
     before = key_mod.harness_hash(problem, paths)
-    (shared / "pj.hpp").write_text("// a   \n\n")
+    (shared / "pj.hpp").write_text("int  a ;   // now with a comment\n\n")
     assert key_mod.harness_hash(problem, paths) == before
 
 

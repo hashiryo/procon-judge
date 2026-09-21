@@ -52,6 +52,10 @@ class Job:
     includes: tuple[str, ...]
     cases_hash: str
     cxxflags: str
+    harness_hash: str = ""
+    problem_hash: str = ""
+    # ラベル -> 短いハッシュ。提出の閉包とハーネスの閉包を合わせたもの。
+    file_hashes: tuple[tuple[str, str], ...] = ()
 
     @property
     def label(self) -> str:
@@ -256,7 +260,7 @@ def _decide(
     """この cases_hash を前提に、走らせるものと飛ばすものを分ける。"""
     cxxflags = build_mod.effective_cxxflags(env, problem)
     search_paths = build_mod.include_dirs(problem)
-    harness = key_mod.harness_hash(problem, search_paths)
+    harness = key_mod.harness_key(problem, search_paths)
     problem_h = key_mod.problem_hash(problem)
     decided = _Decision(jobs=[], skipped=[], blocked=[], unresolved=[])
 
@@ -277,7 +281,7 @@ def _decide(
             key=key_mod.compute(
                 submission=submission.as_posix(),
                 submission_hash=sub.submission_hash,
-                harness_hash=harness,
+                harness_hash=harness.harness_hash,
                 problem_hash=problem_h,
                 cases_hash=cases_hash,
                 env=env.name,
@@ -289,6 +293,11 @@ def _decide(
             includes=sub.includes,
             cases_hash=cases_hash,
             cxxflags=cxxflags,
+            harness_hash=harness.harness_hash,
+            problem_hash=problem_h,
+            # 同じファイル (pj.hpp) が両方に出ることがあるが、同じ中身なので
+            # 同じ値になる。
+            file_hashes=tuple(dict(sub.file_hashes + harness.file_hashes).items()),
         )
         (decided.skipped if job.key in known_keys else decided.jobs).append(job)
     return decided
@@ -351,18 +360,8 @@ def execute_job(job: Job) -> Record:
     built = build_mod.build(problem, submission, env)
 
     base = {
-        "key": job.key,
-        "problem": problem.id,
-        "submission": submission.as_posix(),
-        "env": env.name,
-        "cpu_arch": job.machine.cpu_arch,
-        "cpu_model": job.machine.cpu_model,
-        "compiler_version": job.machine.compiler_version,
-        "cxxflags": job.cxxflags,
-        "cases_hash": job.cases_hash,
+        **describe(job),
         "case_count": testcases.count if testcases else 0,
-        "submission_hash": job.submission_hash,
-        "includes": list(job.includes),
         "library_sha": library_sha(),
         "judge_sha": judge_sha(),
         "source_bytes": (problem.dir / submission).stat().st_size,
@@ -446,6 +445,30 @@ def execute_job(job: Job) -> Record:
             break
 
     return _summarize(base, outcomes, binary_bytes)
+
+
+def describe(job: Job) -> dict:
+    """記録のうち、走らせる前から決まっている項目。キーとその成分。
+
+    測った結果と分けておくのは、テストが「今のソースをこの条件で測った記録」を
+    走らせずに作れるようにするため。
+    """
+    return {
+        "key": job.key,
+        "problem": job.problem.id,
+        "submission": job.submission.as_posix(),
+        "env": job.env.name,
+        "cpu_arch": job.machine.cpu_arch,
+        "cpu_model": job.machine.cpu_model,
+        "compiler_version": job.machine.compiler_version,
+        "cxxflags": job.cxxflags,
+        "cases_hash": job.cases_hash,
+        "submission_hash": job.submission_hash,
+        "includes": list(job.includes),
+        "harness_hash": job.harness_hash,
+        "problem_hash": job.problem_hash,
+        "file_hashes": dict(job.file_hashes),
+    }
 
 
 def _summarize(base: dict, outcomes: list[CaseOutcome], binary_bytes: int) -> Record:

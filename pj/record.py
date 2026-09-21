@@ -45,6 +45,12 @@ class Record:
     memory_max_kb: int
     source_bytes: int
     binary_bytes: int | None
+    # キーの残りの成分。参考に落ちたとき、どの成分が動いたかを見分けるために持つ。
+    harness_hash: str = ""
+    problem_hash: str = ""
+    # 閉包のファイルごとの正規化後ハッシュ (短縮)。提出側とハーネス側の両方。
+    # 参考に落ちた理由をファイル名で言うために持つ。古い記録には無い。
+    file_hashes: dict[str, str] = field(default_factory=dict)
     failed_case: FailedCase | None = None
     timestamp: str = field(
         default_factory=lambda: datetime.now(UTC)

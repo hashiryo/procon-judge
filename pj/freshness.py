@@ -12,16 +12,43 @@
 cases_hash も記録から借りているので、テストデータだけが上流で作り直された
 場合は見逃す。それは次に run が走ったときに測り直されて入れ替わるので、
 表示が遅れるだけで済む。
+
+参考に落ちた理由も出せる。記録は閉包のファイルごとのハッシュを持っているので、
+今の閉包と突き合わせれば、どのファイルが動いたかが分かる。ファイル以外の成分
+(problem.toml とコンパイルフラグ) は、それぞれのハッシュと文字列を比べる。
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 from . import build as build_mod
 from . import key as key_mod
 from .environment import Environment
 from .problem import Problem
+
+
+@dataclass(frozen=True)
+class Diff:
+    """記録と今のソースの、キーに効く違い。参考に落ちた理由。
+
+    どれも空なら、記録に材料が無くて理由を言えない (古い記録)。
+    """
+
+    # 中身が変わったファイル。ラベルは記録の includes と同じ形。
+    changed: tuple[str, ...] = ()
+    # 今の閉包にあって、記録の閉包に無かったファイル。
+    added: tuple[str, ...] = ()
+    # 記録の閉包にあって、今の閉包に無いファイル。
+    removed: tuple[str, ...] = ()
+    # ファイル以外の成分。"problem" (problem.toml か local のジェネレータ) と
+    # "cxxflags" (environments.toml) のどちらか、または両方。
+    settings: tuple[str, ...] = ()
+
+    @property
+    def known(self) -> bool:
+        return bool(self.changed or self.added or self.removed or self.settings)
 
 
 class Freshness:
@@ -30,7 +57,7 @@ class Freshness:
     def __init__(self, problem: Problem, envs: Sequence[Environment]):
         self.problem = problem
         self._search = build_mod.include_dirs(problem)
-        self._harness = key_mod.harness_hash(problem, self._search)
+        self._harness = key_mod.harness_key(problem, self._search)
         self._problem_hash = key_mod.problem_hash(problem)
         self._cxxflags = {
             env.name: build_mod.effective_cxxflags(env, problem) for env in envs
@@ -74,7 +101,7 @@ class Freshness:
         return key_mod.compute(
             submission=submission,
             submission_hash=sub.submission_hash,
-            harness_hash=self._harness,
+            harness_hash=self._harness.harness_hash,
             problem_hash=self._problem_hash,
             cases_hash=cases_hash,
             env=env,
@@ -97,3 +124,36 @@ class Freshness:
             cpu_model=record.get("cpu_model", ""),
         )
         return None if expected is None else record.get("key") == expected
+
+    def diff(self, record: dict) -> Diff | None:
+        """参考に落ちた理由。現行の記録と、判定できない記録には None。
+
+        機械側の値は記録から借りているので、違いうる成分は提出とハーネスの
+        閉包、problem.toml、コンパイルフラグの 4 つに限られる。閉包はファイル
+        ごとに突き合わせて名指しする。file_hashes を持たない古い記録では
+        ファイルを名指しできないので、known が False の Diff になる。
+        """
+        if self.current(record) is not False:
+            return None
+        sub = self._submission(record.get("submission", ""))
+        assert sub is not None  # current() が False を返した以上、判定できている
+
+        settings = []
+        if record.get("cxxflags") != self._cxxflags.get(record.get("env", "")):
+            settings.append("cxxflags")
+        recorded_problem = record.get("problem_hash")
+        if recorded_problem and recorded_problem != self._problem_hash:
+            settings.append("problem")
+
+        recorded = record.get("file_hashes")
+        if not isinstance(recorded, dict):
+            return Diff(settings=tuple(settings))
+        now = dict(sub.file_hashes + self._harness.file_hashes)
+        return Diff(
+            changed=tuple(
+                sorted(l for l, h in recorded.items() if l in now and now[l] != h)
+            ),
+            added=tuple(sorted(l for l in now if l not in recorded)),
+            removed=tuple(sorted(l for l in recorded if l not in now)),
+            settings=tuple(settings),
+        )
