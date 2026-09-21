@@ -1,0 +1,16 @@
+id = "yuki-1297"
+title = "銅像"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "yukicoder"
+name = "1297"
+
+[compare]
+kind = "tokens"

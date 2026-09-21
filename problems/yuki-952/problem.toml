@@ -1,0 +1,16 @@
+id = "yuki-952"
+title = "危険な火薬庫"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "yukicoder"
+name = "952"
+
+[compare]
+kind = "tokens"

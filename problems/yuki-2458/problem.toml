@@ -1,0 +1,16 @@
+id = "yuki-2458"
+title = "Line Up Charged Balls"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "yukicoder"
+name = "2458"
+
+[compare]
+kind = "tokens"
