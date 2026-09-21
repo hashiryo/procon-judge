@@ -1,13 +1,32 @@
+/* 配色と字体は Library のサイト (hashiryo.github.io/Library) に揃えてある。
+   変数の名前と値も同じで、ダークモードは OS の設定に従う。2 つのサイトを
+   行き来するので、別の見た目にしない。 */
 :root {
-  --bg: #0d1117;
-  --bg2: #161b22;
-  --border: #30363d;
-  --text: #e6edf3;
-  --text2: #8b949e;
-  --green: #3fb950;
-  --red: #f85149;
-  --yellow: #d29922;
-  --blue: #58a6ff;
+  --c-bg: #fff;
+  --c-bg-soft: #f6f6f7;
+  --c-text: #213547;
+  --c-text-2: #666;
+  --c-brand: #3451b2;
+  --c-divider: #e2e2e3;
+  --c-ac: #22863a;
+  --c-fail: #cb2431;
+  --c-warn: #b08800;
+  --c-gray: #6a737d;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --c-bg: #1a1a1a;
+    --c-bg-soft: #252529;
+    --c-text: #ddd;
+    --c-text-2: #aaa;
+    --c-brand: #6a9fff;
+    --c-divider: #3a3a3c;
+    --c-ac: #56d364;
+    --c-fail: #f85149;
+    --c-warn: #d29922;
+    --c-gray: #8b949e;
+  }
 }
 
 * {
@@ -17,18 +36,17 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
-    sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  line-height: 1.5;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--c-bg);
+  color: var(--c-text);
+  line-height: 1.6;
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
 }
 
 a {
-  color: var(--blue);
+  color: var(--c-brand);
   text-decoration: none;
 }
 
@@ -37,8 +55,10 @@ a:hover {
 }
 
 h1 {
-  font-size: 1.4em;
+  font-size: 1.6rem;
   margin-bottom: 4px;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--c-divider);
 }
 
 nav {
@@ -47,13 +67,13 @@ nav {
 }
 
 .sub {
-  color: var(--text2);
+  color: var(--c-text-2);
   font-size: 0.9em;
   margin-bottom: 16px;
 }
 
 .meta {
-  color: var(--text2);
+  color: var(--c-text-2);
   font-size: 0.9em;
   margin-bottom: 14px;
   display: flex;
@@ -80,9 +100,9 @@ nav {
 }
 
 select {
-  background: var(--bg2);
-  color: var(--text);
-  border: 1px solid var(--border);
+  background: var(--c-bg);
+  color: var(--c-text);
+  border: 1px solid var(--c-divider);
   border-radius: 6px;
   padding: 4px 8px;
   font: inherit;
@@ -102,7 +122,7 @@ table {
    表が動くのを止める。入りきらない中身は省略記号にして title に残す。 */
 table.fixed {
   table-layout: fixed;
-  min-width: 1120px;
+  min-width: 1140px;
 }
 
 table.fixed th,
@@ -120,16 +140,16 @@ table.fixed td {
 
 th,
 td {
-  border-bottom: 1px solid var(--border);
+  border: 1px solid var(--c-divider);
   padding: 6px 10px;
   text-align: left;
   white-space: nowrap;
 }
 
 th {
-  color: var(--text2);
+  color: var(--c-text);
   font-weight: 600;
-  background: var(--bg2);
+  background: var(--c-bg-soft);
 }
 
 th.sortable {
@@ -138,7 +158,7 @@ th.sortable {
 }
 
 th.sortable:hover {
-  color: var(--text);
+  color: var(--c-brand);
 }
 
 th.n,
@@ -148,11 +168,12 @@ td.n {
 }
 
 tbody tr:hover {
-  background: var(--bg2);
+  background: var(--c-bg-soft);
 }
 
 .mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: "SF Mono", Monaco, Consolas, ui-monospace, monospace;
+  font-size: 0.95em;
 }
 
 .st {
@@ -160,29 +181,29 @@ tbody tr:hover {
 }
 
 .st-AC {
-  color: var(--green);
+  color: var(--c-ac);
 }
 
 .st-WA,
 .st-RE,
 .st-CE {
-  color: var(--red);
+  color: var(--c-fail);
 }
 
 .st-TLE,
 .st-MLE {
-  color: var(--yellow);
+  color: var(--c-warn);
 }
 
 .dim {
-  color: var(--text2);
+  color: var(--c-text-2);
 }
 
 /* 参考の行。今のソースで測ったものではないので、状態の色も落として、
    順位に並んでいるように見せない。 */
 tbody tr.stale td,
 tbody tr.stale td.st {
-  color: var(--text2);
+  color: var(--c-text-2);
 }
 
 /* 提出の列。名前だけを詰めて、後ろの印は押し出されないようにする。セル全体に
@@ -205,15 +226,15 @@ tbody tr.stale td.st {
 .chip {
   flex: none;
   padding: 0 6px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--c-divider);
   border-radius: 10px;
-  color: var(--text2);
+  color: var(--c-text-2);
   font-size: 0.85em;
   white-space: nowrap;
 }
 
 .empty {
-  color: var(--text2);
+  color: var(--c-text-2);
   padding: 16px 0;
 }
 
@@ -231,17 +252,16 @@ tbody tr.stale td.st {
 /* --- 提出ページ ------------------------------------------------------- */
 
 h2 {
-  font-size: 1.05em;
-  color: var(--text2);
+  font-size: 1.15rem;
   margin: 22px 0 8px;
 }
 
 h1.mono {
-  font-size: 1.25em;
+  font-size: 1.35rem;
 }
 
 .note {
-  color: var(--text2);
+  color: var(--c-text-2);
   font-size: 0.85em;
   margin-bottom: 10px;
 }
@@ -254,7 +274,7 @@ table.submission {
 
 /* 参考の理由。チップの横に小さく。 */
 .reason {
-  color: var(--text2);
+  color: var(--c-text-2);
   font-size: 0.85em;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -272,14 +292,14 @@ table.submission {
 }
 
 .includes .lib {
-  color: var(--text2);
+  color: var(--c-text-2);
   margin-left: 8px;
   font-size: 0.85em;
 }
 
 pre.source {
-  background: var(--bg2);
-  border: 1px solid var(--border);
+  background: var(--c-bg-soft);
+  border: 1px solid var(--c-divider);
   border-radius: 6px;
   padding: 12px 14px;
   overflow-x: auto;

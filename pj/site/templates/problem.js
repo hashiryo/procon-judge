@@ -172,7 +172,7 @@ const COLUMNS = [
     id: "measured",
     label: "計測 (UTC)",
     text: true,
-    width: "145px",
+    width: "160px",
     value: (r) => r.timestamp,
     cell: (r) => {
       const td = el("td", stamp(r.timestamp), "dim");
