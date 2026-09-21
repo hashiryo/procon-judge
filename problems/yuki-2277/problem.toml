@@ -1,0 +1,16 @@
+id = "yuki-2277"
+title = "Honest or Dishonest ?"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "yukicoder"
+name = "2277"
+
+[compare]
+kind = "tokens"

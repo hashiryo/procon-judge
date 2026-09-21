@@ -1,0 +1,16 @@
+id = "yuki-2293"
+title = "無向辺 2-SAT"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "yukicoder"
+name = "2293"
+
+[compare]
+kind = "tokens"
