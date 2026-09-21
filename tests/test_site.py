@@ -563,7 +563,7 @@ def test_build_writes_one_json_per_library_header(tmp_path, fake_library, monkey
 
     page = (out / "submissions" / "tmp-lib" / "lib-tree.html").read_text()
     assert "https://lib.invalid/Tree.html" in page
-    assert "主題" in page and "経由" in page
+    assert "直接 include しているもの" in page and "間接" in page
     assert "Tree t;" in page  # ソースを埋め込む
 
 

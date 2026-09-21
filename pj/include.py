@@ -66,8 +66,8 @@ def _resolve(target: str, from_dir: Path, search_paths: Sequence[Path]) -> Path 
 def direct(entry: Path, search_paths: Sequence[Path]) -> tuple[str, ...]:
     """entry が直接 include しているもののラベル。解決できたものだけ。
 
-    閉包の中で「その提出の主題」と「巻き込まれただけ」を分けるのに使う。
-    提出が名指ししているヘッダが主題で、それ以外は経由。
+    閉包の中で「直接 include しているもの」と「そこから辿って間接に入るもの」を
+    分けるのに使う。
     """
     entry = entry.resolve()
     try:

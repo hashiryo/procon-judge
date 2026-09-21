@@ -280,7 +280,7 @@ table.submission {
   text-overflow: ellipsis;
 }
 
-/* include の一覧。主題と経由で 2 つの列を持つ。 */
+/* include の一覧。直接と間接で 2 つの列を持つ。 */
 .includes {
   list-style: none;
   font-size: 0.9em;

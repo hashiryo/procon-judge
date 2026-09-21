@@ -91,7 +91,7 @@ class IncludeLink:
     library: str | None
     # ライブラリのソースへのリンク。ページとは別に置く。
     source_href: str | None
-    # 提出が直接 include しているか (主題)。そうでなければ経由。
+    # 提出が直接 include しているか。そうでなければ辿って間接に入るもの。
     direct: bool
     # 解決できなかった include。
     missing: bool = False
@@ -475,9 +475,9 @@ def _includes_html(links: Sequence[IncludeLink] | None) -> str:
     direct = [l for l in links if l.direct]
     via = [l for l in links if not l.direct]
     return (
-        '<p class="note">主題 (提出が直接 include しているもの)</p>'
+        '<p class="note">直接 include しているもの</p>'
         + _include_list(direct)
-        + '<p class="note">経由 (主題から辿って入るもの)</p>'
+        + '<p class="note">間接 (直接のものから辿って入るもの)</p>'
         + _include_list(via)
     )
 
