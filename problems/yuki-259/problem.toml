@@ -1,0 +1,16 @@
+id = "yuki-259"
+title = "セグメントフィッシング＋"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "yukicoder"
+name = "259"
+
+[compare]
+kind = "tokens"

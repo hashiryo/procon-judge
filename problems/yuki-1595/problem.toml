@@ -1,0 +1,16 @@
+id = "yuki-1595"
+title = "The Final Digit"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "yukicoder"
+name = "1595"
+
+[compare]
+kind = "tokens"

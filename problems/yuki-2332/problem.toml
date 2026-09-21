@@ -1,0 +1,16 @@
+id = "yuki-2332"
+title = "Make a Sequence"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "yukicoder"
+name = "2332"
+
+[compare]
+kind = "tokens"

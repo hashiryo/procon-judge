@@ -1,0 +1,16 @@
+id = "yuki-215"
+title = "素数サイコロと合成数サイコロ (3-Hard)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "yukicoder"
+name = "215"
+
+[compare]
+kind = "tokens"

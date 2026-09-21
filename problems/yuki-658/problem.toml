@@ -1,0 +1,16 @@
+id = "yuki-658"
+title = "テトラナッチ数列 Hard"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "yukicoder"
+name = "658"
+
+[compare]
+kind = "tokens"

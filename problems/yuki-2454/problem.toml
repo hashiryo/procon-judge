@@ -1,0 +1,16 @@
+id = "yuki-2454"
+title = "Former < Latter"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "yukicoder"
+name = "2454"
+
+[compare]
+kind = "tokens"

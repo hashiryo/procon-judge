@@ -1,0 +1,16 @@
+id = "yuki-963"
+title = "門松列列（2）"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "yukicoder"
+name = "963"
+
+[compare]
+kind = "tokens"

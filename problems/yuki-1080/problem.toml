@@ -1,0 +1,16 @@
+id = "yuki-1080"
+title = "Strange Squared Score Sum"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "yukicoder"
+name = "1080"
+
+[compare]
+kind = "tokens"
