@@ -1,0 +1,16 @@
+id = "yuki-2304"
+title = "Distinct Elements"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "yukicoder"
+name = "2304"
+
+[compare]
+kind = "tokens"

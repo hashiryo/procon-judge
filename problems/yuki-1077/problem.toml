@@ -1,0 +1,16 @@
+id = "yuki-1077"
+title = "Noelちゃんと星々4"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "yukicoder"
+name = "1077"
+
+[compare]
+kind = "tokens"
