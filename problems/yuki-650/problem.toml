@@ -1,0 +1,16 @@
+id = "yuki-650"
+title = "行列木クエリ"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "yukicoder"
+name = "650"
+
+[compare]
+kind = "tokens"

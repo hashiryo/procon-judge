@@ -1,0 +1,16 @@
+id = "yuki-235"
+title = "めぐるはめぐる (5)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "yukicoder"
+name = "235"
+
+[compare]
+kind = "tokens"

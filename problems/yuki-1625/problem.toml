@@ -1,0 +1,16 @@
+id = "yuki-1625"
+title = "三角形の質問"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "yukicoder"
+name = "1625"
+
+[compare]
+kind = "tokens"

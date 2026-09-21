@@ -1,0 +1,16 @@
+id = "yuki-1216"
+title = "灯籠流し/Lanterns"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "yukicoder"
+name = "1216"
+
+[compare]
+kind = "tokens"
