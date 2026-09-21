@@ -42,8 +42,8 @@ TEMPLATES = Path(__file__).resolve().parent / "templates"
 # 前のサイトかどうかを見分ける目印。空でないディレクトリを黙って消さないために置く。
 MARKER = ".pj-site"
 
-# 失敗したケースの説明。記録は 400 字まで持っているが、表には収まらない。
-DETAIL_CHARS = 200
+# 失敗したケースの説明。提出ページの「失敗」の節に出すので、記録が持つ長さまで残す。
+DETAIL_CHARS = 2000
 
 PLACEHOLDER = re.compile(r"\{\{(\w+)\}\}")
 
@@ -74,6 +74,8 @@ class Cell:
     timestamp: str
     judge_sha: str | None
     failed: dict | None
+    # AC でなかったケースの名前。failed はその最初の 1 つの明細。
+    failed_cases: tuple[str, ...] = ()
     # 今のソースで測った記録なら True、ソースが変わっていれば False。
     # 判定できなければ None。
     current: bool | None = None
@@ -161,6 +163,7 @@ def collapse(
                 timestamp=max(r.get("timestamp") or "" for r in same),
                 judge_sha=newest.get("judge_sha"),
                 failed=_failed(newest),
+                failed_cases=tuple(newest.get("failed_cases") or ()),
                 current=current,
                 reason=(
                     freshness.diff(newest)
@@ -409,6 +412,7 @@ def problem_payload(
                 "timestamp": c.timestamp,
                 "judge_sha": c.judge_sha,
                 "failed": c.failed,
+                "failed_cases": list(c.failed_cases),
                 "current": c.current,
                 "reason": describe_diff(c.reason),
             }
@@ -478,11 +482,9 @@ def _cell_row(page: SubmissionPage, c: Cell) -> str:
     if c.current is True:
         fresh = "<td>現行</td>"
     elif c.current is False:
-        reason = describe_diff(c.reason) or ""
-        fresh = (
-            '<td><span class="chip">参考</span> '
-            f'<span class="reason" title="{esc(reason)}">{esc(reason)}</span></td>'
-        )
+        # 理由は長いので表には入れず、表の下の「参考の理由」に出す。
+        reason = describe_diff(c.reason) or "理由は記録に無い"
+        fresh = f'<td><span class="chip" title="{esc(reason)}">参考</span></td>'
     else:
         fresh = '<td class="dim" title="今のソースと比べられませんでした">-</td>'
 
@@ -508,6 +510,61 @@ def _cell_row(page: SubmissionPage, c: Cell) -> str:
         f"<td>{commit}</td>"
         "</tr>"
     )
+
+
+def _where(c: Cell) -> str:
+    return f"{c.env} {c.cpu_model}"
+
+
+def _reasons_html(page: SubmissionPage) -> str:
+    """参考の行の理由。同じ理由の行をまとめて、どの行かを添える。"""
+    stale = [c for c in page.cells if c.current is False]
+    if not stale:
+        return ""
+    groups: dict[str, list[Cell]] = {}
+    for c in stale:
+        groups.setdefault(describe_diff(c.reason) or "理由は記録に無い", []).append(c)
+    items = []
+    for reason, cells in groups.items():
+        where = "、".join(_where(c) for c in cells)
+        items.append(
+            f'<li>{esc(reason)} <span class="dim">({esc(where)})</span></li>'
+        )
+    return '<p class="note">参考の理由</p><ul class="reasons">' + "".join(items) + "</ul>"
+
+
+def repro_command(problem_id: str, submission: str, case: str | None) -> str:
+    command = f"pj repro --problem {problem_id} --submission {submission}"
+    return command + (f" --case {case}" if case else "")
+
+
+def _failures_html(page: SubmissionPage) -> str:
+    """AC でなかった行の明細。ケース名、差分の先頭、手元で再現するコマンド。"""
+    failed = [c for c in page.cells if c.status and c.status != "AC"]
+    if not failed:
+        return ""
+    parts = ["<h2>失敗</h2>"]
+    for c in failed:
+        name = (c.failed or {}).get("name") or ""
+        detail = (c.failed or {}).get("detail") or ""
+        head = (
+            f'<span class="st st-{esc(c.status)}">{esc(c.status)}</span> '
+            f"{esc(_where(c))}"
+        )
+        if name:
+            head += f' ケース <span class="mono">{esc(name)}</span>'
+        others = [n for n in c.failed_cases if n != name]
+        if others:
+            head += f' <span class="dim">(ほかに {len(others)} 件: {esc(", ".join(others))})</span>'
+        block = [f'<div class="failure"><p class="note">{head}</p>']
+        if detail:
+            block.append(f'<pre class="detail mono">{esc(detail)}</pre>')
+        command = repro_command(page.problem_id, page.submission, name or None)
+        block.append(
+            f'<p class="note">手元で再現: <code class="mono">{esc(command)}</code></p></div>'
+        )
+        parts.append("".join(block))
+    return "".join(parts)
 
 
 def _missing_row(env: str) -> str:
@@ -618,6 +675,8 @@ def submission_html(page: SubmissionPage, style_v: str) -> str:
             "SUBTITLE": subtitle,
             "META": "".join(meta) + _note_html(page),
             "ROWS": _rows_html(page),
+            "REASONS": _reasons_html(page),
+            "FAILURES": _failures_html(page),
             "INCLUDES": _includes_html(page.includes),
             "SOURCE": _source_html(page.source_text),
             "GENERATED": generated,

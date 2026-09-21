@@ -16,18 +16,18 @@
     <div class="meta">{{META}}</div>
 
     <h2>記録</h2>
-    <p class="note">行は (環境, CPU モデル) の組。同じ組を何度か測っていれば最小値で、標本の数を出す。参考は測ってからソースが変わった記録で、何が変わったかを横に出す。</p>
+    <p class="note">行は (環境, CPU モデル) の組。同じ組を何度か測っていれば最小値で、標本の数を出す。参考は測ってからソースが変わった記録で、何が変わったかは表の下に出す。</p>
     <div class="wrap">
       <table class="fixed submission">
         <colgroup>
           <col style="width: 95px" />
-          <col style="width: 200px" />
+          <col />
           <col style="width: 130px" />
           <col style="width: 95px" />
           <col style="width: 100px" />
           <col style="width: 85px" />
           <col style="width: 50px" />
-          <col />
+          <col style="width: 80px" />
           <col style="width: 160px" />
           <col style="width: 90px" />
         </colgroup>
@@ -48,6 +48,9 @@
         <tbody>{{ROWS}}</tbody>
       </table>
     </div>
+    {{REASONS}}
+
+    {{FAILURES}}
 
     <h2>include</h2>
     {{INCLUDES}}

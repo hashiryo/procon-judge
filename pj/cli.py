@@ -14,6 +14,7 @@ from . import environment as env_mod
 from . import fetch
 from . import plan as plan_mod
 from . import problem as problem_mod
+from . import repro as repro_mod
 from . import run as run_mod
 from . import titles as titles_mod
 from .fetch import mirror
@@ -420,6 +421,22 @@ def cmd_site_build(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_repro(args: argparse.Namespace) -> int:
+    """1 提出を手元で走らせて、落ちたケースの差分とファイルの場所を出す。"""
+    try:
+        problem = problem_mod.load_by_id(args.problem)
+        env = env_mod.load(args.env)
+    except (problem_mod.ProblemError, env_mod.EnvironmentError_) as e:
+        return _die(str(e))
+    submission = Path(args.submission)
+    if not (problem.dir / submission).is_file():
+        return _die(f"{problem.id} に提出 {submission} がありません")
+    try:
+        return repro_mod.repro(problem, submission, env, case=args.case)
+    except (repro_mod.ReproError, fetch.FetchError) as e:
+        return _die(str(e))
+
+
 def cmd_records_list(args: argparse.Namespace) -> int:
     store = Store(Path(args.store) if args.store else RESULTS_DIR)
     for problem_id in store.problem_ids():
@@ -528,6 +545,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--budget", type=int, help="走らせる提出の上限。省略すると打ち切らない"
     )
     p_run.set_defaults(func=cmd_run)
+
+    p_repro = sub.add_parser(
+        "repro", help="1 提出を手元で走らせて、落ちたケースの差分を見る"
+    )
+    p_repro.add_argument("--problem", required=True)
+    p_repro.add_argument("--submission", required=True, help="submissions/xxx.hpp の形")
+    p_repro.add_argument("--case", help="このケースだけ走らせる。省略すると全部")
+    p_repro.add_argument("--env", default="local")
+    p_repro.set_defaults(func=cmd_repro)
 
     records = sub.add_parser("records", help="記録").add_subparsers(
         dest="subcommand", required=True

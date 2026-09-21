@@ -484,3 +484,57 @@ def test_a_swapped_workload_stops_the_job(tmp_path, local_env, machine, monkeypa
     )
     with pytest.raises(run_mod.fetch.FetchError):
         run_mod.execute_job(decided.jobs[0])
+
+
+# --- WA と RE は最後まで走らせる -------------------------------------------
+
+MANUAL_TOML = """
+id = "tmp-manual"
+title = "t"
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "tmp"
+
+[compare]
+kind = "tokens"
+"""
+
+# 1 を読んだときだけ正しく、それ以外は 0 を出す。
+PICKY = "#include <cstdio>\nint main() { int n; scanf(\"%d\", &n); printf(\"%d\\n\", n == 1 ? 1 : 0); }\n"
+
+
+def make_case_problem(tmp_path, source, cases):
+    """手で置いたテストデータを持つ問題。fetch.ensure を差し替えて使う。"""
+    directory = tmp_path / "tmp-manual"
+    directory.mkdir()
+    (directory / "problem.toml").write_text(MANUAL_TOML)
+    (directory / "submissions").mkdir()
+    (directory / "submissions" / "sol.cpp").write_text(source)
+    data = tmp_path / "data"
+    data.mkdir()
+    built = []
+    for name, (stdin, expected) in cases.items():
+        (data / f"{name}.in").write_text(stdin)
+        (data / f"{name}.out").write_text(expected)
+        built.append(run_mod.fetch.Case(name=name, in_path=data / f"{name}.in", out_path=data / f"{name}.out"))
+    testcases = run_mod.fetch.Testcases(dir=data, cases=tuple(built), cases_hash="h")
+    return problem_mod.load(directory), testcases
+
+
+def test_wa_keeps_running_and_records_every_failed_case(tmp_path, local_env, machine, monkeypatch):
+    problem, testcases = make_case_problem(
+        tmp_path, PICKY, {"a": ("1\n", "1\n"), "b": ("2\n", "2\n"), "c": ("3\n", "3\n")}
+    )
+    monkeypatch.setattr(run_mod.fetch, "ensure", lambda p, **kw: testcases)
+    worklist = worklist_for(problem, local_env, machine)
+    record = run_mod.execute_job(worklist.jobs[0])
+
+    assert record.status == "WA"
+    assert record.failed_case is not None and record.failed_case.name == "b"
+    # b で止まらず c も走っている。
+    assert record.failed_cases == ["b", "c"]
+    assert "expected '2'" in record.failed_case.detail

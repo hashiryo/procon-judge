@@ -51,6 +51,9 @@ class Record:
     # 閉包のファイルごとの正規化後ハッシュ (短縮)。提出側とハーネス側の両方。
     # 参考に落ちた理由をファイル名で言うために持つ。古い記録には無い。
     file_hashes: dict[str, str] = field(default_factory=dict)
+    # AC でなかったケースの名前。WA と RE は最後まで走らせるので複数になる。
+    # failed_case はその最初の 1 つの明細。
+    failed_cases: list[str] = field(default_factory=list)
     failed_case: FailedCase | None = None
     timestamp: str = field(
         default_factory=lambda: datetime.now(UTC)

@@ -87,7 +87,13 @@ function nameCell(path, className, mark) {
 
 function statusCell(row) {
   const td = el("td", row.status, "st st-" + row.status);
-  if (row.failed && row.failed.name) td.append(el("span", " " + row.failed.name, "dim"));
+  if (row.failed && row.failed.name) {
+    let text = " " + row.failed.name;
+    // WA と RE は最後まで走らせるので、落ちたケースが複数あることがある。
+    const others = (row.failed_cases || []).filter((n) => n !== row.failed.name);
+    if (others.length) text += " +" + others.length;
+    td.append(el("span", text, "dim"));
+  }
   if (row.failed && row.failed.detail) td.title = row.failed.detail;
   return td;
 }

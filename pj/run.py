@@ -23,6 +23,9 @@ from .record import FailedCase, Record, judge_sha, library_sha
 
 Target = tuple[Problem, Path]
 
+# 記録に残す、落ちたケースの名前の上限。
+FAILED_CASES_MAX = 10
+
 
 @dataclass(frozen=True)
 class Machine:
@@ -313,7 +316,7 @@ def _rest(
     return []
 
 
-def _judge_case(
+def judge_case(
     result: execute.RunResult,
     case: fetch.Case,
     problem: Problem,
@@ -399,20 +402,7 @@ def execute_job(job: Job) -> Record:
             binary_bytes=binary_bytes,
         )
 
-    checker = None
-    if problem.compare.kind == "checker":
-        source = testcases.checker_source()
-        if source is None:
-            raise fetch.FetchError(
-                f"{problem.id}: compare.kind = 'checker' なのに checker.cpp がありません"
-            )
-        # テストデータのキャッシュは 4 環境で共有するので、名前にアーキテクチャを
-        # 入れる。x86 で組んだチェッカが arm のジョブに復元されると動かない。
-        checker = build_mod.build_checker(
-            source, testcases.dir / f"checker-{job.machine.cpu_arch}.bin", env
-        )
-        if checker is None:
-            raise fetch.FetchError(f"{source} のコンパイルに失敗しました")
+    checker = prepare_checker(problem, testcases, env, job.machine.cpu_arch)
 
     work = _work_dir(problem, submission, env.name)
     actual_path, stderr_path = work / "stdout", work / "stderr"
@@ -428,7 +418,7 @@ def execute_job(job: Job) -> Record:
             stderr_path=stderr_path,
             tle_sec=problem.limits.tle_sec,
         )
-        status, detail = _judge_case(result, case, problem, actual_path, checker)
+        status, detail = judge_case(result, case, problem, actual_path, checker)
         outcomes.append(
             CaseOutcome(
                 name=case.name, status=status, time_ms=result.wall_ms,
@@ -440,8 +430,10 @@ def execute_job(job: Job) -> Record:
             f"    {status:3} {case.name}  {result.wall_ms} ms  "
             f"{result.max_rss_kb} KB" + (f"  {detail}" if status != "AC" else "")
         )
-        # 最初の非 AC で打ち切る。残りは走らせない。
-        if status != "AC":
+        # TLE と MLE は 1 ケースに時間がかかるので、最初の 1 つで打ち切る。WA と
+        # RE は安いので最後まで走らせて、落ちたケースを全部残す。どこで落ちるか
+        # (小さいケースだけか、最大ケースだけか) が原因の見当を付ける材料になる。
+        if status in ("TLE", "MLE"):
             break
 
     return _summarize(base, outcomes, binary_bytes)
@@ -471,8 +463,30 @@ def describe(job: Job) -> dict:
     }
 
 
+def prepare_checker(
+    problem: Problem, testcases: fetch.Testcases, env: env_mod.Environment, cpu_arch: str
+) -> Path | None:
+    """compare.kind = "checker" ならチェッカを組んで返す。それ以外は None。"""
+    if problem.compare.kind != "checker":
+        return None
+    source = testcases.checker_source()
+    if source is None:
+        raise fetch.FetchError(
+            f"{problem.id}: compare.kind = 'checker' なのに checker.cpp がありません"
+        )
+    # テストデータのキャッシュは 4 環境で共有するので、名前にアーキテクチャを
+    # 入れる。x86 で組んだチェッカが arm のジョブに復元されると動かない。
+    checker = build_mod.build_checker(
+        source, testcases.dir / f"checker-{cpu_arch}.bin", env
+    )
+    if checker is None:
+        raise fetch.FetchError(f"{source} のコンパイルに失敗しました")
+    return checker
+
+
 def _summarize(base: dict, outcomes: list[CaseOutcome], binary_bytes: int) -> Record:
     failed = next((o for o in outcomes if o.status != "AC"), None)
+    failed_names = [o.name for o in outcomes if o.status != "AC"]
     algo = [o.algo_time_ns for o in outcomes if o.algo_time_ns is not None]
     return Record(
         **base,
@@ -483,6 +497,7 @@ def _summarize(base: dict, outcomes: list[CaseOutcome], binary_bytes: int) -> Re
         algo_time_total_ns=sum(algo) if algo else None,
         memory_max_kb=max((o.memory_kb for o in outcomes), default=0),
         binary_bytes=binary_bytes,
+        failed_cases=failed_names[:FAILED_CASES_MAX],
         failed_case=(
             FailedCase(
                 name=failed.name, status=failed.status, time_ms=failed.time_ms,

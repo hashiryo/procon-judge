@@ -105,7 +105,7 @@ def test_the_failed_case_is_trimmed():
             rec(
                 status="WA",
                 failed_case={"name": "random_00", "status": "WA", "time_ms": 1,
-                             "memory_kb": 1, "detail": "x" * 900},
+                             "memory_kb": 1, "detail": "x" * 3000},
             )
         ]
     )
@@ -399,8 +399,9 @@ def test_render_tolerates_braces_in_the_values():
         "submission.html",
         {
             "TITLE": "t", "STYLE_V": "", "PROBLEM_HTML": "p.html", "PROBLEM_TITLE": "P",
-            "NAME": "a", "SUBTITLE": "", "META": "", "ROWS": "", "INCLUDES": "",
-            "SOURCE": "<pre>int x{{1}};</pre>", "GENERATED": "",
+            "NAME": "a", "SUBTITLE": "", "META": "", "ROWS": "", "REASONS": "",
+            "FAILURES": "", "INCLUDES": "", "SOURCE": "<pre>int x{{1}};</pre>",
+            "GENERATED": "",
         },
     )
     assert "int x{{1}};" in page
@@ -712,3 +713,60 @@ def test_notes_reach_the_pages_and_the_header_json(tmp_path, fake_library, monke
     tree = json.loads((out / "data" / "headers" / "mylib" / "Tree.hpp.json").read_text())
     (entry,) = tree["submissions"]
     assert entry["testdata"] == "local" and entry["official"] is False
+
+
+# --- 参考の理由と失敗の節 ---------------------------------------------------
+
+from dataclasses import replace as _replace
+
+from pj.freshness import Diff as _Diff
+
+
+def page_for(cells, problem_id="p", submission="submissions/a.hpp"):
+    return site_build.SubmissionPage(
+        problem_id=problem_id, title="P", url=None, source="aoj", submission=submission,
+        cells=cells, env_names=["x64-gcc", "arm-gcc"], includes=None, source_text=None,
+        repo=None, sha=None, generated_at="2026-01-01T00:00:00Z",
+    )
+
+
+def test_stale_rows_keep_the_chip_and_list_the_reasons_below():
+    a = _replace(site_build.collapse([rec()])[0], current=False, reason=_Diff(changed=("a.hpp",)))
+    b = _replace(
+        site_build.collapse([rec(env="arm-gcc", cpu_model="Neoverse-N2")])[0],
+        current=False, reason=_Diff(changed=("a.hpp",)),
+    )
+    page = site_build.submission_html(page_for([a, b]), "")
+    assert '<td><span class="chip" title="変更 a.hpp">参考</span></td>' in page
+    assert "参考の理由" in page
+    assert "変更 a.hpp" in page and "x64-gcc EPYC、arm-gcc Neoverse-N2" in page
+    assert 'class="reason"' not in page
+
+
+def test_current_rows_have_no_reason_list():
+    cell = _replace(site_build.collapse([rec()])[0], current=True)
+    page = site_build.submission_html(page_for([cell]), "")
+    assert "参考の理由" not in page and "<h2>失敗</h2>" not in page
+
+
+def test_failures_section_shows_the_case_the_detail_and_the_repro_command():
+    record = rec(
+        status="WA",
+        failed_case={"name": "b", "status": "WA", "time_ms": 1, "memory_kb": 1,
+                     "detail": "token 0: expected '2', found '0'"},
+        failed_cases=["b", "c"],
+    )
+    cell = site_build.collapse([record])[0]
+    assert cell.failed_cases == ("b", "c")
+    page = site_build.submission_html(page_for([cell]), "")
+    assert "<h2>失敗</h2>" in page
+    assert 'ケース <span class="mono">b</span>' in page
+    assert "ほかに 1 件: c" in page
+    assert "token 0: expected &#x27;2&#x27;, found &#x27;0&#x27;" in page
+    assert "pj repro --problem p --submission submissions/a.hpp --case b" in page
+
+
+def test_problem_payload_carries_the_failed_cases():
+    cell = site_build.collapse([rec(status="RE", failed_cases=["x", "y"])])[0]
+    payload = site_build.problem_payload("p", None, [cell], "2026-01-01T00:00:00Z")
+    assert payload["rows"][0]["failed_cases"] == ["x", "y"]

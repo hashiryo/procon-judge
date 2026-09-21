@@ -311,12 +311,41 @@ table.submission {
   min-width: 1160px;
 }
 
-/* 参考の理由。チップの横に小さく。 */
-.reason {
-  color: var(--c-text-2);
+/* 参考の理由。表の下に、同じ理由の行をまとめて出す。 */
+.reasons {
+  list-style: none;
+  font-size: 0.9em;
+  margin-bottom: 10px;
+}
+
+.reasons li {
+  padding: 2px 0;
+  overflow-wrap: anywhere;
+}
+
+/* 失敗の明細。差分の先頭は折り返して全部見せる。 */
+.failure {
+  margin-bottom: 14px;
+}
+
+pre.detail {
+  background: var(--c-bg-soft);
+  border: 1px solid var(--c-divider);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 4px 0 6px;
+  overflow-x: auto;
   font-size: 0.85em;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+code {
+  background: var(--c-bg-soft);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.9em;
 }
 
 /* include の一覧。直接と間接で 2 つの列を持つ。 */

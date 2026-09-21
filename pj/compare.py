@@ -8,8 +8,9 @@ from pathlib import Path
 
 CHECKER_TIMEOUT_SEC = 60
 
-# failed_case に入れる差分の長さ。
-DIFF_HEAD_CHARS = 400
+# failed_case に入れる差分の長さ。失敗した記録だけが持つので、提出ページで読める
+# 長さまで残す。
+DIFF_HEAD_CHARS = 2000
 
 
 @dataclass(frozen=True)
