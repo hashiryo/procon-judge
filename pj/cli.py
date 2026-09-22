@@ -386,7 +386,12 @@ def _run_claiming(
     keys = store.keys()
     borrowed = store.cases_hashes()
     taken = claims.taken()
-    print(f"宣言済み {len(taken)} 問から始めます", file=sys.stderr)
+    unavailable = _without_testdata(problems)
+    print(
+        f"宣言済み {len(taken)} 問から始めます"
+        + (f" (保管庫に無い manual の {len(unavailable)} 問は宣言しません)" if unavailable else ""),
+        file=sys.stderr,
+    )
 
     started = time.monotonic()
     claimed = executed = skipped = lost = nothing = already = 0
@@ -395,8 +400,8 @@ def _run_claiming(
         if run_mod.out_of_time(started, args.minutes, time.monotonic()):
             timed_out = True
             break
-        if problem_id in taken:
-            already += 1
+        if problem_id in taken or problem_id in unavailable:
+            already += problem_id in taken
             continue
         problem = by_id[problem_id]
         targets = [(problem, s) for s in problem.submissions()]
@@ -437,6 +442,27 @@ def _run_claiming(
         parts.append(f"時間の上限 {args.minutes:g} 分で終了")
     print(" / ".join(parts), file=sys.stderr)
     return 0
+
+
+def _without_testdata(problems: Sequence[problem_mod.Problem]) -> set[str]:
+    """保管庫に無い manual の問題。宣言しても取れないので、宣言せずに飛ばす。
+
+    記録が無い問題は費用の見積もりが最悪値になって並びの先頭に来るので、放って
+    おくと各モデルの最初のジョブが毎回宣言して取得に失敗する。保管庫を見られない
+    (トークンが無い) ときは空で、今までどおり取りに行って失敗する。
+    """
+    if not mirror.available():
+        return set()
+    try:
+        names = mirror.asset_names()
+    except mirror.MirrorError as e:
+        print(f"warning: 保管庫の一覧を取れません: {e}", file=sys.stderr)
+        return set()
+    return {
+        p.id
+        for p in problems
+        if p.testdata.source == "manual" and mirror.asset_name(p) not in names
+    }
 
 
 def _report(worklist: run_mod.Worklist) -> None:

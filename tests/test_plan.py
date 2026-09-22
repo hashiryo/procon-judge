@@ -271,9 +271,10 @@ def test_the_job_count_follows_the_items_per_job(tmp_path, envs, ci_envs, monkey
         assert plan_for(env, [problem], envs, store).jobs == expected
 
 
-def test_the_job_count_stops_at_the_concurrency_limit(tmp_path, envs, ci_envs, monkeypatch):
-    """分割を細かくしても並列度は上がらない。"""
+def test_the_job_count_stops_at_the_cap(tmp_path, envs, ci_envs, monkeypatch):
+    """本数には上限がある。同時実行より多く取ってあるのは CPU モデルの当たりを引き直すため。"""
     monkeypatch.setattr(plan_mod, "ITEMS_PER_JOB", 1)
+    monkeypatch.setattr(plan_mod, "MAX_JOBS_PER_ENV", 3)
     env = ci_envs[0]
     problem = make_problem(tmp_path, "p1", submissions=tuple("abcdefghijkl"))
     one = plan_for(env, [problem], envs, store_with(tmp_path, []))
