@@ -1,6 +1,6 @@
 id = "atcoder-agc051-d"
-title = "atcoder-agc051-d"
-url = "https://atcoder.jp/contests/goodbyeday2/tasks/agc051_d"
+title = "D - C4"
+url = "https://atcoder.jp/contests/agc051/tasks/agc051_d"
 
 [limits]
 tle_sec = 5.0

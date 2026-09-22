@@ -136,7 +136,8 @@ kind = "checker"
 
 `id` はディレクトリ名と一致させます。検証で一致しなければエラーにします。
 
-`title` は表示にだけ使い、鍵には入りません。判定サイトから取っている問題は、`pj problems titles --fix` で判定サイトの名前に揃えます。手で書くと違う名前を付けてしまいます。移植のとき AOJ の 36 問のうち 24 問と yukicoder の 3 問がそうなっていて、AOJ の旧 API が消えていたので気づくのが遅れました。AOJ は新しいサイトの一覧の API から、yukicoder は問題の API から、Library Checker は `info.toml` から取ります。`local` や `manual` や `none` の問題には判定サイトの名前が無いので、手で付けます。
+`title` は表示にだけ使い、鍵には入りません。判定サイトから取っている問題は、`pj problems titles --fix` で判定サイトの名前に揃えます。手で書くと違う名前を付けてしまいます。移植のとき AOJ の 36 問のうち 24 問と yukicoder の 3 問がそうなっていて、AOJ の旧 API が消えていたので気づくのが遅れました。AOJ は新しいサイトの一覧の API から、yukicoder は問題の API から、Library Checker は `info.toml` から取ります。AtCoder はページから取りますが、Library の test の URL も 12 件が間違っていて 404 でした。コンテストの slug の `_` と `-` の違い (s8pc-1、cf17-final、nikkei2019-2-qual)、Good Bye rng_58 Day 2 が agc051 であること、2016 年から 2018 年の ARC は問題 C から F の id が `a` から `d` であること (arc060 の F は `arc060_d`) の 3 種類で、test の実装 (使うヘッダ) と問題の内容を照らして直しました。id は URL の名前から作るので、旧 ARC の 6 問は `atcoder-arc060-d` のように改名しています。
+`local` や `manual` や `none` の問題には判定サイトの名前が無いので、手で付けます。
 
 id は `<出どころ>-<問題>` の形にします。出どころはテストデータの取得元ではなく、問題そのものがどこの問題かです。AtCoder の問題は `source = "none"` になりますが、id は `atcoder-` で始めます。
 

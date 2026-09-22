@@ -1,6 +1,6 @@
-id = "atcoder-arc062-f"
-title = "atcoder-arc062-f"
-url = "https://atcoder.jp/contests/arc062/tasks/arc062_f"
+id = "atcoder-arc080-d"
+title = "F - Prime Flip"
+url = "https://atcoder.jp/contests/arc080/tasks/arc080_d"
 
 [limits]
 tle_sec = 5.0

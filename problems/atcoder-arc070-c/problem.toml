@@ -1,6 +1,6 @@
-id = "atcoder-arc060-f"
-title = "atcoder-arc060-f"
-url = "https://atcoder.jp/contests/arc060/tasks/arc060_f"
+id = "atcoder-arc070-c"
+title = "E - NarrowRectangles"
+url = "https://atcoder.jp/contests/arc070/tasks/arc070_c"
 
 [limits]
 tle_sec = 5.0

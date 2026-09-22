@@ -1,6 +1,6 @@
 id = "atcoder-nikkei2019-2-qual-d"
-title = "atcoder-nikkei2019-2-qual-d"
-url = "https://atcoder.jp/contests/nikkeiqual_2019/tasks/nikkei2019_2_qual_d"
+title = "D - Shortest Path on a Line"
+url = "https://atcoder.jp/contests/nikkei2019-2-qual/tasks/nikkei2019_2_qual_d"
 
 [limits]
 tle_sec = 5.0

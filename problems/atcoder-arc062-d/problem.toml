@@ -1,0 +1,16 @@
+id = "atcoder-arc062-d"
+title = "F - Painting Graphs with AtCoDeer"
+url = "https://atcoder.jp/contests/arc062/tasks/arc062_d"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"
