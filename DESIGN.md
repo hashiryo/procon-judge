@@ -764,7 +764,7 @@ CPU モデルはジョブが始まってマシンが割り当たった瞬間に�
 
 1. リポジトリを checkout します。
 2. `results` ブランチを `fetch-depth: 1` で読みます。
-3. ライブラリを HEAD で取得します。
+3. ライブラリを `plan` が決めた commit で取得します。`plan` が clone した HEAD を出力に載せ、`run` の全ジョブと `collect` がその commit を fetch します。run の途中で Library に push があっても、同じ run の中で違う commit を測ったり判定したりしません。`plan` が取れていなければ最新を取ります。
 4. マシンの CPU モデルを検出します。**ここで初めて分かります。**
 5. `plan` と同じ重い順の並びを組み直し、ジョブ番号 j と本数 N から j/N の位置を開始点にして、末尾まで行ったら先頭に戻ります。
 6. 並びの問題を順に見て、宣言済みのものと、記録から借りた `cases_hash` で「このモデルでは走らせるものが無い」と分かるものは飛ばします。それ以外の問題を宣言します。宣言は `refs/claims/<run id>/<環境>/<CPU モデル>/<問題 id>` の ref を作ることで、既にあれば弾かれて次へ進みます (`pj/claims.py`)。
@@ -862,7 +862,7 @@ include の一覧は直接と間接に分けます。提出ファイルが直接
 
 ヘッダごとの要約は `data/headers/index.json` で、1 ファイルに全ヘッダ分が入ります。ヘッダごとに、閉包に持つ提出の数、直接 include する提出の数、環境ごとの「現行の AC が 1 本以上あるか」(`verified`) と現行 AC、失敗、参考、記録なしの本数です。compile_only の提出はコンパイルが通っただけなので数えず、そのヘッダを使う提出が compile_only しか無いときだけそれで読み替えます。ライブラリ側のサイトは依存一覧のアイコンにこれを使い、判定は済んでいるので数を見て色を選ぶだけです。`gate` は全環境で `verified` なヘッダの数と総数で、総数に揃った回で Library の verify を畳みます (my-docs の「Library の verify を畳む設計」)。同じ数字を `pj site build` の summary にも出します。
 
-リポジトリをまたいで固定する契約はこの JSON の置き場と形だけです。ページの URL は同じ `pj site build` が作るので、後から変えても向こうは壊れません。
+リポジトリをまたいで固定する契約はこの JSON の置き場と形だけです。どちらの JSON にも `schema` (今は 1) を載せ、形を変えるときに上げます。ライブラリ側のサイトは知らない版なら読まずに節を隠します。ページの URL は同じ `pj site build` が作るので、後から変えても向こうは壊れません。
 
 `style.css` と JavaScript を HTML から外しています。問題のページはテンプレート 1 枚から問題の数だけ作るので、埋め込むと 800 枚に同じものが複製されます。
 
@@ -1511,6 +1511,7 @@ fine-grained な PAT で `POST /repos/{owner}/{repo}/dispatches` を叩くには
 
 ```json
 {
+  "schema": 1,
   "header": "mylib/data_structure/SegmentTree.hpp",
   "library": "Library",
   "generated_at": "2026-09-21T04:36:22Z",
@@ -1750,6 +1751,14 @@ Library の verify を畳む順番の 1 番です (my-docs の「Library の ver
 要約は逆引き JSON と同じ材料 (ヘッダごとの提出の一覧と、提出ごとに環境で畳んだ状態) から `header_index` が作ります。環境ごとに提出を数え、現行の AC が 1 本以上あれば `verified` です。参考に落ちた AC は数えません。ソースを変えた直後に緑のままにしないためです。判定できない (現行かどうかが None の) AC は現行と同じ扱いにしています。これは順位表と同じ規則です。compile_only の提出は AC がコンパイル可の意味なので数えず、そのヘッダを使う提出が compile_only しか無いときだけそれで読み替えます。逆引き JSON の各行にも比較の種別 (`compare`) を足したので、読み替えの判断は向こうでもできます。
 
 ゲートは全環境で `verified` なヘッダの数と総数です。総数は閉包に出てくるライブラリのヘッダの数で、Library の `hpp_map` の 144 と一致します。畳む判断は人がこの数字を見てやるので、CI を止めたりはしません。
+
+## Library の pin と JSON の版の記録
+
+Library と judge の結合を見直したとき (2026-09-22)、結合の形そのものは分けたまま作る下限に近いと判断して、弱かった 2 点だけ直しました。
+
+1 つは Library の commit を run の中で揃えることです。`plan`、`run` の各ジョブ、`collect` が別々に `git clone` していたので、run の途中で Library に push があると、同じ run の中で違う commit を測ったり、`collect` が別の commit で現行を判定したりしていました。個々の記録はファイルごとのハッシュを持つので嘘はつきませんが、run の単位では不整合でした。`plan` が clone した HEAD を job の出力 `library_sha` に載せ、`run` と `collect` はその commit を `git fetch --depth=1 origin <sha>` で取ります。GitHub は到達可能な commit を名指しで fetch できるので、履歴は 1 段しか取りません。`plan` が取れていなければ (出力が空) 今までどおり最新を取ります。
+
+もう 1 つは、リポジトリをまたぐ契約である `data/headers/` の JSON に版 (`schema`、今は 1) を載せることです。形を変えるときに上げ、Library 側のサイトは知らない版を読まずに節を隠します。版の無い JSON は 1 として読みます。
 
 ## 既存リポジトリから移すもの
 

@@ -791,6 +791,10 @@ def _read_source(problem: problem_mod.Problem | None, submission: str) -> str | 
 
 # --- ヘッダごとの逆引き ---------------------------------------------------------
 
+# リポジトリをまたぐ契約 (data/headers/ の JSON) の版。形を変えるときに上げる。
+# ライブラリ側のサイトは知らない版の JSON を読まずに節を隠す。
+HEADERS_SCHEMA = 1
+
 
 def env_summary(cells: Sequence[Cell], env_names: Sequence[str]) -> list[dict]:
     """1 提出の記録を環境ごとに畳む。ライブラリ側のサイトが表に出す単位。
@@ -1162,6 +1166,7 @@ def build(store: Store, out: Path) -> Summary:
             out / "data" / "headers" / f"{label}.json",
             json.dumps(
                 {
+                    "schema": HEADERS_SCHEMA,
                     "header": label,
                     "library": header_library[label],
                     "generated_at": generated_at,
@@ -1183,6 +1188,7 @@ def build(store: Store, out: Path) -> Summary:
         out / "data" / "headers" / "index.json",
         json.dumps(
             {
+                "schema": HEADERS_SCHEMA,
                 "generated_at": generated_at,
                 "judge_sha": sha,
                 "library_sha": lib_sha,

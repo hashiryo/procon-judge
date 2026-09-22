@@ -555,6 +555,8 @@ def test_build_writes_one_json_per_library_header(tmp_path, fake_library, monkey
     # 問題ごとの common.hpp は名前が問題をまたいで衝突するので、逆引きは出さない。
     assert not (out / "data" / "headers" / "common.hpp.json").exists()
 
+    # リポジトリをまたぐ契約なので版を持つ。
+    assert tree["schema"] == 1
     (entry,) = tree["submissions"]
     assert entry["problem"] == "tmp-lib"
     assert entry["submission"] == "submissions/lib-tree.cpp"
@@ -910,6 +912,7 @@ def test_build_writes_the_header_index_with_the_gate(tmp_path, fake_library, mon
     out = tmp_path / "site"
     summary = site_build.build(store, out)
     index = json.loads((out / "data" / "headers" / "index.json").read_text())
+    assert index["schema"] == site_build.HEADERS_SCHEMA == 1
     assert set(index["headers"]) == {"mylib/Tree.hpp", "mylib/internal/helper.hpp"}
     assert index["environments"] == [e.name for e in env_mod.load_all() if e.runs_on != "self"]
     assert index["gate"]["total"] == 2

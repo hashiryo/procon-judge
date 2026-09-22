@@ -42,6 +42,9 @@ jobs:
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
       any: ${{ steps.plan.outputs.any }}
+      # この run の全ジョブが使うライブラリの commit。run の途中で Library に push が
+      # あっても、同じ run の中で違う commit を測ったり判定したりしない。
+      library_sha: ${{ steps.lib.outputs.sha }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -59,10 +62,13 @@ jobs:
           enable-cache: true
 
       # 閉包を作るのに要る。取れないとライブラリを使う提出が立たなくなるので、
-      # そのぶんは次の実行が拾う。
+      # そのぶんは次の実行が拾う。ここで取った commit を run と collect にも使わせる。
       - name: ライブラリを取る
+        id: lib
         continue-on-error: true
-        run: git clone --depth=1 https://github.com/hashiryo/Library.git lib
+        run: |
+          git clone --depth=1 https://github.com/hashiryo/Library.git lib
+          echo "sha=$(git -C lib rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: 計画する
         id: plan
@@ -128,11 +134,17 @@ jobs:
       # 走らせる問題のぶんだけ保管庫から落とし (1 問 1 アセット)、測り終えたら
       # 捨てる (--evict-testdata)。ランナーの disk は 14 GB ほどしか無い。
 
-      # pin しない。実行のたびに最新を取る。
+      # plan が決めた commit を取る。plan が取れていなければ (sha が空) 最新を取る。
       # 取れなくても、ライブラリを使わない提出は走る。
       - name: ライブラリを取る
         continue-on-error: true
-        run: git clone --depth=1 https://github.com/hashiryo/Library.git lib
+        env:
+          LIBRARY_SHA: ${{ needs.plan.outputs.library_sha }}
+        run: |
+          git init -q lib
+          git -C lib remote add origin https://github.com/hashiryo/Library.git
+          git -C lib fetch --depth=1 origin "${LIBRARY_SHA:-HEAD}"
+          git -C lib checkout -q FETCH_HEAD
 
       # 引いた CPU モデルで未計測の問題を 1 つ宣言して測る、を時間の上限まで
       # 繰り返す。宣言は refs/claims/<run id>/... の ref で、他のジョブに見える。
@@ -235,10 +247,17 @@ jobs:
           exit 1
 
       # 記録が古くなっていないかは include 閉包を作り直して見るので、ここでも
-      # ライブラリが要る。取れなければライブラリを使う提出の判定だけが落ちる。
+      # ライブラリが要る。run と同じ commit を取る。取れなければライブラリを使う
+      # 提出の判定だけが落ちる。
       - name: ライブラリを取る
         continue-on-error: true
-        run: git clone --depth=1 https://github.com/hashiryo/Library.git lib
+        env:
+          LIBRARY_SHA: ${{ needs.plan.outputs.library_sha }}
+        run: |
+          git init -q lib
+          git -C lib remote add origin https://github.com/hashiryo/Library.git
+          git -C lib fetch --depth=1 origin "${LIBRARY_SHA:-HEAD}"
+          git -C lib checkout -q FETCH_HEAD
 
       # サイトはビルド出力なので保存しない。記録から毎回作り直す。
       - name: サイトを作る
