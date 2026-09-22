@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 import yaml
 
 from pj import build as build_mod
@@ -71,11 +72,28 @@ def test_simde_stays_in_the_include_dirs_even_if_it_is_not_checked_out():
 # --- CI のマトリクス -------------------------------------------------------
 
 
-def test_the_run_job_is_named_after_the_environment_and_the_number():
+def test_the_run_job_is_named_after_the_group_and_the_number():
     """# から後ろが YAML のコメントになって名前が切れていたことがある。"""
     name = workflow()["jobs"]["run"]["name"]
-    assert "${{ matrix.env }}" in name
+    assert "${{ matrix.group }}" in name
     assert "${{ matrix.job }}" in name
+
+
+def test_groups_follow_the_machine():
+    """x64-gcc と x64-clang は同じマシンに載るので 1 本のジョブが両方を測る。"""
+    groups = env_mod.groups(env_mod.load_all())
+    assert set(groups) == {"x64", "arm"}
+    assert [e.name for e in groups["x64"]] == ["x64-gcc", "x64-clang"]
+    assert "local" not in {e.name for members in groups.values() for e in members}
+
+
+def test_a_group_must_share_its_machine():
+    envs = [
+        env_mod.Environment("x64-gcc", "ubuntu-24.04", "g++-15", ""),
+        env_mod.Environment("x64-clang", "ubuntu-22.04", "clang++-21", ""),
+    ]
+    with pytest.raises(env_mod.EnvironmentError_):
+        env_mod.groups(envs)
 
 
 def test_the_matrix_comes_from_the_plan_job():
@@ -97,15 +115,17 @@ def test_every_compiler_is_installed_by_the_workflow():
         assert env.cxx in step["run"], env.name
 
 
-def test_the_matrix_toolchain_picks_one_of_the_branches():
-    """plan が出すツールチェインの名前で、入れる側が分岐している。"""
+def test_the_matrix_toolchains_drive_the_install_loop():
+    """plan が出すツールチェインの並びで、入れる側が組の全コンパイラを回す。"""
     step = next(
         s
         for s in workflow()["jobs"]["run"]["steps"]
         if s.get("name") == "コンパイラを入れる"
     )
-    assert "${{ matrix.toolchain }}" in step["run"]
+    assert step["env"]["TOOLCHAINS"] == "${{ matrix.toolchains }}"
     assert {env_mod.toolchain(e) for e in ci_envs()} == {"gcc", "clang"}
+    # 片方が入らなくても止めない。pj run が飛ばす。
+    assert "set -e" not in step["run"]
 
 
 def test_the_toolchain_is_read_off_the_compiler():

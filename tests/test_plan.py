@@ -261,24 +261,19 @@ def test_an_unresolved_include_is_reported_and_not_planned(tmp_path, envs, ci_en
 # --- ジョブの本数 -----------------------------------------------------------
 
 
-def test_the_job_count_follows_the_items_per_job(tmp_path, envs, ci_envs, monkeypatch):
-    """本数は未計測の件数を 1 本あたりの見込みで割った切り上げ。"""
-    env = ci_envs[0]
-    problem = make_problem(tmp_path, "p1", submissions=tuple("abcdefg"))
-    store = store_with(tmp_path, [])
+def test_the_job_count_follows_the_items_per_job(monkeypatch):
+    """本数は未計測の件数を 1 本あたりの見込みで割った切り上げ。0 件なら立てない。"""
     for per_job, expected in ((7, 1), (4, 2), (3, 3)):
         monkeypatch.setattr(plan_mod, "ITEMS_PER_JOB", per_job)
-        assert plan_for(env, [problem], envs, store).jobs == expected
+        assert plan_mod.job_count(7) == expected
+    assert plan_mod.job_count(0) == 0
 
 
-def test_the_job_count_stops_at_the_cap(tmp_path, envs, ci_envs, monkeypatch):
+def test_the_job_count_stops_at_the_cap(monkeypatch):
     """本数には上限がある。同時実行より多く取ってあるのは CPU モデルの当たりを引き直すため。"""
     monkeypatch.setattr(plan_mod, "ITEMS_PER_JOB", 1)
-    monkeypatch.setattr(plan_mod, "MAX_JOBS_PER_ENV", 3)
-    env = ci_envs[0]
-    problem = make_problem(tmp_path, "p1", submissions=tuple("abcdefghijkl"))
-    one = plan_for(env, [problem], envs, store_with(tmp_path, []))
-    assert one.jobs == plan_mod.MAX_JOBS_PER_ENV
+    monkeypatch.setattr(plan_mod, "MAX_JOBS_PER_GROUP", 3)
+    assert plan_mod.job_count(12) == 3
 
 
 def test_the_job_count_counts_every_model(tmp_path, envs, ci_envs, monkeypatch):
@@ -296,7 +291,8 @@ def test_the_job_count_counts_every_model(tmp_path, envs, ci_envs, monkeypatch):
     assert one.works[0].expected == 5
     assert one.works[0].total == 10
     assert one.total == 10
-    assert one.jobs == 2
+    # 組の本数は全環境と全モデルの合計から決まる。1 環境だけの組なら 10 / 5 = 2。
+    assert plan_mod.group([one])[0].jobs == 2
 
 
 # --- 問題を見る順番 ---------------------------------------------------------
@@ -348,18 +344,49 @@ def test_heavier_problems_come_first(tmp_path, envs, ci_envs):
     assert plan_for(env, [light, heavy], envs, store).order == ("p-heavy", "p-light")
 
 
-# --- マトリクス -------------------------------------------------------------
+# --- 組とマトリクス ---------------------------------------------------------
+
+
+def test_groups_bundle_the_environments_of_one_machine(tmp_path, envs, ci_envs):
+    """1 本のジョブが組 (x64 / arm) の全環境を担う。稀なモデルで gcc と clang を揃えるため。"""
+    problem = make_problem(tmp_path, "p1", submissions=("a",))
+    groups = plan_mod.group(plan_mod.build([problem], envs, store_with(tmp_path, [])))
+    by_name = {g.name: g for g in groups}
+    assert set(by_name) == {env_mod.group_name(e) for e in ci_envs}
+    for g in groups:
+        assert {e.runs_on for e in g.envs} == {g.runs_on}
+        assert g.env_names == tuple(e.name for e in ci_envs if env_mod.group_name(e) == g.name)
+
+
+def test_the_combined_order_adds_the_weights_of_the_environments(tmp_path, envs, ci_envs):
+    """同じ問題の費用は環境ごとに足す。片方の環境で重い問題が先に来る。"""
+    group_envs = [e for e in ci_envs if env_mod.group_name(e) == env_mod.group_name(ci_envs[0])]
+    assert len(group_envs) >= 2
+    light = make_problem(tmp_path, "p-light", submissions=("a",))
+    heavy = make_problem(tmp_path, "p-heavy", submissions=("a",))
+    records = []
+    for env in group_envs:
+        records.append(record_for(light, env, "submissions/a.cpp", time_total_ms=10))
+        records.append(record_for(heavy, env, "submissions/a.cpp", time_total_ms=10))
+    # heavy は 1 つの環境だけ極端に重い。
+    records.append(record_for(heavy, group_envs[0], "submissions/a.cpp", time_total_ms=90000, cpu_model="Xeon"))
+    store = store_with(tmp_path, records)
+    for problem in (light, heavy):
+        (problem.dir / "submissions" / "a.cpp").write_text("int main() { return 7; }\n")
+    plans = plan_mod.for_envs(group_envs, [light, heavy], envs, store)
+    assert plan_mod.combined_order(plans) == ("p-heavy", "p-light")
 
 
 def test_the_matrix_carries_what_the_runner_needs(tmp_path, envs, ci_envs):
     problem = make_problem(tmp_path, "p1", submissions=("a",))
-    plans = plan_mod.build([problem], envs, store_with(tmp_path, []))
-    entries = plan_mod.matrix(plans)["include"]
-    assert {e["env"] for e in entries} == {e.name for e in ci_envs}
-    runs_on = {e.name: e.runs_on for e in ci_envs}
+    groups = plan_mod.group(plan_mod.build([problem], envs, store_with(tmp_path, [])))
+    entries = plan_mod.matrix(groups)["include"]
+    assert {e["group"] for e in entries} == {env_mod.group_name(e) for e in ci_envs}
     for entry in entries:
-        assert entry["runs_on"] == runs_on[entry["env"]]
-        assert entry["toolchain"] in ("gcc", "clang")
+        members = [e for e in ci_envs if env_mod.group_name(e) == entry["group"]]
+        assert entry["runs_on"] == members[0].runs_on
+        assert entry["envs"].split(",") == [e.name for e in members]
+        assert entry["toolchains"].split(",") == [env_mod.toolchain(e) for e in members]
         assert 0 <= entry["job"] < entry["jobs"]
         # 件数の上限は無い。ジョブは宣言が尽きるか時間の上限まで測る。
         assert "budget" not in entry
@@ -368,11 +395,12 @@ def test_the_matrix_carries_what_the_runner_needs(tmp_path, envs, ci_envs):
 def test_the_matrix_carries_the_time_limit(tmp_path, envs, ci_envs):
     """run は時間の上限で止める。値は plan が決めて matrix で渡す。"""
     problem = make_problem(tmp_path, "p1", submissions=("a",))
-    plans = plan_mod.build([problem], envs, store_with(tmp_path, []), minutes=30)
-    for entry in plan_mod.matrix(plans)["include"]:
+    plans = plan_mod.build([problem], envs, store_with(tmp_path, []))
+    for entry in plan_mod.matrix(plan_mod.group(plans, minutes=30))["include"]:
         assert entry["minutes"] == 30
-    default = plan_mod.build([problem], envs, store_with(tmp_path, []))
-    assert {e["minutes"] for e in plan_mod.matrix(default)["include"]} == {plan_mod.DEFAULT_MINUTES}
+    assert {e["minutes"] for e in plan_mod.matrix(plan_mod.group(plans))["include"]} == {
+        plan_mod.DEFAULT_MINUTES
+    }
 
 
 def test_the_matrix_is_empty_when_there_is_nothing_to_do(tmp_path, envs, ci_envs):
@@ -382,10 +410,11 @@ def test_the_matrix_is_empty_when_there_is_nothing_to_do(tmp_path, envs, ci_envs
         record_for(problem, env, "submissions/a.cpp") for env in ci_envs
     ]
     plans = plan_mod.build([problem], envs, store_with(tmp_path, records))
-    assert plan_mod.matrix(plans) == {"include": []}
+    assert plan_mod.matrix(plan_mod.group(plans)) == {"include": []}
 
 
 def test_the_local_environment_never_enters_the_matrix(tmp_path, envs):
     problem = make_problem(tmp_path, "p1", submissions=("a",))
     plans = plan_mod.build([problem], envs, store_with(tmp_path, []))
     assert "local" not in {p.env.name for p in plans}
+    assert "local" not in {g.name for g in plan_mod.group(plans)}

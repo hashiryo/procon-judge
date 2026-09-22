@@ -71,14 +71,14 @@ def test_retrying_ones_own_claim_is_a_success(remote):
     assert job0.claim("yuki-649") is True
 
 
-def test_claims_are_per_model_env_and_run(remote):
+def test_claims_are_per_model_scope_and_run(remote):
     _, a, b = remote
-    base = claims_mod.Claims("1", "x64-gcc", MODEL, job=0, repo=a)
+    base = claims_mod.Claims("1", "x64", MODEL, job=0, repo=a)
     assert base.claim("yuki-649") is True
-    other_model = claims_mod.Claims("1", "x64-gcc", "Intel Xeon 8573C", job=1, repo=b)
-    other_env = claims_mod.Claims("1", "x64-clang", MODEL, job=1, repo=b)
-    other_run = claims_mod.Claims("2", "x64-gcc", MODEL, job=1, repo=b)
-    for claims in (other_model, other_env, other_run):
+    other_model = claims_mod.Claims("1", "x64", "Intel Xeon 8573C", job=1, repo=b)
+    other_scope = claims_mod.Claims("1", "arm", MODEL, job=1, repo=b)
+    other_run = claims_mod.Claims("2", "x64", MODEL, job=1, repo=b)
+    for claims in (other_model, other_scope, other_run):
         assert claims.taken() == set()
         assert claims.claim("yuki-649") is True
 

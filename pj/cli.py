@@ -277,13 +277,12 @@ def cmd_plan(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
 
-    plans = plan_mod.build(problems, envs, store, minutes=args.minutes)
+    plans = plan_mod.build(problems, envs, store)
     for one in plans:
         parts = [
             f"モデル {len(one.models)} 種",
             f"未計測 {one.expected:.1f} 件/モデル (全モデル {one.total} 件)",
             f"問題 {len(one.works)} 件",
-            f"ジョブ {one.jobs} 本",
         ]
         print(f"{one.env.name}\t" + " / ".join(parts), file=sys.stderr)
         for submission in one.unresolved:
@@ -296,7 +295,14 @@ def cmd_plan(args: argparse.Namespace) -> int:
                 f"{one.env.name}\t{submission} は CE と分かっているので立てません",
                 file=sys.stderr,
             )
-    matrix = plan_mod.matrix(plans)
+    groups = plan_mod.group(plans, minutes=args.minutes)
+    for one in groups:
+        print(
+            f"{one.name}\tジョブ {one.jobs} 本 (環境 {', '.join(one.env_names)}、"
+            f"未計測 {one.total} 件、問題 {len(one.order)} 件)",
+            file=sys.stderr,
+        )
+    matrix = plan_mod.matrix(groups)
     print(json.dumps(matrix, ensure_ascii=False))
     if args.github_output:
         with Path(args.github_output).open("a") as f:
@@ -306,20 +312,24 @@ def cmd_plan(args: argparse.Namespace) -> int:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    env = env_mod.load(args.env)
-    machine = run_mod.Machine.detect(env)
+    names = [n for n in args.env.split(",") if n]
+    envs = [env_mod.load(n) for n in names]
     store = Store(Path(args.store) if args.store else RESULTS_DIR)
     # CI では results ブランチから読んで、記録はアーティファクトに置く。
     # push するのは collect だけなので、run は store を書き換えない。
     out = Store(Path(args.out)) if args.out else store
+    if args.claim_run:
+        if args.dry_run:
+            return _die("--dry-run は --claim-run と併用できません")
+        return _run_claiming(args, envs, store, out)
+    if len(envs) != 1:
+        return _die("--env に複数の環境を渡せるのは --claim-run のときだけです")
+    env = envs[0]
+    machine = run_mod.Machine.detect(env)
     print(
         f"{env.name} / {machine.cpu_model} / {machine.compiler_version}",
         file=sys.stderr,
     )
-    if args.claim_run:
-        if args.dry_run:
-            return _die("--dry-run は --claim-run と併用できません")
-        return _run_claiming(args, env, machine, store, out)
 
     worklist = run_mod.build_worklist(
         _targets(args), env, machine, store.keys(),
@@ -351,25 +361,45 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 def _run_claiming(
     args: argparse.Namespace,
-    env: env_mod.Environment,
-    machine: run_mod.Machine,
+    envs: Sequence[env_mod.Environment],
     store: Store,
     out: Store,
 ) -> int:
-    """CI のジョブ。問題を 1 つ宣言して測る、を時間いっぱい繰り返す。
+    """CI のジョブ。問題を 1 つ宣言して、組の全環境で測る、を時間いっぱい繰り返す。
 
-    並びは plan と同じ (重い順) で、ジョブ番号で開始点をずらす。宣言済みの
-    問題と、記録から借りた cases_hash で「このモデルでは走らせるものが無い」と
-    分かる問題は、宣言せずに飛ばす。宣言した問題は時間を過ぎても測り切る。
+    並びは plan と同じ (組の全環境を合わせた重い順) で、ジョブ番号で開始点をずらす。
+    宣言済みの問題と、記録から借りた cases_hash で「このモデルではどの環境も
+    走らせるものが無い」と分かる問題は、宣言せずに飛ばす。宣言した問題は時間を
+    過ぎても測り切る。コンパイラが入らなかった環境は飛ばして、残りで測る。
     """
     jobs = args.jobs if args.jobs is not None else 1
     if jobs < 1 or not 0 <= args.job < jobs:
         return _die(f"--job {args.job} が --jobs {jobs} に収まりません")
+    groups = {env_mod.group_name(e) for e in envs}
+    if len(groups) != 1:
+        return _die(f"--env の環境が 1 つの組に収まりません: {sorted(groups)}")
+    scope = groups.pop()
 
-    envs = env_mod.load_all()
+    # 入らなかったコンパイラの環境は飛ばす。別のコンパイラで代用すると、環境名が
+    # 名乗るものと実際に測ったものがずれた記録が残る。
+    machines: dict[str, run_mod.Machine] = {}
+    for env in envs:
+        try:
+            machines[env.name] = run_mod.Machine.detect(env)
+        except env_mod.EnvironmentError_ as e:
+            print(f"warning: {env.name} のコンパイラが使えないので飛ばします: {e}", file=sys.stderr)
+    usable = [e for e in envs if e.name in machines]
+    if not usable:
+        print("使えるコンパイラが無いので終わります", file=sys.stderr)
+        return 0
+    cpu_model = machines[usable[0].name].cpu_model
+    for env in usable:
+        print(f"{env.name} / {cpu_model} / {machines[env.name].compiler_version}", file=sys.stderr)
+
+    all_envs = env_mod.load_all()
     problems = [problem_mod.load(d) for d in problem_mod.all_problem_dirs()]
     by_id = {p.id: p for p in problems}
-    order = list(plan_mod.for_env(env, problems, envs, store).order)
+    order = list(plan_mod.combined_order(plan_mod.for_envs(usable, problems, all_envs, store)))
     # 既知のモデルで全部計測済みの問題は plan の並びに無い。引いたモデルが新しければ
     # そこにも仕事があるので、うしろに付けておく。実際に走らせるかはこの先で決まる。
     seen = set(order)
@@ -381,7 +411,7 @@ def _run_claiming(
     sequence = plan_mod.rotation(order, args.job, jobs)
 
     claims = claims_mod.Claims(
-        args.claim_run, env.name, machine.cpu_model, job=args.job, remote=args.claim_remote
+        args.claim_run, scope, cpu_model, job=args.job, remote=args.claim_remote
     )
     keys = store.keys()
     borrowed = store.cases_hashes()
@@ -405,11 +435,15 @@ def _run_claiming(
             continue
         problem = by_id[problem_id]
         targets = [(problem, s) for s in problem.submissions()]
-        # 借りた値で判定して、走らせるものが無ければ宣言しない。テストデータにも触らない。
-        probe = run_mod.build_worklist(
-            targets, env, machine, keys, borrowed=borrowed, allow_fetch=False
-        )
-        if not probe.jobs and not probe.pending:
+        # 借りた値で判定して、どの環境も走らせるものが無ければ宣言しない。
+        # テストデータにも触らない。
+        probes = [
+            run_mod.build_worklist(
+                targets, env, machines[env.name], keys, borrowed=borrowed, allow_fetch=False
+            )
+            for env in usable
+        ]
+        if not any(probe.jobs or probe.pending for probe in probes):
             nothing += 1
             continue
         if not claims.claim(problem_id):
@@ -418,16 +452,17 @@ def _run_claiming(
             continue
         claimed += 1
         print(f"宣言 {claimed}: {problem_id}", file=sys.stderr)
-        worklist = run_mod.build_worklist(
-            targets, env, machine, keys, borrowed=borrowed,
-            allow_fetch=True, refresh=args.refresh,
-        )
-        _report(worklist)
-        done, _ = _execute(worklist.jobs, out, minutes=None, evict=args.evict_testdata)
-        executed += done
-        skipped += len(worklist.skipped)
+        for env in usable:
+            worklist = run_mod.build_worklist(
+                targets, env, machines[env.name], keys, borrowed=borrowed,
+                allow_fetch=True, refresh=args.refresh,
+            )
+            _report(worklist)
+            # テストデータは組の全環境で使い回すので、ここでは捨てない。
+            done, _ = _execute(worklist.jobs, out, minutes=None, evict=False)
+            executed += done
+            skipped += len(worklist.skipped)
         if args.evict_testdata:
-            # 1 件も走らせなかった (取得だけした) 問題のぶんも捨てる。
             fetch.evict(problem)
 
     parts = [
@@ -706,7 +741,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_plan.set_defaults(func=cmd_plan)
 
     p_run = sub.add_parser("run", help="実行して記録を出す")
-    p_run.add_argument("--env", required=True)
+    p_run.add_argument(
+        "--env", required=True,
+        help="環境名。--claim-run のときは組の全環境をコンマ区切りで (x64-gcc,x64-clang)",
+    )
     p_run.add_argument("--problem", help="省略すると全問題")
     p_run.add_argument("--submission", help="省略すると問題の全提出")
     p_run.add_argument(

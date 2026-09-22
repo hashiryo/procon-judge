@@ -82,9 +82,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    # 1 本のジョブは組 (x64 / arm) の全環境を担う。稀な CPU モデルに当たった 1 本が
+    # その場で gcc と clang の両方を測るため。
     # 既定の名前には matrix の値が全部並ぶ。読める長さに切る。
     # # から後ろを YAML のコメントにされるので、引用符で囲む。
-    name: "run (${{ matrix.env }} #${{ matrix.job }})"
+    name: "run (${{ matrix.group }} #${{ matrix.job }})"
     runs-on: ${{ matrix.runs_on }}
     # 宣言は refs/claims/ への push なので、このジョブだけ書き込みが要る。
     permissions:
@@ -108,26 +110,36 @@ jobs:
         with:
           enable-cache: true
 
-      # 入らなかったら落とす。別のコンパイラで代用すると、環境名が名乗るものと
-      # 実際に測ったものがずれた記録が残る。取りこぼしは次の実行が拾う。
+      # 組の全コンパイラを入れる。片方が入らなくても止めない。pj run が使えない
+      # コンパイラの環境を飛ばして残りで測る。別のコンパイラで代用すると、環境名が
+      # 名乗るものと実際に測ったものがずれた記録が残る。取りこぼしは次の実行が拾う。
       - name: コンパイラを入れる
+        env:
+          TOOLCHAINS: ${{ matrix.toolchains }}
         run: |
-          set -eux
-          if [ "${{ matrix.toolchain }}" = "gcc" ]; then
-            sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-            sudo apt-get update
-            sudo apt-get install -y g++-15
-            g++-15 --version
-          else
-            sudo apt-get update
-            sudo apt-get install -y wget lsb-release software-properties-common gnupg
-            wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh
-            sudo bash /tmp/llvm.sh 21 all
-            # -fuse-ld=lld は PATH の ld.lld を探すが、apt.llvm.org は版つきの
-            # 名前しか置かない。別名を足す。
-            sudo ln -sf /usr/bin/ld.lld-21 /usr/local/bin/ld.lld
-            clang++-21 --version
-          fi
+          set -ux
+          for toolchain in ${TOOLCHAINS//,/ }; do
+            if [ "$toolchain" = "gcc" ]; then
+              if sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test \
+                && sudo apt-get update && sudo apt-get install -y g++-15; then
+                g++-15 --version
+              else
+                echo "::warning::g++-15 を入れられませんでした。gcc の環境は飛ばします"
+              fi
+            else
+              if sudo apt-get update \
+                && sudo apt-get install -y wget lsb-release software-properties-common gnupg \
+                && wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh \
+                && sudo bash /tmp/llvm.sh 21 all; then
+                # -fuse-ld=lld は PATH の ld.lld を探すが、apt.llvm.org は版つきの
+                # 名前しか置かない。別名を足す。
+                sudo ln -sf /usr/bin/ld.lld-21 /usr/local/bin/ld.lld
+                clang++-21 --version
+              else
+                echo "::warning::clang++-21 を入れられませんでした。clang の環境は飛ばします"
+              fi
+            fi
+          done
 
       # テストデータの actions/cache は置かない。全問題ぶんを 1 つの塊で持つと
       # 10 GB を超えて載らないし、1 問しか要らない回でも塊ごと落とすことになる。
@@ -146,8 +158,8 @@ jobs:
           git -C lib fetch --depth=1 origin "${LIBRARY_SHA:-HEAD}"
           git -C lib checkout -q FETCH_HEAD
 
-      # 引いた CPU モデルで未計測の問題を 1 つ宣言して測る、を時間の上限まで
-      # 繰り返す。宣言は refs/claims/<run id>/... の ref で、他のジョブに見える。
+      # 引いた CPU モデルで未計測の問題を 1 つ宣言して、組の全環境で測る、を時間の
+      # 上限まで繰り返す。宣言は refs/claims/<run id>/... の ref で、他のジョブに見える。
       # 書き先をドットで始めない。upload-artifact は既定で隠しファイルを除く。
       # 取れなかったテストデータは保管庫から取る。原本まで行ったら保管庫へ上げる。
       - name: 実行
@@ -156,7 +168,7 @@ jobs:
           YUKICODER_TOKEN: ${{ secrets.YUKICODER_TOKEN }}
         run: >
           uv run pj run
-          --env ${{ matrix.env }}
+          --env ${{ matrix.envs }}
           --claim-run ${{ github.run_id }}
           --job ${{ matrix.job }}
           --jobs ${{ matrix.jobs }}
@@ -180,7 +192,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always() && steps.records.outputs.any == 'true'
         with:
-          name: records-${{ matrix.env }}-${{ matrix.job }}
+          name: records-${{ matrix.group }}-${{ matrix.job }}
           path: ${{ runner.temp }}/records
           if-no-files-found: error
 

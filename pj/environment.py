@@ -126,6 +126,32 @@ def cpu_arch() -> str:
     return platform.machine()
 
 
+def group_name(env: Environment) -> str:
+    """CI のジョブの単位。環境名の最初の区切りまでで、x64-gcc と x64-clang は x64。
+
+    同じ組の環境は同じマシン (runs_on) に載るので、1 本のジョブが両方のコンパイラで
+    測れる。稀な CPU モデルに当たった 1 本が、その場で gcc と clang の両方を測る
+    ためにこうしている。
+    """
+    return env.name.split("-", 1)[0]
+
+
+def groups(envs: list[Environment]) -> dict[str, list[Environment]]:
+    """CI で走らせる環境を組ごとに束ねる。runs_on = "self" は入れない。"""
+    out: dict[str, list[Environment]] = {}
+    for env in envs:
+        if env.runs_on == "self":
+            continue
+        out.setdefault(group_name(env), []).append(env)
+    for name, members in out.items():
+        runs_on = {e.runs_on for e in members}
+        if len(runs_on) != 1:
+            raise EnvironmentError_(
+                f"環境の組 {name!r} の runs_on が揃っていません: {sorted(runs_on)}"
+            )
+    return out
+
+
 def toolchain(env: Environment) -> str:
     """CI がどちらのコンパイラを入れるか。cxx の版の接尾辞を落として見る。
 

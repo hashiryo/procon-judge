@@ -1,7 +1,8 @@
 """run のジョブが自分の仕事を宣言する。
 
 宣言は procon-judge のリポジトリに ref を 1 本作ること。名前は
-`refs/claims/<run id>/<環境>/<CPU モデル>/<問題 id>`。`refs/heads` の外なので
+`refs/claims/<run id>/<組>/<CPU モデル>/<問題 id>`。組は CI のジョブの単位 (x64 / arm)
+で、1 本のジョブがその組の全環境 (gcc と clang) を測る。`refs/heads` の外なので
 `on: push` は起きず、GitHub の画面にも出ない。
 
 作るのは `git push --force-with-lease=<ref>:` で、期待値を空にした lease は
@@ -86,10 +87,10 @@ def _git(repo: Path, *args: str, env: dict[str, str] | None = None) -> str:
 
 @dataclass(frozen=True)
 class Claims:
-    """1 つの run の、1 つの環境と CPU モデルについての宣言。"""
+    """1 つの run の、1 つの組 (ジョブの単位) と CPU モデルについての宣言。"""
 
     run_id: str
-    env: str
+    scope: str
     cpu_model: str
     job: int = 0
     repo: Path = ROOT
@@ -98,7 +99,7 @@ class Claims:
     @property
     def prefix(self) -> str:
         return (
-            f"{NAMESPACE}/{slug(self.run_id)}/{slug(self.env)}/{slug(self.cpu_model)}/"
+            f"{NAMESPACE}/{slug(self.run_id)}/{slug(self.scope)}/{slug(self.cpu_model)}/"
         )
 
     def ref(self, problem_id: str) -> str:
@@ -175,7 +176,7 @@ class Claims:
         empty_tree = _git(
             self.repo, "hash-object", "-w", "-t", "tree", os.devnull
         ).strip()
-        message = f"claim {self.run_id} {self.env} {self.cpu_model} {problem_id} job {self.job}"
+        message = f"claim {self.run_id} {self.scope} {self.cpu_model} {problem_id} job {self.job}"
         return _git(
             self.repo, "commit-tree", empty_tree, "-m", message, env=_COMMIT_ENV
         ).strip()
