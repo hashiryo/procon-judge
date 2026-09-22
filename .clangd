@@ -1,0 +1,14 @@
+# Zed (clangd) 用。pj がコンパイルのときに足すフラグ (environments.toml の local と、
+# -Ilib -Iharness -Ithird_party/simde) を再現する。相対の -I は開いているファイルの
+# ディレクトリ基準になるので絶対パスで書く。問題ごとの -I<問題のディレクトリ> は
+# 書けないが、base.cpp と提出の include は相対パスなので無くても解決できる。
+CompileFlags:
+  Add:
+    - -std=gnu++23
+    - -Wall
+    - -Wextra
+    - -DUSE_SIMDE
+    - -DSIMDE_ENABLE_NATIVE_ALIASES
+    - -I/Users/01058120/code/asobi/procon/algo/procon-judge/lib
+    - -I/Users/01058120/code/asobi/procon/algo/procon-judge/harness
+    - -I/Users/01058120/code/asobi/procon/algo/procon-judge/third_party/simde

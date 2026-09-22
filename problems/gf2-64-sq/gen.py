@@ -13,7 +13,7 @@ import sys
 MASK64 = (1 << 64) - 1
 
 # seed -> (種類, 件数)
-CASES = {0: ("sample", 8), 1: ("small", 100), 2: ("edge_zero_one", 200), 3: ("structured", 1000), 4: ("random", 10000), 5: ("random", 100000)}
+CASES = {0: ("sample", 8), 1: ("small", 100), 2: ("edge_zero_one", 200), 3: ("structured", 1000), 4: ("random", 10000), 5: ("random", 100000), 6: ("random", 1000000)}
 
 
 def make(kind: str, t: int, rng: random.Random) -> list:
