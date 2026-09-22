@@ -198,19 +198,32 @@ jobs:
       - name: 記録をまとめる
         run: uv run pj records append ${{ runner.temp }}/records --store .results
 
-      # 並列で results に push すると衝突するので、押すのは collect だけ。
+      # 並列で results に push すると衝突するので、押すのは collect だけ。それでも
+      # 手作業の push や、schedule と push の run の重なりで弾かれることはある。
+      # 弾かれたら最新の results を取り直して、その上に記録を足し直してから押す。
+      # git の rebase は同じ jsonl への追記同士が衝突するので、記録の単位でやり直す
+      # (append は同じキーの記録を飛ばすので二重には入らない)。
       - name: results に push する
-        working-directory: .results
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if git diff --cached --quiet; then
-            echo "増えた記録はありません"
-            exit 0
-          fi
-          git commit -m "記録を追加 (${GITHUB_SHA::7})"
-          git push origin HEAD:results
+          git -C .results config user.name "github-actions[bot]"
+          git -C .results config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3 4 5; do
+            git -C .results add -A
+            if git -C .results diff --cached --quiet; then
+              echo "増えた記録はありません"
+              exit 0
+            fi
+            git -C .results commit -q -m "記録を追加 (${GITHUB_SHA::7})"
+            if git -C .results push origin HEAD:results; then
+              exit 0
+            fi
+            echo "push が弾かれました (${attempt} 回目)。results を取り直して積み直します"
+            git -C .results fetch --depth=1 origin results
+            git -C .results reset --hard origin/results
+            uv run pj records append "${RUNNER_TEMP}/records" --store .results
+          done
+          echo "::error::results への push に 5 回続けて失敗しました"
+          exit 1
 
       # 記録が古くなっていないかは include 閉包を作り直して見るので、ここでも
       # ライブラリが要る。取れなければライブラリを使う提出の判定だけが落ちる。
