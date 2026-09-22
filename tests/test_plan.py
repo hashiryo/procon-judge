@@ -1,4 +1,4 @@
-"""ジョブが始まる前の計画。本数の決め方と、束を配る順番。
+"""ジョブが始まる前の計画。本数の決め方と、問題を見る順番。
 
 plan が数え間違えると、仕事があるのにジョブが立たない (記録が増えない) か、
 仕事が無いのに立つ (空回りする) かのどちらかになる。どちらも静かに起きる。
@@ -127,7 +127,7 @@ def test_a_model_that_has_every_submission_gives_no_work(tmp_path, envs, ci_envs
     ]
     one = plan_for(env, [problem], envs, store_with(tmp_path, records))
     assert one.models == ("EPYC",)
-    assert one.bundles == ()
+    assert one.works == ()
     assert one.jobs == 0
 
 
@@ -140,8 +140,8 @@ def test_a_submission_missing_on_one_model_is_work(tmp_path, envs, ci_envs):
     records.append(record_for(problem, env, submissions[0], cpu_model="Xeon"))
     one = plan_for(env, [problem], envs, store_with(tmp_path, records))
     assert one.models == ("EPYC", "Xeon")
-    assert [b.problem for b in one.bundles] == ["p1"]
-    assert one.bundles[0].todo == {"EPYC": (), "Xeon": (submissions[1],)}
+    assert [b.problem for b in one.works] == ["p1"]
+    assert one.works[0].todo == {"EPYC": (), "Xeon": (submissions[1],)}
     assert one.jobs == 1
 
 
@@ -154,8 +154,8 @@ def test_a_problem_without_any_record_is_all_work(tmp_path, envs, ci_envs):
         record_for(measured, env, s.as_posix()) for s in measured.submissions()
     ]
     one = plan_for(env, [measured, fresh], envs, store_with(tmp_path, records))
-    assert [b.problem for b in one.bundles] == ["p2"]
-    assert one.bundles[0].todo["EPYC"] == ("submissions/a.cpp", "submissions/b.cpp")
+    assert [b.problem for b in one.works] == ["p2"]
+    assert one.works[0].todo["EPYC"] == ("submissions/a.cpp", "submissions/b.cpp")
 
 
 def test_an_environment_without_records_plans_everything(tmp_path, envs, ci_envs):
@@ -167,7 +167,7 @@ def test_an_environment_without_records_plans_everything(tmp_path, envs, ci_envs
     ]
     one = plan_for(unknown, [problem], envs, store_with(tmp_path, records))
     assert one.models == ()
-    assert one.bundles[0].todo == {"": ("submissions/a.cpp", "submissions/b.cpp")}
+    assert one.works[0].todo == {"": ("submissions/a.cpp", "submissions/b.cpp")}
     assert one.jobs == 1
 
 
@@ -181,16 +181,16 @@ def test_editing_a_submission_makes_it_work_again(tmp_path, envs, ci_envs):
     assert plan_for(env, [problem], envs, store).jobs == 0
     (problem.dir / "submissions" / "a.cpp").write_text("int main() { return 7; }\n")
     one = plan_for(env, [problem], envs, store)
-    assert one.bundles[0].todo["EPYC"] == ("submissions/a.cpp",)
+    assert one.works[0].todo["EPYC"] == ("submissions/a.cpp",)
 
 
-def test_the_submissions_of_one_problem_stay_in_one_bundle(tmp_path, envs, ci_envs):
+def test_the_submissions_of_one_problem_stay_together(tmp_path, envs, ci_envs):
     """束は問題の単位。同じマシンに載れば順位表の 1 行がその回で埋まる。"""
     env = ci_envs[0]
     problem = make_problem(tmp_path, "p1", submissions=("a", "b", "c"))
     one = plan_for(env, [problem], envs, store_with(tmp_path, []))
-    assert len(one.bundles) == 1
-    assert len(one.bundles[0].todo[""]) == 3
+    assert len(one.works) == 1
+    assert len(one.works[0].todo[""]) == 3
 
 
 # --- 落とせるもの -----------------------------------------------------------
@@ -210,7 +210,7 @@ def test_a_known_compile_error_is_not_planned_for_other_models(
     ]
     one = plan_for(env, [problem], envs, store_with(tmp_path, records))
     assert one.compile_errors == (f"p1/{submissions[0]}",)
-    assert one.bundles == ()
+    assert one.works == ()
     assert one.jobs == 0
 
 
@@ -240,7 +240,7 @@ def test_a_stale_compile_error_does_not_suppress_anything(tmp_path, envs, ci_env
     (problem.dir / "submissions" / "a.cpp").write_text("int main() { return 7; }\n")
     one = plan_for(env, [problem], envs, store)
     assert one.compile_errors == ()
-    assert one.bundles[0].todo["EPYC"] == ("submissions/a.cpp",)
+    assert one.works[0].todo["EPYC"] == ("submissions/a.cpp",)
 
 
 def test_an_unresolved_include_is_reported_and_not_planned(tmp_path, envs, ci_envs):
@@ -254,77 +254,83 @@ def test_an_unresolved_include_is_reported_and_not_planned(tmp_path, envs, ci_en
     )
     one = plan_for(env, [problem], envs, store)
     assert one.unresolved == ("p1/submissions/a.cpp",)
-    assert one.bundles == ()
+    assert one.works == ()
     assert one.jobs == 0
 
 
 # --- ジョブの本数 -----------------------------------------------------------
 
 
-def test_the_job_count_follows_the_budget(tmp_path, envs, ci_envs):
+def test_the_job_count_follows_the_items_per_job(tmp_path, envs, ci_envs, monkeypatch):
+    """本数は未計測の件数を 1 本あたりの見込みで割った切り上げ。"""
     env = ci_envs[0]
     problem = make_problem(tmp_path, "p1", submissions=tuple("abcdefg"))
     store = store_with(tmp_path, [])
-    assert plan_for(env, [problem], envs, store, budget=7).jobs == 1
-    assert plan_for(env, [problem], envs, store, budget=4).jobs == 2
-    assert plan_for(env, [problem], envs, store, budget=3).jobs == 3
+    for per_job, expected in ((7, 1), (4, 2), (3, 3)):
+        monkeypatch.setattr(plan_mod, "ITEMS_PER_JOB", per_job)
+        assert plan_for(env, [problem], envs, store).jobs == expected
 
 
-def test_the_job_count_stops_at_the_concurrency_limit(tmp_path, envs, ci_envs):
+def test_the_job_count_stops_at_the_concurrency_limit(tmp_path, envs, ci_envs, monkeypatch):
     """分割を細かくしても並列度は上がらない。"""
+    monkeypatch.setattr(plan_mod, "ITEMS_PER_JOB", 1)
     env = ci_envs[0]
     problem = make_problem(tmp_path, "p1", submissions=tuple("abcdefghijkl"))
-    one = plan_for(env, [problem], envs, store_with(tmp_path, []), budget=1)
+    one = plan_for(env, [problem], envs, store_with(tmp_path, []))
     assert one.jobs == plan_mod.MAX_JOBS_PER_ENV
 
 
-def test_the_job_count_counts_every_model(tmp_path, envs, ci_envs):
+def test_the_job_count_counts_every_model(tmp_path, envs, ci_envs, monkeypatch):
     """仕事はモデルごとにある。1 モデルあたりの平均で数えると、モデルが多い環境で
     本数が足りなくなる。"""
+    monkeypatch.setattr(plan_mod, "ITEMS_PER_JOB", 5)
     env = ci_envs[0]
     problem = make_problem(tmp_path, "p1", submissions=tuple("abcdef"))
     records = [
         record_for(problem, env, "submissions/a.cpp", cpu_model="EPYC"),
         record_for(problem, env, "submissions/a.cpp", cpu_model="Xeon"),
     ]
-    one = plan_for(env, [problem], envs, store_with(tmp_path, records), budget=5)
+    one = plan_for(env, [problem], envs, store_with(tmp_path, records))
     assert one.models == ("EPYC", "Xeon") or set(one.models) == {"EPYC", "Xeon"}
-    assert one.bundles[0].expected == 5
-    assert one.bundles[0].total == 10
+    assert one.works[0].expected == 5
+    assert one.works[0].total == 10
+    assert one.total == 10
     assert one.jobs == 2
 
 
-# --- 束を配る順番 -----------------------------------------------------------
+# --- 問題を見る順番 ---------------------------------------------------------
 
 
-def test_each_job_starts_at_its_own_rank_and_strides():
+def test_each_job_starts_at_its_own_offset_and_wraps_around():
+    """開始点が散っていれば、同じ問題を同じ瞬間に宣言しようとすることがほぼ無い。"""
     order = ("p0", "p1", "p2", "p3", "p4")
-    assert plan_mod.assignment(order, 0, 2)[:3] == ["p0", "p2", "p4"]
-    assert plan_mod.assignment(order, 1, 2)[:2] == ["p1", "p3"]
+    assert plan_mod.rotation(order, 0, 2) == ["p0", "p1", "p2", "p3", "p4"]
+    assert plan_mod.rotation(order, 1, 2) == ["p2", "p3", "p4", "p0", "p1"]
+    assert plan_mod.rotation(order, 2, 3) == ["p3", "p4", "p0", "p1", "p2"]
 
 
-def test_every_job_is_handed_all_the_bundles():
-    """自分の束が全部計測済みで暇になったら、この順で次へ踏み込む。"""
+def test_every_job_sees_every_problem_once():
     order = ("p0", "p1", "p2", "p3", "p4")
-    for job in range(2):
-        handed = plan_mod.assignment(order, job, 2)
-        assert sorted(handed) == sorted(order)
-        assert len(handed) == len(set(handed))
+    for jobs in (1, 2, 3, 7):
+        for job in range(jobs):
+            seen = plan_mod.rotation(order, job, jobs)
+            assert sorted(seen) == sorted(order)
+            assert len(seen) == len(set(seen))
 
 
 def test_a_single_job_gets_the_heavy_order_as_is():
     order = ("p0", "p1", "p2")
-    assert plan_mod.assignment(order, 0, 1) == list(order)
+    assert plan_mod.rotation(order, 0, 1) == list(order)
 
 
 def test_the_job_number_has_to_fit_in_the_count():
     with pytest.raises(ValueError):
-        plan_mod.assignment(("p0",), 2, 2)
+        plan_mod.rotation(("p0",), 2, 2)
     with pytest.raises(ValueError):
-        plan_mod.assignment(("p0",), 0, 0)
+        plan_mod.rotation(("p0",), 0, 0)
 
 
-def test_heavier_bundles_come_first(tmp_path, envs, ci_envs):
+def test_heavier_problems_come_first(tmp_path, envs, ci_envs):
     """費用の見積もりは、記録のある提出は time_total_ms、無い提出は最悪で置く。"""
     env = ci_envs[0]
     light = make_problem(tmp_path, "p-light", submissions=("a",))
@@ -346,7 +352,7 @@ def test_heavier_bundles_come_first(tmp_path, envs, ci_envs):
 
 def test_the_matrix_carries_what_the_runner_needs(tmp_path, envs, ci_envs):
     problem = make_problem(tmp_path, "p1", submissions=("a",))
-    plans = plan_mod.build([problem], envs, store_with(tmp_path, []), budget=1)
+    plans = plan_mod.build([problem], envs, store_with(tmp_path, []))
     entries = plan_mod.matrix(plans)["include"]
     assert {e["env"] for e in entries} == {e.name for e in ci_envs}
     runs_on = {e.name: e.runs_on for e in ci_envs}
@@ -354,15 +360,17 @@ def test_the_matrix_carries_what_the_runner_needs(tmp_path, envs, ci_envs):
         assert entry["runs_on"] == runs_on[entry["env"]]
         assert entry["toolchain"] in ("gcc", "clang")
         assert 0 <= entry["job"] < entry["jobs"]
+        # 件数の上限は無い。ジョブは宣言が尽きるか時間の上限まで測る。
+        assert "budget" not in entry
 
 
 def test_the_matrix_carries_the_time_limit(tmp_path, envs, ci_envs):
-    """run は件数の上限と時間の上限の両方で止める。時間の値も plan が決めて matrix で渡す。"""
+    """run は時間の上限で止める。値は plan が決めて matrix で渡す。"""
     problem = make_problem(tmp_path, "p1", submissions=("a",))
-    plans = plan_mod.build([problem], envs, store_with(tmp_path, []), budget=1, minutes=30)
+    plans = plan_mod.build([problem], envs, store_with(tmp_path, []), minutes=30)
     for entry in plan_mod.matrix(plans)["include"]:
         assert entry["minutes"] == 30
-    default = plan_mod.build([problem], envs, store_with(tmp_path, []), budget=1)
+    default = plan_mod.build([problem], envs, store_with(tmp_path, []))
     assert {e["minutes"] for e in plan_mod.matrix(default)["include"]} == {plan_mod.DEFAULT_MINUTES}
 
 

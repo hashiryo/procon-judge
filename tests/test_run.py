@@ -278,7 +278,7 @@ def test_a_blocked_submission_does_not_stop_the_others(tmp_path, local_env, mach
     assert [s.as_posix() for _, s in worklist.blocked] == ["submissions/broken.cpp"]
 
 
-# --- budget ----------------------------------------------------------------
+# --- 時間の上限と順番 -------------------------------------------------------
 
 
 def test_out_of_time_is_only_about_starting_the_next_one():
@@ -300,55 +300,22 @@ def make_problem_with(tmp_path, name, submissions):
     return problem_mod.load(directory)
 
 
-def test_budget_stops_partway_and_leaves_the_rest(tmp_path, local_env, machine):
-    """6 時間で打ち切られると、その回に測ったぶんを丸ごと落とす。"""
-    problem = make_problem_with(tmp_path, "tmp-raw", ("a", "b", "c", "d"))
-    targets = [(problem, s) for s in problem.submissions()]
-    worklist = run_mod.build_worklist(targets, local_env, machine, set(), budget=2)
-    assert [j.submission.as_posix() for j in worklist.jobs] == [
-        "submissions/a.cpp",
-        "submissions/b.cpp",
-    ]
-    assert [s.as_posix() for _, s in worklist.held] == [
-        "submissions/c.cpp",
-        "submissions/d.cpp",
-    ]
-
-
-def test_budget_stops_inside_a_bundle(tmp_path, local_env, machine):
-    """大きい束に当たったときこそ効いてほしい。束の切れ目は待たない。"""
-    first = make_problem_with(tmp_path, "tmp-raw", ("a", "b", "c"))
-    second = make_problem_with(tmp_path, "tmp-two", ("a",))
-    targets = [(first, s) for s in first.submissions()]
-    targets += [(second, s) for s in second.submissions()]
-    worklist = run_mod.build_worklist(targets, local_env, machine, set(), budget=2)
-    assert len(worklist.jobs) == 2
-    assert {p.id for p, _ in worklist.held} == {"tmp-raw", "tmp-two"}
-
-
-def test_skipped_submissions_do_not_eat_the_budget(tmp_path, local_env, machine):
-    """既に記録のあるものは走らせないので、budget を減らさない。"""
-    problem = make_problem_with(tmp_path, "tmp-raw", ("a", "b", "c"))
-    targets = [(problem, s) for s in problem.submissions()]
-    known = {run_mod.build_worklist(targets, local_env, machine, set()).jobs[0].key}
-    worklist = run_mod.build_worklist(targets, local_env, machine, known, budget=2)
-    assert [j.submission.as_posix() for j in worklist.jobs] == [
-        "submissions/b.cpp",
-        "submissions/c.cpp",
-    ]
-    assert worklist.held == ()
-
-
-def test_without_a_budget_everything_is_planned(tmp_path, local_env, machine):
+def test_everything_that_is_unmeasured_is_planned(tmp_path, local_env, machine):
+    """件数の上限は無い。走らせる対象はその問題の未計測の提出の全部。"""
     problem = make_problem_with(tmp_path, "tmp-raw", ("a", "b", "c"))
     targets = [(problem, s) for s in problem.submissions()]
     worklist = run_mod.build_worklist(targets, local_env, machine, set())
     assert len(worklist.jobs) == 3
-    assert worklist.held == ()
+    known = {worklist.jobs[0].key}
+    again = run_mod.build_worklist(targets, local_env, machine, known)
+    assert [j.submission.as_posix() for j in again.jobs] == [
+        "submissions/b.cpp",
+        "submissions/c.cpp",
+    ]
 
 
 def test_the_order_of_the_targets_is_kept(tmp_path, local_env, machine):
-    """束の順は worklist が重い順に決める。ここで並べ直すと budget の意味が変わる。"""
+    """問題の順は呼ぶ側が決める。ここで並べ直すと時間で打ち切るときの意味が変わる。"""
     first = make_problem_with(tmp_path, "tmp-zzz", ("a",))
     second = make_problem_with(tmp_path, "tmp-aaa", ("a",))
     targets = [(first, s) for s in first.submissions()]

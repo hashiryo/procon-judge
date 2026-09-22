@@ -34,8 +34,9 @@ jobs:
       - run: uv run pytest -q
 
   # CPU モデルはマシンが割り当たるまで分からないので、モデルに依存しない判断
-  # だけをここで済ませる。テストデータは 1 バイトも触らない。キーに要る
-  # cases_hash は既存の記録から借りる。
+  # だけをここで済ませる。決めるのは環境ごとの本数と、やることが 0 件かどうか。
+  # どの問題をどのジョブが測るかは run のジョブが宣言で取る。テストデータは
+  # 1 バイトも触らない。キーに要る cases_hash は既存の記録から借りる。
   plan:
     runs-on: ubuntu-24.04
     outputs:
@@ -79,6 +80,9 @@ jobs:
     # # から後ろを YAML のコメントにされるので、引用符で囲む。
     name: "run (${{ matrix.env }} #${{ matrix.job }})"
     runs-on: ${{ matrix.runs_on }}
+    # 宣言は refs/claims/ への push なので、このジョブだけ書き込みが要る。
+    permissions:
+      contents: write
     steps:
       # arm では x86 の intrinsics を SIMDe で動かすので submodule が要る。
       - uses: actions/checkout@v7
@@ -130,6 +134,8 @@ jobs:
         continue-on-error: true
         run: git clone --depth=1 https://github.com/hashiryo/Library.git lib
 
+      # 引いた CPU モデルで未計測の問題を 1 つ宣言して測る、を時間の上限まで
+      # 繰り返す。宣言は refs/claims/<run id>/... の ref で、他のジョブに見える。
       # 書き先をドットで始めない。upload-artifact は既定で隠しファイルを除く。
       # 取れなかったテストデータは保管庫から取る。原本まで行ったら保管庫へ上げる。
       - name: 実行
@@ -139,9 +145,9 @@ jobs:
         run: >
           uv run pj run
           --env ${{ matrix.env }}
+          --claim-run ${{ github.run_id }}
           --job ${{ matrix.job }}
           --jobs ${{ matrix.jobs }}
-          --budget ${{ matrix.budget }}
           --minutes ${{ matrix.minutes }}
           --evict-testdata
           --store .results
@@ -245,3 +251,9 @@ jobs:
       - name: Pages へ出す
         id: pages
         uses: actions/deploy-pages@v5
+
+      # 宣言の ref を消す。この run のぶんと、消し損ねていた古い run のぶん。
+      # 消し損ねても宣言は run 単位の名前なので次の run の邪魔にはならない。
+      - name: 宣言を掃く
+        if: always()
+        run: uv run pj claims clean --run-id ${{ github.run_id }}

@@ -2,8 +2,9 @@
 
 CPU モデルはマシンが割り当たった瞬間に決まるので、ジョブが始まる前には
 分からない。だからモデルに依存しない判断だけをここで済ませて、依存する判断は
-run の中に残す。ここが決めるのは、環境ごとに何本のジョブを立てるかと、
-問題をどの順で片付けるかの 2 つ。
+run の中に残す。ここが決めるのは、環境ごとに何本のジョブを立てるかと、問題を
+見る順番 (重い順) の 2 つ。どの問題をどのジョブが測るかは決めない。それは
+run のジョブが起動してから宣言 (pj.claims) で取る。
 
 テストデータは 1 バイトも触らない。キーに要る cases_hash は既存の記録から
 借りる。記録が無ければそれは未計測なので、借りる必要もない。
@@ -29,29 +30,29 @@ from .store import Store
 # 20 に収まる。超えたぶんは GitHub が待たせるだけで、落ちはしない。
 MAX_JOBS_PER_ENV = 8
 
-# 1 ジョブで測る提出の上限 (件数)。6 時間で打ち切られると、その回に測ったぶんを
-# 丸ごと落とす。必ず終わって記録を上げるところまで行かせるための値。
-# 100 件のジョブは 7 分から 27 分 (外れ値 49 分) だった (2026-09-22 の実測)。
-# 時間の上限 (DEFAULT_MINUTES) を別に持つので、件数は余裕を見て 200 にしている。
-DEFAULT_BUDGET = 200
+# 1 本のジョブに見込む未計測の件数。本数を決めるためだけの値で、ジョブはこの
+# 件数で止まらない (宣言が尽きるか時間の上限まで測る)。1 ジョブは 1 分に 5 件
+# ほど測るので、50 件は 10 分ほど。少なめに見て早く本数を増やす。当たった
+# モデルに仕事が無いジョブは 1 分ほどで終わるので、余っても安い。
+ITEMS_PER_JOB = 50
 
-# 1 ジョブの実行時間の上限 (分)。これを過ぎたら次の提出に手を付けない。
-# 件数だけでは重い束 (大きいテストデータ、長い tle_sec) に当たったときの時間を
-# 抑えられない。6 時間の上限に対して、最後の 1 本 (最悪で ケース数 × tle_sec、
-# 十数分) と upload のぶんを残して 4 時間に置く。
+# 1 ジョブの実行時間の上限 (分)。これを過ぎたら次の問題を宣言しない。
+# 6 時間の上限に対して、最後の 1 問 (最悪で 提出数 × ケース数 × tle_sec) と
+# upload のぶんを残して 4 時間に置く。
 DEFAULT_MINUTES = 240
 
-# 記録がまだ 1 件も無い問題のケース数の仮置き。費用は束の重い順を決める
+# 記録がまだ 1 件も無い問題のケース数の仮置き。費用は問題を重い順に並べる
 # ためだけに使うので、外れても順番が少し入れ替わるだけで済む。
 ASSUMED_CASE_COUNT = 20
 
 
 @dataclass(frozen=True)
-class Bundle:
-    """1 問題ぶんの仕事。同じ問題の提出は必ず同じ束に入る。
+class Work:
+    """1 問題ぶんの仕事の見積もり。順番と本数を決めるためにある。
 
-    同じマシンに載れば順位表の 1 行がその回で埋まるし、テストデータの取得も
-    その束につき 1 回で済む。
+    run のジョブが宣言して取る単位もこの 1 問題 (× 引いた CPU モデル) で、
+    その問題のそのモデルで未計測の提出を全部測る。テストデータの取得もその
+    1 回で済む。
     """
 
     problem: str
@@ -76,12 +77,10 @@ class Bundle:
 class EnvPlan:
     env: Environment
     models: tuple[str, ...]
-    # 重い順。run はこの並びから自分の担当を取る。
-    bundles: tuple[Bundle, ...]
+    # 重い順。run はこの並びを (ジョブ番号でずらして) 見ていく。
+    works: tuple[Work, ...]
     jobs: int
-    # run に渡す上限。plan が本数を決めるときに置いた前提なので、run も同じ値を使う。
-    budget: int = DEFAULT_BUDGET
-    # run に渡す時間の上限 (分)。件数の上限と両方で止める。
+    # run に渡す時間の上限 (分)。
     minutes: int = DEFAULT_MINUTES
     # include を解決できなかった提出。ライブラリを取れていないと全部並ぶ。
     unresolved: tuple[str, ...] = ()
@@ -90,11 +89,15 @@ class EnvPlan:
 
     @property
     def order(self) -> tuple[str, ...]:
-        return tuple(b.problem for b in self.bundles)
+        return tuple(w.problem for w in self.works)
 
     @property
     def expected(self) -> float:
-        return sum(b.expected for b in self.bundles)
+        return sum(w.expected for w in self.works)
+
+    @property
+    def total(self) -> int:
+        return sum(w.total for w in self.works)
 
 
 def build(
@@ -102,7 +105,6 @@ def build(
     envs: Sequence[Environment],
     store: Store,
     *,
-    budget: int = DEFAULT_BUDGET,
     minutes: int = DEFAULT_MINUTES,
 ) -> list[EnvPlan]:
     """CI で走らせる環境それぞれの計画。"""
@@ -113,7 +115,7 @@ def build(
     fresh = {p.id: Freshness(p, envs) for p in problems}
     cases = store.cases_hashes()
     return [
-        _for_env(env, problems, records, fresh, keys, budget, cases, minutes)
+        _for_env(env, problems, records, fresh, keys, cases, minutes)
         for env in envs
         if env.runs_on != "self"
     ]
@@ -125,45 +127,40 @@ def for_env(
     envs: Sequence[Environment],
     store: Store,
     *,
-    budget: int = DEFAULT_BUDGET,
     minutes: int = DEFAULT_MINUTES,
 ) -> EnvPlan:
-    """1 環境ぶん。run が自分の担当を組み直すのに使う。
+    """1 環境ぶん。run が問題を見る順番を組むのに使う。
 
-    run は plan と同じ並びを作れないといけない。並びは記録と問題定義と lib/
-    だけから決まるので、同じものを読めば同じ順になる。
+    並びは記録と問題定義と lib/ だけから決まるので、同じものを読めば全ジョブが
+    同じ順を作る。
     """
     keys = store.keys()
     records = {p.id: list(store.read(p.id)) for p in problems}
     fresh = {p.id: Freshness(p, envs) for p in problems}
-    return _for_env(env, problems, records, fresh, keys, budget, store.cases_hashes(), minutes)
+    return _for_env(env, problems, records, fresh, keys, store.cases_hashes(), minutes)
 
 
-def assignment(order: Sequence[str], job: int, jobs: int) -> list[str]:
-    """j 番目のジョブが束を片付ける順番。
+def rotation(order: Sequence[str], job: int, jobs: int) -> list[str]:
+    """j 番目のジョブが問題を見ていく順番。
 
-    j 番目に重い束から始めて、そこから本数ぶん飛ばして進む。先頭が重い順の
-    上位に揃い、溢れた先が他のジョブの先頭を避ける。
-
-    自分の担当のうしろに残り全部を付ける。plan はモデルを知らないので、
-    自分の束がそのモデルでは全部計測済みで暇になることがある。そのときは
-    この順で次の束へ踏み込む。別のジョブと同じキーを測ることがあるが、
-    同じキーの 2 本目の記録は標本の蓄積になるので無駄ではない。
+    全ジョブが同じ並びを持つので、開始点を j/N の位置にずらして末尾から先頭へ
+    回る。開始点が散っていれば、同じ問題を同じ瞬間に宣言しようとすることが
+    ほぼ起きない。宣言済みのものは run が飛ばすので、取りこぼしも重複も無い。
+    時間切れで持ち越される問題が並びの末尾に偏らない副作用もある。
     """
     if jobs < 1:
         raise ValueError(f"ジョブの本数が {jobs} です")
     if not 0 <= job < jobs:
         raise ValueError(f"ジョブ番号 {job} が本数 {jobs} に収まりません")
-    mine = list(order[job::jobs])
-    taken = set(mine)
-    return mine + [p for p in order if p not in taken]
+    start = len(order) * job // jobs
+    return list(order[start:]) + list(order[:start])
 
 
 def matrix(plans: Iterable[EnvPlan]) -> dict:
     """judge.yml が fromJSON で受ける形。
 
-    束は入れない。ジョブ名に全部並ぶと読めなくなるし、問題が増えると
-    マトリクスが膨らむ。run は order を自分で組み直せる。
+    問題の並びは入れない。ジョブ名に全部並ぶと読めなくなるし、問題が増えると
+    マトリクスが膨らむ。run は並びを自分で組み直せる。
     """
     include = [
         {
@@ -172,7 +169,6 @@ def matrix(plans: Iterable[EnvPlan]) -> dict:
             "toolchain": toolchain(plan.env),
             "job": job,
             "jobs": plan.jobs,
-            "budget": plan.budget,
             "minutes": plan.minutes,
         }
         for plan in plans
@@ -190,12 +186,11 @@ def _for_env(
     records: dict[str, list[dict]],
     fresh: dict[str, Freshness],
     keys: set[str],
-    budget: int,
     cases: Mapping[str, str],
     minutes: int = DEFAULT_MINUTES,
 ) -> EnvPlan:
     models = _models(records, env.name)
-    bundles: list[Bundle] = []
+    works: list[Work] = []
     unresolved: set[str] = set()
     compile_errors: set[str] = set()
 
@@ -237,29 +232,28 @@ def _for_env(
             todo[model] = tuple(missing)
 
         if any(todo.values()):
-            bundles.append(
-                Bundle(
+            works.append(
+                Work(
                     problem=problem.id,
                     todo=todo,
                     weight=_weight(problem, rows, todo),
                 )
             )
 
-    # 重い順。同じ重さのときは id で並べて、plan と run が同じ順を作れるようにする。
-    bundles.sort(key=lambda b: (-b.weight, b.problem))
+    # 重い順。同じ重さのときは id で並べて、全ジョブが同じ順を作れるようにする。
+    works.sort(key=lambda w: (-w.weight, w.problem))
     return EnvPlan(
         env=env,
         models=models,
-        bundles=tuple(bundles),
-        jobs=_jobs(bundles, budget),
-        budget=budget,
+        works=tuple(works),
+        jobs=_jobs(works),
         minutes=minutes,
         unresolved=tuple(sorted(unresolved)),
         compile_errors=tuple(sorted(compile_errors)),
     )
 
 
-def _jobs(bundles: Sequence[Bundle], budget: int) -> int:
+def _jobs(works: Sequence[Work]) -> int:
     """立てるジョブの本数。
 
     既知のモデルすべてで 0 件ならジョブを立てない。未知のモデルに当たれば
@@ -269,10 +263,10 @@ def _jobs(bundles: Sequence[Bundle], budget: int) -> int:
     # 仕事はモデルごとにあり、ジョブは当たったモデルのぶんしか測れない。それでも
     # 本数は全モデルを合わせた件数で数える。1 モデルあたりの平均で数えると、モデルが
     # 6 つある x64 で本当の仕事の 1/6 しか見ないことになり、本数が足りなくなる。
-    total = sum(b.total for b in bundles)
+    total = sum(w.total for w in works)
     if total <= 0:
         return 0
-    return min(MAX_JOBS_PER_ENV, max(1, math.ceil(total / budget)))
+    return min(MAX_JOBS_PER_ENV, max(1, math.ceil(total / ITEMS_PER_JOB)))
 
 
 def _models(records: dict[str, list[dict]], env_name: str) -> tuple[str, ...]:
@@ -329,8 +323,9 @@ def _weight(
 ) -> float:
     """費用の見積もり (ms)。1 モデルあたりの期待値。
 
-    束の重い順を決めるためだけに使う。実測とずれても順番が入れ替わるだけで、
-    測るものは変わらない。
+    問題を重い順に並べるためだけに使う。実測とずれても順番が入れ替わるだけで、
+    測るものは変わらない。重いものが先に宣言されると、最後に残る 1 問が軽く
+    なって全体の終わりが揃う。
     """
     measured: dict[str, int] = {}
     for row in rows:

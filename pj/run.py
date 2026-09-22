@@ -1,8 +1,9 @@
 """走らせる対象を決めて、実行して、採点レコードを作る。
 
 CPU モデルはジョブが始まるまで分からないので、そのモデルで実際に何が未計測か
-の判定はここでやる。モデルに依存しない判断 (環境ごとのジョブの本数と、束を
-片付ける順番) は pj.plan が先に決める。
+の判定はここでやる。モデルに依存しない判断 (環境ごとのジョブの本数と、問題を
+見る順番) は pj.plan が先に決める。どの問題をどのジョブが測るかは、ジョブが
+起動してから宣言 (pj.claims) で取る。
 """
 
 from __future__ import annotations
@@ -70,7 +71,7 @@ class Worklist:
     """この回に走らせる対象と、走らせなかったものの内訳。
 
     ジョブが始まる前に立てる pj.plan の計画とは別物。あちらは環境ごとの
-    ジョブの本数と束の順番を決め、こちらは引いたモデルで実際に何を走らせるかを
+    ジョブの本数と問題の順番を決め、こちらは引いたモデルで実際に何を走らせるかを
     決める。
     """
 
@@ -82,8 +83,6 @@ class Worklist:
     failed: tuple[tuple[str, str], ...] = ()
     # include を解決できないので走らせなかった提出。
     blocked: tuple[Target, ...] = ()
-    # budget に達したので見もしなかった提出。次の実行が拾う。
-    held: tuple[Target, ...] = ()
     # テストデータが borrowed と違っていた問題。(問題 id, 借りた値, 本物)
     moved: tuple[tuple[str, str, str], ...] = ()
 
@@ -112,15 +111,14 @@ def _group_by_problem(targets: Iterable[Target]) -> list[tuple[Problem, list[Pat
     grouped: dict[str, tuple[Problem, list[Path]]] = {}
     for problem, submission in targets:
         grouped.setdefault(problem.id, (problem, []))[1].append(submission)
-    # 渡された順を保つ。束の順は plan が重い順に決めていて、budget で打ち切る
-    # ときにどれが残るかがその順で決まる。ここで並べ直すと意味が変わる。
+    # 渡された順を保つ。問題の順は呼ぶ側が決めていて、時間で打ち切るときに
+    # どれが残るかがその順で決まる。ここで並べ直すと意味が変わる。
     return list(grouped.values())
 
 
 def out_of_time(started: float, minutes: float | None, now: float) -> bool:
-    """時間の上限を過ぎたか。過ぎていたら次の提出に手を付けない。
+    """時間の上限を過ぎたか。過ぎていたら次の問題を宣言しない。
 
-    件数の上限 (budget) だけでは、重い束に当たったときの時間を抑えられない。
     6 時間で打ち切られると upload まで届かず、その回に測ったぶんを丸ごと落とす。
     走っている 1 本は止めない。止めるのは次に手を付けるかどうかだけ。
     """
@@ -138,7 +136,6 @@ def build_worklist(
     borrowed: Mapping[str, str] | None = None,
     allow_fetch: bool = True,
     refresh: bool = False,
-    budget: int | None = None,
 ) -> Worklist:
     """各提出のキーを計算して、記録にあるものを除く。
 
@@ -153,10 +150,6 @@ def build_worklist(
 
     borrowed を渡さないと借用をしない。その場合は今までどおり、判定のために
     テストデータを取りに行く。
-
-    budget を渡すと、走らせる対象がその件数に達したところで見るのをやめる。
-    束の途中でも止める。budget は 6 時間で打ち切られないための上限なので、
-    大きい束に当たったときこそ効いてほしい。残りは次の実行が同じ順で拾う。
     """
     state = _State()
     borrowed = borrowed or {}
@@ -176,8 +169,7 @@ def build_worklist(
             if not decided.jobs or known is not None:
                 # 走らせるものが無いか、手元の manifest が本物か。どちらでも
                 # 取得は要らない。前者はテストデータに触らずに次の問題へ行く。
-                if state.absorb(decided, targets, budget):
-                    return state.finish()
+                state.absorb(decided)
                 continue
 
         if not allow_fetch:
@@ -196,8 +188,7 @@ def build_worklist(
             if guess is not None:
                 state.moved.append((problem.id, guess, real))
             decided = _decide(problem, submissions, real, env, machine, known_keys)
-        if state.absorb(decided, targets, budget):
-            return state.finish()
+        state.absorb(decided)
 
     return state.finish()
 
@@ -218,25 +209,14 @@ class _State:
     unresolved: list[tuple[str, str]] = field(default_factory=list)
     failed: list[tuple[str, str]] = field(default_factory=list)
     blocked: list[Target] = field(default_factory=list)
-    held: list[Target] = field(default_factory=list)
     moved: list[tuple[str, str, str]] = field(default_factory=list)
 
-    def absorb(
-        self,
-        decided: _Decision,
-        targets: Sequence[Target],
-        budget: int | None,
-    ) -> bool:
-        """1 問ぶんの判定を取り込む。budget に達したら True を返す。"""
+    def absorb(self, decided: _Decision) -> None:
+        """1 問ぶんの判定を取り込む。"""
         self.skipped.extend(decided.skipped)
         self.blocked.extend(decided.blocked)
         self.unresolved.extend(decided.unresolved)
-        for job in decided.jobs:
-            self.jobs.append(job)
-            if budget is not None and len(self.jobs) >= budget:
-                self.held.extend(_rest(targets, job.problem, job.submission))
-                return True
-        return False
+        self.jobs.extend(decided.jobs)
 
     def finish(self) -> Worklist:
         return Worklist(
@@ -246,7 +226,6 @@ class _State:
             unresolved=tuple(self.unresolved),
             blocked=tuple(self.blocked),
             failed=tuple(self.failed),
-            held=tuple(self.held),
             moved=tuple(self.moved),
         )
 
@@ -316,16 +295,6 @@ def _decide(
         )
         (decided.skipped if job.key in known_keys else decided.jobs).append(job)
     return decided
-
-
-def _rest(
-    targets: Sequence[Target], problem: Problem, submission: Path
-) -> list[Target]:
-    """この提出より後ろに並んでいる対象。budget で止めたときの残り。"""
-    for index, target in enumerate(targets):
-        if target[0].id == problem.id and target[1] == submission:
-            return list(targets[index + 1 :])
-    return []
 
 
 # exit_code の問題で 1 回だけ走らせる「ケース」の名前。記録の failed_cases とサイトに出る。

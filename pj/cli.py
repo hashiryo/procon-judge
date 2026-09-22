@@ -9,8 +9,10 @@ import argparse
 import json
 import sys
 import time
+from collections.abc import Sequence
 from pathlib import Path
 
+from . import claims as claims_mod
 from . import environment as env_mod
 from . import fetch
 from . import migrate as migrate_mod
@@ -262,33 +264,6 @@ def _targets(args: argparse.Namespace) -> list[run_mod.Target]:
     return targets
 
 
-def _assigned(
-    targets: list[run_mod.Target],
-    env: env_mod.Environment,
-    store: Store,
-    args: argparse.Namespace,
-) -> list[run_mod.Target]:
-    """自分の担当の順に並べ直す。
-
-    並びは plan が決めたものと同じでないといけない。記録と問題定義と lib/
-    だけから決まるので、同じものを読めば同じ順になる。plan の出力を持ち回る
-    より、同じ関数を呼ぶ方がずれない。
-    """
-    # plan と同じ視野で並びを作る。--problem で絞っても順番は変えない。
-    envs = env_mod.load_all()
-    problems = [problem_mod.load(d) for d in problem_mod.all_problem_dirs()]
-    order = plan_mod.for_env(env, problems, envs, store).order
-    rank = {
-        problem_id: index
-        for index, problem_id in enumerate(
-            plan_mod.assignment(order, args.job, args.jobs)
-        )
-    }
-    # 束に入らなかった問題 (その環境では全モデル計測済み) はうしろに置く。
-    # 実際のモデルで未計測なら run がそこで拾う。
-    return sorted(targets, key=lambda t: rank.get(t[0].id, len(rank)))
-
-
 def cmd_plan(args: argparse.Namespace) -> int:
     envs = env_mod.load_all()
     problems = [problem_mod.load(d) for d in problem_mod.all_problem_dirs()]
@@ -302,12 +277,12 @@ def cmd_plan(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
 
-    plans = plan_mod.build(problems, envs, store, budget=args.budget, minutes=args.minutes)
+    plans = plan_mod.build(problems, envs, store, minutes=args.minutes)
     for one in plans:
         parts = [
             f"モデル {len(one.models)} 種",
-            f"未計測 {one.expected:.1f} 件/モデル (全モデル {sum(b.total for b in one.bundles)} 件)",
-            f"束 {len(one.bundles)} 件",
+            f"未計測 {one.expected:.1f} 件/モデル (全モデル {one.total} 件)",
+            f"問題 {len(one.works)} 件",
             f"ジョブ {one.jobs} 本",
         ]
         print(f"{one.env.name}\t" + " / ".join(parts), file=sys.stderr)
@@ -337,22 +312,134 @@ def cmd_run(args: argparse.Namespace) -> int:
     # CI では results ブランチから読んで、記録はアーティファクトに置く。
     # push するのは collect だけなので、run は store を書き換えない。
     out = Store(Path(args.out)) if args.out else store
-    targets = _targets(args)
-    if args.jobs is not None:
-        if args.jobs < 1 or not 0 <= args.job < args.jobs:
-            return _die(f"--job {args.job} が --jobs {args.jobs} に収まりません")
-        targets = _assigned(targets, env, store, args)
-
     print(
         f"{env.name} / {machine.cpu_model} / {machine.compiler_version}",
         file=sys.stderr,
     )
+    if args.claim_run:
+        if args.dry_run:
+            return _die("--dry-run は --claim-run と併用できません")
+        return _run_claiming(args, env, machine, store, out)
+
     worklist = run_mod.build_worklist(
-        targets, env, machine, store.keys(),
+        _targets(args), env, machine, store.keys(),
         borrowed=store.cases_hashes(),
         allow_fetch=not args.dry_run, refresh=args.refresh,
-        budget=args.budget,
     )
+    _report(worklist)
+
+    timed_out = 0
+    if args.dry_run:
+        for job in worklist.jobs:
+            print(f"run \t{job.label}\t{job.key}")
+        for job in worklist.skipped:
+            print(f"skip\t{job.label}\t{job.key}")
+        for problem, submission in worklist.pending:
+            print(f"fetch\t{problem.id}\t{submission.as_posix()}\t-")
+        for problem, submission in worklist.blocked:
+            print(f"block\t{problem.id}\t{submission.as_posix()}\t-")
+    else:
+        _, timed_out = _execute(
+            worklist.jobs, out, minutes=args.minutes, evict=args.evict_testdata
+        )
+
+    _print_summary(worklist, args.dry_run, file=sys.stderr, timed_out=timed_out)
+    # WA や TLE は判定であって失敗ではない。記録が出せたら 0 で返す。
+    # ここを非ゼロにすると、CI の step が落ちて記録を取りこぼす。
+    return 0
+
+
+def _run_claiming(
+    args: argparse.Namespace,
+    env: env_mod.Environment,
+    machine: run_mod.Machine,
+    store: Store,
+    out: Store,
+) -> int:
+    """CI のジョブ。問題を 1 つ宣言して測る、を時間いっぱい繰り返す。
+
+    並びは plan と同じ (重い順) で、ジョブ番号で開始点をずらす。宣言済みの
+    問題と、記録から借りた cases_hash で「このモデルでは走らせるものが無い」と
+    分かる問題は、宣言せずに飛ばす。宣言した問題は時間を過ぎても測り切る。
+    """
+    jobs = args.jobs if args.jobs is not None else 1
+    if jobs < 1 or not 0 <= args.job < jobs:
+        return _die(f"--job {args.job} が --jobs {jobs} に収まりません")
+
+    envs = env_mod.load_all()
+    problems = [problem_mod.load(d) for d in problem_mod.all_problem_dirs()]
+    by_id = {p.id: p for p in problems}
+    order = list(plan_mod.for_env(env, problems, envs, store).order)
+    # 既知のモデルで全部計測済みの問題は plan の並びに無い。引いたモデルが新しければ
+    # そこにも仕事があるので、うしろに付けておく。実際に走らせるかはこの先で決まる。
+    seen = set(order)
+    order += [p.id for p in problems if p.id not in seen]
+    if args.problem:
+        if args.problem not in by_id:
+            return _die(f"問題 {args.problem!r} がありません")
+        order = [args.problem]
+    sequence = plan_mod.rotation(order, args.job, jobs)
+
+    claims = claims_mod.Claims(
+        args.claim_run, env.name, machine.cpu_model, job=args.job, remote=args.claim_remote
+    )
+    keys = store.keys()
+    borrowed = store.cases_hashes()
+    taken = claims.taken()
+    print(f"宣言済み {len(taken)} 問から始めます", file=sys.stderr)
+
+    started = time.monotonic()
+    claimed = executed = skipped = lost = nothing = already = 0
+    timed_out = False
+    for problem_id in sequence:
+        if run_mod.out_of_time(started, args.minutes, time.monotonic()):
+            timed_out = True
+            break
+        if problem_id in taken:
+            already += 1
+            continue
+        problem = by_id[problem_id]
+        targets = [(problem, s) for s in problem.submissions()]
+        # 借りた値で判定して、走らせるものが無ければ宣言しない。テストデータにも触らない。
+        probe = run_mod.build_worklist(
+            targets, env, machine, keys, borrowed=borrowed, allow_fetch=False
+        )
+        if not probe.jobs and not probe.pending:
+            nothing += 1
+            continue
+        if not claims.claim(problem_id):
+            lost += 1
+            taken = claims.taken()
+            continue
+        claimed += 1
+        print(f"宣言 {claimed}: {problem_id}", file=sys.stderr)
+        worklist = run_mod.build_worklist(
+            targets, env, machine, keys, borrowed=borrowed,
+            allow_fetch=True, refresh=args.refresh,
+        )
+        _report(worklist)
+        done, _ = _execute(worklist.jobs, out, minutes=None, evict=args.evict_testdata)
+        executed += done
+        skipped += len(worklist.skipped)
+        if args.evict_testdata:
+            # 1 件も走らせなかった (取得だけした) 問題のぶんも捨てる。
+            fetch.evict(problem)
+
+    parts = [
+        f"宣言 {claimed} 問",
+        f"実行 {executed} 件",
+        f"スキップ {skipped} 件",
+        f"宣言済みで飛ばした {already} 問",
+        f"同時に取ろうとして負けた {lost} 問",
+        f"このモデルでは仕事なし {nothing} 問",
+    ]
+    if timed_out:
+        parts.append(f"時間の上限 {args.minutes:g} 分で終了")
+    print(" / ".join(parts), file=sys.stderr)
+    return 0
+
+
+def _report(worklist: run_mod.Worklist) -> None:
     for problem_id, before, after in worklist.moved:
         print(
             f"warning: {problem_id} のテストデータが変わりました "
@@ -376,53 +463,43 @@ def cmd_run(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
 
-    timed_out = 0
-    if args.dry_run:
-        for job in worklist.jobs:
-            print(f"run \t{job.label}\t{job.key}")
-        for job in worklist.skipped:
-            print(f"skip\t{job.label}\t{job.key}")
-        for problem, submission in worklist.pending:
-            print(f"fetch\t{problem.id}\t{submission.as_posix()}\t-")
-        for problem, submission in worklist.blocked:
-            print(f"block\t{problem.id}\t{submission.as_posix()}\t-")
-    else:
-        jobs = worklist.jobs
-        started = time.monotonic()
-        for index, job in enumerate(jobs, start=1):
-            if run_mod.out_of_time(started, args.minutes, time.monotonic()):
-                # 時間の上限。残りは次の実行が同じ順で拾う。
-                timed_out = len(jobs) - index + 1
-                print(
-                    f"時間の上限 {args.minutes:g} 分を過ぎたので、残り {timed_out} 件は見送ります",
-                    file=sys.stderr,
-                )
-                break
+
+def _execute(
+    jobs: Sequence[run_mod.Job], out: Store, *, minutes: float | None, evict: bool
+) -> tuple[int, int]:
+    """並んだ順に走らせて記録を書く。(走らせた件数, 時間で見送った件数) を返す。"""
+    started = time.monotonic()
+    executed = 0
+    for index, job in enumerate(jobs, start=1):
+        if run_mod.out_of_time(started, minutes, time.monotonic()):
+            # 時間の上限。残りは次の実行が同じ順で拾う。
+            timed_out = len(jobs) - index + 1
             print(
-                f"[{index}/{len(jobs)}] {job.problem.id} / "
-                f"{job.submission.as_posix()}",
+                f"時間の上限 {minutes:g} 分を過ぎたので、残り {timed_out} 件は見送ります",
                 file=sys.stderr,
             )
-            try:
-                record = run_mod.execute_job(job)
-            except fetch.FetchError as e:
-                # テストデータや判定器が用意できなかった。1 件のために残りを落とさず、
-                # 飛ばして次へ。取りこぼしは次の実行が拾う。
-                print(f"warning: {job.problem.id} / {job.submission.as_posix()} を飛ばします: {e}",
-                      file=sys.stderr)
-            else:
-                out.append(record)
-                print(record.to_json(), flush=True)
-            # 同じ問題の提出は続けて並ぶので、最後の 1 本を測ったらそのテストデータを
-            # 捨てられる。ランナーの disk のためで、手元では渡さない。
-            last_of_problem = index == len(jobs) or jobs[index].problem.id != job.problem.id
-            if args.evict_testdata and last_of_problem:
-                fetch.evict(job.problem)
-
-    _print_summary(worklist, args.dry_run, file=sys.stderr, timed_out=timed_out)
-    # WA や TLE は判定であって失敗ではない。記録が出せたら 0 で返す。
-    # ここを非ゼロにすると、CI の step が落ちて記録を取りこぼす。
-    return 0
+            return executed, timed_out
+        print(
+            f"[{index}/{len(jobs)}] {job.problem.id} / {job.submission.as_posix()}",
+            file=sys.stderr,
+        )
+        try:
+            record = run_mod.execute_job(job)
+        except fetch.FetchError as e:
+            # テストデータや判定器が用意できなかった。1 件のために残りを落とさず、
+            # 飛ばして次へ。取りこぼしは次の実行が拾う。
+            print(f"warning: {job.problem.id} / {job.submission.as_posix()} を飛ばします: {e}",
+                  file=sys.stderr)
+        else:
+            out.append(record)
+            print(record.to_json(), flush=True)
+            executed += 1
+        # 同じ問題の提出は続けて並ぶので、最後の 1 本を測ったらそのテストデータを
+        # 捨てられる。ランナーの disk のためで、手元では渡さない。
+        last_of_problem = index == len(jobs) or jobs[index].problem.id != job.problem.id
+        if evict and last_of_problem:
+            fetch.evict(job.problem)
+    return executed, 0
 
 
 def _print_summary(
@@ -436,9 +513,20 @@ def _print_summary(
         parts.append(f"テストデータ未取得 {len(worklist.pending)} 件")
     if worklist.blocked:
         parts.append(f"include 未解決 {len(worklist.blocked)} 件")
-    if worklist.held:
-        parts.append(f"budget で見送り {len(worklist.held)} 件")
     print(" / ".join(parts), file=file)
+
+
+def cmd_claims_clean(args: argparse.Namespace) -> int:
+    """この run 以前の宣言の ref を消す。collect の最後に呼ぶ。"""
+    removed = claims_mod.clean(args.run_id, remote=args.remote)
+    print(f"宣言を {removed} 本消しました", file=sys.stderr)
+    return 0
+
+
+def cmd_claims_list(args: argparse.Namespace) -> int:
+    for ref in claims_mod.list_refs(remote=args.remote):
+        print(ref)
+    return 0
 
 
 def cmd_records_append(args: argparse.Namespace) -> int:
@@ -579,12 +667,6 @@ def build_parser() -> argparse.ArgumentParser:
     p_plan = sub.add_parser("plan", help="環境ごとのジョブの本数を決める")
     p_plan.add_argument("--store", help=f"記録を読む場所 (既定 {RESULTS_DIR.name}/)")
     p_plan.add_argument(
-        "--budget",
-        type=int,
-        default=plan_mod.DEFAULT_BUDGET,
-        help=f"1 ジョブで測る提出の上限 (既定 {plan_mod.DEFAULT_BUDGET})",
-    )
-    p_plan.add_argument(
         "--minutes",
         type=int,
         default=plan_mod.DEFAULT_MINUTES,
@@ -606,13 +688,18 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.add_argument("--out", help="記録の書き先 (既定は --store と同じ)")
     p_run.add_argument("--refresh", action="store_true", help="テストデータを取り直す")
     p_run.add_argument(
-        "--job", type=int, default=0, help="何番目のジョブか (0 始まり)"
+        "--claim-run",
+        metavar="RUN_ID",
+        help="CI のジョブとして、問題を 1 つずつ宣言して測る。GitHub の run id を渡す",
     )
     p_run.add_argument(
-        "--jobs", type=int, help="その環境で立っているジョブの本数。省略すると全部見る"
+        "--claim-remote", default="origin", help="宣言を置く remote (既定 origin)。手元で試すとき用"
     )
     p_run.add_argument(
-        "--budget", type=int, help="走らせる提出の上限。省略すると打ち切らない"
+        "--job", type=int, default=0, help="何番目のジョブか (0 始まり)。宣言の開始点をずらす"
+    )
+    p_run.add_argument(
+        "--jobs", type=int, help="その環境で立っているジョブの本数 (--claim-run のとき)"
     )
     p_run.add_argument(
         "--minutes",
@@ -634,6 +721,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_repro.add_argument("--case", help="このケースだけ走らせる。省略すると全部")
     p_repro.add_argument("--env", default="local")
     p_repro.set_defaults(func=cmd_repro)
+
+    claims_cmd = sub.add_parser("claims", help="CI のジョブが仕事を取るための宣言").add_subparsers(
+        dest="subcommand", required=True
+    )
+    c_clean = claims_cmd.add_parser("clean", help="この run 以前の宣言を消す")
+    c_clean.add_argument("--run-id", required=True)
+    c_clean.add_argument("--remote", default="origin")
+    c_clean.set_defaults(func=cmd_claims_clean)
+    c_list = claims_cmd.add_parser("list", help="今ある宣言の ref を出す")
+    c_list.add_argument("--remote", default="origin")
+    c_list.set_defaults(func=cmd_claims_list)
 
     records = sub.add_parser("records", help="記録").add_subparsers(
         dest="subcommand", required=True
@@ -669,6 +767,7 @@ def main(argv: list[str] | None = None) -> int:
         mirror.MirrorError,
         migrate_mod.MigrateError,
         site_build.SiteError,
+        claims_mod.ClaimError,
     ) as e:
         return _die(str(e))
 
