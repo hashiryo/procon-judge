@@ -12,6 +12,13 @@
 // テーブルは constexpr で compile-time に作られる (PDEP は使わず bit-interleave で
 // 構成して constexpr 評価可)。
 //
+// 表の作り方: frobK は線型なので、基底 e_0..e_63 の像 64 個が決まれば 2048 通りの entry は
+// その XOR で出る。そして frob(K+L) = frobK ∘ frobL なので、欲しい K は既にある 2 つの段の
+// 足し算で作れる (48 = 32 + 16 など)。64 個の基底を上の段の表で 1 回引き直すだけで次の段が
+// 出るので、1 つの段あたり 64 回の lookup と 2048 回の XOR しか要らない。
+// 2048 通りを K 回ずつ sq していた頃と比べて sq の呼び出しは 64 回だけになり、
+// constexpr 変数 1 つあたりの step も 1 桁減って既定の上限に十分な余裕ができる。
+//
 // 利用側ルール:
 //   gf2-64-frob{2,4,8,16}/algos/* は本ファイルを使ってはいけない (frobK の
 //     比較対象なので)。
@@ -37,74 +44,70 @@ constexpr u64 sq_constexpr(u64 a) {
  u64 d= h ^ (h << 1);
  return spread_constexpr(u32(a)) ^ RED_TABLE[h >> 60] ^ d ^ (d << 3);
 }
-template <int sq_count> constexpr array<array<u64, 256>, 8> make_frob_table() {
- array<array<u64, 256>, 8> t{};
- for(int p= 0; p < 8; ++p) {
-  for(int b= 0; b < 256; ++b) {
-   u64 v= u64(b) << (8 * p);
-   for(int i= 0; i < sq_count; ++i) v= sq_constexpr(v);
-   t[p][b]= v;
+using Basis= array<u64, 64>;             // basis[i] = frobK(1 << i)
+using Table= array<array<u64, 256>, 8>;  // table[p][b] = frobK(b << 8p)
+// 基底の像から 2048 通りを埋める。bit を下から 1 本ずつ足して、出来ている半分から倍々に伸ばす。
+constexpr Table expand(const Basis& g) {
+ Table t{};
+ for(int p= 0; p < 8; ++p)
+  for(int j= 0; j < 8; ++j) {
+   const u64 v= g[8 * p + j];
+   const int half= 1 << j;
+   for(int b= 0; b < half; ++b) t[p][half + b]= t[p][b] ^ v;
   }
- }
  return t;
 }
+constexpr u64 apply(const Table& t, u64 a) { return t[0][u8(a)] ^ t[1][u8(a >> 8)] ^ t[2][u8(a >> 16)] ^ t[3][u8(a >> 24)] ^ t[4][u8(a >> 32)] ^ t[5][u8(a >> 40)] ^ t[6][u8(a >> 48)] ^ t[7][u8(a >> 56)]; }
+struct Frob {
+ Basis g;
+ Table t;
+};
+// frob(K+L) の基底 = frobK を frobL の基底 64 個に掛けたもの。上の段の sq をやり直さない。
+constexpr Frob compose(const Frob& hi, const Frob& lo) {
+ Basis g{};
+ for(int i= 0; i < 64; ++i) g[i]= apply(hi.t, lo.g[i]);
+ return {g, expand(g)};
+}
+// 唯一 sq から作る段。ここだけ 64 回 sq を呼ぶ。
+constexpr Frob make_frob1() {
+ Basis g{};
+ for(int i= 0; i < 64; ++i) g[i]= sq_constexpr(u64(1) << i);
+ return {g, expand(g)};
+}
+// 右辺の足し算がそのまま K (= sq の適用回数) の足し算。欲しい段だけを並べてある。
+constexpr Frob F1= make_frob1();
+constexpr Frob F2= compose(F1, F1);
+constexpr Frob F3= compose(F2, F1);
+constexpr Frob F4= compose(F2, F2);
+constexpr Frob F5= compose(F4, F1);
+constexpr Frob F6= compose(F4, F2);
+constexpr Frob F7= compose(F4, F3);
+constexpr Frob F8= compose(F4, F4);
+constexpr Frob F9= compose(F8, F1);
+constexpr Frob F10= compose(F8, F2);
+constexpr Frob F12= compose(F8, F4);
+constexpr Frob F16= compose(F8, F8);
+constexpr Frob F24= compose(F16, F8);
+constexpr Frob F32= compose(F16, F16);
+constexpr Frob F36= compose(F32, F4);
+constexpr Frob F48= compose(F32, F16);
 }  // namespace _frob_detail
 // FROBK_BYTE[p][b] = frobK(b << 8p)。 K = sq 適用回数。
-inline constexpr auto FROB2_BYTE= _frob_detail::make_frob_table<2>();
-inline constexpr auto FROB3_BYTE= _frob_detail::make_frob_table<3>();
-inline constexpr auto FROB4_BYTE= _frob_detail::make_frob_table<4>();
-inline constexpr auto FROB5_BYTE= _frob_detail::make_frob_table<5>();
-inline constexpr auto FROB6_BYTE= _frob_detail::make_frob_table<6>();
-inline constexpr auto FROB7_BYTE= _frob_detail::make_frob_table<7>();
-inline constexpr auto FROB8_BYTE= _frob_detail::make_frob_table<8>();
-inline constexpr auto FROB9_BYTE= _frob_detail::make_frob_table<9>();
-inline constexpr auto FROB10_BYTE= _frob_detail::make_frob_table<10>();
-inline constexpr auto FROB12_BYTE= _frob_detail::make_frob_table<12>();  // pow 4-lane 分割 (12 bit lane) の結合用
-inline constexpr auto FROB16_BYTE= _frob_detail::make_frob_table<16>();
-// frob32, frob48 は norm decomposition で使う (α + α^{2^16} + α^{2^32} + α^{2^48})
-// 直接 sq×32 / sq×48 で constexpr 評価すると step 上限超過する可能性があるので、
-// 既存の FROB16_BYTE を chain で適用して構築 (各 entry 16-32 ops で軽い)。
-namespace _frob_detail {
-constexpr u64 apply_frob16_constexpr(u64 a) { return FROB16_BYTE[0][u8(a)] ^ FROB16_BYTE[1][u8(a >> 8)] ^ FROB16_BYTE[2][u8(a >> 16)] ^ FROB16_BYTE[3][u8(a >> 24)] ^ FROB16_BYTE[4][u8(a >> 32)] ^ FROB16_BYTE[5][u8(a >> 40)] ^ FROB16_BYTE[6][u8(a >> 48)] ^ FROB16_BYTE[7][u8(a >> 56)]; }
-constexpr array<array<u64, 256>, 8> make_frob_chain(int chain_count) {
- array<array<u64, 256>, 8> t{};
- for(int p= 0; p < 8; ++p) {
-  for(int b= 0; b < 256; ++b) {
-   u64 v= u64(b) << (8 * p);
-   for(int i= 0; i < chain_count; ++i) v= apply_frob16_constexpr(v);
-   t[p][b]= v;
-  }
- }
- return t;
-}
-}  // namespace _frob_detail
-inline constexpr auto FROB32_BYTE= _frob_detail::make_frob_chain(2);  // sq×32 = frob16 ∘ frob16
-inline constexpr auto FROB48_BYTE= _frob_detail::make_frob_chain(3);  // sq×48 = frob16^3
-// frob24 (= sq×24) は pow の 2-lane 分割 (a^r = frob24(a^{r_H}) · a^{r_L}) の結合で使う。
-// sq×24 の直接 constexpr 生成は FROB16 の 1.5 倍 step で上限が怖いので、
-// 既存 byte table の合成 frob16 ∘ frob8 で構築 (各 entry 16 lookup で軽い)。
-namespace _frob_detail {
-constexpr u64 apply_frob8_constexpr(u64 a) { return FROB8_BYTE[0][u8(a)] ^ FROB8_BYTE[1][u8(a >> 8)] ^ FROB8_BYTE[2][u8(a >> 16)] ^ FROB8_BYTE[3][u8(a >> 24)] ^ FROB8_BYTE[4][u8(a >> 32)] ^ FROB8_BYTE[5][u8(a >> 40)] ^ FROB8_BYTE[6][u8(a >> 48)] ^ FROB8_BYTE[7][u8(a >> 56)]; }
-constexpr array<array<u64, 256>, 8> make_frob24_table() {
- array<array<u64, 256>, 8> t{};
- for(int p= 0; p < 8; ++p)
-  for(int b= 0; b < 256; ++b) t[p][b]= apply_frob16_constexpr(apply_frob8_constexpr(u64(b) << (8 * p)));
- return t;
-}
-}  // namespace _frob_detail
-inline constexpr auto FROB24_BYTE= _frob_detail::make_frob24_table();
-// frob36 (= sq×36) は pow の 4-lane 分割 (12 bit lane) の結合で使う。
-// sq×36 の直接 constexpr 生成は step 上限が怖いので frob16 ∘ frob16 ∘ frob4 の合成で構築。
-namespace _frob_detail {
-constexpr u64 apply_frob4_constexpr(u64 a) { return FROB4_BYTE[0][u8(a)] ^ FROB4_BYTE[1][u8(a >> 8)] ^ FROB4_BYTE[2][u8(a >> 16)] ^ FROB4_BYTE[3][u8(a >> 24)] ^ FROB4_BYTE[4][u8(a >> 32)] ^ FROB4_BYTE[5][u8(a >> 40)] ^ FROB4_BYTE[6][u8(a >> 48)] ^ FROB4_BYTE[7][u8(a >> 56)]; }
-constexpr array<array<u64, 256>, 8> make_frob36_table() {
- array<array<u64, 256>, 8> t{};
- for(int p= 0; p < 8; ++p)
-  for(int b= 0; b < 256; ++b) t[p][b]= apply_frob16_constexpr(apply_frob16_constexpr(apply_frob4_constexpr(u64(b) << (8 * p))));
- return t;
-}
-}  // namespace _frob_detail
-inline constexpr auto FROB36_BYTE= _frob_detail::make_frob36_table();
+inline constexpr auto FROB2_BYTE= _frob_detail::F2.t;
+inline constexpr auto FROB3_BYTE= _frob_detail::F3.t;
+inline constexpr auto FROB4_BYTE= _frob_detail::F4.t;
+inline constexpr auto FROB5_BYTE= _frob_detail::F5.t;
+inline constexpr auto FROB6_BYTE= _frob_detail::F6.t;
+inline constexpr auto FROB7_BYTE= _frob_detail::F7.t;
+inline constexpr auto FROB8_BYTE= _frob_detail::F8.t;
+inline constexpr auto FROB9_BYTE= _frob_detail::F9.t;
+inline constexpr auto FROB10_BYTE= _frob_detail::F10.t;
+inline constexpr auto FROB12_BYTE= _frob_detail::F12.t;  // pow 4-lane 分割 (12 bit lane) の結合用
+inline constexpr auto FROB16_BYTE= _frob_detail::F16.t;
+inline constexpr auto FROB24_BYTE= _frob_detail::F24.t;  // pow 2-lane 分割 (a^r = frob24(a^{r_H}) · a^{r_L}) の結合用
+inline constexpr auto FROB32_BYTE= _frob_detail::F32.t;  // norm decomposition (α + α^{2^16} + α^{2^32} + α^{2^48}) 用
+inline constexpr auto FROB36_BYTE= _frob_detail::F36.t;  // pow 4-lane 分割の結合用
+inline constexpr auto FROB48_BYTE= _frob_detail::F48.t;  // norm decomposition 用
 // 各 frobK は対応する byte table を直接展開 (関数引数経由の indirection を避ける)。
 inline u64 frob2(u64 a) { return FROB2_BYTE[0][u8(a)] ^ FROB2_BYTE[1][u8(a >> 8)] ^ FROB2_BYTE[2][u8(a >> 16)] ^ FROB2_BYTE[3][u8(a >> 24)] ^ FROB2_BYTE[4][u8(a >> 32)] ^ FROB2_BYTE[5][u8(a >> 40)] ^ FROB2_BYTE[6][u8(a >> 48)] ^ FROB2_BYTE[7][u8(a >> 56)]; }
 inline u64 frob3(u64 a) { return FROB3_BYTE[0][u8(a)] ^ FROB3_BYTE[1][u8(a >> 8)] ^ FROB3_BYTE[2][u8(a >> 16)] ^ FROB3_BYTE[3][u8(a >> 24)] ^ FROB3_BYTE[4][u8(a >> 32)] ^ FROB3_BYTE[5][u8(a >> 40)] ^ FROB3_BYTE[6][u8(a >> 48)] ^ FROB3_BYTE[7][u8(a >> 56)]; }
