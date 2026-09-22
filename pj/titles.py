@@ -3,7 +3,7 @@
 題名は表示にしか使わないので鍵には入らないが、手で書くと違う名前を付けてしまう。
 移植のときに AOJ の 36 問のうち 24 問と yukicoder の 3 問がそうなっていた。
 判定サイトから取れるものは取って揃える。local や manual や none の問題には
-判定サイトの名前が無いので見ない。
+判定サイトの名前が無いので見ない。LOJ は問題の API から取る (多くは zh_CN しか無い)。
 
 AOJ の旧 API (judgeapi.u-aizu.ac.jp) は 410 Gone で消えている。新しいサイトの
 一覧の API を 1000 件ずつ舐めて、id から名前を引く。
@@ -106,6 +106,13 @@ class Titles:
             return title
         if source == "library_checker":
             return plain(_library_checker_title(name))
+        if source == "loj":
+            from .fetch import FetchError, loj
+
+            try:
+                return loj.title(name)
+            except FetchError as e:
+                raise TitleError(str(e)) from e
         url = getattr(problem, "url", "")
         if url and "atcoder.jp/contests/" in url:
             # ケースが取れないので source は none だが、題名はページから取れる。
@@ -138,6 +145,15 @@ class Titles:
         try:
             return float(entry["problemTimeLimit"]), int(entry["problemMemoryLimit"]) // 1024
         except (KeyError, TypeError, ValueError):
+            return None
+
+    def loj_limits(self, name: str) -> tuple[float, int] | None:
+        """LOJ の制限 (秒, MB)。問題の API から取る。取れなければ None。"""
+        from .fetch import FetchError, loj
+
+        try:
+            return loj.limits(name)
+        except FetchError:
             return None
 
 

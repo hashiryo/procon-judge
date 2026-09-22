@@ -446,6 +446,7 @@ def test_problem_url_knows_the_judges(tmp_path):
         site_build.problem_url(with_source("yukicoder", "274"))
         == "https://yukicoder.me/problems/no/274"
     )
+    assert site_build.problem_url(with_source("loj", "2419")) == "https://loj.ac/p/2419"
     assert site_build.problem_url(None) is None
 
 

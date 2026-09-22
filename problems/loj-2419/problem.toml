@@ -1,5 +1,5 @@
 id = "loj-2419"
-title = "Landscaping"
+title = "「USACO 2016 US Open, Platinum」Landscaping"
 
 [limits]
 tle_sec = 5.0
@@ -9,8 +9,8 @@ mle_mb = 512
 kind = "base"
 
 [testdata]
-source = "manual"
-name = "loj-2419"
+source = "loj"
+name = "2419"
 
 [compare]
 kind = "tokens"

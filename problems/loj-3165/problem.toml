@@ -1,17 +1,16 @@
 id = "loj-3165"
-title = "loj-3165"
-url = "https://loj.ac/p/3165"
+title = "「CEOI2019」游乐园"
 
 [limits]
 tle_sec = 5.0
-mle_mb = 512
+mle_mb = 1024
 
 [harness]
 kind = "raw"
 
 [testdata]
-source = "manual"
-name = "loj-3165"
+source = "loj"
+name = "3165"
 
 [compare]
 kind = "tokens"

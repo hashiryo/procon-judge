@@ -1,6 +1,5 @@
 id = "loj-2192"
-title = "loj-2192"
-url = "https://loj.ac/p/2192"
+title = "「SHOI2014」概率充电器"
 
 [limits]
 tle_sec = 5.0
@@ -10,8 +9,8 @@ mle_mb = 512
 kind = "raw"
 
 [testdata]
-source = "manual"
-name = "loj-2192"
+source = "loj"
+name = "2192"
 
 [compare]
 kind = "tokens"

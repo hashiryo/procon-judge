@@ -122,6 +122,8 @@ def origin_of(url: str) -> Origin:
             task = task[: -len("_ex")] + "_h"
             url = url[: url.rfind("/") + 1] + task
         return Origin("none", "", "atcoder-" + task.replace("_", "-"), url)
+    if host == "loj.ac" and parts[:1] == ["p"] and len(parts) >= 2:
+        return Origin("loj", parts[1], f"loj-{parts[1]}", url)
     # 以下はテストデータを機械的に取れない判定サイト。source = "manual" で、name は id。
     manual = _manual_id(host, parts, parsed.fragment)
     if manual is not None:
@@ -147,8 +149,6 @@ def _manual_id(host: str, parts: list[str], fragment: str) -> str | None:
         return f"kattis-{parts[1]}"
     if host.endswith("luogu.com.cn") and parts[:1] == ["problem"] and len(parts) >= 2:
         return f"luogu-{parts[1]}"
-    if host == "loj.ac" and parts[:1] == ["p"] and len(parts) >= 2:
-        return f"loj-{parts[1]}"
     if host.endswith("hackerrank.com") and "challenges" in parts:
         i = parts.index("challenges")
         if i + 1 < len(parts):
@@ -383,6 +383,12 @@ def _item(problem_id, members, *, titles, library_checker_dir) -> Item:
         if origin.source == "aoj":
             # AOJ の一覧は制限も持っている。判定サイトの値より下には締めない。
             limits = titles.aoj_limits(origin.name)
+            if limits is not None:
+                official_tle = max(official_tle, limits[0])
+                official_mle = max(official_mle, limits[1])
+        if origin.source == "loj":
+            # LOJ は問題の API が制限を持っている。AOJ と同じ扱い。
+            limits = titles.loj_limits(origin.name)
             if limits is not None:
                 official_tle = max(official_tle, limits[0])
                 official_mle = max(official_mle, limits[1])

@@ -1,17 +1,16 @@
 id = "loj-154"
-title = "loj-154"
-url = "https://loj.ac/p/154"
+title = "集合划分计数"
 
 [limits]
-tle_sec = 5.0
-mle_mb = 512
+tle_sec = 7.0
+mle_mb = 1024
 
 [harness]
 kind = "raw"
 
 [testdata]
-source = "manual"
-name = "loj-154"
+source = "loj"
+name = "154"
 
 [compare]
 kind = "tokens"

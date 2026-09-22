@@ -278,7 +278,6 @@ def test_atcoder_ignore_is_still_imported_as_compile_only(tmp_path):
         ("https://www.codechef.com/problems/CCDSAP", "codechef-CCDSAP"),
         ("https://icpc.kattis.com/problems/conquertheworld", "kattis-conquertheworld"),
         ("https://www.luogu.com.cn/problem/P5055", "luogu-P5055"),
-        ("https://loj.ac/p/2419", "loj-2419"),
         ("https://www.hackerrank.com/challenges/library-query/problem", "hackerrank-library-query"),
         ("https://www.hackerrank.com/contests/w33/challenges/bonnie-and-clyde", "hackerrank-bonnie-and-clyde"),
         ("https://cses.fi/problemset/task/2132/", "cses-2132"),
@@ -294,15 +293,28 @@ def test_manual_judges_get_a_prefixed_id(url, problem_id):
 
 
 def test_a_manual_problem_writes_its_url(tmp_path):
-    src = write_test(tmp_path, "2419.test.cpp", "https://loj.ac/p/2419")
+    src = write_test(tmp_path, "2132.test.cpp", "https://cses.fi/problemset/task/2132/")
     item = migrate.plan([src], existing=set())[0]
-    assert (item.source, item.name, item.compare) == ("manual", "loj-2419", "tokens")
+    assert (item.source, item.name, item.compare) == ("manual", "cses-2132", "tokens")
     toml = migrate.problem_toml(item)
-    assert 'url = "https://loj.ac/p/2419"' in toml
+    assert 'url = "https://cses.fi/problemset/task/2132/"' in toml
     from pj import problem as problem_mod
 
     loaded = problem_mod.load(migrate.write(item, tmp_path / "problems"))
-    assert loaded.url == "https://loj.ac/p/2419"
+    assert loaded.url == "https://cses.fi/problemset/task/2132/"
+
+
+def test_loj_is_fetched_from_its_api():
+    """LOJ はログイン無しの API で取れるので manual ではない。name は番号だけ。"""
+    origin = migrate.origin_of("https://loj.ac/p/2419")
+    assert (origin.source, origin.name, origin.id) == ("loj", "2419", "loj-2419")
+
+
+def test_a_loj_problem_does_not_write_its_url(tmp_path):
+    src = write_test(tmp_path, "2419.test.cpp", "https://loj.ac/p/2419")
+    item = migrate.plan([src], existing=set())[0]
+    assert (item.source, item.name, item.compare) == ("loj", "2419", "tokens")
+    assert "url =" not in migrate.problem_toml(item)
 
 
 def test_standalone_takes_its_id_from_the_url_in_a_comment(tmp_path):

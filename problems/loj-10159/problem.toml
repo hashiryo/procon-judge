@@ -1,6 +1,5 @@
 id = "loj-10159"
-title = "loj-10159"
-url = "https://loj.ac/p/10159"
+title = "「一本通 5.2 练习 2」旅游规划"
 
 [limits]
 tle_sec = 5.0
@@ -10,8 +9,8 @@ mle_mb = 512
 kind = "raw"
 
 [testdata]
-source = "manual"
-name = "loj-10159"
+source = "loj"
+name = "10159"
 
 [compare]
 kind = "tokens"

@@ -276,11 +276,12 @@ SOURCE_LABELS = {
     "library_checker": "Library Checker",
     "aoj": "AOJ",
     "yukicoder": "yukicoder",
+    "loj": "LOJ",
     "manual": "手動取り込み",
     "local": "自作",
     "none": "無し (コンパイルのみ)",
 }
-OFFICIAL_SOURCES = frozenset({"library_checker", "aoj", "yukicoder"})
+OFFICIAL_SOURCES = frozenset({"library_checker", "aoj", "yukicoder", "loj"})
 # 判定サイトのデータで測ったように見えては困るもの。注意書きを目立たせる。
 CAUTION_SOURCES = frozenset({"local", "none"})
 
@@ -340,6 +341,8 @@ def problem_url(problem: problem_mod.Problem | None) -> str | None:
         return f"https://onlinejudge.u-aizu.ac.jp/problems/{name}"
     if source == "yukicoder":
         return f"https://yukicoder.me/problems/no/{name}"
+    if source == "loj":
+        return f"https://loj.ac/p/{name}"
     return None
 
 

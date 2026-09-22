@@ -1,6 +1,5 @@
 id = "loj-6699"
-title = "loj-6699"
-url = "https://loj.ac/p/6699"
+title = "然而第六章的 A 面并没有草莓"
 
 [limits]
 tle_sec = 5.0
@@ -10,8 +9,8 @@ mle_mb = 512
 kind = "raw"
 
 [testdata]
-source = "manual"
-name = "loj-6699"
+source = "loj"
+name = "6699"
 
 [compare]
 kind = "tokens"

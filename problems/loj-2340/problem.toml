@@ -1,17 +1,16 @@
 id = "loj-2340"
-title = "loj-2340"
-url = "https://loj.ac/p/2340"
+title = "「WC2018」州区划分"
 
 [limits]
-tle_sec = 5.0
-mle_mb = 512
+tle_sec = 10.0
+mle_mb = 1024
 
 [harness]
 kind = "raw"
 
 [testdata]
-source = "manual"
-name = "loj-2340"
+source = "loj"
+name = "2340"
 
 [compare]
 kind = "tokens"

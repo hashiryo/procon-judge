@@ -367,6 +367,10 @@ def _fetch_from_origin(problem: Problem, dest: Path, env=None) -> dict | None:
         from . import yukicoder
 
         yukicoder.fetch(problem, dest)
+    elif source == "loj":
+        from . import loj
+
+        loj.fetch(problem, dest)
     elif source == "manual":
         from . import manual
 

@@ -1,6 +1,6 @@
 """手で取り込む取得元。
 
-LOJ、IOI、CSES、Codeforces のようにリアルタイムで取れないものに使う。原本は
+IOI (JOI 春合宿)、CSES、Codeforces、HackerRank のようにリアルタイムで取れないものに使う。原本は
 叩かない。手元で落としたものを pj testdata import で取り込んで、
 pj mirror push で保管庫へ上げる。以降は保管庫から取る。
 """

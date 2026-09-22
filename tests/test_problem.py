@@ -126,6 +126,19 @@ def test_missing_prefix_warns(tmp_path):
     assert "'yosupo-'" in problem_mod.warnings(p)[0]
 
 
+def test_loj_prefix_matches_the_source(tmp_path):
+    body = with_source("loj-2419", "loj", "2419")
+    p = problem_mod.load(make(tmp_path, "loj-2419", body))
+    assert problem_mod.warnings(p) == []
+    assert (p.testdata.source, p.testdata.name) == ("loj", "2419")
+
+
+def test_loj_needs_a_name(tmp_path):
+    body = MINIMAL.format(id="loj-1").replace('source = "none"', 'source = "loj"')
+    with pytest.raises(problem_mod.ProblemError, match="name"):
+        problem_mod.load(make(tmp_path, "loj-1", body))
+
+
 def test_source_without_a_prefix_never_warns(tmp_path):
     body = with_source("aoj-DSL_2_B", "manual")
     p = problem_mod.load(make(tmp_path, "aoj-DSL_2_B", body))

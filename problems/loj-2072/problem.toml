@@ -1,6 +1,5 @@
 id = "loj-2072"
-title = "loj-2072"
-url = "https://loj.ac/p/2072"
+title = "「JSOI2016」独特的树叶"
 
 [limits]
 tle_sec = 5.0
@@ -10,8 +9,8 @@ mle_mb = 512
 kind = "raw"
 
 [testdata]
-source = "manual"
-name = "loj-2072"
+source = "loj"
+name = "2072"
 
 [compare]
 kind = "tokens"

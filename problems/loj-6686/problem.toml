@@ -9,8 +9,8 @@ mle_mb = 512
 kind = "base"
 
 [testdata]
-source = "manual"
-name = "loj-6686"
+source = "loj"
+name = "6686"
 
 [compare]
 kind = "tokens"

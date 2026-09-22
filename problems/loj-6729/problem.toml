@@ -1,17 +1,16 @@
 id = "loj-6729"
-title = "loj-6729"
-url = "https://loj.ac/p/6729"
+title = "点双连通生成子图计数"
 
 [limits]
-tle_sec = 5.0
-mle_mb = 512
+tle_sec = 10.0
+mle_mb = 1024
 
 [harness]
 kind = "raw"
 
 [testdata]
-source = "manual"
-name = "loj-6729"
+source = "loj"
+name = "6729"
 
 [compare]
 kind = "tokens"

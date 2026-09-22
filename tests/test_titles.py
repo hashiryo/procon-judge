@@ -83,6 +83,16 @@ def test_library_checker_title_comes_from_the_local_clone(tmp_path, monkeypatch)
     assert titles_mod.Titles().official(p) == "#p Subset Sum"
 
 
+def test_loj_title_comes_from_its_api(tmp_path, monkeypatch):
+    from pj.fetch import loj
+
+    monkeypatch.setattr(
+        loj, "problem_info", lambda number: {"localizedContentsOfLocale": {"title": "Stupid GCD"}}
+    )
+    p = make_problem(tmp_path, pid="loj-6686", title="x", source="loj", name="6686")
+    assert titles_mod.Titles().official(p) == "Stupid GCD"
+
+
 def test_other_sources_have_no_official_title(tmp_path):
     p = make_problem(
         tmp_path, pid="gf2-64", title="mine", source="none", name="", compare="compile_only"

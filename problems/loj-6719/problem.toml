@@ -1,17 +1,16 @@
 id = "loj-6719"
-title = "loj-6719"
-url = "https://loj.ac/p/6719"
+title = "「300iq Contest 2」数仙人掌 加强版"
 
 [limits]
-tle_sec = 5.0
-mle_mb = 512
+tle_sec = 7.5
+mle_mb = 1024
 
 [harness]
 kind = "raw"
 
 [testdata]
-source = "manual"
-name = "loj-6719"
+source = "loj"
+name = "6719"
 
 [compare]
 kind = "tokens"
