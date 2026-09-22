@@ -31,8 +31,8 @@ constexpr array<array<u64, 256>, 8> FROB_BYTE= [] {
  return t;
 }();
 inline u64 frob2(u64 a) {
- __m256i x = __mm256_xor_si256(_mm256_set_epi64x(FROB_BYTE[0][u8(a)], FROB_BYTE[1][u8(a >> 8)], FROB_BYTE[2][u8(a >> 16)], FROB_BYTE[3][u8(a >> 24)]), _mm256_set_epi64x(FROB_BYTE[4][u8(a >> 32)], FROB_BYTE[5][u8(a >> 40)], FROB_BYTE[6][u8(a >> 48)], FROB_BYTE[7][u8(a >> 56)]));
- __m128i y = _mm_xor_si128(_mm256_castsi256_si128(x), _mm256_extracti128_si256(x, 1));
+ __m256i x= __mm256_xor_si256(_mm256_set_epi64x(FROB_BYTE[0][u8(a)], FROB_BYTE[1][u8(a >> 8)], FROB_BYTE[2][u8(a >> 16)], FROB_BYTE[3][u8(a >> 24)]), _mm256_set_epi64x(FROB_BYTE[4][u8(a >> 32)], FROB_BYTE[5][u8(a >> 40)], FROB_BYTE[6][u8(a >> 48)], FROB_BYTE[7][u8(a >> 56)]));
+ __m128i y= _mm_xor_si128(_mm256_castsi256_si128(x), _mm256_extracti128_si256(x, 1));
  return _mm_cvtsi128_si64(y) ^ _mm_extract_epi64(y, 1);
 }
 }
