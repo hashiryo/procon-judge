@@ -5,15 +5,18 @@
 """GF(2^64) の冪 の入力を作る。seed を 1 つ受け取り、その番号のケースを stdout に出す。
 
 期待出力は参照実装 (problem.toml の reference) がハーネスと一緒に作るので、
-ここでは入力だけを書く。旧 judge の gf2-64-pow/testcases/gen.py の種類を seed に割り当てた。
+ここでは入力だけを書く。seed 0..5 は旧 judge の gf2-64-pow/testcases/gen.py の種類を割り当てた
+もので、seed 6 はこちらで足した。
 """
 import random
 import sys
 
 MASK64 = (1 << 64) - 1
+# (2^64-1)/(2^16-1) = 2^48 + 2^32 + 2^16 + 1。a^M は GF(2^16) に落ちる。
+M = MASK64 // 0xFFFF
 
 # seed -> (種類, 件数)
-CASES = {0: ("sample", 10), 1: ("small_e", 100), 2: ("edge_e", 200), 3: ("random", 10000), 4: ("random", 100000), 5: ("chunk_top_bit", 100000)}
+CASES = {0: ("sample", 10), 1: ("small_e", 100), 2: ("edge_e", 200), 3: ("random", 10000), 4: ("random", 100000), 5: ("chunk_top_bit", 100000), 6: ("rem_high", 1000)}
 
 
 def make(kind: str, t: int, rng: random.Random) -> list:
@@ -32,6 +35,19 @@ def make(kind: str, t: int, rng: random.Random) -> list:
             for s in (0, 16, 32, 48):
                 e |= (0x8000 | rng.randint(0, 0x7FFF)) << s
             out.append((rng.randint(0, MASK64), e))
+        return out
+    if kind == "rem_high":
+        # e を M で割ったあまり r が 2^48 以上。e = q M + r と分けて a^e = (a^M)^q · a^r と
+        # する解法は、r の側を 48 bit の窓で回すことがあるが、r は M-1 まで取れるので
+        # 48 bit に収まらない。ランダムな e がこの側に落ちる割合は 2^32/M ≒ 1.5e-5 しかない。
+        # 先頭は境目の並び (r は 2^48 の 1 つ手前も入れて、枝の両側を踏む)、残りは r を一様に選ぶ。
+        # 65535 M = 2^64-1 ちょうどなので、q = 65535 では r = 0 しか取れない。q は 65534 まで。
+        out = [(a, q * M + r)
+               for r in ((1 << 48) - 1, 1 << 48, (1 << 48) + 1, M - 2, M - 1)
+               for q in (0, 1, 2, 65533, 65534)
+               for a in (0, 1, 2, MASK64)]
+        out += [(rng.randint(0, MASK64), rng.randint(0, 65534) * M + rng.randint(1 << 48, M - 1))
+                for _ in range(t - len(out))]
         return out
     if kind == "edge_e":
         return [(rng.choice([0, 1, MASK64, rng.randint(0, MASK64)]),
