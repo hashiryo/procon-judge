@@ -437,6 +437,8 @@ gh release view testdata --json assets -R hashiryo/procon-judge-testdata
 
 `cases_hash` はケースの内容から計算してください。取得経路に依存させてはいけません。保管庫と原本のどちらから取っても同じ値になる必要があります。違う値になると、キーが一致しません。キャッシュが無駄に消えます。
 
+`.` で始まるファイルはケースに数えず、アーカイブにも入れず、展開したら捨てます。macOS の tar は拡張属性を `._<名前>` (AppleDouble) の別エントリにして書き、Linux で展開するとそれが実ファイルになります。`*.in` に当たるので、放っておくと中身がメタデータの偽のケースになり、`cases_hash` が変わって提出が全部落ちます (下の「AppleDouble の掃除の記録」)。
+
 手動の取り込みの流れです。
 
 1. 手元でテストデータを落とします。LOJ なら `loj_download.py` を使います。
@@ -1635,6 +1637,12 @@ static-2^40-1 は逆に `base.cpp` の側が `MOD= (1ull << 32) - 1` のまま�
 ### 制限
 
 `tle_sec` は 32 bit の modulo-test が 10 秒、1word-mod が 5 秒、gcd-test と modpow-test が 10 秒です。64 bit の modulo-test (runtime-40 / 62 / 64、static-2^40-1 / 2^61-1 / 2^64-1) は 15 秒にしました。旧 judge は書いてある問題が 5 秒か 10 秒で、書いていない問題は 10 秒でした。64 bit を 15 秒にしたのは、参照実装の naive64 が arm で 6 秒から 8.5 秒かかるからです。遅いモデルに当たると参照実装が TLE になります。`mle_mb` は旧 judge の値のままです (1word-mod は計測の前に作る a の配列ぶんで 1024 と 2048)。
+
+## AppleDouble の掃除の記録
+
+保管庫のアーカイブに `._<ケース名>.in` / `.out` が入っていました。macOS の tar が拡張属性を AppleDouble の別エントリとして書いたものです。macOS の `tar -tf` では見えません (BSD tar が畳んで見せます)。Python の tarfile で数えると、yosupo-convolution-f2-64 は 212 エントリのうち 106 が `._` でした。CI の Linux で展開すると実ファイルになり、`collect_cases` が `*.in` として拾います。51 ケースの問題が 102 ケースになって `cases_hash` が変わり、提出は偽の入力を読んで WA / RE / TLE / MLE になります。results ブランチには 352 問 3180 件の記録がこの形で入っていました (WA 1892 / RE 1149 / TLE 127 / MLE 12)。arm-gcc のジョブが 3 run 続けて「runner が shutdown signal を受けた」で死んだのも同じ原因です。yosupo-convolution-f2-64 の提出が偽の入力を読んで暴走し、ランナーの VM ごと落ちています。
+
+直したのは 2 か所です。ケースの列挙 (`collect_cases`) で `.` 始まりを飛ばすことと、アーカイブの作成と展開を tar コマンドから Python の tarfile に替えて `.` 始まりのエントリを入れも出しもしないことです。macOS の tar は `._` を拡張属性だと解釈して当てに行き、展開に失敗することがあります。Linux の tar は実ファイルにします。どちらにも任せません。既に上げてあるアーカイブはそのままで動きます。該当の問題は `cases_hash` が本来の値に戻るのでキーが変わり、次の run から自動で測り直されます。偽のケースで落ちた 3180 件は参考として残り、理由は「cases_hash が違う」と出ます。
 
 ## 既存リポジトリから移すもの
 

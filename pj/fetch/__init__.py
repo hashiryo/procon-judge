@@ -24,6 +24,7 @@ from pathlib import Path
 from ..paths import TESTCASE_CACHE_DIR
 from ..problem import Problem
 from . import mirror
+from .mirror import is_hidden
 
 MANIFEST_NAME = "manifest.json"
 
@@ -157,6 +158,8 @@ def _matches_manifest(cases: tuple[Case, ...], recorded: list[dict]) -> bool:
 def collect_cases(directory: Path) -> tuple[Case, ...]:
     cases = []
     for in_path in sorted(directory.glob("*.in")):
+        if is_hidden(in_path.name):
+            continue
         out_path = in_path.with_suffix(".out")
         if out_path.is_file():
             cases.append(Case(name=in_path.stem, in_path=in_path, out_path=out_path))

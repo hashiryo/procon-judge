@@ -16,6 +16,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 from pathlib import Path
 
@@ -48,6 +49,16 @@ ARCHIVE_EXTRA = ("manifest.json",)
 
 class MirrorError(Exception):
     """保管庫とのやりとりで失敗したときに投げる。"""
+
+
+def is_hidden(name: str) -> bool:
+    """`.` で始まるファイルはケースでも保管する中身でもない。
+
+    macOS の tar は拡張属性を `._<名前>` (AppleDouble) の別エントリとして書き、
+    Linux で展開するとそれが実ファイルになる。`*.in` に当たるので、放っておくと
+    中身がメタデータの偽のケースが増えて cases_hash が変わり、提出は全部落ちる。
+    """
+    return name.startswith(".")
 
 
 def token() -> str | None:
@@ -109,6 +120,7 @@ def _archive_members(directory: Path) -> list[str]:
         p.name
         for p in directory.iterdir()
         if p.is_file()
+        and not is_hidden(p.name)
         and (p.suffix in ARCHIVE_SUFFIXES or p.name in ARCHIVE_EXTRA)
     )
     return names
@@ -119,9 +131,14 @@ def pack(directory: Path, out: Path) -> None:
     names = _archive_members(directory)
     if not names:
         raise MirrorError(f"{directory} に固めるものがありません")
+    # tar コマンドは使わない。macOS の tar は拡張属性を `._<名前>` の別エントリ
+    # (AppleDouble) にして入れ、Linux の tar はそれを実ファイルとして展開する。
+    # 実ファイルになると `*.in` に当たって偽のケースになる。
     with tempfile.TemporaryDirectory() as tmp:
         tar = Path(tmp) / "archive.tar"
-        _run(["tar", "-cf", str(tar), "-C", str(directory), *names])
+        with tarfile.open(tar, "w") as t:
+            for name in names:
+                t.add(directory / name, arcname=name)
         out.parent.mkdir(parents=True, exist_ok=True)
         _run(["zstd", "-q", "-f", "-19", "-T0", "-o", str(out), str(tar)])
 
@@ -131,7 +148,14 @@ def unpack(archive: Path, dest: Path) -> None:
         tar = Path(tmp) / "archive.tar"
         _run(["zstd", "-d", "-q", "-f", "-o", str(tar), str(archive)])
         dest.mkdir(parents=True, exist_ok=True)
-        _run(["tar", "-xf", str(tar), "-C", str(dest)])
+        # 既に上げてあるアーカイブには AppleDouble のエントリが入っている。展開しない。
+        # macOS の tar に任せると、それを拡張属性として当てようとして失敗することがある。
+        with tarfile.open(tar) as t:
+            members = [
+                m for m in t.getmembers()
+                if m.isfile() and not is_hidden(Path(m.name).name)
+            ]
+            t.extractall(dest, members=members, filter="data")
 
 
 def _run(cmd: list[str]) -> None:

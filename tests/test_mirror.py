@@ -1,8 +1,10 @@
 """保管庫。固めて戻したときに cases_hash が変わらないことを押さえる。"""
 
+import io
 import json
 import shutil
 import subprocess
+import tarfile
 from pathlib import Path
 
 import pytest
@@ -73,6 +75,34 @@ def test_pack_and_unpack_keep_the_cases_hash(tmp_path):
     mirror.unpack(archive, restored)
 
     assert compute_cases_hash(collect_cases(restored)) == before
+
+
+def test_hidden_files_are_not_archived(tmp_path):
+    source = make_cases(tmp_path / "cases", count=1)
+    (source / "._case_00.in").write_bytes(b"\x00\x05\x16\x07")
+    assert "._case_00.in" not in mirror._archive_members(source)
+
+
+@needs_zstd
+def test_unpack_drops_apple_double_entries(tmp_path):
+    """既に上げてあるアーカイブには ._ が入っている (macOS の tar が拡張属性を別エントリにした)。
+    Linux ではそれが実ファイルになって偽のケースになるので、展開したら捨てる。"""
+    source = make_cases(tmp_path / "cases", count=1)
+    tar = tmp_path / "a.tar"
+    with tarfile.open(tar, "w") as t:
+        for name in ("case_00.in", "case_00.out", "manifest.json"):
+            t.add(source / name, arcname=name)
+        data = b"\x00\x05\x16\x07"
+        info = tarfile.TarInfo("._case_00.in")
+        info.size = len(data)
+        t.addfile(info, io.BytesIO(data))
+    archive = tmp_path / "a.tar.zst"
+    subprocess.run(["zstd", "-q", "-f", "-o", str(archive), str(tar)], check=True)
+
+    restored = tmp_path / "restored"
+    mirror.unpack(archive, restored)
+
+    assert sorted(p.name for p in restored.iterdir()) == ["case_00.in", "case_00.out", "manifest.json"]
 
 
 @needs_zstd

@@ -164,6 +164,12 @@ def cases_in(directory, contents):
     return fetch.collect_cases(directory)
 
 
+def test_hidden_files_are_not_cases(tmp_path):
+    """macOS の tar が付ける ._ (AppleDouble) を Linux が実ファイルとして展開しても、ケースにしない。"""
+    cases = cases_in(tmp_path, {"a": ("1\n", "2\n"), "._a": ("\x00\x05\x16\x07", "\x00\x05\x16\x07")})
+    assert [c.name for c in cases] == ["a"]
+
+
 def test_a_matching_cache_is_reused(tmp_path):
     cases = cases_in(tmp_path, {"a": ("1\n", "2\n"), "b": ("3\n", "4\n")})
     fetch.write_manifest(tmp_path, cases, "aoj", "X")
