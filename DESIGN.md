@@ -162,7 +162,7 @@ id は `<出どころ>-<問題>` の形にします。出どころはテスト�
 
 `url` は元の問題のページで、表示にだけ使います。判定サイトから取る問題は `source` と `name` から組めるので書きません。書くのは `source = "none"` (AtCoder、自己検証) と `source = "manual"` の問題だけです。AtCoder の題名は API が無いのでこの URL のページから取ります。
 
-`pj problems check` は `testdata.source` が `library_checker`、`aoj`、`yukicoder` のときに接頭辞が合っているかを見て、合わなければ警告します。判定サイトから取るテストデータはその出どころの問題にしか付かないからです。エラーにはしません。逆向きは縛りません。`aoj-` の問題のテストデータを `local` や `manual` で持つのは正しい形です。
+`pj problems check` は `testdata.source` が `library_checker`、`aoj`、`yukicoder`、`loj` のときに接頭辞が合っているかを見て、合わなければ警告します。判定サイトから取るテストデータはその出どころの問題にしか付かないからです。エラーにはしません。逆向きは縛りません。`aoj-` の問題のテストデータを `local` や `manual` で持つのは正しい形です。
 
 id は保管庫のアセット名にもなります。アセット名は `<問題 id>.tar.zst` で、対応表を持たずに計算しているからです。あとから id を変えると、保管庫のアセットが孤児になり、キーも変わって記録が全部測り直しになります。付けるときに決めてください。
 
@@ -324,6 +324,7 @@ include 一式と `i64` などの型別名のほかに、次の 5 つがあり�
 | `library_checker` | `yosupo06/library-checker-problems` を `testdata.toml` のコミットで clone して生成します | `name` に問題のパス |
 | `aoj` | judgedat の API から取得します | `name` に問題 ID |
 | `yukicoder` | API から取得します。トークンが必要です | `name` に問題 ID |
+| `loj` | API から取得します。ログインは要りません | `name` に問題の番号 |
 | `manual` | 保管庫と手動の取り込みだけを使います。原本を叩きません | `name` に識別子 |
 | `local` | リポジトリ内で生成します | `generator`、`count`、`reference` |
 | `none` | テストデータを使いません | なし |
@@ -368,7 +369,7 @@ hashiryo/CPtools     loj_download.py
                      yukicoder-spjudge-guide.md
 ```
 
-LOJ はリアルタイムで取得できません。`CPtools/loj_download.py` の中身を確認しました。まず `getSubmissionDetail` にある提出 ID からケースのファイル名一覧が得られます。そのあと `downloadProblemFiles` で本体が落ちてきます。つまり自分がその問題に提出して結果を得ていないと、ファイル名は分かりません。IOI、CSES、Codeforces も実装がありません。これらは `source = "manual"` にします。
+LOJ は API から取れます。`getProblem` が `testData` (ファイルの一覧) と `judgeInfo` (制限と、サブタスクごとの in/out の組) を返し、`downloadProblemFiles` がファイルごとの署名付き URL を返します。ログインは要りません。`CPtools/loj_download.py` は提出の結果からファイル名を集めていたので、当初は「自分が提出していないと取れない」と読み違えて `manual` にしていました (2026-09-22 に `loj` へ直しました。「LOJ の取得元の実装の記録」)。IOI (JOI 春合宿)、CSES、Codeforces、HackerRank は実装がありません。これらは `source = "manual"` にします。Library の Release (`v0.0.0`) に付いている `tc.zip` は、verify が oj で取れないサイトのために以前に手で落としたデータの束で、`tc/<URL の md5>/test/` に `.in` / `.out` が並んでいます (URL の一覧は CPtools の `url.csv`)。HackerRank 10 問、CSES 1 問、Codeforces 2 問、UTPC 2 問はそこから取り込みました (「Library の tc.zip からの取り込みの記録」)。
 
 AOJ の judgedat は大きいケースを切り詰めて返すことがあります。取得したあとに header のケース数とサイズを突き合わせてください。合わなければ警告にします。切り詰められたデータで判定すると、結果の意味が変わります。
 
@@ -442,13 +443,13 @@ gh release view testdata --json assets -R hashiryo/procon-judge-testdata
 
 手動の取り込みの流れです。
 
-1. 手元でテストデータを落とします。LOJ なら `loj_download.py` を使います。JOI 春合宿は www2.ioi-jp.org の配布 zip (`<課題>-data.zip` か日ごとの `Day<n>-data.zip`) で、`in/` と `out/` の同名ファイルを `.in` / `.out` に並べ直します。原題の制限は同じページの OVS (概要) の PDF にあり、既定の 5 秒を超えるもの (2012 Day4 の Copy & Paste は 17 秒) だけ `tle_sec` に写します。
+1. 手元でテストデータを落とします。JOI 春合宿は www2.ioi-jp.org の配布 zip (`<課題>-data.zip` か日ごとの `Day<n>-data.zip`) で、`in/` と `out/` の同名ファイルを `.in` / `.out` に並べ直します。原題の制限は同じページの OVS (概要) の PDF にあり、既定の 5 秒を超えるもの (2012 Day4 の Copy & Paste は 17 秒) だけ `tle_sec` に写します。
 2. `pj testdata import --problem ID --dir PATH` で取り込みます。
 3. `pj mirror push --problem ID` で保管庫へ上げます。
 
 以降は CI が保管庫から取るので、原本に触りません。
 
-容量の見積もりです。Library Checker は 1 問 100 MB 前後 (最大は `convolution_mod_2_64` の 565 MB) が 128 問で 12 GB ほど、AOJ 222 と yukicoder 192 とその他 50 ほどは圧縮して 1 問あたり数 MB から数十 MB です。AtCoder の 172 問は入手できません。Release アセットは 1 ファイル 2 GiB までで、リリース全体の上限はありません。超えるものは上げずに要るたびに作り直します (`mirror.ASSET_MAX_BYTES`)。Library Checker の `convolution_mod_large` は 12 GB 出るので、問題として入れていません。
+容量の見積もりです。Library Checker は 1 問 100 MB 前後 (最大は `convolution_mod_2_64` の 565 MB) が 128 問で 12 GB ほど、AOJ 222 と yukicoder 192 とその他 50 ほどは圧縮して 1 問あたり数 MB から数十 MB です。AtCoder の問題は入手できません (UTPC の 2 問だけは公開データが `tc.zip` にあったので `manual` で入れました)。Release アセットは 1 ファイル 2 GiB までで、リリース全体の上限はありません。超えるものは上げずに要るたびに作り直します (`mirror.ASSET_MAX_BYTES`)。Library Checker の `convolution_mod_large` は 12 GB 出るので、問題として入れていません。
 
 actions/cache は使いません。7 日で消えるので durable ではなく、全問題ぶんの塊は 10 GB の上限に当たります。既存の Library が `tc.zip` を Release へ置いているのは、前者に気づいた結果です。
 
@@ -889,7 +890,7 @@ Pages のデプロイはサイト全体の差し替えです。変わった問�
 | `--shard` と `--budget` | 1 ジョブで捌けなくなってから |
 | `state.json` | jsonl の走査が遅くなってから |
 | 保管庫 | AOJ や yukicoder の問題を足すとき |
-| `aoj`、`yukicoder`、`manual` の取得 | 同じとき |
+| `aoj`、`yukicoder`、`loj`、`manual` の取得 | 同じとき |
 | `compare.kind` の `float` | 必要な問題が出てから |
 | ヘッダ別の JSON | 最初の `mylib/...` を使う提出を移すとき |
 | 提出ページと `pj bundle` | 時系列を見たくなってから |
@@ -1652,6 +1653,44 @@ static-2^40-1 は逆に `base.cpp` の側が `MOD= (1ull << 32) - 1` のまま�
 直したのは 2 か所です。ケースの列挙 (`collect_cases`) で `.` 始まりを飛ばすことと、アーカイブの作成と展開を tar コマンドから Python の tarfile に替えて `.` 始まりのエントリを入れも出しもしないことです。macOS の tar は `._` を拡張属性だと解釈して当てに行き、展開に失敗することがあります。Linux の tar は実ファイルにします。どちらにも任せません。既に上げてあるアーカイブはそのままで動きます。該当の問題は `cases_hash` が本来の値に戻るのでキーが変わり、次の run から自動で測り直されます。直した run (6030ffc) は 20 ジョブ全部が通り、yosupo-convolution-f2-64 は 51 ケースの本来の `cases_hash` で AC が並び始めました。
 
 偽のケースで測った記録は `results` から消しました (355 問 3571 件、205 問は記録が 0 になって未計測に戻りました)。基準は「`failed_cases` に `._` 始まりの名前を含む記録と同じ (問題, `cases_hash`) を持つ記録」で、その `cases_hash` は偽のケースを数えた値なので同じ値の記録は全部偽のケースで測っています。消す前に、対象に AC が 1 件も無いことを確かめました。参考として残すと、キーに CPU モデルが入っているぶん、同じモデルに当たるまで嘘の WA が灰色で残り続けるからです。`results` への手作業の push は collect の push と重なると片方が弾かれるので、run の合間にやりました。
+
+## LOJ の取得元の実装の記録
+
+LOJ (LibreOJ) の 23 問は `source = "manual"` で入れていましたが、API から取れることが分かったので `source = "loj"` の取得元を足し、23 問を切り替えました。`name` は問題の番号です。
+
+### ログイン無しで取れます
+
+`api.loj.ac/api/problem/getProblem` に `displayId` と `testData: true`、`judgeInfo: true` を渡すと、ファイルの一覧 (名前と大きさ) と、制限とサブタスクごとの in/out の組が返ります。`downloadProblemFiles` に内部 id とファイル名の一覧を渡すと、ファイルごとの署名付き URL (Cloudflare R2) が返ります。どちらも認証は要りません。`CPtools/loj_download.py` が提出の結果からファイル名を集めていたので、当初は「自分が提出していないと取れない」と読み違えていました。
+
+`downloadProblemFiles` に渡すのは表示の番号ではなく `meta.id` です。多くの問題は同じ値ですが、`loj-6787` は表示が 6787 で内部が 40988 でした。Cloudflare が Python の既定の User-Agent を 403 で弾くので、UA を付けています。接続が途中で切れる (SSL の EOF) ことが一度あったので、HTTP のエラー以外は 3 回までやり直します。
+
+### ケースの組はサブタスクから作ります
+
+ファイル名の付け方が問題ごとに違います。`1.in` / `1.out` のほかに、`gcd1.in` / `gcd1.ans`、`input0.txt` / `output0.txt`、`1.000.in` / `1.000.out` があります。サブタスクがある問題は `judgeInfo.subtasks[].testcases[]` の `inputFile` / `outputFile` の組をそのまま使い、同じケースが複数のサブタスクに出るので入力ファイルで畳みます。サブタスクの無い問題は、拡張子を除いた部分が同じ `.in` と `.out` (無ければ `.ans`) を組にします。ケース名は入力ファイルの拡張子を除いたもので、`input0.txt` は `input0` になります。`cases_hash` に入るので、取り込んだあとは変えません。
+
+判定器は `lines` か `integers` で、どちらも `compare.kind = "tokens"` で読めます。
+
+### 制限は API の値を採ります
+
+`judgeInfo.timeLimit` (ミリ秒) と `memoryLimit` (MB) を、AOJ の一覧と同じ扱いで `pj problems import` に足しました (`Titles.loj_limits`)。既定の 5 秒 / 512 MB より下には締めず、上なら判定サイトの値にします。切り替えた 23 問では `loj-154` (7 秒 / 1024 MB)、`loj-155` `loj-2340` `loj-6729` `loj-6730` (10 秒 / 1024 MB)、`loj-6719` (7.5 秒 / 1024 MB)、`loj-6673` (6 秒)、`loj-3165` (1024 MB) が広がりました。
+
+### 題名は zh_CN です
+
+`localizedContentsOfLocale` で `en_US` を頼んでも、無い問題は既定の言語で返ります。23 問は `loj-6686` (Stupid GCD) と `loj-6714` (Stupid Product) を除いて中国語の題名です。`pj problems titles --fix` で判定サイトの名前に揃えました。手で書いてあった `loj-2419` の Landscaping は `「USACO 2016 US Open, Platinum」Landscaping` になりました。
+
+### 切り替えの影響
+
+`url` は `source` と `name` から組めるので消しました。サイトの表示は「LOJ」で、判定サイトのデータ (`official`) として扱います。23 問には記録が 1 件も無かったので、`problem.toml` が変わっても測り直しは起きません。テストデータは原本から取ったあとに保管庫へ上げてあるので、CI は保管庫から取ります。手元 (Apple clang) では 23 問 25 提出がすべて AC でした。テストデータは合わせて 350 MB ほどで、最大は `loj-6699` の 164 MB です。
+
+## Library の tc.zip からの取り込みの記録
+
+Library の Release `v0.0.0` に付いている `tc.zip` (574 MB) は、verify が oj で取れないサイトのために以前に手で落としたテストデータの束です。中は `tc/<URL の md5>/test/` に `.in` と `.out` が並ぶ形で、48 の URL ぶんが入っています (URL の一覧と md5 は CPtools の `url.csv` と `url_hash.md`)。LOJ 27 問、JOI 春合宿 5 問、CSES 1 問、Codeforces 2 問、HackerRank 10 問、UTPC 2 問、AtCoder の JOISC 2016 の 1 問です。
+
+`manual` で人待ちだった問題のうち、CSES 1 問 (8 ケース)、Codeforces 2 問 (`cf-622-f` 21 ケース、`cf-gym103373-i` 163 ケース)、HackerRank 10 問 (6 から 51 ケース) をここから `pj testdata import` で取り込み、保管庫へ上げました。HackerRank の 13 問のうち `bonnie-and-clyde`、`cube-loving-numbers`、`cutting-the-string` の 3 問は入っていなかったので人待ちのままです。LOJ と JOI 春合宿は API と配布 zip から取ってあるので、こちらは使っていません。
+
+UTPC 2012 の L (`atcoder-utpc2012-12`、82 ケース) と UTPC 2013 の K (`atcoder-utpc2013-11`、74 ケース) は AtCoder の問題なので `source = "none"` の compile_only でしたが、公開データが入っていたので `manual` の tokens に切り替えました。AtCoder の問題で本物の判定になるのはこの 2 問だけです。`problem.toml` が変わるので compile_only の記録は参考に落ち、次の run で測り直されます。
+
+手元 (Apple clang) では 15 問 17 提出がすべて AC でした。`cses-2132` と `hackerrank-grid-xor-query` のハーネスは問題文のサンプルでしか確かめていなかったので、ここで初めて判定サイトのデータを通っています。
 
 ## 既存リポジトリから移すもの
 
