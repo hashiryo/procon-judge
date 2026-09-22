@@ -7,13 +7,22 @@
 期待出力は参照実装 (problem.toml の reference) がハーネスと一緒に作るので、
 ここでは入力だけを書く。旧 judge の gf2-64-frob2/testcases/gen.py の種類を seed に割り当てた。
 """
+
 import random
 import sys
 
 MASK64 = (1 << 64) - 1
 
 # seed -> (種類, 件数)
-CASES = {0: ("sample", 8), 1: ("small", 100), 2: ("edge_zero_one", 200), 3: ("structured", 1000), 4: ("random", 10000), 5: ("random", 100000)}
+CASES = {
+    0: ("sample", 8),
+    1: ("small", 100),
+    2: ("edge_zero_one", 200),
+    3: ("structured", 1000),
+    4: ("random", 10000),
+    5: ("random", 100000),
+    6: ("random", 1000000),
+}
 
 
 def make(kind: str, t: int, rng: random.Random) -> list:
@@ -38,7 +47,10 @@ def main() -> None:
     rng = random.Random(seed * 1_000_003 + 12345)
     rows = make(kind, t, rng)
     out = [str(len(rows))]
-    out += [" ".join(str(v) for v in row) if isinstance(row, tuple) else str(row) for row in rows]
+    out += [
+        " ".join(str(v) for v in row) if isinstance(row, tuple) else str(row)
+        for row in rows
+    ]
     sys.stdout.write("\n".join(out) + "\n")
 
 
