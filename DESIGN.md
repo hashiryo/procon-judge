@@ -441,7 +441,7 @@ gh release view testdata --json assets -R hashiryo/procon-judge-testdata
 
 手動の取り込みの流れです。
 
-1. 手元でテストデータを落とします。LOJ なら `loj_download.py` を使います。
+1. 手元でテストデータを落とします。LOJ なら `loj_download.py` を使います。JOI 春合宿は www2.ioi-jp.org の配布 zip (`<課題>-data.zip` か日ごとの `Day<n>-data.zip`) で、`in/` と `out/` の同名ファイルを `.in` / `.out` に並べ直します。原題の制限は同じページの OVS (概要) の PDF にあり、既定の 5 秒を超えるもの (2012 Day4 の Copy & Paste は 17 秒) だけ `tle_sec` に写します。
 2. `pj testdata import --problem ID --dir PATH` で取り込みます。
 3. `pj mirror push --problem ID` で保管庫へ上げます。
 
