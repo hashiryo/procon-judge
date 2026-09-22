@@ -16,7 +16,6 @@
 //   (16 bit × 4 lane, 各 lane 4 nibble, init + 3 反復, 結合は frob ×3 + mul2 + mul)
 //
 // 必要な拡張: VPCLMULQDQ + AVX2 (Intel Ice Lake / AMD Zen3 以降, dashboard EPYC 7763 で動作)。
-#include <immintrin.h>
 #pragma GCC optimize("O3,unroll-loops")
 #include "../../_shared/gf2-64/_common.hpp"
 #include "../../_shared/gf2-64/sq.hpp"
@@ -65,7 +64,7 @@ GNU_TARGET("pclmul,vpclmulqdq") u64 pow(u64 a, u64 e) {
 
  const u32 e0= u32(e), e1= u32(e >> 32);
  u64 A0= T[e0 >> 28], A1= T[e1 >> 28];
- for(int i= 6; i >= 0; --i)　tie(A0, A1)= unpack(mul2(frob4_2lane(A0, A1), _mm256_set_epi64x(0, T[(e1 >> (4 * i)) & 0xF], 0, T[(e0 >> (4 * i)) & 0xF])));
+ for(int i= 6; i >= 0; --i) tie(A0, A1)= unpack(mul2(frob4_2lane(A0, A1), _mm256_set_epi64x(0, T[(e1 >> (4 * i)) & 0xF], 0, T[(e0 >> (4 * i)) & 0xF])));
  return mul(A0, frob32(A1));
 }
 }  // namespace gf2_64_pow_byte_window_6_2

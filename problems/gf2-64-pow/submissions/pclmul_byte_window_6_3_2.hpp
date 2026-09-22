@@ -16,7 +16,6 @@
 //   (16 bit × 4 lane, 各 lane 4 nibble, init + 3 反復, 結合は frob ×3 + mul2 + mul)
 //
 // 必要な拡張: VPCLMULQDQ + AVX2 (Intel Ice Lake / AMD Zen3 以降, dashboard EPYC 7763 で動作)。
-#include <immintrin.h>
 #pragma GCC optimize("O3,unroll-loops")
 #include "../../_shared/gf2-64/_common.hpp"
 #include "../../_shared/gf2-64/sq.hpp"
