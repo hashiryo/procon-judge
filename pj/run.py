@@ -117,6 +117,18 @@ def _group_by_problem(targets: Iterable[Target]) -> list[tuple[Problem, list[Pat
     return list(grouped.values())
 
 
+def out_of_time(started: float, minutes: float | None, now: float) -> bool:
+    """時間の上限を過ぎたか。過ぎていたら次の提出に手を付けない。
+
+    件数の上限 (budget) だけでは、重い束に当たったときの時間を抑えられない。
+    6 時間で打ち切られると upload まで届かず、その回に測ったぶんを丸ごと落とす。
+    走っている 1 本は止めない。止めるのは次に手を付けるかどうかだけ。
+    """
+    if minutes is None:
+        return False
+    return now - started >= minutes * 60
+
+
 def build_worklist(
     targets: Sequence[Target],
     env: env_mod.Environment,

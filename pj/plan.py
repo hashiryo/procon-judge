@@ -24,15 +24,22 @@ from .freshness import Freshness
 from .problem import Problem
 from .store import Store
 
-# 同時実行は Free で 20 本。分割を細かくしても並列度は上がらないので、
-# 4 環境で割り切れるところに置く。
-MAX_JOBS_PER_ENV = 5
+# 同時実行は Free で 20 本。分割を細かくしても並列度は上がらない。arm は CPU
+# モデルが 1 つなので仕事が少なく、本数は x64 の 2 環境に寄る。8 + 8 + 少し で
+# 20 に収まる。超えたぶんは GitHub が待たせるだけで、落ちはしない。
+MAX_JOBS_PER_ENV = 8
 
-# 1 ジョブで測る提出の上限。6 時間で打ち切られると、その回に測ったぶんを
+# 1 ジョブで測る提出の上限 (件数)。6 時間で打ち切られると、その回に測ったぶんを
 # 丸ごと落とす。必ず終わって記録を上げるところまで行かせるための値。
-# raw 移行の CI で 40 件が 60 分前後だった (保管庫からの取得と mylib のコンパイルが
-# 大半)。100 件なら 2.5 時間ほどで、上限の半分に収まる。
-DEFAULT_BUDGET = 100
+# 100 件のジョブは 7 分から 27 分 (外れ値 49 分) だった (2026-09-22 の実測)。
+# 時間の上限 (DEFAULT_MINUTES) を別に持つので、件数は余裕を見て 200 にしている。
+DEFAULT_BUDGET = 200
+
+# 1 ジョブの実行時間の上限 (分)。これを過ぎたら次の提出に手を付けない。
+# 件数だけでは重い束 (大きいテストデータ、長い tle_sec) に当たったときの時間を
+# 抑えられない。6 時間の上限に対して、最後の 1 本 (最悪で ケース数 × tle_sec、
+# 十数分) と upload のぶんを残して 4 時間に置く。
+DEFAULT_MINUTES = 240
 
 # 記録がまだ 1 件も無い問題のケース数の仮置き。費用は束の重い順を決める
 # ためだけに使うので、外れても順番が少し入れ替わるだけで済む。
@@ -59,6 +66,11 @@ class Bundle:
         """1 モデルあたりの未計測の件数の期待値。"""
         return sum(len(v) for v in self.todo.values()) / len(self.todo)
 
+    @property
+    def total(self) -> int:
+        """既知のモデル全部を合わせた未計測の件数。ジョブの本数を決めるのに使う。"""
+        return sum(len(v) for v in self.todo.values())
+
 
 @dataclass(frozen=True)
 class EnvPlan:
@@ -69,6 +81,8 @@ class EnvPlan:
     jobs: int
     # run に渡す上限。plan が本数を決めるときに置いた前提なので、run も同じ値を使う。
     budget: int = DEFAULT_BUDGET
+    # run に渡す時間の上限 (分)。件数の上限と両方で止める。
+    minutes: int = DEFAULT_MINUTES
     # include を解決できなかった提出。ライブラリを取れていないと全部並ぶ。
     unresolved: tuple[str, ...] = ()
     # 今のソースで CE になると分かっている提出。他のモデルでも必ず CE になる。
@@ -89,6 +103,7 @@ def build(
     store: Store,
     *,
     budget: int = DEFAULT_BUDGET,
+    minutes: int = DEFAULT_MINUTES,
 ) -> list[EnvPlan]:
     """CI で走らせる環境それぞれの計画。"""
     keys = store.keys()
@@ -98,7 +113,7 @@ def build(
     fresh = {p.id: Freshness(p, envs) for p in problems}
     cases = store.cases_hashes()
     return [
-        _for_env(env, problems, records, fresh, keys, budget, cases)
+        _for_env(env, problems, records, fresh, keys, budget, cases, minutes)
         for env in envs
         if env.runs_on != "self"
     ]
@@ -111,6 +126,7 @@ def for_env(
     store: Store,
     *,
     budget: int = DEFAULT_BUDGET,
+    minutes: int = DEFAULT_MINUTES,
 ) -> EnvPlan:
     """1 環境ぶん。run が自分の担当を組み直すのに使う。
 
@@ -120,7 +136,7 @@ def for_env(
     keys = store.keys()
     records = {p.id: list(store.read(p.id)) for p in problems}
     fresh = {p.id: Freshness(p, envs) for p in problems}
-    return _for_env(env, problems, records, fresh, keys, budget, store.cases_hashes())
+    return _for_env(env, problems, records, fresh, keys, budget, store.cases_hashes(), minutes)
 
 
 def assignment(order: Sequence[str], job: int, jobs: int) -> list[str]:
@@ -157,6 +173,7 @@ def matrix(plans: Iterable[EnvPlan]) -> dict:
             "job": job,
             "jobs": plan.jobs,
             "budget": plan.budget,
+            "minutes": plan.minutes,
         }
         for plan in plans
         for job in range(plan.jobs)
@@ -175,6 +192,7 @@ def _for_env(
     keys: set[str],
     budget: int,
     cases: Mapping[str, str],
+    minutes: int = DEFAULT_MINUTES,
 ) -> EnvPlan:
     models = _models(records, env.name)
     bundles: list[Bundle] = []
@@ -235,6 +253,7 @@ def _for_env(
         bundles=tuple(bundles),
         jobs=_jobs(bundles, budget),
         budget=budget,
+        minutes=minutes,
         unresolved=tuple(sorted(unresolved)),
         compile_errors=tuple(sorted(compile_errors)),
     )
@@ -247,10 +266,13 @@ def _jobs(bundles: Sequence[Bundle], budget: int) -> int:
     仕事はあるが、それは計画された仕事ではない。新しい CPU モデルを探しには
     行かない。
     """
-    expected = sum(b.expected for b in bundles)
-    if expected <= 0:
+    # 仕事はモデルごとにあり、ジョブは当たったモデルのぶんしか測れない。それでも
+    # 本数は全モデルを合わせた件数で数える。1 モデルあたりの平均で数えると、モデルが
+    # 6 つある x64 で本当の仕事の 1/6 しか見ないことになり、本数が足りなくなる。
+    total = sum(b.total for b in bundles)
+    if total <= 0:
         return 0
-    return min(MAX_JOBS_PER_ENV, max(1, math.ceil(expected / budget)))
+    return min(MAX_JOBS_PER_ENV, max(1, math.ceil(total / budget)))
 
 
 def _models(records: dict[str, list[dict]], env_name: str) -> tuple[str, ...]:

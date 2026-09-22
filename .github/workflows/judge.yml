@@ -7,8 +7,10 @@ on:
   repository_dispatch:
     types: [library-push]
   schedule:
-    # 03:00 JST。取りこぼしを埋める。
+    # 03:00 と 15:00 JST。取りこぼしを埋める。やることが 0 件なら run は立たず、
+    # plan だけで 2 分ほどで終わる。
     - cron: "0 18 * * *"
+    - cron: "0 6 * * *"
   workflow_dispatch:
 
 # 記録を失いたくないので、実行中のものを打ち切らずに待たせる。
@@ -140,6 +142,7 @@ jobs:
           --job ${{ matrix.job }}
           --jobs ${{ matrix.jobs }}
           --budget ${{ matrix.budget }}
+          --minutes ${{ matrix.minutes }}
           --evict-testdata
           --store .results
           --out ${{ runner.temp }}/records

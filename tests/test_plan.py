@@ -273,9 +273,25 @@ def test_the_job_count_follows_the_budget(tmp_path, envs, ci_envs):
 def test_the_job_count_stops_at_the_concurrency_limit(tmp_path, envs, ci_envs):
     """分割を細かくしても並列度は上がらない。"""
     env = ci_envs[0]
-    problem = make_problem(tmp_path, "p1", submissions=tuple("abcdefg"))
+    problem = make_problem(tmp_path, "p1", submissions=tuple("abcdefghijkl"))
     one = plan_for(env, [problem], envs, store_with(tmp_path, []), budget=1)
     assert one.jobs == plan_mod.MAX_JOBS_PER_ENV
+
+
+def test_the_job_count_counts_every_model(tmp_path, envs, ci_envs):
+    """仕事はモデルごとにある。1 モデルあたりの平均で数えると、モデルが多い環境で
+    本数が足りなくなる。"""
+    env = ci_envs[0]
+    problem = make_problem(tmp_path, "p1", submissions=tuple("abcdef"))
+    records = [
+        record_for(problem, env, "submissions/a.cpp", cpu_model="EPYC"),
+        record_for(problem, env, "submissions/a.cpp", cpu_model="Xeon"),
+    ]
+    one = plan_for(env, [problem], envs, store_with(tmp_path, records), budget=5)
+    assert one.models == ("EPYC", "Xeon") or set(one.models) == {"EPYC", "Xeon"}
+    assert one.bundles[0].expected == 5
+    assert one.bundles[0].total == 10
+    assert one.jobs == 2
 
 
 # --- 束を配る順番 -----------------------------------------------------------
@@ -338,6 +354,16 @@ def test_the_matrix_carries_what_the_runner_needs(tmp_path, envs, ci_envs):
         assert entry["runs_on"] == runs_on[entry["env"]]
         assert entry["toolchain"] in ("gcc", "clang")
         assert 0 <= entry["job"] < entry["jobs"]
+
+
+def test_the_matrix_carries_the_time_limit(tmp_path, envs, ci_envs):
+    """run は件数の上限と時間の上限の両方で止める。時間の値も plan が決めて matrix で渡す。"""
+    problem = make_problem(tmp_path, "p1", submissions=("a",))
+    plans = plan_mod.build([problem], envs, store_with(tmp_path, []), budget=1, minutes=30)
+    for entry in plan_mod.matrix(plans)["include"]:
+        assert entry["minutes"] == 30
+    default = plan_mod.build([problem], envs, store_with(tmp_path, []), budget=1)
+    assert {e["minutes"] for e in plan_mod.matrix(default)["include"]} == {plan_mod.DEFAULT_MINUTES}
 
 
 def test_the_matrix_is_empty_when_there_is_nothing_to_do(tmp_path, envs, ci_envs):

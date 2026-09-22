@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 from . import environment as env_mod
@@ -301,11 +302,11 @@ def cmd_plan(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
 
-    plans = plan_mod.build(problems, envs, store, budget=args.budget)
+    plans = plan_mod.build(problems, envs, store, budget=args.budget, minutes=args.minutes)
     for one in plans:
         parts = [
             f"モデル {len(one.models)} 種",
-            f"未計測 {one.expected:.1f} 件/モデル",
+            f"未計測 {one.expected:.1f} 件/モデル (全モデル {sum(b.total for b in one.bundles)} 件)",
             f"束 {len(one.bundles)} 件",
             f"ジョブ {one.jobs} 本",
         ]
@@ -375,6 +376,7 @@ def cmd_run(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
 
+    timed_out = 0
     if args.dry_run:
         for job in worklist.jobs:
             print(f"run \t{job.label}\t{job.key}")
@@ -386,7 +388,16 @@ def cmd_run(args: argparse.Namespace) -> int:
             print(f"block\t{problem.id}\t{submission.as_posix()}\t-")
     else:
         jobs = worklist.jobs
+        started = time.monotonic()
         for index, job in enumerate(jobs, start=1):
+            if run_mod.out_of_time(started, args.minutes, time.monotonic()):
+                # 時間の上限。残りは次の実行が同じ順で拾う。
+                timed_out = len(jobs) - index + 1
+                print(
+                    f"時間の上限 {args.minutes:g} 分を過ぎたので、残り {timed_out} 件は見送ります",
+                    file=sys.stderr,
+                )
+                break
             print(
                 f"[{index}/{len(jobs)}] {job.problem.id} / "
                 f"{job.submission.as_posix()}",
@@ -408,15 +419,19 @@ def cmd_run(args: argparse.Namespace) -> int:
             if args.evict_testdata and last_of_problem:
                 fetch.evict(job.problem)
 
-    _print_summary(worklist, args.dry_run, file=sys.stderr)
+    _print_summary(worklist, args.dry_run, file=sys.stderr, timed_out=timed_out)
     # WA や TLE は判定であって失敗ではない。記録が出せたら 0 で返す。
     # ここを非ゼロにすると、CI の step が落ちて記録を取りこぼす。
     return 0
 
 
-def _print_summary(worklist: run_mod.Worklist, dry_run: bool, *, file) -> None:
+def _print_summary(
+    worklist: run_mod.Worklist, dry_run: bool, *, file, timed_out: int = 0
+) -> None:
     verb = "実行予定" if dry_run else "実行"
-    parts = [f"{verb} {len(worklist.jobs)} 件", f"スキップ {len(worklist.skipped)} 件"]
+    parts = [f"{verb} {len(worklist.jobs) - timed_out} 件", f"スキップ {len(worklist.skipped)} 件"]
+    if timed_out:
+        parts.append(f"時間で見送り {timed_out} 件")
     if worklist.pending:
         parts.append(f"テストデータ未取得 {len(worklist.pending)} 件")
     if worklist.blocked:
@@ -570,6 +585,12 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"1 ジョブで測る提出の上限 (既定 {plan_mod.DEFAULT_BUDGET})",
     )
     p_plan.add_argument(
+        "--minutes",
+        type=int,
+        default=plan_mod.DEFAULT_MINUTES,
+        help=f"1 ジョブの実行時間の上限 (分、既定 {plan_mod.DEFAULT_MINUTES})",
+    )
+    p_plan.add_argument(
         "--github-output", help="matrix と any を書き足すファイル ($GITHUB_OUTPUT)"
     )
     p_plan.set_defaults(func=cmd_plan)
@@ -592,6 +613,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_run.add_argument(
         "--budget", type=int, help="走らせる提出の上限。省略すると打ち切らない"
+    )
+    p_run.add_argument(
+        "--minutes",
+        type=float,
+        help="実行時間の上限 (分)。過ぎたら次の提出に手を付けない。省略すると打ち切らない",
     )
     p_run.add_argument(
         "--evict-testdata",

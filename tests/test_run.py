@@ -281,6 +281,13 @@ def test_a_blocked_submission_does_not_stop_the_others(tmp_path, local_env, mach
 # --- budget ----------------------------------------------------------------
 
 
+def test_out_of_time_is_only_about_starting_the_next_one():
+    """時間の上限は次の提出に手を付けるかどうかだけ。上限が無ければ止めない。"""
+    assert run_mod.out_of_time(0.0, None, 1e9) is False
+    assert run_mod.out_of_time(100.0, 10, 100.0 + 599) is False
+    assert run_mod.out_of_time(100.0, 10, 100.0 + 600) is True
+
+
 def make_problem_with(tmp_path, name, submissions):
     directory = tmp_path / name
     directory.mkdir()
