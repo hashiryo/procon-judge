@@ -1534,7 +1534,7 @@ source = "https://github.com/hashiryo/Library/blob/{sha}/mylib/{path}"
 
 ### 順位表の側
 
-`data/problems/<id>.json` に `pages` (提出 → 提出ページのパス)、`url` (元の問題のページ)、行ごとの `reason` を足しました。`url` は取得元が判定サイトのときだけ分かります。順位表の提出名はリンクになり、参考の印の title に理由が入ります。
+`data/problems/<id>.json` に `pages` (提出 → 提出ページのパス)、`url` (元の問題のページ)、行ごとの `reason` を足しました。`url` は取得元が判定サイトのときだけ分かります。順位表の提出名はリンクになり、参考の印の title に理由が入ります。順位表の見出しの行には、問題のディレクトリ (`problems/<id>`) を GitHub で開くリンクも置いています。列の幅は状態の列を 180px から 110px に詰めて、提出の名前が読める幅を 200px から 336px に広げました。
 
 ## exit_code の実装の記録
 

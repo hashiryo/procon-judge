@@ -140,7 +140,9 @@ table {
    表が動くのを止める。入りきらない中身は省略記号にして title に残す。 */
 table.fixed {
   table-layout: fixed;
-  min-width: 1140px;
+  /* ページの器 (1200px から左右の余白 20px を引いた 1160px) いっぱいまで使う。
+     固定幅の列の合計は 824px で、残りの 336px が提出の列に回る。 */
+  min-width: 1160px;
 }
 
 table.fixed th,

@@ -126,7 +126,8 @@ const COLUMNS = [
     id: "status",
     label: "状態",
     text: true,
-    width: "180px",
+    // 状態と落ちたケース名。長いケース名は省略記号にして、詳細は title に残る。
+    width: "110px",
     value: (r) => r.status,
     cell: statusCell,
   },
@@ -142,14 +143,14 @@ const COLUMNS = [
   {
     id: "wall",
     label: "実時間 最大",
-    width: "130px",
+    width: "125px",
     value: (r) => r.wall_ms,
     cell: (r) => el("td", r.wall_ms + " ms", "n"),
   },
   {
     id: "rss",
     label: "メモリ",
-    width: "95px",
+    width: "85px",
     value: (r) => r.rss_kb,
     cell: (r) => el("td", mb(r.rss_kb), "n"),
   },
@@ -170,7 +171,7 @@ const COLUMNS = [
   {
     id: "samples",
     label: "標本",
-    width: "72px",
+    width: "64px",
     value: (r) => r.samples,
     cell: (r) => el("td", r.samples, "n"),
   },
@@ -178,7 +179,7 @@ const COLUMNS = [
     id: "measured",
     label: "計測 (UTC)",
     text: true,
-    width: "160px",
+    width: "140px",
     value: (r) => r.timestamp,
     cell: (r) => {
       const td = el("td", stamp(r.timestamp), "dim");
@@ -342,6 +343,20 @@ async function main() {
     a.href = DATA.url;
     original.append(a);
     meta.push(original);
+  }
+  // 問題のディレクトリ (problem.toml、ハーネス、提出) を GitHub で見る。
+  if (DATA.repo) {
+    const directory = el("span");
+    const a = el("a", "ディレクトリ");
+    a.href =
+      DATA.repo +
+      "/tree/" +
+      (DATA.judge_sha || "main") +
+      "/problems/" +
+      encodeURIComponent(DATA.id);
+    a.title = "GitHub の problems/" + DATA.id;
+    directory.append(a);
+    meta.push(directory);
   }
   document.getElementById("meta").replaceChildren(...meta);
   renderNote();
