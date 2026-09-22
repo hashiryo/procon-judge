@@ -128,6 +128,26 @@ def test_local_splits_on_the_generator(tmp_path):
     assert fetch.cache_dir_for(base).name != fetch.cache_dir_for(other).name
 
 
+def test_local_splits_on_the_harness(tmp_path):
+    """kind = "base" の参照実装は base.cpp と一緒に組むので、base.cpp が変われば期待出力も変わる。"""
+    def make_base(problem_id, harness):
+        directory = tmp_path / problem_id
+        directory.mkdir()
+        (directory / "problem.toml").write_text(
+            LOCAL_TOML.format(id=problem_id, count=3).replace('kind = "raw"', 'kind = "base"')
+        )
+        (directory / "gen.py").write_text("a")
+        (directory / "ref.py").write_text("b")
+        (directory / "base.cpp").write_text(harness)
+        return problem_mod.load(directory)
+
+    base = make_base("p1", "constexpr int MOD = 7;")
+    same = make_base("p2", "constexpr int MOD = 7;")
+    other = make_base("p3", "constexpr int MOD = 11;")
+    assert fetch.cache_dir_for(base).name == fetch.cache_dir_for(same).name
+    assert fetch.cache_dir_for(base).name != fetch.cache_dir_for(other).name
+
+
 def test_local_splits_on_the_case_count(tmp_path):
     base = make_local(tmp_path, "p1", count=3)
     other = make_local(tmp_path, "p2", count=4)

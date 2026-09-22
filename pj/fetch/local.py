@@ -5,8 +5,8 @@ gen.py が seed を引数に取ってランダムな入力を stdout に出し�
 kind = "base" なら提出と同じ形 (.hpp) でハーネスと一緒にコンパイルし、
 kind = "raw" なら単体で動く .cpp をコンパイルする。
 
-置き場は gen.py と参照実装の中身と count で分けてある (fetch.cache_dir_for)。
-ジェネレータを直せば別の場所に作り直すので、古い生成結果が使い回されない。
+置き場は gen.py と参照実装と base.cpp の中身と count で分けてある (fetch.cache_dir_for)。
+ジェネレータやハーネスを直せば別の場所に作り直すので、古い生成結果が使い回されない。
 """
 
 from __future__ import annotations

@@ -85,16 +85,18 @@ def cache_dir_for(problem: Problem) -> Path:
     td = problem.testdata
     if td.source == "local":
         # local は判定サイトの名前を持たない。ジェネレータと参照実装が
-        # 変われば別の内容が出るので、そこだけ中身で分ける。
-        digest = hashlib.sha256(
-            "\n".join(
-                [
-                    str(td.count),
-                    _sha256_file(problem.dir / td.generator),
-                    _sha256_file(problem.dir / td.reference),
-                ]
-            ).encode()
-        ).hexdigest()[:16]
+        # 変われば別の内容が出るので、そこだけ中身で分ける。kind = "base" の
+        # 参照実装は base.cpp と一緒に組むので、base.cpp も混ぜる (法の定数を
+        # 直したのに古い期待出力が使われた)。
+        parts = [
+            str(td.count),
+            _sha256_file(problem.dir / td.generator),
+            _sha256_file(problem.dir / td.reference),
+        ]
+        base_cpp = problem.dir / "base.cpp"
+        if problem.harness_kind == "base" and base_cpp.is_file():
+            parts.append(_sha256_file(base_cpp))
+        digest = hashlib.sha256("\n".join(parts).encode()).hexdigest()[:16]
         return TESTCASE_CACHE_DIR / "local" / _safe_parts(problem.id) / digest
     # source = "none" は判定サイトの名前を持たない。中身も置かないが、
     # ensure が場所を引くので落とさない。

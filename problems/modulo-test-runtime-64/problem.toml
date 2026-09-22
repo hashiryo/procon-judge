@@ -1,0 +1,18 @@
+id = "modulo-test-runtime-64"
+title = "剰余の反復 (mod は入力、2^63 < mod < 2^64 の奇数)"
+
+[limits]
+tle_sec = 15.0
+mle_mb = 256
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 12
+reference = "submissions/naive64.hpp"
+
+[compare]
+kind = "tokens"

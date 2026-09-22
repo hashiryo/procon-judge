@@ -96,7 +96,7 @@ procon-judge/
       gen.py                ジェネレータ (source = "local" のとき)
       reference.hpp         期待出力を作る参照実装 (同上)
       checker.cpp           独自チェッカ (自分で書くときだけ)
-    _shared/<名前>/         問題をまたいで提出が使うヘッダ (gf2-64 のベンチ)。problem.toml が無いので問題ではない
+    _shared/<名前>/         問題をまたいで提出が使うヘッダ (gf2-64 のベンチ、modulo-test の族)。problem.toml が無いので問題ではない
   harness/
     pj.hpp                  全問題のハーネスと提出が共有するもの
   third_party/
@@ -341,7 +341,7 @@ reference = "reference.hpp"   # kind = "base" なら提出と同じ形
 
 `gen.py` が seed を引数に取ってランダムな入力を stdout に出します。参照実装が期待出力を作ります。`count` 個の seed を 0 から順に使うので、生成は決定的になります。
 
-`local` は `name` を持ちません。キャッシュのハッシュは問題 id から作ります。加えて `gen.py` の内容、参照実装の内容、`count` を混ぜてください。ジェネレータを直したときに、古い生成結果が使い回されるのを防ぐためです。
+`local` は `name` を持ちません。キャッシュのハッシュは問題 id から作ります。加えて `gen.py` の内容、参照実装の内容、`count` を混ぜてください。`kind = "base"` なら `base.cpp` の内容も混ぜます。参照実装はハーネスと一緒に組むので、ハーネスの定数を直せば期待出力も変わるからです。ジェネレータやハーネスを直したときに、古い生成結果が使い回されるのを防ぐためです。
 
 `kind = "base"` の問題では、参照実装も提出と同じ形にしてください。`reference` に `.hpp` を指定します。ハーネスと一緒にコンパイルして期待出力を作ります。こうすると入力の解析を二重に書かなくて済みます。`kind = "raw"` の問題なら、参照実装は単体で動く `.cpp` になります。参照実装を `submissions/reference.hpp` に置いて `reference` にそのパスを書けば、期待出力を作るものがそのまま順位表の 1 行になります (`gf2-64-*` はこの形)。
 
@@ -1607,6 +1607,34 @@ Library の注釈には `TLE 0.5` や `MLE 64` のように締めた値が書い
 ### 制限
 
 `tle_sec` と `mle_mb` は、raw で入っていた問題は既存の値と旧 judge の値の大きい方、新しく入った問題は Library Checker の `timelimit` と旧 judge の値の大きい方にしました。
+
+## modulo-test の族の移植の記録
+
+旧 judge の `modulo-test` (14 問)、`1word-mod` (4 問)、`gcd-test` (1 問)、`modpow-test` (2 問) を `source = "local"` の base の問題として移しました。gf2-64 と同じ「ハーネス + 代表」の形です。旧 judge の 202 本のうち 100 本を写し、Library の実装をそのまま使う `lib-*.hpp` を 41 本足して、21 問 141 本になりました。id は族の名前と旧 judge の小問題の名前をつなげて、`modulo-test-runtime-30` のようにしています。`^` と `+` は URL とアセット名に使いたくないので、`2^31-1` は `2pow31-1` と、`1e9+7` は `1000000007` と書きました。4 族の `algos/_common.hpp` は typedef だけで中身が同じだったので、`problems/_shared/modulo-test/_common.hpp` の 1 枚にまとめました。`base.cpp` の書き換えは通常の 35 問と同じ機械的なものです。インターフェース (`MP` の `set` / `get` / `mul` / `plus`、`DIV::mod`、`G::gcd`、`MP::pow`) は旧 judge のままです。
+
+### 代表の選び方
+
+旧 judge の記録 24200 件から、小問題と提出ごとに x64-g++ で AC した `algo_time_max_ns` の最小値を取りました。提出は名前の接頭辞で手法の族に分けます。族は naive / barrett / div2by1 / long_double / montgomery / montgomery_even / plantard / anton / lemire などです。残すのは参照実装 (素の naive) と、族ごとの最速 1 本です。AC の記録が無い族は落としています (runtime-32 の lemire は WA でした)。static-2^40-1 の barrett_reduction も WA でしたが、これは次に書くハーネスの間違いが原因で、しかも `MP_Br` の写しそのものなので `lib-br.hpp` で足りています。`_O3` の変種は pragma だけの差で時間も同じなので除きました。static-998244353 では `asm volatile` で定数の畳み込みを止めた `_volatile` の変種が barrett / montgomery / plantard の 3 族で最速でした。ここは素の版と両方を残しています。静的な mod では畳み込みが逆に遅くしていた、という旧 judge の観察を消さないためです。`long_double` は旧 judge の 5 秒で TLE になっていただけなので、制限を 10 秒にして残しました。arm では long double が 128 bit のソフトウェア実装なので TLE のままになります。
+
+### 旧 judge の static の 2 問は法が間違っていました
+
+static-2^64-1 は 4 本が全部 WA でした。原因は期待出力を作る `gen/ref.cpp` が MOD を 2^61-1 と書き間違えていたことで、提出側は正しく動いていました。新しい形では `naive64.hpp` 自身が期待出力を作るので、そのまま移しています。
+
+static-2^40-1 は逆に `base.cpp` の側が `MOD= (1ull << 32) - 1` のままで (2^32-1 の写しの直し忘れ)、実際には 2^32-1 で測っていました。入力は 2^40-1 未満で作っているので法より大きい値が `set` に入り、`set` が値を縮めない Barrett だけが壊れて WA、`%` や Montgomery の `set` で縮める他の 3 本は「正しく」通っていたことになります。移した `base.cpp` は 2^40-1 に直しました。旧 judge のこの問題の記録は 2^32-1 のものなので、代表の選び方には使えません (3 本しか無いので全部残しています)。
+
+この直しで、手元のキャッシュの置き場が `base.cpp` を見ていないことに気づきました。`local` の期待出力は参照実装をハーネスと一緒に組んで作るのに、置き場は `gen.py` と参照実装と `count` だけで決めていたので、法を直しても古い期待出力が使われました。`kind = "base"` のときは `base.cpp` の内容も混ぜるようにしました (`pj/fetch/__init__.py`)。CI は毎回生成するので影響は手元だけです。
+
+### Library の実装は写しではなく include します
+
+「mylib が採用したもの」は `lib-na.hpp` / `lib-mo32.hpp` / `lib-mo64.hpp` / `lib-br.hpp` / `lib-d2b1-1.hpp` / `lib-d2b1-2.hpp` です。`mylib/internal/Remainder.hpp` の `MP_*` を `using MP=` で名指しします。その問題の mod の範囲に合う型だけを置いています。Montgomery は奇数だけ、`MP_Mo32` は `ModInt` が使う 2^30 未満だけ、`MP_Br` は 2^20 < mod <= 2^41 です。modpow-test は `MP_Mo32` / `MP_Mo64` と `math_internal::pow` を包む薄い `struct MP`、gcd-test は `binary_gcd` を包む `struct G` です。旧 judge の `binary_lib.hpp` (mylib の写し) はこれに置き換えました。閉包に `mylib/internal/Remainder.hpp` が入るので、Library 側でここを直すと M9 で測り直され、Library のヘッダページには「このヘッダを使う提出」として並びます。
+
+### ジェネレータは旧 judge の入力をそのまま出します
+
+旧 judge の `gen/make_inputs.py` は手書きのケースと `random.Random(32)` (static は種が mod) の乱数ケースを一度に書き出していました。新しい `gen.py` は同じ順番で全ケースを組み立ててから seed 番目だけを出すので、中身は旧 judge の `testcases/*.in` と一致します (移すときに全問題で照合しました)。1word-mod、gcd-test、modpow-test の入力は LCG の種と個数だけです。実際の列はハーネスが計測の前に作ります。
+
+### 制限
+
+`tle_sec` は 32 bit の modulo-test が 10 秒、1word-mod が 5 秒、gcd-test と modpow-test が 10 秒です。64 bit の modulo-test (runtime-40 / 62 / 64、static-2^40-1 / 2^61-1 / 2^64-1) は 15 秒にしました。旧 judge は書いてある問題が 5 秒か 10 秒で、書いていない問題は 10 秒でした。64 bit を 15 秒にしたのは、参照実装の naive64 が arm で 6 秒から 8.5 秒かかるからです。遅いモデルに当たると参照実装が TLE になります。`mle_mb` は旧 judge の値のままです (1word-mod は計測の前に作る a の配列ぶんで 1024 と 2048)。
 
 ## 既存リポジトリから移すもの
 
