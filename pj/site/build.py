@@ -21,7 +21,7 @@ import re
 import shutil
 import subprocess
 import urllib.parse
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
@@ -108,6 +108,8 @@ class Summary:
     stale: int = 0
     submission_pages: int = 0
     headers: int = 0
+    # 全環境に現行 AC の提出が揃ったヘッダの数。verify を畳むゲートの判定に使う。
+    verified_headers: int = 0
 
 
 def collapse(
@@ -839,6 +841,7 @@ def header_entry(
     *,
     testdata: str = "",
     official: bool | None = None,
+    compare: str = "",
 ) -> dict:
     return {
         "problem": problem_id,
@@ -849,10 +852,77 @@ def header_entry(
         # AC を判定サイトの AC と同じに見せないため。
         "testdata": testdata,
         "official": official,
+        # 比較の種別。compile_only の AC はコンパイルが通っただけなので、要約で区別する。
+        "compare": compare,
         "page": page,
         "problem_page": f"problems/{problem_id}.html",
         "envs": env_summary(cells, env_names),
     }
+
+
+def header_index(
+    headers: Mapping[str, Sequence[dict]],
+    libraries: Mapping[str, str],
+    env_names: Sequence[str],
+) -> dict:
+    """ヘッダごとの要約と、verify を畳むゲートの数字。
+
+    ヘッダを閉包に持つ提出を環境ごとに数えて、「現行の AC が 1 本以上あるか」を
+    verified とする。compile_only の提出はコンパイルが通っただけなので数えない。
+    ただしそのヘッダを使う提出が compile_only しか無いなら、それで読み替える。
+    ヘッダが verified なのは全環境で verified のとき。ゲートは verified なヘッダの数と
+    ヘッダの総数で、総数に揃った回で Library の verify を畳む。
+
+    ライブラリ側のサイトは依存一覧のアイコンにこれを使う。判定はこちらで済ませて
+    あるので、向こうは数を見て色を選ぶだけでよい。
+    """
+    out: dict[str, dict] = {}
+    verified_total = 0
+    for label in sorted(headers):
+        entries = headers[label]
+        compile_only = all(e.get("compare") == "compile_only" for e in entries)
+        counted = (
+            entries
+            if compile_only
+            else [e for e in entries if e.get("compare") != "compile_only"]
+        )
+        envs = []
+        all_verified = True
+        for env in env_names:
+            ac = failing = stale = missing = 0
+            for entry in counted:
+                row = next((r for r in entry["envs"] if r["env"] == env), None)
+                if row is None or row["status"] is None:
+                    missing += 1
+                elif row["current"] is False:
+                    stale += 1
+                elif row["status"] == "AC":
+                    # 判定できない (current が None) ものは現行と同じ扱い。
+                    ac += 1
+                else:
+                    failing += 1
+            verified = ac > 0
+            all_verified = all_verified and verified
+            envs.append(
+                {
+                    "env": env,
+                    "verified": verified,
+                    "ac": ac,
+                    "failing": failing,
+                    "stale": stale,
+                    "missing": missing,
+                }
+            )
+        verified_total += all_verified
+        out[label] = {
+            "library": libraries.get(label),
+            "submissions": len(entries),
+            "direct": sum(1 for e in entries if e.get("direct")),
+            "compile_only": compile_only,
+            "verified": all_verified,
+            "envs": envs,
+        }
+    return {"headers": out, "gate": {"verified": verified_total, "total": len(out)}}
 
 
 def site_url() -> str | None:
@@ -1061,6 +1131,7 @@ def build(store: Store, out: Path) -> Summary:
                         problem_id, payload["title"], submission, page,
                         link.direct, mine, env_names,
                         testdata=payload["source"], official=payload["official"],
+                        compare=payload["compare"],
                     )
                 )
                 header_library[link.label] = link.library
@@ -1107,6 +1178,22 @@ def build(store: Store, out: Path) -> Summary:
             ),
         )
 
+    summary_of_headers = header_index(headers, header_library, env_names)
+    _write(
+        out / "data" / "headers" / "index.json",
+        json.dumps(
+            {
+                "generated_at": generated_at,
+                "judge_sha": sha,
+                "library_sha": lib_sha,
+                "site": site,
+                "environments": env_names,
+                **summary_of_headers,
+            },
+            ensure_ascii=False,
+        ),
+    )
+
     index = {
         "generated_at": generated_at,
         "judge_sha": sha,
@@ -1133,4 +1220,5 @@ def build(store: Store, out: Path) -> Summary:
         stale=total_stale,
         submission_pages=submission_pages,
         headers=len(headers),
+        verified_headers=summary_of_headers["gate"]["verified"],
     )

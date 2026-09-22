@@ -841,6 +841,7 @@ site/
   data/index.json
   data/problems/<id>.json
   data/headers/<ラベル>.json     ヘッダごとの逆引き。ライブラリ側のサイトが読む
+  data/headers/index.json       ヘッダごとの要約と、verify を畳むゲートの数字
 ```
 
 提出ページは 1 提出を固定して (環境, CPU モデル) を並べる表で、順位表の転置です。順位表は 1 つの (環境, CPU モデル) を選んで提出を並べます。同じ畳み方 (`collapse`) と同じ現行判定から作るので、新しい機構はありません。載せるのは記録の表、include の一覧、提出ファイルの中身の 3 つです。時系列と `pj bundle` は載せません。時系列は点がまだ 1 つか 2 つで見るものが無く、bundle は「貼れる 1 ファイル」という別の用途のものです。記録は jsonl に溜まり続けるので、見たくなってから作れます。
@@ -858,6 +859,8 @@ include の一覧は直接と間接に分けます。提出ファイルが直接
 切り替えが無いので JavaScript は使わず、ビルド時に HTML まで埋めます。順位表の提出名の列からもこのページへリンクするので、入口はライブラリ側のサイトと順位表の 2 つです。
 
 ヘッダごとの逆引きは `data/headers/<ラベル>.json` で、1 ヘッダ 1 ファイルです。ライブラリ側のサイトが自分のヘッダのパスから URL を組んで、表示時に fetch します。中身はそのヘッダを閉包に持つ提出の一覧で、提出ごとに問題、提出ページのパス、直接か間接か (`direct`)、環境ごとに畳んだ状態と現行かどうかです。ページのパスはサイトのルートからの相対で、CI では `site` に基底の URL が入ります。出すのは `libraries.toml` の接頭辞に合うラベルだけです。問題ごとの `common.hpp` は名前が問題をまたいで衝突するので出しません。
+
+ヘッダごとの要約は `data/headers/index.json` で、1 ファイルに全ヘッダ分が入ります。ヘッダごとに、閉包に持つ提出の数、直接 include する提出の数、環境ごとの「現行の AC が 1 本以上あるか」(`verified`) と現行 AC、失敗、参考、記録なしの本数です。compile_only の提出はコンパイルが通っただけなので数えず、そのヘッダを使う提出が compile_only しか無いときだけそれで読み替えます。ライブラリ側のサイトは依存一覧のアイコンにこれを使い、判定は済んでいるので数を見て色を選ぶだけです。`gate` は全環境で `verified` なヘッダの数と総数で、総数に揃った回で Library の verify を畳みます (my-docs の「Library の verify を畳む設計」)。同じ数字を `pj site build` の summary にも出します。
 
 リポジトリをまたいで固定する契約はこの JSON の置き場と形だけです。ページの URL は同じ `pj site build` が作るので、後から変えても向こうは壊れません。
 
@@ -1739,6 +1742,14 @@ cbceff4 の run (35695428755) で宣言は動きました。GITHUB_TOKEN の `co
 `collect` の最後に `pj claims clean --run-id <run id>` が、この run と、それより古い run (run id は増える整数) の宣言を消します。消し損ねても宣言は run 単位の名前なので次の run の邪魔にはならず、次の `collect` が消します。
 
 手元では `git remote add claims-test <bare リポジトリ>` してから `pj run --env local --claim-run t1 --claim-remote claims-test --jobs 2 --job 1 --problem <id> --store <空の store>` で宣言の流れを試せます。2 本目のジョブが同じ問題を宣言済みとして飛ばすこと、`pj claims clean --run-id t1 --remote claims-test` で消えることを確かめました。
+
+## ヘッダの要約とゲートの実装の記録
+
+Library の verify を畳む順番の 1 番です (my-docs の「Library の verify を畳む設計」)。`pj site build` が `data/headers/index.json` を出し、summary に「全環境に現行 AC が揃ったヘッダ N / M」を出すようにしました。
+
+要約は逆引き JSON と同じ材料 (ヘッダごとの提出の一覧と、提出ごとに環境で畳んだ状態) から `header_index` が作ります。環境ごとに提出を数え、現行の AC が 1 本以上あれば `verified` です。参考に落ちた AC は数えません。ソースを変えた直後に緑のままにしないためです。判定できない (現行かどうかが None の) AC は現行と同じ扱いにしています。これは順位表と同じ規則です。compile_only の提出は AC がコンパイル可の意味なので数えず、そのヘッダを使う提出が compile_only しか無いときだけそれで読み替えます。逆引き JSON の各行にも比較の種別 (`compare`) を足したので、読み替えの判断は向こうでもできます。
+
+ゲートは全環境で `verified` なヘッダの数と総数です。総数は閉包に出てくるライブラリのヘッダの数で、Library の `hpp_map` の 144 と一致します。畳む判断は人がこの数字を見てやるので、CI を止めたりはしません。
 
 ## 既存リポジトリから移すもの
 

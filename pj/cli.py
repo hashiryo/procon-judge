@@ -580,6 +580,8 @@ def cmd_site_build(args: argparse.Namespace) -> int:
         f"ページ {summary.pages + 1} 枚",
         f"提出ページ {summary.submission_pages} 枚",
         f"ヘッダ {summary.headers} 件",
+        # verify を畳むゲート。ヘッダの総数に揃った回で Library の verify を止められる。
+        f"全環境に現行 AC が揃ったヘッダ {summary.verified_headers} / {summary.headers}",
     ]
     if summary.stale:
         parts.append(f"参考 {summary.stale} 件")

@@ -831,3 +831,98 @@ def test_records_of_removed_submissions_are_hidden(tmp_path, monkeypatch):
     assert {r["submission"] for r in payload["rows"]} == {"submissions/a.cpp"}
     assert summary.records == 1
     assert not (out / "submissions" / "p" / "gone.html").exists()
+
+
+# --- ヘッダの要約とゲート ---------------------------------------------------
+
+
+def _entry(problem, submission, envs, *, direct=True, compare="tokens"):
+    """header_entry が出す形のうち、要約が見る項目だけ。"""
+    return {
+        "problem": problem,
+        "submission": submission,
+        "direct": direct,
+        "compare": compare,
+        "envs": [
+            {"env": env, "status": status, "current": current, "models": 1, "algo_ns": None}
+            for env, (status, current) in envs.items()
+        ],
+    }
+
+
+def test_header_index_counts_current_ac_per_environment():
+    envs = ["x64-gcc", "arm-gcc"]
+    headers = {
+        "mylib/A.hpp": [
+            _entry("p", "submissions/a.hpp", {"x64-gcc": ("AC", True), "arm-gcc": ("AC", False)}),
+            _entry("q", "submissions/b.hpp", {"x64-gcc": ("WA", True), "arm-gcc": (None, None)}, direct=False),
+        ],
+        "mylib/B.hpp": [
+            _entry("p", "submissions/a.hpp", {"x64-gcc": ("AC", True), "arm-gcc": ("AC", None)}),
+        ],
+    }
+    index = site_build.header_index(headers, {"mylib/A.hpp": "Library", "mylib/B.hpp": "Library"}, envs)
+
+    a = index["headers"]["mylib/A.hpp"]
+    assert (a["submissions"], a["direct"], a["compile_only"]) == (2, 1, False)
+    x64, arm = a["envs"]
+    assert x64 == {"env": "x64-gcc", "verified": True, "ac": 1, "failing": 1, "stale": 0, "missing": 0}
+    # arm は AC が参考に落ちているだけで、現行の AC は無い。
+    assert arm == {"env": "arm-gcc", "verified": False, "ac": 0, "failing": 0, "stale": 1, "missing": 1}
+    assert a["verified"] is False
+
+    b = index["headers"]["mylib/B.hpp"]
+    # 判定できない (current が None) AC は現行と同じ扱い。
+    assert [row["verified"] for row in b["envs"]] == [True, True]
+    assert b["verified"] is True
+    assert index["gate"] == {"verified": 1, "total": 2}
+
+
+def test_header_index_ignores_compile_only_unless_that_is_all_there_is():
+    envs = ["x64-gcc"]
+    headers = {
+        # 本物の判定の提出があるので、compile_only の AC は数えない。
+        "mylib/A.hpp": [
+            _entry("p", "submissions/a.cpp", {"x64-gcc": ("AC", True)}, compare="compile_only"),
+            _entry("q", "submissions/b.hpp", {"x64-gcc": ("AC", False)}),
+        ],
+        # compile_only しか無いヘッダは、コンパイルが通ることで読み替える。
+        "mylib/B.hpp": [
+            _entry("p", "submissions/a.cpp", {"x64-gcc": ("AC", True)}, compare="compile_only"),
+        ],
+    }
+    index = site_build.header_index(headers, {}, envs)
+    assert index["headers"]["mylib/A.hpp"]["verified"] is False
+    assert index["headers"]["mylib/A.hpp"]["compile_only"] is False
+    assert index["headers"]["mylib/B.hpp"]["verified"] is True
+    assert index["headers"]["mylib/B.hpp"]["compile_only"] is True
+    assert index["gate"] == {"verified": 1, "total": 2}
+
+
+def test_build_writes_the_header_index_with_the_gate(tmp_path, fake_library, monkeypatch):
+    problem = lib_problem(tmp_path)
+    monkeypatch.setattr(problem_mod, "all_problem_dirs", lambda: [problem.dir])
+    store = store_with(
+        tmp_path,
+        [rec(problem="tmp-lib", submission="submissions/lib-tree.cpp")],
+        problem_id="tmp-lib",
+    )
+    out = tmp_path / "site"
+    summary = site_build.build(store, out)
+    index = json.loads((out / "data" / "headers" / "index.json").read_text())
+    assert set(index["headers"]) == {"mylib/Tree.hpp", "mylib/internal/helper.hpp"}
+    assert index["environments"] == [e.name for e in env_mod.load_all() if e.runs_on != "self"]
+    assert index["gate"]["total"] == 2
+    # 記録は 1 環境 1 モデルだけなので、全環境には揃っていない。
+    assert index["gate"]["verified"] == 0
+    assert summary.verified_headers == 0
+    tree = index["headers"]["mylib/Tree.hpp"]
+    assert tree["library"] == "Library"
+    assert tree["submissions"] == 1 and tree["direct"] == 1
+    rows = {row["env"]: row for row in tree["envs"]}
+    # 合成した記録は今のソースのキーと合わないので参考 (stale) に数える。他の環境は記録なし。
+    assert rows["x64-gcc"]["ac"] + rows["x64-gcc"]["stale"] == 1
+    assert all(row["missing"] == 1 for env, row in rows.items() if env != "x64-gcc")
+    # 逆引きの各行にも比較の種別が載る。
+    per_header = json.loads((out / "data" / "headers" / "mylib" / "Tree.hpp.json").read_text())
+    assert per_header["submissions"][0]["compare"] == "compile_only"
