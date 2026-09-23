@@ -187,7 +187,7 @@ const COLUMNS = [
   {
     id: "samples",
     label: "標本",
-    width: "64px",
+    width: "72px",
     value: (r) => r.samples,
     cell: (r) => el("td", r.samples, "n"),
   },
@@ -195,7 +195,8 @@ const COLUMNS = [
     id: "measured",
     label: "計測 (UTC)",
     text: true,
-    width: "140px",
+    // 「2026-09-22 14:17」と並べ替えの印が欠けずに入る幅。
+    width: "165px",
     value: (r) => r.timestamp,
     cell: (r) => {
       const td = el("td", stamp(r.timestamp), "dim");
