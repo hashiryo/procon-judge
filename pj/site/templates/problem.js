@@ -221,6 +221,46 @@ function fill(select, values, keep) {
   if (keep && values.includes(keep)) select.value = keep;
 }
 
+// CPU モデルの選択肢。揃っていないモデルには欠けの数を添えて、既定がなぜそれかを見せる。
+function fillModels(select, env) {
+  select.replaceChildren();
+  for (const c of DATA.combos.filter((c) => c.env === env)) {
+    const option = el("option", c.holes ? c.cpu_model + " (欠け " + c.holes + ")" : c.cpu_model);
+    option.value = c.cpu_model;
+    select.append(option);
+  }
+}
+
+const MODEL_MEMORY = "pj.model";
+
+function rememberedModel() {
+  try {
+    return localStorage.getItem(MODEL_MEMORY);
+  } catch (e) {
+    return null;
+  }
+}
+
+function rememberModel(model) {
+  try {
+    localStorage.setItem(MODEL_MEMORY, model);
+  } catch (e) {
+    // 保存できない環境では覚えないだけ。
+  }
+}
+
+// 既定の CPU モデル。push の run は網羅モードで環境ごとに 1 モデルしか新しくならないので、
+// 揃っている (今の全提出が現行の) モデルを出す。前回選んだものが揃っていればそれ、無ければ
+// 並びの最初の揃っているもの、揃っているものが無ければ欠けの少ないもの。
+function defaultModel(env) {
+  const combos = DATA.combos.filter((c) => c.env === env);
+  const complete = combos.filter((c) => c.complete);
+  const remembered = rememberedModel();
+  if (remembered && complete.some((c) => c.cpu_model === remembered)) return remembered;
+  if (complete.length) return complete[0].cpu_model;
+  return combos.reduce((best, c) => (best && best.holes <= c.holes ? best : c), null).cpu_model;
+}
+
 function compare(a, b, column) {
   const x = column.value(a);
   const y = column.value(b);
@@ -410,15 +450,22 @@ async function main() {
   const modelSelect = document.getElementById("model");
   fill(envSelect, envs());
   envSelect.value = DATA.combos[0].env;
-  fill(modelSelect, modelsOf(envSelect.value));
-  modelSelect.value = DATA.combos[0].cpu_model;
+  fillModels(modelSelect, envSelect.value);
+  modelSelect.value = defaultModel(envSelect.value);
 
   envSelect.addEventListener("change", () => {
-    // 環境を変えても、同じ CPU モデルがあれば選び直さない。
-    fill(modelSelect, modelsOf(envSelect.value), modelSelect.value);
+    // 環境を変えても、同じ CPU モデルがあれば選び直さない。無ければ既定に戻す。
+    const before = modelSelect.value;
+    fillModels(modelSelect, envSelect.value);
+    modelSelect.value = modelsOf(envSelect.value).includes(before)
+      ? before
+      : defaultModel(envSelect.value);
     render();
   });
-  modelSelect.addEventListener("change", render);
+  modelSelect.addEventListener("change", () => {
+    rememberModel(modelSelect.value);
+    render();
+  });
   renderHead();
   render();
 }

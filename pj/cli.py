@@ -278,13 +278,21 @@ def cmd_plan(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
 
-    plans = plan_mod.build(problems, envs, store)
+    plans = plan_mod.build(problems, envs, store, mode=args.mode)
     for one in plans:
-        parts = [
-            f"モデル {len(one.models)} 種",
-            f"未計測 {one.expected:.1f} 件/モデル (全モデル {one.total} 件)",
-            f"問題 {len(one.works)} 件",
-        ]
+        if one.mode == "cover":
+            # 網羅モード。揃っているモデルの無い (問題, 環境) だけが仕事で、量は 1 モデルぶん。
+            parts = [
+                f"モデル {len(one.models)} 種",
+                f"揃っていない問題 {len(one.works)} 件",
+                f"測る提出 {one.total} 件 (1 モデルぶん)",
+            ]
+        else:
+            parts = [
+                f"モデル {len(one.models)} 種",
+                f"未計測 {one.expected:.1f} 件/モデル (全モデル {one.total} 件)",
+                f"問題 {len(one.works)} 件",
+            ]
         print(f"{one.env.name}\t" + " / ".join(parts), file=sys.stderr)
         for submission in one.unresolved:
             print(
@@ -299,7 +307,7 @@ def cmd_plan(args: argparse.Namespace) -> int:
     groups = plan_mod.group(plans, minutes=args.minutes)
     for one in groups:
         print(
-            f"{one.name}\tジョブ {one.jobs} 本 (環境 {', '.join(one.env_names)}、"
+            f"{one.name}\tジョブ {one.jobs} 本 (モード {one.mode}、環境 {', '.join(one.env_names)}、"
             f"未計測 {one.total} 件、問題 {len(one.order)} 件)",
             file=sys.stderr,
         )
@@ -373,9 +381,13 @@ def _run_claiming(
     """CI のジョブ。問題を 1 つ宣言して、組の全環境で測る、を時間いっぱい繰り返す。
 
     並びは plan と同じ (組の全環境を合わせた重い順) で、ジョブ番号で開始点をずらす。
-    宣言済みの問題と、記録から借りた cases_hash で「このモデルではどの環境も
-    走らせるものが無い」と分かる問題は、宣言せずに飛ばす。宣言した問題は時間を
-    過ぎても測り切る。コンパイラが入らなかった環境は飛ばして、残りで測る。
+    宣言済みの問題と、測るものが無いと分かる問題は宣言せずに飛ばす。宣言した問題は
+    時間を過ぎても測り切る。コンパイラが入らなかった環境は飛ばして、残りで測る。
+
+    全モデルモード (--mode all) は、記録から借りた cases_hash で「このモデルではどの
+    環境も走らせるものが無い」と分かる問題を飛ばし、宣言はモデル付き。網羅モード
+    (--mode cover) は plan と同じ判定で「揃っているモデルの無い環境」だけを測り、
+    宣言はモデル無し (any) なので、1 つの問題を測るのは run の中で 1 本だけになる。
     """
     jobs = args.jobs if args.jobs is not None else 1
     if jobs < 1 or not 0 <= args.job < jobs:
@@ -401,14 +413,20 @@ def _run_claiming(
     for env in usable:
         print(f"{env.name} / {cpu_model} / {machines[env.name].compiler_version}", file=sys.stderr)
 
+    mode = args.mode
     all_envs = env_mod.load_all()
     problems = [problem_mod.load(d) for d in problem_mod.all_problem_dirs()]
     by_id = {p.id: p for p in problems}
-    order = list(plan_mod.combined_order(plan_mod.for_envs(usable, problems, all_envs, store)))
-    # 既知のモデルで全部計測済みの問題は plan の並びに無い。引いたモデルが新しければ
-    # そこにも仕事があるので、うしろに付けておく。実際に走らせるかはこの先で決まる。
-    seen = set(order)
-    order += [p.id for p in problems if p.id not in seen]
+    plans = plan_mod.for_envs(usable, problems, all_envs, store, mode=mode)
+    order = list(plan_mod.combined_order(plans))
+    if mode == "all":
+        # 既知のモデルで全部計測済みの問題は plan の並びに無い。引いたモデルが新しければ
+        # そこにも仕事があるので、うしろに付けておく。実際に走らせるかはこの先で決まる。
+        # 網羅モードでは付けない。新しいモデルに当たっても、揃っているモデルの有無は変わらない。
+        seen = set(order)
+        order += [p.id for p in problems if p.id not in seen]
+    # 網羅モードの「この環境は測る」。モデルに依らないので、全ジョブが同じ集合を持つ。
+    needs = plan_mod.needs_by_env(plans)
     if args.problem:
         if args.problem not in by_id:
             return _die(f"問題 {args.problem!r} がありません")
@@ -416,7 +434,12 @@ def _run_claiming(
     sequence = plan_mod.rotation(order, args.job, jobs)
 
     claims = claims_mod.Claims(
-        args.claim_run, scope, cpu_model, job=args.job, remote=args.claim_remote
+        args.claim_run,
+        scope,
+        # 網羅モードの宣言はモデル無し。組の全ジョブが同じ名前空間を見る。
+        cpu_model if mode == "all" else claims_mod.ANY,
+        job=args.job,
+        remote=args.claim_remote,
     )
     keys = store.keys()
     borrowed = store.cases_hashes()
@@ -425,7 +448,7 @@ def _run_claiming(
     taken = claims.taken()
     unavailable = _without_testdata(problems)
     print(
-        f"宣言済み {len(taken)} 問から始めます"
+        f"{'網羅' if mode == 'cover' else '全モデル'}モード。宣言済み {len(taken)} 問から始めます"
         + (f" (保管庫に無い manual の {len(unavailable)} 問は宣言しません)" if unavailable else ""),
         file=sys.stderr,
     )
@@ -442,16 +465,21 @@ def _run_claiming(
             continue
         problem = by_id[problem_id]
         targets = [(problem, s) for s in problem.submissions()]
-        # 借りた値で判定して、どの環境も走らせるものが無ければ宣言しない。
-        # テストデータにも触らない。
-        probes = [
-            run_mod.build_worklist(
-                targets, env, machines[env.name], keys, borrowed=borrowed, allow_fetch=False,
-                batches=batches, batch_id=batch_id,
-            )
-            for env in usable
-        ]
-        if not any(probe.jobs or probe.pending for probe in probes):
+        if mode == "cover":
+            # 揃っているモデルの無い環境だけ測る。plan と同じ判定で、モデルに依らない。
+            measuring = [env for env in usable if problem_id in needs[env.name]]
+        else:
+            # 借りた値で判定して、走らせるものがある環境だけ測る。どの環境も無ければ
+            # 宣言しない。テストデータにも触らない。
+            measuring = []
+            for env in usable:
+                probe = run_mod.build_worklist(
+                    targets, env, machines[env.name], keys, borrowed=borrowed,
+                    allow_fetch=False, batches=batches, batch_id=batch_id,
+                )
+                if probe.jobs or probe.pending:
+                    measuring.append(env)
+        if not measuring:
             nothing += 1
             continue
         if not claims.claim(problem_id):
@@ -460,7 +488,7 @@ def _run_claiming(
             continue
         claimed += 1
         print(f"宣言 {claimed}: {problem_id}", file=sys.stderr)
-        for env in usable:
+        for env in measuring:
             worklist = run_mod.build_worklist(
                 targets, env, machines[env.name], keys, borrowed=borrowed,
                 allow_fetch=True, refresh=args.refresh,
@@ -480,7 +508,7 @@ def _run_claiming(
         f"スキップ {skipped} 件",
         f"宣言済みで飛ばした {already} 問",
         f"同時に取ろうとして負けた {lost} 問",
-        f"このモデルでは仕事なし {nothing} 問",
+        f"{'揃っていて' if mode == 'cover' else 'このモデルでは'}仕事なし {nothing} 問",
     ]
     if timed_out:
         parts.append(f"時間の上限 {args.minutes:g} 分で終了")
@@ -587,9 +615,10 @@ def _print_summary(
 
 
 def cmd_claims_clean(args: argparse.Namespace) -> int:
-    """この run 以前の宣言の ref を消す。collect の最後に呼ぶ。"""
-    removed = claims_mod.clean(args.run_id, remote=args.remote)
-    print(f"宣言を {removed} 本消しました", file=sys.stderr)
+    """この run と、終わっている古い run の宣言の ref を消す。collect の最後に呼ぶ。"""
+    removed, kept = claims_mod.clean(args.run_id, remote=args.remote)
+    note = f" (走っている run のぶん {kept} 本は残しました)" if kept else ""
+    print(f"宣言を {removed} 本消しました{note}", file=sys.stderr)
     return 0
 
 
@@ -747,6 +776,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_plan.add_argument(
         "--github-output", help="matrix と any を書き足すファイル ($GITHUB_OUTPUT)"
     )
+    p_plan.add_argument(
+        "--mode",
+        choices=plan_mod.MODES,
+        default=plan_mod.DEFAULT_MODE,
+        help="cover は網羅モード (環境ごとに揃った CPU モデルが 1 つあれば飛ばす)、"
+        "all は全モデルモード (モデルごとの欠けを全部埋める。既定)",
+    )
     p_plan.set_defaults(func=cmd_plan)
 
     p_run = sub.add_parser("run", help="実行して記録を出す")
@@ -775,6 +811,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_run.add_argument(
         "--jobs", type=int, help="その環境で立っているジョブの本数 (--claim-run のとき)"
+    )
+    p_run.add_argument(
+        "--mode",
+        choices=plan_mod.MODES,
+        default=plan_mod.DEFAULT_MODE,
+        help="--claim-run のときの判定。cover は網羅モード、all は全モデルモード (既定)。"
+        "plan の matrix の値をそのまま渡す",
     )
     p_run.add_argument(
         "--minutes",

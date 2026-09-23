@@ -1019,3 +1019,22 @@ def test_problem_dir_rel_is_relative_to_the_repository():
     problem = problem_mod.load_by_id("yosupo-point-add-range-sum")
     rel = site_build.problem_dir_rel(problem, problem.id)
     assert rel.startswith("problems/") and rel.endswith("point-add-range-sum")
+
+
+def test_problem_payload_says_whether_a_model_is_complete():
+    """既定の CPU モデルは揃っているものから選ぶ。欠けは未計測と参考と束の外の合計。"""
+    cells = site_build.collapse(
+        [
+            rec(key="k1", cpu_model="EPYC", batch="r2/x64/1", timestamp="2026-01-02T00:00:00Z"),
+            rec(key="kb", submission="submissions/b.hpp", cpu_model="EPYC", batch="r2/x64/1",
+                timestamp="2026-01-02T00:00:00Z"),
+            rec(key="k1", cpu_model="Xeon", batch="r1/x64/0", timestamp="2026-01-01T00:00:00Z"),
+        ],
+        batched=True,
+    )
+    payload = site_build.problem_payload("p", None, cells, "now")
+    combos = {c["cpu_model"]: c for c in payload["combos"]}
+    assert combos["EPYC"]["complete"] is True
+    assert combos["EPYC"]["holes"] == 0
+    assert combos["Xeon"]["complete"] is False
+    assert combos["Xeon"]["holes"] == 1

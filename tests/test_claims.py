@@ -83,15 +83,43 @@ def test_claims_are_per_model_scope_and_run(remote):
         assert claims.claim("yuki-649") is True
 
 
-def test_clean_removes_this_run_and_older_ones_only(remote):
+def test_clean_removes_this_run_and_older_finished_ones_only(remote):
     _, a, _ = remote
     for run in ("7", "8", "9", "local"):
         assert claims_mod.Claims(run, "x64-gcc", MODEL, repo=a).claim("p") is True
-    assert claims_mod.clean("8", repo=a) == 2
+    assert claims_mod.clean("8", repo=a, finished=lambda run: True) == (2, 0)
     left = {ref.split("/")[2] for ref in claims_mod.list_refs(repo=a)}
     assert left == {"9", "local"}
-    assert claims_mod.clean("local", repo=a) == 1
+    assert claims_mod.clean("local", repo=a, finished=lambda run: True) == (1, 0)
     assert {ref.split("/")[2] for ref in claims_mod.list_refs(repo=a)} == {"9"}
+
+
+def test_clean_keeps_the_claims_of_a_run_that_is_still_going(remote):
+    """concurrency group がモードごとに 2 つあるので、古い run が走っている横で collect が
+    動く。走っている run の宣言を消すと、そのジョブたちが同じ問題を取り直す。"""
+    _, a, _ = remote
+    for run in ("7", "8"):
+        assert claims_mod.Claims(run, "x64", MODEL, repo=a).claim("p") is True
+        assert claims_mod.Claims(run, "x64", MODEL, repo=a).claim("q") is True
+    asked = []
+
+    def finished(run):
+        asked.append(run)
+        return run != "7"
+
+    assert claims_mod.clean("8", repo=a, finished=finished) == (2, 2)
+    # 自分の run は聞かない。古い run は 1 回だけ聞く。
+    assert asked == ["7"]
+    assert {ref.split("/")[2] for ref in claims_mod.list_refs(repo=a)} == {"7"}
+
+
+def test_when_the_run_status_is_unknown_the_claims_stay(remote, monkeypatch):
+    _, a, _ = remote
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+    for run in ("7", "8"):
+        assert claims_mod.Claims(run, "x64", MODEL, repo=a).claim("p") is True
+    # remote は手元のパスで GitHub ではないので、run の状態は分からない。残す側に倒す。
+    assert claims_mod.clean("8", repo=a) == (1, 1)
 
 
 def test_clean_deletes_in_chunks(remote, monkeypatch):
@@ -100,8 +128,32 @@ def test_clean_deletes_in_chunks(remote, monkeypatch):
     claims = claims_mod.Claims("3", "x64-gcc", MODEL, repo=a)
     for pid in ("p1", "p2", "p3", "p4", "p5"):
         assert claims.claim(pid) is True
-    assert claims_mod.clean("3", repo=a) == 5
+    assert claims_mod.clean("3", repo=a) == (5, 0)
     assert claims_mod.list_refs(repo=a) == []
+
+
+def test_any_is_a_model_less_claim(remote):
+    """網羅モードの宣言はモデル無し。違うモデルのジョブも同じ名前空間を見る。"""
+    _, a, b = remote
+    job0 = claims_mod.Claims("1", "x64", claims_mod.ANY, job=0, repo=a)
+    job1 = claims_mod.Claims("1", "x64", claims_mod.ANY, job=1, repo=b)
+    assert job0.ref("p") == "refs/claims/1/x64/any/p"
+    assert job0.claim("p") is True
+    assert job1.claim("p") is False
+
+
+def test_repo_slug_comes_from_the_environment_or_the_remote(tmp_path, monkeypatch):
+    monkeypatch.setenv("GITHUB_REPOSITORY", "hashiryo/procon-judge")
+    assert claims_mod.repo_slug(tmp_path) == "hashiryo/procon-judge"
+    monkeypatch.delenv("GITHUB_REPOSITORY")
+    repo = tmp_path / "r"
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    _git(repo, "remote", "add", "origin", "git@github.com.hashiryo:hashiryo/procon-judge.git")
+    assert claims_mod.repo_slug(repo) == "hashiryo/procon-judge"
+    _git(repo, "remote", "set-url", "origin", "https://github.com/hashiryo/procon-judge")
+    assert claims_mod.repo_slug(repo) == "hashiryo/procon-judge"
+    _git(repo, "remote", "set-url", "origin", str(tmp_path / "elsewhere.git"))
+    assert claims_mod.repo_slug(repo) is None
 
 
 def test_an_unreachable_remote_is_an_error(remote, monkeypatch):
@@ -123,3 +175,10 @@ def test_stale_keeps_newer_runs():
     ]
     assert claims_mod.stale(refs, "10") == refs[0:1] + refs[2:3]
     assert claims_mod.stale(refs, "local") == refs[3:]
+
+
+def test_stale_skips_the_runs_that_are_still_active():
+    refs = ["refs/claims/10/x64/M/p", "refs/claims/9/x64/M/p", "refs/claims/8/x64/M/p"]
+    assert claims_mod.stale(refs, "10", active={"9"}) == [refs[0], refs[2]]
+    assert claims_mod.run_of(refs[1]) == "9"
+    assert claims_mod.run_of("refs/heads/main") is None

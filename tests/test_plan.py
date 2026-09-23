@@ -510,3 +510,123 @@ def test_a_raw_problem_still_counts_only_the_missing_keys(tmp_path, envs, ci_env
     records = [record_for(problem, env, subs[0], batch="r1/x64/0")]
     one = plan_for(env, [problem], envs, store_with(tmp_path, records))
     assert one.works[0].todo["EPYC"] == (subs[1],)
+
+
+# --- 網羅モード -------------------------------------------------------------
+
+
+def cover(env, problems, envs, store):
+    return plan_for(env, problems, envs, store, mode="cover")
+
+
+def test_cover_mode_skips_a_problem_that_one_model_has_completely(tmp_path, envs, ci_envs):
+    """揃っているモデルが 1 つあれば、他のモデルに欠けがあっても測らない。"""
+    env = ci_envs[0]
+    problem = make_problem(tmp_path, "p1")
+    subs = [s.as_posix() for s in problem.submissions()]
+    records = [record_for(problem, env, s, cpu_model="EPYC") for s in subs] + [
+        record_for(problem, env, subs[0], cpu_model="Xeon")
+    ]
+    store = store_with(tmp_path, records)
+    one = cover(env, [problem], envs, store)
+    assert one.mode == "cover"
+    assert one.works == ()
+    # 全モデルモードなら Xeon の欠けが仕事になる。
+    assert plan_for(env, [problem], envs, store).works[0].todo["Xeon"] == (subs[1],)
+
+
+def test_cover_mode_needs_one_model_to_have_every_submission(tmp_path, envs, ci_envs):
+    """提出がモデルをまたいで散っていても揃ったとは言えない。順位表は同じモデルの中で比べる。"""
+    env = ci_envs[0]
+    problem = make_problem(tmp_path, "p1")
+    subs = [s.as_posix() for s in problem.submissions()]
+    records = [
+        record_for(problem, env, subs[0], cpu_model="EPYC"),
+        record_for(problem, env, subs[1], cpu_model="Xeon"),
+    ]
+    one = cover(env, [problem], envs, store_with(tmp_path, records))
+    assert [w.problem for w in one.works] == ["p1"]
+    work = one.works[0]
+    assert work.cover is True
+    assert work.todo == {"EPYC": (subs[1],), "Xeon": (subs[0],)}
+    # 量は 1 モデルぶん (欠けの平均の切り上げ)。全モデルの合計 2 ではない。
+    assert work.total == 1
+    assert one.total == 1
+
+
+def test_cover_mode_counts_a_base_problem_once(tmp_path, envs, ci_envs):
+    """base は当たったモデルで全提出を束にして測る。量は全提出 1 回ぶん。"""
+    env = ci_envs[0]
+    problem = make_base_problem(tmp_path, "b1")
+    subs = [s.as_posix() for s in problem.submissions()]
+    records = [
+        record_for(problem, env, s, cpu_model="EPYC", batch="r1/x64/0") for s in subs[:2]
+    ] + [record_for(problem, env, s, cpu_model="Xeon", batch="r1/x64/1") for s in subs[:1]]
+    one = cover(env, [problem], envs, store_with(tmp_path, records))
+    assert one.works[0].total == len(subs)
+
+
+def test_cover_mode_accepts_a_complete_batch_on_any_model(tmp_path, envs, ci_envs):
+    env = ci_envs[0]
+    problem = make_base_problem(tmp_path, "b1")
+    subs = [s.as_posix() for s in problem.submissions()]
+    records = [
+        record_for(problem, env, s, cpu_model="Xeon", batch="r1/x64/1") for s in subs
+    ] + [record_for(problem, env, subs[0], cpu_model="EPYC", batch="r1/x64/0")]
+    assert cover(env, [problem], envs, store_with(tmp_path, records)).works == ()
+
+
+def test_cover_mode_with_no_record_is_work_for_one_model(tmp_path, envs, ci_envs):
+    env = ci_envs[0]
+    problem = make_problem(tmp_path, "p1")
+    one = cover(env, [problem], envs, store_with(tmp_path, []))
+    assert one.works[0].total == 2
+    assert one.total == 2
+
+
+def test_needs_by_env_lists_the_problems_of_each_environment(tmp_path, envs, ci_envs):
+    """網羅モードの run のジョブは、揃っているモデルの無い環境だけを測る。"""
+    x64 = [e for e in ci_envs if env_mod.group_name(e) == "x64"]
+    problem = make_problem(tmp_path, "p1")
+    subs = [s.as_posix() for s in problem.submissions()]
+    records = [record_for(problem, x64[0], s) for s in subs]
+    plans = plan_mod.for_envs(x64, [problem], envs, store_with(tmp_path, records), mode="cover")
+    needs = plan_mod.needs_by_env(plans)
+    assert needs[x64[0].name] == frozenset()
+    assert needs[x64[1].name] == frozenset({"p1"})
+
+
+def test_the_matrix_carries_the_mode(tmp_path, envs, ci_envs):
+    problem = make_problem(tmp_path, "p1", submissions=("a",))
+    store = store_with(tmp_path, [])
+    for mode in plan_mod.MODES:
+        plans = plan_mod.build([problem], envs, store, mode=mode)
+        entries = plan_mod.matrix(plan_mod.group(plans))["include"]
+        assert entries and {e["mode"] for e in entries} == {mode}
+
+
+def test_an_unknown_mode_is_refused(tmp_path, envs, ci_envs):
+    problem = make_problem(tmp_path, "p1", submissions=("a",))
+    with pytest.raises(ValueError):
+        plan_mod.build([problem], envs, store_with(tmp_path, []), mode="some")
+
+
+def test_cap_run_scales_the_groups_down_to_the_limit():
+    assert plan_mod.cap_run([40, 26], 16) == [10, 6]
+    assert plan_mod.cap_run([40, 1], 16) == [15, 1]
+    assert plan_mod.cap_run([3, 2], 16) == [3, 2]
+    assert plan_mod.cap_run([0, 30], 16) == [0, 16]
+    assert plan_mod.cap_run([16, 16], 16) == [8, 8]
+
+
+def test_all_mode_leaves_room_for_the_push_run(tmp_path, envs, ci_envs, monkeypatch):
+    """全モデルモードの run は合計 16 本まで。網羅モードは組ごとの上限だけ。"""
+    monkeypatch.setattr(plan_mod, "ITEMS_PER_JOB", 1)
+    problem = make_problem(tmp_path, "p1", submissions=tuple(f"s{i}" for i in range(30)))
+    store = store_with(tmp_path, [])
+    all_mode = plan_mod.group(plan_mod.build([problem], envs, store, mode="all"))
+    assert sum(g.jobs for g in all_mode) == plan_mod.MAX_JOBS_PER_RUN_ALL
+    assert {g.mode for g in all_mode} == {"all"}
+    cover_mode = plan_mod.group(plan_mod.build([problem], envs, store, mode="cover"))
+    assert sum(g.jobs for g in cover_mode) > plan_mod.MAX_JOBS_PER_RUN_ALL
+    assert {g.mode for g in cover_mode} == {"cover"}

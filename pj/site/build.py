@@ -424,6 +424,18 @@ def problem_payload(
             combo["batch"] = cell.batch
             combo["batch_time"] = max(combo["batch_time"], cell.timestamp)
 
+    # 揃っているか。この組で、今の全提出が現行 (base なら最新の束の中) の記録を持てば
+    # 揃っている。欠けは未計測と参考と束の外の合計。ページは既定の CPU モデルを揃っている
+    # ものから選ぶ。push の run は網羅モードで、環境ごとに 1 モデルしか新しくならないため。
+    good: dict[tuple[str, str], set[str]] = {}
+    for cell in cells:
+        if cell.current is not False and not cell.outside:
+            good.setdefault((cell.env, cell.cpu_model), set()).add(cell.submission)
+    for (env, model), combo in combos.items():
+        holes = len(set(submissions) - good.get((env, model), set()))
+        combo["holes"] = holes
+        combo["complete"] = holes == 0
+
     cxxflags: dict[str, str] = {}
     for cell in cells:
         cxxflags.setdefault(cell.env, cell.cxxflags)

@@ -38,6 +38,20 @@ from .store import Store
 # 仕事が少なく、本数は x64 に寄る。
 MAX_JOBS_PER_GROUP = 40
 
+# 全モデルモードの 1 run の本数の上限 (全組の合計)。同時実行は Free で 20 本で、超えた
+# ぶんは待ち行列に並び、空いた枠はそこから順に埋まる。あとから来た push の run (網羅
+# モード) のジョブが schedule の run の待ち行列の後ろに並ばないよう、全モデルモードは
+# 20 より下で止めて枠を残す。稀なモデルの穴を埋める当たりの回数は減るが、それは run の
+# 回数 (1 日 2 回) で補う。
+MAX_JOBS_PER_RUN_ALL = 16
+
+# モード。cover は網羅モード (push と Library の dispatch) で、(問題, 環境) ごとに今の
+# 全提出が現行になっている CPU モデルが 1 つでもあれば飛ばし、どのモデルにも欠けが
+# あれば 1 モデルぶんだけ測る。all は全モデルモード (schedule と手動) で、モデルごとの
+# 欠けを全部埋める。設計は my-docs の「procon-judge の push の run を網羅モードにする設計」。
+MODES = ("cover", "all")
+DEFAULT_MODE = "all"
+
 # 1 本のジョブに見込む未計測の件数。本数を決めるためだけの値で、ジョブはこの
 # 件数で止まらない (宣言が尽きるか時間の上限まで測る)。1 ジョブは 1 分に 5 件
 # ほど測るので、50 件は 10 分ほど。少なめに見て早く本数を増やす。当たった
@@ -69,6 +83,8 @@ class Work:
     todo: dict[str, tuple[str, ...]]
     # 費用の見積もり (ms)。1 モデルあたりの期待値。
     weight: float
+    # 網羅モードの仕事か。当たったモデル 1 つで測るので、量は 1 モデルぶんで数える。
+    cover: bool = False
 
     @property
     def expected(self) -> float:
@@ -77,7 +93,15 @@ class Work:
 
     @property
     def total(self) -> int:
-        """既知のモデル全部を合わせた未計測の件数。ジョブの本数を決めるのに使う。"""
+        """ジョブの本数を決めるのに使う件数。
+
+        全モデルモードは既知のモデル全部を合わせた件数。仕事はモデルごとにあり、
+        当たったモデルのぶんしか測れないので、全部を数えないと本数が足りない。
+        網羅モードはどのモデルに当たっても 1 回しか測らないので、1 モデルぶん
+        (欠けの平均の切り上げ) で数える。
+        """
+        if self.cover:
+            return math.ceil(self.expected)
         return sum(len(v) for v in self.todo.values())
 
 
@@ -91,6 +115,7 @@ class EnvPlan:
     unresolved: tuple[str, ...] = ()
     # 今のソースで CE になると分かっている提出。他のモデルでも必ず CE になる。
     compile_errors: tuple[str, ...] = ()
+    mode: str = DEFAULT_MODE
 
     @property
     def order(self) -> tuple[str, ...]:
@@ -124,6 +149,8 @@ class GroupPlan:
     jobs: int
     # run に渡す時間の上限 (分)。
     minutes: int = DEFAULT_MINUTES
+    # run に渡すモード。
+    mode: str = DEFAULT_MODE
 
     @property
     def env_names(self) -> tuple[str, ...]:
@@ -136,9 +163,12 @@ def build(
     store: Store,
     *,
     minutes: int = DEFAULT_MINUTES,
+    mode: str = DEFAULT_MODE,
 ) -> list[EnvPlan]:
     """CI で走らせる環境それぞれの計画。"""
-    return for_envs([e for e in envs if e.runs_on != "self"], problems, envs, store)
+    return for_envs(
+        [e for e in envs if e.runs_on != "self"], problems, envs, store, mode=mode
+    )
 
 
 def for_envs(
@@ -146,19 +176,26 @@ def for_envs(
     problems: Sequence[Problem],
     envs: Sequence[Environment],
     store: Store,
+    *,
+    mode: str = DEFAULT_MODE,
 ) -> list[EnvPlan]:
     """指定した環境ぶんの計画。run のジョブが自分の組の並びを組み直すのにも使う。
 
     並びは記録と問題定義と lib/ だけから決まるので、同じものを読めば全ジョブが
     同じ順を作る。
     """
+    if mode not in MODES:
+        raise ValueError(f"モード {mode!r} は {' / '.join(MODES)} のどれでもありません")
     keys = store.keys()
     records = {p.id: list(store.read(p.id)) for p in problems}
     # Freshness は提出のハッシュを問題につき一度だけ作る。環境をまたいで
     # 使い回さないと、閉包を環境の数だけ辿り直すことになる。
     fresh = {p.id: Freshness(p, envs) for p in problems}
     cases = store.cases_hashes()
-    return [_for_env(env, problems, records, fresh, keys, cases) for env in targets]
+    return [
+        _for_env(env, problems, records, fresh, keys, cases, mode=mode)
+        for env in targets
+    ]
 
 
 def for_env(
@@ -166,9 +203,20 @@ def for_env(
     problems: Sequence[Problem],
     envs: Sequence[Environment],
     store: Store,
+    *,
+    mode: str = DEFAULT_MODE,
 ) -> EnvPlan:
     """1 環境ぶん。"""
-    return for_envs([env], problems, envs, store)[0]
+    return for_envs([env], problems, envs, store, mode=mode)[0]
+
+
+def needs_by_env(plans: Sequence[EnvPlan]) -> dict[str, frozenset[str]]:
+    """環境ごとの、仕事のある問題の集合。
+
+    網羅モードの run のジョブがこれを見る。plan の並びに載る問題は「揃っている
+    モデルが無い」問題そのものなので、モデルに依らずに「この環境は測る」と言える。
+    """
+    return {plan.env.name: frozenset(plan.order) for plan in plans}
 
 
 def combined_order(plans: Sequence[EnvPlan]) -> tuple[str, ...]:
@@ -184,13 +232,24 @@ def combined_order(plans: Sequence[EnvPlan]) -> tuple[str, ...]:
 
 
 def group(plans: Sequence[EnvPlan], *, minutes: int = DEFAULT_MINUTES) -> list[GroupPlan]:
-    """環境ごとの計画を組 (ジョブの単位) にまとめる。"""
+    """環境ごとの計画を組 (ジョブの単位) にまとめる。
+
+    全モデルモードは run の合計を MAX_JOBS_PER_RUN_ALL に収める。push の run の
+    ジョブが並ぶ枠を残すためで、組ごとの本数は比で縮める。
+    """
+    modes = {plan.mode for plan in plans}
+    if len(modes) > 1:
+        raise ValueError(f"環境ごとの計画のモードが揃っていません: {sorted(modes)}")
+    mode = modes.pop() if modes else DEFAULT_MODE
     by_group: dict[str, list[EnvPlan]] = {}
     for plan in plans:
         by_group.setdefault(group_name(plan.env), []).append(plan)
+    totals = [sum(p.total for p in members) for members in by_group.values()]
+    counts = [job_count(total) for total in totals]
+    if mode == "all":
+        counts = cap_run(counts, MAX_JOBS_PER_RUN_ALL)
     out = []
-    for name, members in by_group.items():
-        total = sum(p.total for p in members)
+    for (name, members), total, jobs in zip(by_group.items(), totals, counts):
         out.append(
             GroupPlan(
                 name=name,
@@ -198,11 +257,33 @@ def group(plans: Sequence[EnvPlan], *, minutes: int = DEFAULT_MINUTES) -> list[G
                 envs=tuple(p.env for p in members),
                 order=combined_order(members),
                 total=total,
-                jobs=job_count(total),
+                jobs=jobs,
                 minutes=minutes,
+                mode=mode,
             )
         )
     return out
+
+
+def cap_run(counts: Sequence[int], limit: int) -> list[int]:
+    """組ごとの本数の合計を limit に収める。
+
+    比で縮めて、仕事のある組は 1 本を下回らない。切り捨てで余った枠は端数の大きい
+    組から 1 本ずつ配る。合計が limit 以下ならそのまま。
+    """
+    total = sum(counts)
+    if total <= limit:
+        return list(counts)
+    exact = [count * limit / total for count in counts]
+    scaled = [
+        max(1, math.floor(share)) if count > 0 else 0
+        for share, count in zip(exact, counts)
+    ]
+    for index in sorted(range(len(counts)), key=lambda i: exact[i] - scaled[i], reverse=True):
+        if sum(scaled) >= limit:
+            break
+        scaled[index] += 1
+    return scaled
 
 
 def job_count(total: int) -> int:
@@ -254,6 +335,8 @@ def matrix(plans: Iterable[GroupPlan]) -> dict:
             "job": job,
             "jobs": plan.jobs,
             "minutes": plan.minutes,
+            # pj run --mode に渡す。plan と同じ判定で測らせる。
+            "mode": plan.mode,
         }
         for plan in plans
         for job in range(plan.jobs)
@@ -271,6 +354,8 @@ def _for_env(
     fresh: dict[str, Freshness],
     keys: set[str],
     cases: Mapping[str, str],
+    *,
+    mode: str = DEFAULT_MODE,
 ) -> EnvPlan:
     models = _models(records, env.name)
     works: list[Work] = []
@@ -327,7 +412,22 @@ def _for_env(
             else:
                 todo[model] = tuple(missing)
 
-        if any(todo.values()):
+        if mode == "cover":
+            # 網羅モード。todo が空のモデルは今の全提出が現行で揃っている。1 つでも
+            # あればこの (問題, 環境) は飛ばす。「全提出がどこかのモデルにある」では
+            # なく「1 つのモデルが全提出を揃えている」で見る。順位表は同じモデルの
+            # 中で比べるので、提出がモデルをまたいで散っていても揃ったとは言えない。
+            if not all(todo.values()):
+                continue
+            works.append(
+                Work(
+                    problem=problem.id,
+                    todo=todo,
+                    weight=_weight(problem, rows, todo),
+                    cover=True,
+                )
+            )
+        elif any(todo.values()):
             works.append(
                 Work(
                     problem=problem.id,
@@ -344,6 +444,7 @@ def _for_env(
         works=tuple(works),
         unresolved=tuple(sorted(unresolved)),
         compile_errors=tuple(sorted(compile_errors)),
+        mode=mode,
     )
 
 

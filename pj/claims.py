@@ -3,7 +3,9 @@
 宣言は procon-judge のリポジトリに ref を 1 本作ること。名前は
 `refs/claims/<run id>/<組>/<CPU モデル>/<問題 id>`。組は CI のジョブの単位 (x64 / arm)
 で、1 本のジョブがその組の全環境 (gcc と clang) を測る。`refs/heads` の外なので
-`on: push` は起きず、GitHub の画面にも出ない。
+`on: push` は起きず、GitHub の画面にも出ない。網羅モード (pj.plan の cover) の宣言は
+モデルの位置が固定の `any` で、組の全ジョブが同じ名前空間を見る。1 つの問題を測るのは
+run の中で 1 本だけになり、どのモデルで測るかは当たりで決まる。
 
 作るのは `git push --force-with-lease=<ref>:` で、期待値を空にした lease は
 「その ref がまだ無いこと」を条件にする。既にあれば server が stale info で弾く。
@@ -25,13 +27,15 @@ import os
 import re
 import subprocess
 import time
-from collections.abc import Iterable
+from collections.abc import Callable, Collection, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
 from .paths import ROOT
 
 NAMESPACE = "refs/claims"
+# 網羅モードの宣言の、CPU モデルの位置に入る固定の名前。
+ANY = "any"
 GIT_TIMEOUT_SEC = 120
 # 網の都合で失敗したときのやり直し。弾かれた (取られていた) のはやり直さない。
 RETRIES = 3
@@ -188,31 +192,104 @@ def list_refs(repo: Path = ROOT, remote: str = "origin") -> list[str]:
     return [line.partition("\t")[2] for line in out.splitlines() if "\t" in line]
 
 
-def stale(refs: Iterable[str], run_id: str) -> list[str]:
+def run_of(ref: str) -> str | None:
+    """宣言の ref の run id の成分。名前空間の外の ref なら None。"""
+    prefix = f"{NAMESPACE}/"
+    if not ref.startswith(prefix):
+        return None
+    return ref[len(prefix) :].split("/", 1)[0]
+
+
+def stale(
+    refs: Iterable[str], run_id: str, *, active: Collection[str] = ()
+) -> list[str]:
     """この run と、それより古い run の宣言。run id は増える整数なので大小で見る。
 
-    整数に読めない run id (手元の試しなど) は、同じ id のものだけ消す。
+    整数に読めない run id (手元の試しなど) は、同じ id のものだけ消す。active に
+    入っている run (まだ走っている) のものは、古くても残す。
     """
-    prefix = f"{NAMESPACE}/"
     found: list[str] = []
     for ref in refs:
-        if not ref.startswith(prefix):
+        head = run_of(ref)
+        if head is None or head in active:
             continue
-        head = ref[len(prefix) :].split("/", 1)[0]
         older = run_id.isdigit() and head.isdigit() and int(head) < int(run_id)
         if head == run_id or older:
             found.append(ref)
     return found
 
 
-def clean(run_id: str, repo: Path = ROOT, remote: str = "origin") -> int:
-    """この run 以前の宣言を消す。消した本数を返す。
+def clean(
+    run_id: str,
+    repo: Path = ROOT,
+    remote: str = "origin",
+    *,
+    finished: Callable[[str], bool] | None = None,
+) -> tuple[int, int]:
+    """この run の宣言と、終わっている古い run の宣言を消す。(消した本数, 残した本数)。
 
-    消し損ねても宣言は run 単位の名前なので次の run の邪魔にはならない。次の
-    collect が消す。
+    走っている run の宣言を消すと、そのジョブたちが同じ問題を取り直して二重に測る。
+    concurrency group がモードごとに 2 つあるので、古い run がまだ走っている横で
+    collect が動くことがある。古い run ごとに終わったかを 1 回見て (run_finished)、
+    終わっていなければ残す。残したものは次の collect が見直す。消し損ねても宣言は
+    run 単位の名前なので、次の run の邪魔にはならない。
     """
-    targets = stale(list_refs(repo, remote), run_id)
+    refs = list_refs(repo, remote)
+    older = {run_of(ref) for ref in stale(refs, run_id)} - {run_id, None}
+    if finished is None:
+        # 同じ repo と remote で見る。ROOT の remote で見ると、手元の試し (remote が
+        # 別の場所) でも本物の GitHub に聞いてしまう。
+        def finished(run: str) -> bool:
+            return run_finished(run, repo, remote)
+
+    active = {head for head in sorted(older) if head and not finished(head)}
+    targets = stale(refs, run_id, active=active)
     for start in range(0, len(targets), DELETE_CHUNK):
         chunk = targets[start : start + DELETE_CHUNK]
         _git(repo, "push", "--quiet", remote, *(f":{ref}" for ref in chunk))
-    return len(targets)
+    kept = sum(1 for ref in refs if run_of(ref) in active)
+    return len(targets), kept
+
+
+def repo_slug(repo: Path = ROOT, remote: str = "origin") -> str | None:
+    """owner/name。CI の GITHUB_REPOSITORY か、remote の URL から。
+
+    remote の host は SSH の別名 (github.com.hashiryo) が挟まって当てにならないので、
+    site.build.repo_url と同じく github.com を含むことだけ確かめて末尾の 2 つを拾う。
+    """
+    slug = os.environ.get("GITHUB_REPOSITORY")
+    if slug:
+        return slug
+    try:
+        url = _git(repo, "remote", "get-url", remote).strip()
+    except ClaimError:
+        return None
+    if "github.com" not in url:
+        return None
+    parts = url.rstrip("/").removesuffix(".git").replace(":", "/").split("/")
+    return "/".join(parts[-2:]) if len(parts) >= 2 and all(parts[-2:]) else None
+
+
+def run_finished(run_id: str, repo: Path = ROOT, remote: str = "origin") -> bool:
+    """GitHub Actions の run が終わっているか。分からなければ False (残す側に倒す)。
+
+    gh で REST を 1 回叩く。認証は CI では GH_TOKEN (github.token)、手元では gh の
+    ログイン。1 run に 1 回なので GITHUB_TOKEN の 1000 req/h には触らない。run が
+    消えている (404、保持期間切れ) なら終わっている扱い。
+    """
+    slug = repo_slug(repo, remote)
+    if slug is None or not run_id.isdigit():
+        return False
+    try:
+        proc = subprocess.run(
+            ["gh", "api", f"repos/{slug}/actions/runs/{run_id}", "--jq", ".status"],
+            capture_output=True,
+            text=True,
+            timeout=GIT_TIMEOUT_SEC,
+            check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return False
+    if proc.returncode != 0:
+        return "HTTP 404" in proc.stderr
+    return proc.stdout.strip() == "completed"

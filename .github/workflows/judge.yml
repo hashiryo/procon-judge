@@ -7,15 +7,31 @@ on:
   repository_dispatch:
     types: [library-push]
   schedule:
-    # 03:00 と 15:00 JST。取りこぼしを埋める。やることが 0 件なら run は立たず、
+    # 03:00 と 15:00 JST。全モデルの穴を埋める。やることが 0 件なら run は立たず、
     # plan だけで 2 分ほどで終わる。
     - cron: "0 18 * * *"
     - cron: "0 6 * * *"
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "all は全モデルモード (モデルごとの欠けを全部埋める)、cover は網羅モード (環境ごとに揃った CPU モデルが 1 つあれば飛ばす)"
+        type: choice
+        options: [all, cover]
+        default: all
 
-# 記録を失いたくないので、実行中のものを打ち切らずに待たせる。
+# モードは引き金で決まる。push と Library の dispatch は網羅モード (cover) で、環境ごとに
+# 揃った CPU モデルが 1 つあればよい。schedule は全モデルモード (all) で、モデルごとの
+# 欠けを埋める。手動は入力で選ぶ。concurrency は env を見られないので、同じ式を
+# ここと下の group の 2 か所に書く。直すときは両方。
+env:
+  MODE: ${{ (github.event_name == 'push' || github.event_name == 'repository_dispatch') && 'cover' || (github.event_name == 'workflow_dispatch' && inputs.mode) || 'all' }}
+
+# 記録を失いたくないので、実行中のものを打ち切らずに待たせる。group はモードごとに
+# 分ける。push の run (網羅モード、数分) が schedule の run (全モデルモード、数時間)
+# の後ろで待たないため。同時実行の枠は共通なので、全モデルモードの本数は plan が
+# 20 より下に抑えて枠を残す (pj.plan.MAX_JOBS_PER_RUN_ALL)。
 concurrency:
-  group: judge
+  group: judge-${{ (github.event_name == 'push' || github.event_name == 'repository_dispatch') && 'cover' || (github.event_name == 'workflow_dispatch' && inputs.mode) || 'all' }}
   cancel-in-progress: false
 
 permissions:
@@ -72,7 +88,7 @@ jobs:
 
       - name: 計画する
         id: plan
-        run: uv run pj plan --store .results --github-output "$GITHUB_OUTPUT"
+        run: uv run pj plan --mode "$MODE" --store .results --github-output "$GITHUB_OUTPUT"
 
   run:
     needs: plan
@@ -158,8 +174,9 @@ jobs:
           git -C lib fetch --depth=1 origin "${LIBRARY_SHA:-HEAD}"
           git -C lib checkout -q FETCH_HEAD
 
-      # 引いた CPU モデルで未計測の問題を 1 つ宣言して、組の全環境で測る、を時間の
-      # 上限まで繰り返す。宣言は refs/claims/<run id>/... の ref で、他のジョブに見える。
+      # 未計測の問題を 1 つ宣言して、組の全環境で測る、を時間の上限まで繰り返す。
+      # 全モデルモードは引いた CPU モデルの欠けを、網羅モードは揃ったモデルの無い環境を
+      # 測る。宣言は refs/claims/<run id>/... の ref で、他のジョブに見える。
       # 書き先をドットで始めない。upload-artifact は既定で隠しファイルを除く。
       # 取れなかったテストデータは保管庫から取る。原本まで行ったら保管庫へ上げる。
       - name: 実行
@@ -170,6 +187,7 @@ jobs:
           uv run pj run
           --env ${{ matrix.envs }}
           --claim-run ${{ github.run_id }}
+          --mode ${{ matrix.mode }}
           --job ${{ matrix.job }}
           --jobs ${{ matrix.jobs }}
           --minutes ${{ matrix.minutes }}
@@ -206,6 +224,8 @@ jobs:
       contents: write
       pages: write
       id-token: write
+      # 宣言の掃除が、古い run が終わっているかを見るのに要る。
+      actions: read
     # deploy-pages はこの名前の environment を要求する。
     environment:
       name: github-pages
@@ -283,8 +303,12 @@ jobs:
         id: pages
         uses: actions/deploy-pages@v5
 
-      # 宣言の ref を消す。この run のぶんと、消し損ねていた古い run のぶん。
+      # 宣言の ref を消す。この run のぶんと、終わっている古い run のぶん。group が
+      # モードごとに 2 つあるので、古い run がまだ走っていることがある。その宣言を消すと
+      # ジョブが同じ問題を取り直すので、run の状態を gh で見て走っているものは残す。
       # 消し損ねても宣言は run 単位の名前なので次の run の邪魔にはならない。
       - name: 宣言を掃く
         if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: uv run pj claims clean --run-id ${{ github.run_id }}
