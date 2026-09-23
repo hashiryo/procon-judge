@@ -13,6 +13,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from . import batch as batch_mod
 from . import build as build_mod
 from . import compare as compare_mod
 from . import environment as env_mod
@@ -60,6 +61,8 @@ class Job:
     problem_hash: str = ""
     # ラベル -> 短いハッシュ。提出の閉包とハーネスの閉包を合わせたもの。
     file_hashes: tuple[tuple[str, str], ...] = ()
+    # 束の id (pj.batch)。base の問題で、全提出を同じジョブで測るときに付く。
+    batch: str | None = None
 
     @property
     def label(self) -> str:
@@ -136,6 +139,8 @@ def build_worklist(
     borrowed: Mapping[str, str] | None = None,
     allow_fetch: bool = True,
     refresh: bool = False,
+    batches: Mapping[tuple[str, str, str], batch_mod.Batch] | None = None,
+    batch_id: str | None = None,
 ) -> Worklist:
     """各提出のキーを計算して、記録にあるものを除く。
 
@@ -150,9 +155,14 @@ def build_worklist(
 
     borrowed を渡さないと借用をしない。その場合は今までどおり、判定のために
     テストデータを取りに行く。
+
+    batch_id を渡すと、base の問題は束 (pj.batch) の条件で「全部か 0」に分ける。
+    batches は (問題, 環境, モデル) ごとのいちばん新しい束で、それが今の全提出の
+    キーを揃えていれば全部飛ばし、1 本でも欠けていれば全部走らせる。
     """
     state = _State()
     borrowed = borrowed or {}
+    batches = batches or {}
 
     for problem, submissions in _group_by_problem(targets):
         known = _known_cases_hash(problem, refresh=refresh)
@@ -164,8 +174,12 @@ def build_worklist(
         else:
             guess = borrowed.get(problem.id)
 
+        newest = batches.get((problem.id, env.name, machine.cpu_model))
         if guess is not None:
-            decided = _decide(problem, submissions, guess, env, machine, known_keys)
+            decided = _decide(
+                problem, submissions, guess, env, machine, known_keys,
+                newest=newest, batch_id=batch_id,
+            )
             if not decided.jobs or known is not None:
                 # 走らせるものが無いか、手元の manifest が本物か。どちらでも
                 # 取得は要らない。前者はテストデータに触らずに次の問題へ行く。
@@ -187,7 +201,10 @@ def build_worklist(
         if guess is None or real != guess:
             if guess is not None:
                 state.moved.append((problem.id, guess, real))
-            decided = _decide(problem, submissions, real, env, machine, known_keys)
+            decided = _decide(
+                problem, submissions, real, env, machine, known_keys,
+                newest=newest, batch_id=batch_id,
+            )
         state.absorb(decided)
 
     return state.finish()
@@ -250,13 +267,25 @@ def _decide(
     env: env_mod.Environment,
     machine: Machine,
     known_keys: set[str],
+    *,
+    newest: batch_mod.Batch | None = None,
+    batch_id: str | None = None,
 ) -> _Decision:
-    """この cases_hash を前提に、走らせるものと飛ばすものを分ける。"""
+    """この cases_hash を前提に、走らせるものと飛ばすものを分ける。
+
+    base の問題で batch_id が渡されていれば束の条件で分ける。いちばん新しい束
+    (newest) が今の全提出のキーを揃えていれば全部飛ばし、1 本でも欠けていれば
+    全部走らせる。束の無い記録しか無ければ newest は None で、全部走らせる。
+    raw の問題と、batch_id の無い呼び出し (手元で 1 本だけ測るとき) は、提出
+    ごとにキーの有無で分ける。
+    """
     cxxflags = build_mod.effective_cxxflags(env, problem)
     search_paths = build_mod.include_dirs(problem)
     harness = key_mod.harness_key(problem, search_paths)
     problem_h = key_mod.problem_hash(problem)
     decided = _Decision(jobs=[], skipped=[], blocked=[], unresolved=[])
+    batched = batch_id is not None and problem.harness_kind == "base"
+    ordered: list[Job] = []
 
     for submission in submissions:
         sub = key_mod.submission_hash(problem.dir / submission, search_paths)
@@ -292,7 +321,17 @@ def _decide(
             # 同じファイル (pj.hpp) が両方に出ることがあるが、同じ中身なので
             # 同じ値になる。
             file_hashes=tuple(dict(sub.file_hashes + harness.file_hashes).items()),
+            batch=batch_id if batched else None,
         )
+        ordered.append(job)
+
+    if batched:
+        if newest is not None and newest.covers(job.key for job in ordered):
+            decided.skipped.extend(ordered)
+        else:
+            decided.jobs.extend(ordered)
+        return decided
+    for job in ordered:
         (decided.skipped if job.key in known_keys else decided.jobs).append(job)
     return decided
 
@@ -510,6 +549,7 @@ def describe(job: Job) -> dict:
         "harness_hash": job.harness_hash,
         "problem_hash": job.problem_hash,
         "file_hashes": dict(job.file_hashes),
+        "batch": job.batch,
     }
 
 

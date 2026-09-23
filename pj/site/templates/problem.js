@@ -57,6 +57,23 @@ function chip(reason) {
   return span;
 }
 
+// (環境, モデル) に束があるのに、この行はその束に無い。別のジョブ (別の VM) で測った
+// 記録なので、同じ表の他の行とは比べられない。次の run が束ごと測り直す。
+function outsideChip(row) {
+  const span = el("span", "束の外", "chip");
+  span.title =
+    "この行だけ別のランナーで測った記録で、他の行と比べられません。" +
+    "次の計測で束ごと測り直します" +
+    (row.current === false ? "。測ってからソースも変わっています" : "");
+  return span;
+}
+
+function mark(row) {
+  if (row.outside) return outsideChip(row);
+  if (row.current === false) return chip(row.reason);
+  return null;
+}
+
 // 提出ページ。data/problems/<id>.json の pages に、サイトのルートからのパスで入る。
 function pageHref(submission) {
   const page = DATA.pages && DATA.pages[submission];
@@ -119,8 +136,7 @@ const COLUMNS = [
     label: "提出",
     text: true,
     value: (r) => r.submission,
-    cell: (r) =>
-      nameCell(r.submission, "mono name", r.current === false ? chip(r.reason) : null),
+    cell: (r) => nameCell(r.submission, "mono name", mark(r)),
   },
   {
     id: "status",
@@ -221,6 +237,9 @@ function sortRows(rows) {
   const column = COLUMNS.find((c) => c.id === sortBy);
   const sign = ascending ? 1 : -1;
   return [...rows].sort((a, b) => {
+    // 束の外の行は別の VM で測っている。他の行と比べられないので下にまとめる。
+    const off = (a.outside ? 1 : 0) - (b.outside ? 1 : 0);
+    if (off !== 0) return off;
     // 参考は今のソースで測ったものではない。順位に混ぜず下にまとめる。
     const fresh = (a.current === false ? 1 : 0) - (b.current === false ? 1 : 0);
     if (fresh !== 0) return fresh;
@@ -272,22 +291,51 @@ function render() {
   const measured = new Set(rows.map((r) => r.submission));
   const missing = DATA.submissions.filter((s) => !measured.has(s));
   const stale = rows.filter((r) => r.current === false).length;
+  const outside = rows.filter((r) => r.outside).length;
+  renderBatch(combo);
 
   const body = document.getElementById("rows");
   body.replaceChildren();
   for (const row of sortRows(rows)) {
-    const tr = el("tr", null, row.current === false ? "stale" : null);
+    const tr = el("tr", null, row.outside ? "outside" : row.current === false ? "stale" : null);
     for (const column of COLUMNS) tr.append(column.cell(row));
     body.append(tr);
   }
   for (const name of missing) body.append(missingLine(name));
 
   // 参考と未計測はどちらもランナー待ち。表のどこまでが現行かをここで出す。
-  document.getElementById("counts").replaceChildren(
+  const counts = [
     el("span", "現行 " + (rows.length - stale)),
     el("span", "参考 " + stale),
-    el("span", "未計測 " + missing.length)
-  );
+    el("span", "未計測 " + missing.length),
+  ];
+  if (DATA.batched) counts.push(el("span", "束の外 " + outside));
+  document.getElementById("counts").replaceChildren(...counts);
+}
+
+// 束 (同じランナーで一度に測った記録の集合) の説明。同じ CPU モデルでも VM ごとに
+// 速さが 2 割ほど違うので、順位は同じジョブで測った記録どうしでだけ比べる。
+function renderBatch(combo) {
+  const note = document.getElementById("batch-meta");
+  note.replaceChildren();
+  if (!DATA.batched) return;
+  if (combo && combo.batch) {
+    const span = el(
+      "span",
+      "この表は同じランナーで一度に測った記録です (" + stamp(combo.batch_time) + " UTC)"
+    );
+    span.title =
+      "束 " + combo.batch + "。同じ CPU モデルでも VM ごとに速さが違うので、" +
+      "順位は同じジョブで測った記録どうしでだけ比べます";
+    note.append(span);
+  } else {
+    note.append(
+      el(
+        "span",
+        "別々のランナーで測った記録が混ざっていて、行どうしを比べられません。次の計測で束になります"
+      )
+    );
+  }
 }
 
 // 記録が無い提出。行ごと落とすと、まだそのランナーが当たっていないだけなのか、

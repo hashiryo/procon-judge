@@ -929,3 +929,69 @@ def test_build_writes_the_header_index_with_the_gate(tmp_path, fake_library, mon
     # 逆引きの各行にも比較の種別が載る。
     per_header = json.loads((out / "data" / "headers" / "mylib" / "Tree.hpp.json").read_text())
     assert per_header["submissions"][0]["compare"] == "compile_only"
+
+
+# --- 束 ---------------------------------------------------------------------
+
+
+def test_batched_collapse_shows_only_the_newest_batch():
+    """束をまたいで最小値を採ると、行ごとに違う VM の値が混ざる。最新の束だけ。"""
+    old = rec(key="k1", batch="r1/x64/0", timestamp="2026-01-01T00:00:00Z", algo_time_max_ns=500)
+    new = rec(key="k1", batch="r2/x64/1", timestamp="2026-01-02T00:00:00Z", algo_time_max_ns=1000)
+    cells = site_build.collapse([old, new], batched=True)
+    assert len(cells) == 1
+    assert cells[0].batch == "r2/x64/1"
+    assert cells[0].algo_ns == 1000
+    assert cells[0].samples == 1
+    assert cells[0].outside is False
+    # 従来の畳み方 (raw) なら同じキーの最小値。
+    assert site_build.collapse([old, new])[0].algo_ns == 500
+
+
+def test_a_submission_missing_from_the_newest_batch_is_outside():
+    a_new = rec(key="ka", submission="submissions/a.hpp", batch="r2/x64/1",
+                timestamp="2026-01-02T00:00:00Z")
+    b_old = rec(key="kb", submission="submissions/b.hpp", batch="r1/x64/0",
+                timestamp="2026-01-01T00:00:00Z")
+    cells = {c.submission: c for c in site_build.collapse([a_new, b_old], batched=True)}
+    assert cells["submissions/a.hpp"].outside is False
+    assert cells["submissions/a.hpp"].batch == "r2/x64/1"
+    assert cells["submissions/b.hpp"].outside is True
+    assert cells["submissions/b.hpp"].batch is None
+
+
+def test_without_any_batch_the_batched_collapse_is_the_old_one():
+    rows = [rec(key="k1", algo_time_max_ns=500), rec(key="k1", algo_time_max_ns=300)]
+    cells = site_build.collapse(rows, batched=True)
+    assert cells[0].algo_ns == 300
+    assert cells[0].batch is None
+    assert cells[0].outside is False
+
+
+def test_batches_are_chosen_per_environment_and_model():
+    epyc = rec(key="k1", batch="r1/x64/0", timestamp="2026-01-01T00:00:00Z")
+    xeon = rec(key="k2", cpu_model="Xeon", batch="r1/x64/1", timestamp="2026-01-01T00:00:00Z")
+    cells = {c.cpu_model: c for c in site_build.collapse([epyc, xeon], batched=True)}
+    assert cells["EPYC"].batch == "r1/x64/0"
+    assert cells["Xeon"].batch == "r1/x64/1"
+    assert not any(c.outside for c in cells.values())
+
+
+def test_problem_payload_carries_the_batch():
+    cells = site_build.collapse(
+        [
+            rec(key="k1", batch="r2/x64/1", timestamp="2026-01-02T00:00:00Z"),
+            rec(key="kb", submission="submissions/b.hpp", batch="r1/x64/0",
+                timestamp="2026-01-01T00:00:00Z"),
+        ],
+        batched=True,
+    )
+    payload = site_build.problem_payload("p", None, cells, "now")
+    combo = payload["combos"][0]
+    assert combo["batch"] == "r2/x64/1"
+    assert combo["batch_time"] == "2026-01-02T00:00:00Z"
+    rows = {r["submission"]: r for r in payload["rows"]}
+    assert rows["submissions/a.hpp"]["batch"] == "r2/x64/1"
+    assert rows["submissions/a.hpp"]["outside"] is False
+    assert rows["submissions/b.hpp"]["outside"] is True
+    assert payload["batched"] is False

@@ -12,6 +12,7 @@ import time
 from collections.abc import Sequence
 from pathlib import Path
 
+from . import batch as batch_mod
 from . import claims as claims_mod
 from . import environment as env_mod
 from . import fetch
@@ -331,10 +332,14 @@ def cmd_run(args: argparse.Namespace) -> int:
         file=sys.stderr,
     )
 
+    # 1 本だけ指定したときは束を作らない。1 本だけの束が最新になると、表の他の
+    # 行が全部「束の外」になる。
+    batch_id = None if args.submission else batch_mod.local_id()
     worklist = run_mod.build_worklist(
         _targets(args), env, machine, store.keys(),
         borrowed=store.cases_hashes(),
         allow_fetch=not args.dry_run, refresh=args.refresh,
+        batches=store.batches(), batch_id=batch_id,
     )
     _report(worklist)
 
@@ -415,6 +420,8 @@ def _run_claiming(
     )
     keys = store.keys()
     borrowed = store.cases_hashes()
+    batches = store.batches()
+    batch_id = batch_mod.ci_id(args.claim_run, scope, args.job)
     taken = claims.taken()
     unavailable = _without_testdata(problems)
     print(
@@ -439,7 +446,8 @@ def _run_claiming(
         # テストデータにも触らない。
         probes = [
             run_mod.build_worklist(
-                targets, env, machines[env.name], keys, borrowed=borrowed, allow_fetch=False
+                targets, env, machines[env.name], keys, borrowed=borrowed, allow_fetch=False,
+                batches=batches, batch_id=batch_id,
             )
             for env in usable
         ]
@@ -456,6 +464,7 @@ def _run_claiming(
             worklist = run_mod.build_worklist(
                 targets, env, machines[env.name], keys, borrowed=borrowed,
                 allow_fetch=True, refresh=args.refresh,
+                batches=batches, batch_id=batch_id,
             )
             _report(worklist)
             # テストデータは組の全環境で使い回すので、ここでは捨てない。

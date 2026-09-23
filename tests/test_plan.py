@@ -418,3 +418,93 @@ def test_the_local_environment_never_enters_the_matrix(tmp_path, envs):
     plans = plan_mod.build([problem], envs, store_with(tmp_path, []))
     assert "local" not in {p.env.name for p in plans}
     assert "local" not in {g.name for g in plan_mod.group(plans)}
+
+
+# --- 束 ---------------------------------------------------------------------
+
+BASE_TOML = """
+id = "{id}"
+title = "t"
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"
+"""
+
+
+def make_base_problem(tmp_path, problem_id, submissions=("a", "b", "c")):
+    directory = tmp_path / problem_id
+    directory.mkdir()
+    (directory / "problem.toml").write_text(BASE_TOML.format(id=problem_id))
+    (directory / "base.cpp").write_text("#include SUBMISSION_HPP\nint main() { return 0; }\n")
+    (directory / "submissions").mkdir()
+    for number, name in enumerate(submissions):
+        (directory / "submissions" / f"{name}.hpp").write_text(
+            f"inline int f_{name}() {{ return {number}; }}\n"
+        )
+    return problem_mod.load(directory)
+
+
+def test_a_base_problem_missing_one_submission_redoes_all_of_them(tmp_path, envs, ci_envs):
+    """束は全部か 0。1 本足せば、揃っている提出も同じジョブで測り直す。"""
+    env = ci_envs[0]
+    problem = make_base_problem(tmp_path, "b1")
+    subs = [s.as_posix() for s in problem.submissions()]
+    records = [record_for(problem, env, s, batch="r1/x64/0") for s in subs[:2]]
+    one = plan_for(env, [problem], envs, store_with(tmp_path, records))
+    assert one.works[0].todo["EPYC"] == tuple(subs)
+
+
+def test_a_base_problem_whose_newest_batch_is_complete_has_no_work(tmp_path, envs, ci_envs):
+    env = ci_envs[0]
+    problem = make_base_problem(tmp_path, "b1")
+    subs = [s.as_posix() for s in problem.submissions()]
+    records = [record_for(problem, env, s, batch="r1/x64/0") for s in subs]
+    assert plan_for(env, [problem], envs, store_with(tmp_path, records)).works == ()
+
+
+def test_a_base_problem_with_records_but_no_batch_is_all_work(tmp_path, envs, ci_envs):
+    """束の無い古い記録は「束が無い」。移行の 1 回だけ全部測り直す。"""
+    env = ci_envs[0]
+    problem = make_base_problem(tmp_path, "b1")
+    subs = [s.as_posix() for s in problem.submissions()]
+    records = [record_for(problem, env, s) for s in subs]
+    one = plan_for(env, [problem], envs, store_with(tmp_path, records))
+    assert one.works[0].todo["EPYC"] == tuple(subs)
+
+
+def test_an_older_complete_batch_does_not_count(tmp_path, envs, ci_envs):
+    env = ci_envs[0]
+    problem = make_base_problem(tmp_path, "b1")
+    subs = [s.as_posix() for s in problem.submissions()]
+    records = [
+        record_for(problem, env, s, batch="r1/x64/0", timestamp="2026-01-01T00:00:00Z")
+        for s in subs
+    ] + [record_for(problem, env, subs[0], batch="r2/x64/0", timestamp="2026-01-02T00:00:00Z")]
+    one = plan_for(env, [problem], envs, store_with(tmp_path, records))
+    assert one.works[0].todo["EPYC"] == tuple(subs)
+
+
+def test_a_compile_error_in_a_base_problem_stays_in_the_batch(tmp_path, envs, ci_envs):
+    """束は全提出で作る。CE と分かっている提出も入れる (コンパイルは安い)。"""
+    env = ci_envs[0]
+    problem = make_base_problem(tmp_path, "b1")
+    subs = [s.as_posix() for s in problem.submissions()]
+    records = [record_for(problem, env, subs[0], batch="r1/x64/0", status="CE")]
+    one = plan_for(env, [problem], envs, store_with(tmp_path, records))
+    assert one.compile_errors == ()
+    assert one.works[0].todo["EPYC"] == tuple(subs)
+
+
+def test_a_raw_problem_still_counts_only_the_missing_keys(tmp_path, envs, ci_envs):
+    env = ci_envs[0]
+    problem = make_problem(tmp_path, "p1")
+    subs = [s.as_posix() for s in problem.submissions()]
+    records = [record_for(problem, env, subs[0], batch="r1/x64/0")]
+    one = plan_for(env, [problem], envs, store_with(tmp_path, records))
+    assert one.works[0].todo["EPYC"] == (subs[1],)

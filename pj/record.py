@@ -55,6 +55,10 @@ class Record:
     # failed_case はその最初の 1 つの明細。
     failed_cases: list[str] = field(default_factory=list)
     failed_case: FailedCase | None = None
+    # 束の id (pj.batch)。同じジョブで一度に測った記録は同じ id を持つ。順位表は
+    # base の問題でいちばん新しい束だけを並べる。手元で 1 本だけ測ったときと古い
+    # 記録には無い。
+    batch: str | None = None
     timestamp: str = field(
         default_factory=lambda: datetime.now(UTC)
         .replace(microsecond=0)

@@ -227,10 +227,12 @@ tbody tr:hover {
   color: var(--c-text-2);
 }
 
-/* 参考の行。今のソースで測ったものではないので、状態の色も落として、
-   順位に並んでいるように見せない。 */
+/* 参考の行と束の外の行。今のソースで測ったものではない、あるいは別の VM で
+   測ったものなので、状態の色も落として、順位に並んでいるように見せない。 */
 tbody tr.stale td,
-tbody tr.stale td.st {
+tbody tr.stale td.st,
+tbody tr.outside td,
+tbody tr.outside td.st {
   color: var(--c-text-2);
 }
 

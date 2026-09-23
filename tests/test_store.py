@@ -167,3 +167,41 @@ def test_absorb_ignores_a_broken_line(tmp_path, capsys):
 def test_absorb_of_nothing(tmp_path):
     store = Store(tmp_path / "store")
     assert store.absorb([tmp_path / "missing"]) == (0, 0)
+
+
+# --- 束 ---------------------------------------------------------------------
+
+
+def test_absorb_keeps_the_same_key_from_another_batch(tmp_path):
+    """束は同じキーを束ごとに 1 件ずつ作る。重複排除は (キー, 束) で見る。"""
+    artifacts = tmp_path / "artifacts"
+    write_jsonl(
+        artifacts / "problems" / "p.jsonl",
+        [
+            make_record(key="k1", batch="r1/x64/0"),
+            make_record(key="k1", batch="r2/x64/0"),
+            make_record(key="k1", batch="r2/x64/0"),
+        ],
+    )
+    store = Store(tmp_path / "store")
+    assert store.absorb([artifacts]) == (2, 1)
+    assert store.identities() == {("k1", "r1/x64/0"), ("k1", "r2/x64/0")}
+
+
+def test_a_record_without_a_batch_still_dedups_by_key(tmp_path):
+    artifacts = tmp_path / "artifacts"
+    write_jsonl(artifacts / "problems" / "p.jsonl", [make_record(key="k1"), make_record(key="k1")])
+    store = Store(tmp_path / "store")
+    assert store.absorb([artifacts]) == (1, 1)
+
+
+def test_batches_index_the_newest_per_problem_env_and_model(tmp_path):
+    store = Store(tmp_path / "store")
+    store.append(make_record(key="k1", batch="r1/x64/0", timestamp="2026-01-01T00:00:00Z"))
+    store.append(make_record(key="k2", batch="r2/x64/1", timestamp="2026-01-02T00:00:00Z"))
+    store.append(make_record(key="k3", problem="q", batch="r1/x64/0", timestamp="2026-01-01T00:00:00Z"))
+    store.append(make_record(key="k4", problem="q"))
+    batches = store.batches()
+    assert batches[("p", "local", "Apple M2 Max")].id == "r2/x64/1"
+    assert batches[("q", "local", "Apple M2 Max")].keys == {"k3"}
+    assert len(batches) == 2

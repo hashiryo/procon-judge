@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 
+from .. import batch as batch_mod
 from .. import build as build_mod
 from .. import environment as env_mod
 from .. import include as include_mod
@@ -81,6 +82,11 @@ class Cell:
     current: bool | None = None
     # 参考に落ちた理由。current が False のときだけ入る。
     reason: Diff | None = None
+    # 束 (pj.batch) の id。base の問題で、(環境, モデル) のいちばん新しい束の記録なら入る。
+    batch: str | None = None
+    # (環境, モデル) に束があるのに、この提出はその束に無い。別のジョブ (別の VM) で
+    # 測った記録なので、同じ表の他の行とは比べられない。
+    outside: bool = False
 
 
 @dataclass(frozen=True)
@@ -113,17 +119,25 @@ class Summary:
 
 
 def collapse(
-    records: Sequence[dict], freshness: Freshness | None = None
+    records: Sequence[dict],
+    freshness: Freshness | None = None,
+    *,
+    batched: bool = False,
 ) -> list[Cell]:
     """記録を (提出, 環境, CPU モデル) ごとに 1 行へ畳む。
 
     同じ組でもソースを書き換えればキーが変わって、別の測定になる。新しい方の
     キーだけを残す。残った記録が複数あるのは同じ条件を何度か測ったときなので、
-    そこは最小値を採る。順位を最小値で決めておけば、あとで標本を積み始めても
-    表示の側を書き直さずに済む。
+    そこは最小値を採る。
 
     現行のキーの記録があれば、時刻が古くてもそちらを採る。書き換えたものを
     元に戻すと前のキーが復活するので、いちばん新しい記録が現行とは限らない。
+
+    batched (base の問題) のときは、(環境, モデル) にいちばん新しい束 (pj.batch) が
+    あれば、その束の記録だけで行を作る。束をまたいで最小値を採ると、行ごとに違う
+    VM の値が混ざって比べられなくなる。束に無い提出は従来の畳み方の値を outside
+    の印付きで出す (ジョブが途中で死んで束が欠けたときに出る)。束がまだ無い
+    (環境, モデル) は従来どおりに畳む。
     """
     judge = freshness.current if freshness else (lambda record: None)
     groups: dict[tuple[str, str, str], list[tuple[int, dict]]] = {}
@@ -134,48 +148,75 @@ def collapse(
             record.get("cpu_model", ""),
         )
         groups.setdefault(group, []).append((position, record))
+    newest = batch_mod.index(records) if batched else {}
 
     cells = []
     for (submission, env, cpu_model), items in groups.items():
-        pool = [item for item in items if judge(item[1]) is True] or items
-        # 同じ時刻が並んだときは、ファイルの後ろにある方を新しいとみなす。
-        _, newest = max(pool, key=lambda item: (item[1].get("timestamp") or "", item[0]))
-        same = [r for _, r in items if r.get("key") == newest.get("key")]
-        algo = [
-            r["algo_time_max_ns"]
-            for r in same
-            if r.get("algo_time_max_ns") is not None
-        ]
-        current = judge(newest)
-        cells.append(
-            Cell(
-                submission=submission,
-                env=env,
-                cpu_model=cpu_model,
-                cpu_arch=newest.get("cpu_arch", ""),
-                compiler_version=newest.get("compiler_version", ""),
-                cxxflags=newest.get("cxxflags", ""),
-                status=newest.get("status", ""),
-                algo_ns=min(algo) if algo else None,
-                wall_ms=min(r.get("time_max_ms") or 0 for r in same),
-                rss_kb=min(r.get("memory_max_kb") or 0 for r in same),
-                source_bytes=newest.get("source_bytes") or 0,
-                binary_bytes=newest.get("binary_bytes"),
-                samples=len(same),
-                timestamp=max(r.get("timestamp") or "" for r in same),
-                judge_sha=newest.get("judge_sha"),
-                failed=_failed(newest),
-                failed_cases=tuple(newest.get("failed_cases") or ()),
-                current=current,
-                reason=(
-                    freshness.diff(newest)
-                    if freshness is not None and current is False
-                    else None
-                ),
+        batch = newest.get((env, cpu_model))
+        if batch is None:
+            cells.append(_cell(submission, env, cpu_model, items, judge, freshness))
+            continue
+        inside = [item for item in items if item[1].get("batch") == batch.id]
+        if inside:
+            cells.append(
+                _cell(submission, env, cpu_model, inside, judge, freshness, batch=batch.id)
             )
-        )
+        else:
+            cells.append(
+                _cell(submission, env, cpu_model, items, judge, freshness, outside=True)
+            )
     return sorted(cells, key=lambda c: (c.env, c.cpu_model, c.submission))
 
+
+def _cell(
+    submission: str,
+    env: str,
+    cpu_model: str,
+    items: Sequence[tuple[int, dict]],
+    judge,
+    freshness: Freshness | None,
+    *,
+    batch: str | None = None,
+    outside: bool = False,
+) -> Cell:
+    """(提出, 環境, CPU モデル) の記録を 1 行にする。"""
+    pool = [item for item in items if judge(item[1]) is True] or list(items)
+    # 同じ時刻が並んだときは、ファイルの後ろにある方を新しいとみなす。
+    _, newest = max(pool, key=lambda item: (item[1].get("timestamp") or "", item[0]))
+    same = [r for _, r in items if r.get("key") == newest.get("key")]
+    algo = [
+        r["algo_time_max_ns"]
+        for r in same
+        if r.get("algo_time_max_ns") is not None
+    ]
+    current = judge(newest)
+    return Cell(
+        submission=submission,
+        env=env,
+        cpu_model=cpu_model,
+        cpu_arch=newest.get("cpu_arch", ""),
+        compiler_version=newest.get("compiler_version", ""),
+        cxxflags=newest.get("cxxflags", ""),
+        status=newest.get("status", ""),
+        algo_ns=min(algo) if algo else None,
+        wall_ms=min(r.get("time_max_ms") or 0 for r in same),
+        rss_kb=min(r.get("memory_max_kb") or 0 for r in same),
+        source_bytes=newest.get("source_bytes") or 0,
+        binary_bytes=newest.get("binary_bytes"),
+        samples=len(same),
+        timestamp=max(r.get("timestamp") or "" for r in same),
+        judge_sha=newest.get("judge_sha"),
+        failed=_failed(newest),
+        failed_cases=tuple(newest.get("failed_cases") or ()),
+        current=current,
+        reason=(
+            freshness.diff(newest)
+            if freshness is not None and current is False
+            else None
+        ),
+        batch=batch,
+        outside=outside,
+    )
 
 def describe_diff(diff: Diff | None) -> str | None:
     """参考の理由を 1 行の日本語にする。"""
@@ -373,9 +414,15 @@ def problem_payload(
                 "cpu_arch": cell.cpu_arch,
                 "compiler_version": cell.compiler_version,
                 "measured": 0,
+                # この組のいちばん新しい束 (pj.batch)。base の問題で束があるときだけ。
+                "batch": None,
+                "batch_time": "",
             },
         )
         combo["measured"] += 1
+        if cell.batch:
+            combo["batch"] = cell.batch
+            combo["batch_time"] = max(combo["batch_time"], cell.timestamp)
 
     cxxflags: dict[str, str] = {}
     for cell in cells:
@@ -405,6 +452,9 @@ def problem_payload(
         "judge_sha": judge_sha(),
         "compare": problem.compare.kind if problem else "",
         "harness": problem.harness_kind if problem else "",
+        # 順位表を束で並べる問題か。base の問題は (環境, モデル) ごとに同じジョブで
+        # 測った記録だけを比べる。
+        "batched": problem.harness_kind == "base" if problem else False,
         "tle_sec": problem.limits.tle_sec if problem else 0,
         "mle_mb": problem.limits.mle_mb if problem else 0,
         "case_count": case_count,
@@ -436,6 +486,8 @@ def problem_payload(
                 "failed_cases": list(c.failed_cases),
                 "current": c.current,
                 "reason": describe_diff(c.reason),
+                "batch": c.batch,
+                "outside": c.outside,
             }
             for c in cells
         ],
@@ -1059,7 +1111,11 @@ def build(store: Store, out: Path) -> Summary:
             records = [r for r in records if r.get("submission") in current]
         total_records += len(records)
         # 問題が repo から消えていれば、ソース側を作り直せないので判定しない。
-        cells = collapse(records, Freshness(problem, envs) if problem else None)
+        cells = collapse(
+            records,
+            Freshness(problem, envs) if problem else None,
+            batched=problem is not None and problem.harness_kind == "base",
+        )
         payload = problem_payload(
             problem_id,
             problem,

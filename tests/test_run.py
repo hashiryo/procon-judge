@@ -541,3 +541,114 @@ def test_wa_keeps_running_and_records_every_failed_case(tmp_path, local_env, mac
     # b で止まらず c も走っている。
     assert record.failed_cases == ["b", "c"]
     assert "expected '2'" in record.failed_case.detail
+
+
+# --- 束 ---------------------------------------------------------------------
+
+from pj import batch as batch_mod  # noqa: E402
+
+BASE_TOML = """
+id = "tmp-base"
+title = "base"
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"
+"""
+
+
+def make_base_problem(tmp_path, names=("a", "b")):
+    directory = tmp_path / "tmp-base"
+    directory.mkdir()
+    (directory / "problem.toml").write_text(BASE_TOML)
+    (directory / "base.cpp").write_text("#include SUBMISSION_HPP\nint main() { return 0; }\n")
+    (directory / "submissions").mkdir()
+    for name in names:
+        (directory / "submissions" / f"{name}.hpp").write_text(
+            f"inline int f_{name}() {{ return {len(name)}; }}\n"
+        )
+    return problem_mod.load(directory)
+
+
+def batch_worklist(problem, env, machine, known=frozenset(), *, newest=None, batch_id="local/test"):
+    batches = {(problem.id, env.name, machine.cpu_model): newest} if newest else None
+    return run_mod.build_worklist(
+        [(problem, s) for s in problem.submissions()], env, machine, set(known),
+        batches=batches, batch_id=batch_id,
+    )
+
+
+def keys_of(problem, env, machine):
+    return [j.key for j in worklist_for(problem, env, machine).jobs]
+
+
+def test_a_base_problem_with_a_missing_key_redoes_every_submission(tmp_path, local_env, machine):
+    """束は全部か 0。1 本欠けていれば、揃っている提出も同じジョブで測り直す。"""
+    problem = make_base_problem(tmp_path)
+    keys = keys_of(problem, local_env, machine)
+    worklist = batch_worklist(problem, local_env, machine, known={keys[0]})
+    assert [j.submission.as_posix() for j in worklist.jobs] == [
+        "submissions/a.hpp", "submissions/b.hpp",
+    ]
+    assert worklist.skipped == ()
+    assert all(j.batch == "local/test" for j in worklist.jobs)
+    assert run_mod.describe(worklist.jobs[0])["batch"] == "local/test"
+
+
+def test_a_base_problem_whose_newest_batch_covers_everything_is_skipped(
+    tmp_path, local_env, machine
+):
+    problem = make_base_problem(tmp_path)
+    keys = keys_of(problem, local_env, machine)
+    newest = batch_mod.Batch(
+        id="r1/x64/0", timestamp="t", records=tuple({"key": k} for k in keys)
+    )
+    worklist = batch_worklist(problem, local_env, machine, known=set(keys), newest=newest)
+    assert worklist.jobs == ()
+    assert len(worklist.skipped) == 2
+
+
+def test_known_keys_outside_the_newest_batch_still_redo_the_problem(
+    tmp_path, local_env, machine
+):
+    """束の無い古い記録は「束が無い」。キーが揃っていても一度は束で測り直す。"""
+    problem = make_base_problem(tmp_path)
+    keys = keys_of(problem, local_env, machine)
+    worklist = batch_worklist(problem, local_env, machine, known=set(keys))
+    assert len(worklist.jobs) == 2
+
+
+def test_an_incomplete_newest_batch_redoes_the_problem(tmp_path, local_env, machine):
+    problem = make_base_problem(tmp_path)
+    keys = keys_of(problem, local_env, machine)
+    newest = batch_mod.Batch(id="r2/x64/0", timestamp="t", records=({"key": keys[0]},))
+    worklist = batch_worklist(problem, local_env, machine, known=set(keys), newest=newest)
+    assert len(worklist.jobs) == 2
+
+
+def test_without_a_batch_id_a_base_problem_is_decided_per_submission(
+    tmp_path, local_env, machine
+):
+    """手元で 1 本だけ測るとき。1 本だけの束が最新になると表の他の行が束の外になる。"""
+    problem = make_base_problem(tmp_path)
+    keys = keys_of(problem, local_env, machine)
+    worklist = batch_worklist(problem, local_env, machine, known={keys[0]}, batch_id=None)
+    assert [j.submission.as_posix() for j in worklist.jobs] == ["submissions/b.hpp"]
+    assert worklist.jobs[0].batch is None
+
+
+def test_a_raw_problem_ignores_the_batch(tmp_path, local_env, machine):
+    problem = make_problem(tmp_path, "int main() { return 0; }\n")
+    keys = keys_of(problem, local_env, machine)
+    worklist = run_mod.build_worklist(
+        [(problem, s) for s in problem.submissions()], local_env, machine, set(keys),
+        batch_id="local/test",
+    )
+    assert worklist.jobs == ()
+    assert len(worklist.skipped) == 1
+    assert worklist.skipped[0].batch is None

@@ -12,6 +12,7 @@ import sys
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 
+from . import batch as batch_mod
 from .record import Record
 
 
@@ -56,6 +57,32 @@ class Store:
                     found.add(key)
         return found
 
+    def identities(self) -> set[tuple[str, str]]:
+        """記録の (キー, 束)。取り込みの重複排除に使う。
+
+        束を入れる前はキーが 1 回しか測られなかったのでキーだけで見ていた。束は
+        同じキーを束ごとに 1 件ずつ作るので、束も見る。束の無い記録は空文字。
+        """
+        found: set[tuple[str, str]] = set()
+        for problem_id in self.problem_ids():
+            for record in self.read(problem_id):
+                key = record.get("key")
+                if key:
+                    found.add((key, record.get("batch") or ""))
+        return found
+
+    def batches(self) -> dict[tuple[str, str, str], batch_mod.Batch]:
+        """(問題, 環境, CPU モデル) ごとのいちばん新しい束。
+
+        run と plan が base の問題の測り直しの条件 (最新の束が今の全提出のキーを
+        揃えているか) を見るのに使う。
+        """
+        found: dict[tuple[str, str, str], batch_mod.Batch] = {}
+        for problem_id in self.problem_ids():
+            for (env, cpu_model), one in batch_mod.index(self.read(problem_id)).items():
+                found[(problem_id, env, cpu_model)] = one
+        return found
+
     def cases_hashes(self) -> dict[str, str]:
         """問題ごとの、いちばん新しい記録の cases_hash。
 
@@ -78,7 +105,7 @@ class Store:
         return {pid: value for pid, (_, value) in latest.items()}
 
     def append(self, record: Record) -> None:
-        """記録は必ず新しいキーのときだけ作られるので、重複の確認はしない。"""
+        """重複の確認はしない。同じ (キー, 束) を 2 回書くのは取り込み側が防ぐ。"""
         path = self.path_for(record.problem)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a") as f:
@@ -98,9 +125,9 @@ class Store:
 
         CI では run のジョブがアーティファクトへ記録を置いて、collect が
         ここへまとめる。ワークフローを回し直しても重ならないよう、
-        既にあるキーは飛ばす。
+        既にある (キー, 束) は飛ばす。同じキーでも束が違えば別の測定なので入れる。
         """
-        known = self.keys()
+        known = self.identities()
         added = skipped = 0
         for path in _jsonl_files(directories):
             for number, line in enumerate(path.read_text().splitlines(), start=1):
@@ -117,10 +144,11 @@ class Store:
                     print(f"warning: {path}:{number} に key か problem がありません",
                           file=sys.stderr)
                     continue
-                if key in known:
+                identity = (key, record.get("batch") or "")
+                if identity in known:
                     skipped += 1
                     continue
-                known.add(key)
+                known.add(identity)
                 self.append_raw(problem, line)
                 added += 1
         return added, skipped

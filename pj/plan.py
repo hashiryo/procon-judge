@@ -22,6 +22,7 @@ import math
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
+from . import batch as batch_mod
 from .environment import Environment, group_name, toolchain
 from .freshness import Freshness
 from .problem import Problem
@@ -278,7 +279,11 @@ def _for_env(
 
     for problem in problems:
         rows = records[problem.id]
-        known_ce = _compile_errors(rows, fresh[problem.id], env.name)
+        # base の問題は束 (pj.batch) で測る。最新の束が今の全提出のキーを揃えて
+        # いれば 0、欠けていれば全提出。CE と分かっている提出も束に入れる (束は
+        # 全提出で作り、CE のコンパイルは安い)。除外は raw だけ。
+        batched = problem.harness_kind == "base"
+        known_ce = set() if batched else _compile_errors(rows, fresh[problem.id], env.name)
         compile_errors |= {f"{problem.id}/{s}" for s in known_ce}
         # 「いちばん新しい記録から」の規則は Store.cases_hashes が持つ。
         # run も同じものを使う。二度書くと片方を直し忘れる。
@@ -297,6 +302,8 @@ def _for_env(
                 todo[model] = tuple(candidates)
                 continue
             missing = []
+            resolvable = []
+            wanted = []
             for submission in candidates:
                 key = fresh[problem.id].key_for(
                     submission,
@@ -309,9 +316,16 @@ def _for_env(
                     # 閉包が欠けたままではキーが別の意味になる。解決できる回まで待つ。
                     unresolved.add(f"{problem.id}/{submission}")
                     continue
+                resolvable.append(submission)
+                wanted.append(key)
                 if key not in keys:
                     missing.append(submission)
-            todo[model] = tuple(missing)
+            if batched:
+                newest = batch_mod.newest(rows, env=env.name, cpu_model=model)
+                covered = newest is not None and newest.covers(wanted)
+                todo[model] = () if covered else tuple(resolvable)
+            else:
+                todo[model] = tuple(missing)
 
         if any(todo.values()):
             works.append(
