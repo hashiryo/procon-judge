@@ -1,6 +1,6 @@
 # procon-judge
 
-自分用のオンラインジャッジです。`problems/<id>/` に問題を、`problems/<id>/submissions/` に提出を置いて main に push します。GitHub Actions が 4 つの環境 (x64 と arm、それぞれ gcc と clang) で提出をコンパイルして走らせ、正誤と時間とメモリを記録します。記録は `results` ブランチに溜まり、順位表と提出ページを https://hashiryo.github.io/procon-judge/ に出します。設計と実装の記録は [DESIGN.md](DESIGN.md) にあり、この README はそこから日常の操作だけを抜き出したものです。
+自分用のオンラインジャッジです。`problems/` の下に問題を、その `submissions/` に提出を置いて main に push します。GitHub Actions が 4 つの環境 (x64 と arm、それぞれ gcc と clang) で提出をコンパイルして走らせ、正誤と時間とメモリを記録します。記録は `results` ブランチに溜まり、順位表と提出ページを https://hashiryo.github.io/procon-judge/ に出します。設計と実装の記録は [DESIGN.md](DESIGN.md) にあり、この README はそこから日常の操作だけを抜き出したものです。
 
 AtCoder の提出ページに無いものが 1 つあります。提出はリポジトリの中のファイルなので、include している自分のライブラリ (hashiryo/Library) が変わると自動で測り直され、同じ URL のページが最新の記録を指し続けます。
 
@@ -34,11 +34,11 @@ git archive origin/results | tar -x -C .results
 
 | 場所 | 中身 |
 | --- | --- |
-| `problems/<id>/problem.toml` | 問題の定義。id、制限、ハーネスの種別、テストデータの取得元、出力比較 |
-| `problems/<id>/base.cpp` | ハーネス。`harness.kind = "base"` のときだけ |
-| `problems/<id>/common.hpp` | その問題の提出だけが共有するもの。省略可 |
-| `problems/<id>/gen.py` | 自作テストデータのジェネレータ。`testdata.source = "local"` のときだけ |
-| `problems/<id>/submissions/` | 提出。base なら `.hpp`、raw なら `.cpp` |
+| `problems/<グループ>/<名前>/problem.toml` | 問題の定義。id、制限、ハーネスの種別、テストデータの取得元、出力比較 |
+| `problems/<グループ>/<名前>/base.cpp` | ハーネス。`harness.kind = "base"` のときだけ |
+| `problems/<グループ>/<名前>/common.hpp` | その問題の提出だけが共有するもの。省略可 |
+| `problems/<グループ>/<名前>/gen.py` | 自作テストデータのジェネレータ。`testdata.source = "local"` のときだけ |
+| `problems/<グループ>/<名前>/submissions/` | 提出。base なら `.hpp`、raw なら `.cpp` |
 | `problems/_shared/<名前>/` | 問題をまたいで提出が使うヘッダ。problem.toml が無いので問題ではない |
 | `harness/pj.hpp` | 全問題のハーネスと提出が共有するもの |
 | `environments.toml` | 環境 (コンパイラとフラグ) の定義 |
@@ -51,7 +51,7 @@ git archive origin/results | tar -x -C .results
 
 ### 1. ディレクトリと problem.toml
 
-`problems/<id>/` を作り、`problem.toml` を置きます。`id` はディレクトリ名と一致させます。id は `<出どころ>-<問題>` の形で、出どころはテストデータの取得元ではなく、問題そのものがどこの問題かです。
+問題のディレクトリを作り、`problem.toml` を置きます。`problems/` の下は何段でも掘れて、そこからの各段を `-` で繋いだものが id です。`problems/atcoder/abc172-d/` なら `atcoder-abc172-d`、`problems/gf2-64/pow/` なら `gf2-64-pow` で、`problem.toml` の `id` はこれと一致させます。判定サイトの問題は接頭辞のディレクトリ (`atcoder/`、`aoj/`、`yosupo/`、`yuki/`、`loj/` など) に置きます。自作の問題は族のディレクトリ (`gf2-64/`、`modulo-test/` など) に置き、族の無いものは `problems/warshall-floyd/` のように 1 段で置きます。id は `<出どころ>-<問題>` の形で、出どころはテストデータの取得元ではなく、問題そのものがどこの問題かです。
 
 | 出どころ | 接頭辞 | 例 |
 | --- | --- | --- |
@@ -65,7 +65,7 @@ git archive origin/results | tar -x -C .results
 
 id は記録のキーと保管庫のアセット名に入るので、あとから変えると記録が全部測り直しになり、保管庫のアセットも孤児になります。付けるときに決めます。
 
-Library Checker の問題を、自分のライブラリと手書きの実装で比べる形の例です。
+Library Checker の問題を、自分のライブラリと手書きの実装で比べる形の例です。置き場所は `problems/yosupo/unionfind/` です。
 
 ```toml
 id = "yosupo-unionfind"
@@ -86,7 +86,7 @@ name = "data_structure/unionfind"
 kind = "checker"
 ```
 
-自作のテストデータで速さを比べる形の例です。
+自作のテストデータで速さを比べる形の例です。置き場所は `problems/gf2-64/pow/` です。
 
 ```toml
 id = "gf2-64-pow"
@@ -195,11 +195,11 @@ uv run pj mirror push --problem <id>
 
 ### 4. 提出を置く
 
-`problems/<id>/submissions/` にファイルを置きます。`base` の提出はハーネスから include されるので `.hpp`、`raw` の提出はそれ自体が翻訳単位なので `.cpp` です。先頭が `_` のファイルは提出として扱いません。
+問題のディレクトリの `submissions/` にファイルを置きます。`base` の提出はハーネスから include されるので `.hpp`、`raw` の提出はそれ自体が翻訳単位なので `.cpp` です。先頭が `_` のファイルは提出として扱いません。
 
 自分のライブラリを使う提出は `#include "mylib/data_structure/UnionFind.hpp"` のように `lib/` からの相対パスで書きます。全環境のフラグに `-Ilib` が入っています。慣習として、ライブラリを使う提出は `lib.hpp`、同じ問題に複数あれば `lib-<実装>.hpp`、手書きの素朴な実装は `naive.hpp` と名付けますが、`pj` はこの名前に意味を持たせません。ライブラリとの紐付けは include の一覧から作ります。
 
-問題をまたいで使うヘッダは `problems/_shared/<名前>/` に置き、提出から `#include "../../_shared/gf2-64/_common.hpp"` のように相対パスで引きます。
+提出ではない共通のヘッダは 3 つの置き方があり、どれも名前ではなく置き場所で区別します。その問題の提出だけで共有するものは `problems/<グループ>/<名前>/common.hpp` のように `submissions/` の外に置きます。問題のディレクトリが `-I` に入っているので、提出からは `#include "common.hpp"` で引けます。`submissions/` の中に置くなら先頭を `_` にします (`submissions/_impl.hpp`)。問題をまたいで使うものは `problems/_shared/<名前>/` に置き、`-Iproblems` が入っているので `#include "_shared/gf2-64/_common.hpp"` の形でどの問題からも同じ書き方で引けます。`common.hpp` という名前自体に意味はなく、慣習です。
 
 提出のパスはそのまま識別子です。順位表と提出ページとライブラリ側のサイトからのリンクがこのパスを指すので、リネームすると別の提出として測り直しになります。
 
@@ -222,7 +222,7 @@ macOS の `local` は Apple clang と libc++ なので、CI の 4 環境 (どれ
 
 main に push すると `judge.yml` が動きます。`test` が `pj` 自身の pytest を回し、`plan` が組 (x64 と arm) ごとにジョブの本数を決めます。`run` のジョブはそれぞれ CPU モデルを検出して、問題を 1 つずつ宣言しては測ります。`collect` が記録を `results` ブランチに追記してサイトを Pages に出します。同じ問題を同じ CPU モデルで二重に測ることはありません。
 
-測り直しになるのは、ソース (提出とその include 閉包、ハーネス、problem.toml) とテストデータと環境と CPU モデルから作るキーの記録が無いものだけです。整形やコメントの変更ではキーが変わりません。`base` の問題は (問題, 環境, CPU モデル) を束として扱い、1 本でも未計測なら全提出を同じジョブで測り直します。同じ CPU モデルでも VM ごとに速さが 2 割ほど違うので、順位表は同じジョブで測った記録どうしでだけ比べます。提出を 1 本足すと、その問題の他の提出も測り直されるのはこのためです。`raw` の問題はキーごとに測ります。
+測り直しになるのは、ソース (提出とその include 閉包、ハーネス、problem.toml) とテストデータと環境と CPU モデルから作るキーの記録が無いものだけです。整形やコメントの変更ではキーが変わりません。問題のディレクトリを `problems/` の下で動かしてもキーは変わりません。`base` の問題は (問題, 環境, CPU モデル) を束として扱い、1 本でも未計測なら全提出を同じジョブで測り直します。同じ CPU モデルでも VM ごとに速さが 2 割ほど違うので、順位表は同じジョブで測った記録どうしでだけ比べます。提出を 1 本足すと、その問題の他の提出も測り直されるのはこのためです。`raw` の問題はキーごとに測ります。
 
 ライブラリ (hashiryo/Library) の master への push もこちらを起こし、変わったヘッダを閉包に持つ提出だけが測り直されます。取りこぼしは 1 日 2 回の schedule が拾います。
 
@@ -230,7 +230,7 @@ main に push すると `judge.yml` が動きます。`test` が `pj` 自身の 
 
 ## 既存の問題に提出を足す
 
-`problems/<id>/submissions/` にファイルを置いて push するだけです。`base` の問題なら、`base.cpp` が呼ぶ型と関数を実装します。手元で `uv run pj run --env local --problem <id> --submission submissions/<name>.hpp` と 1 本だけ走らせて確かめられます。1 本だけ指定したときは束を作らないので、手元の記録が順位表を乱すことはありません。
+問題のディレクトリの `submissions/` にファイルを置いて push するだけです。`base` の問題なら、`base.cpp` が呼ぶ型と関数を実装します。手元で `uv run pj run --env local --problem <id> --submission submissions/<name>.hpp` と 1 本だけ走らせて確かめられます。1 本だけ指定したときは束を作らないので、手元の記録が順位表を乱すことはありません。
 
 ## コマンド一覧
 

@@ -652,3 +652,25 @@ def test_a_raw_problem_ignores_the_batch(tmp_path, local_env, machine):
     assert worklist.jobs == ()
     assert len(worklist.skipped) == 1
     assert worklist.skipped[0].batch is None
+
+
+# --- 置き場所とキー ---------------------------------------------------------
+
+
+def test_moving_a_problem_directory_keeps_the_key(tmp_path, local_env, machine):
+    """同じ問題を problems/x と problems/g/x に置いても、記録のキーは同じ。"""
+    def make_at(*parts):
+        directory = tmp_path.joinpath("problems", *parts)
+        directory.mkdir(parents=True)
+        (directory / "problem.toml").write_text(RAW_TOML.replace('id = "tmp-raw"', f'id = "{"-".join(parts)}"'))
+        (directory / "submissions").mkdir()
+        (directory / "submissions" / "sol.cpp").write_text("int main() { return 0; }\n")
+        return problem_mod.load(directory)
+
+    flat = make_at("x")
+    nested = make_at("g", "x")
+    key_flat = worklist_for(flat, local_env, machine).jobs[0].key
+    key_nested = worklist_for(nested, local_env, machine).jobs[0].key
+    assert key_flat == key_nested
+    # 記録に残るフラグの方は実際の場所を指す。
+    assert "problems/g/x" in worklist_for(nested, local_env, machine).jobs[0].cxxflags

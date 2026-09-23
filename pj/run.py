@@ -280,6 +280,8 @@ def _decide(
     ごとにキーの有無で分ける。
     """
     cxxflags = build_mod.effective_cxxflags(env, problem)
+    # キーの材料では問題のディレクトリの -I を印に置き換える。記録には実際のフラグを残す。
+    key_flags = build_mod.key_cxxflags(env, problem)
     search_paths = build_mod.include_dirs(problem)
     harness = key_mod.harness_key(problem, search_paths)
     problem_h = key_mod.problem_hash(problem)
@@ -309,7 +311,7 @@ def _decide(
                 cases_hash=cases_hash,
                 env=env.name,
                 compiler_version=machine.compiler_version,
-                cxxflags=cxxflags,
+                cxxflags=key_flags,
                 cpu_model=machine.cpu_model,
             ),
             submission_hash=sub.submission_hash,

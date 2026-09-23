@@ -19,6 +19,7 @@ from urllib.parse import parse_qs, urlparse
 
 from . import titles as titles_mod
 from .fetch import FetchError, library_checker
+from . import problem as problem_mod
 from .paths import PROBLEMS_DIR
 
 ANNOTATION = re.compile(r"^\s*//\s*competitive-verifier:\s*(\S+)(?:\s+(.*?))?\s*$")
@@ -462,8 +463,11 @@ def problem_toml(item: Item) -> str:
 
 
 def write(item: Item, problems_dir: Path = PROBLEMS_DIR) -> Path:
-    """問題を書き出す。既にあれば触らない。"""
-    directory = problems_dir / item.id
+    """問題を書き出す。既にあれば触らない。
+
+    判定サイトの接頭辞を持つ id は problems/<接頭辞>/<残り>/ に置く (problem.dir_for_new)。
+    """
+    directory = problem_mod.dir_for_new(item.id, problems_dir)
     if directory.exists():
         raise MigrateError(f"{directory} は既にあります")
     (directory / "submissions").mkdir(parents=True)

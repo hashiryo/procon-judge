@@ -85,7 +85,7 @@ procon-judge/
       build.py
       templates/
   problems/
-    <id>/
+    <グループ>/<名前>/     問題。problems/ からの各段を - で繋いだものが id (atcoder/abc172-d なら atcoder-abc172-d)。1 段で置けば名前がそのまま id
       problem.toml
       base.cpp              ハーネス (kind = "base" のとき)
       common.hpp            その問題だけが共通で使うもの (省略可)
@@ -96,7 +96,7 @@ procon-judge/
       gen.py                ジェネレータ (source = "local" のとき)
       reference.hpp         期待出力を作る参照実装 (同上)
       checker.cpp           独自チェッカ (自分で書くときだけ)
-    _shared/<名前>/         問題をまたいで提出が使うヘッダ (gf2-64 のベンチ、modulo-test の族)。problem.toml が無いので問題ではない
+    _shared/<名前>/         問題をまたいで提出が使うヘッダ (gf2-64 のベンチ、modulo-test の族)。problem.toml が無いので問題ではない。-Iproblems が入っているので #include "_shared/gf2-64/_common.hpp" で引く
   harness/
     pj.hpp                  全問題のハーネスと提出が共有するもの
   third_party/
@@ -134,7 +134,7 @@ name = "data_structure/point_add_range_sum"
 kind = "checker"
 ```
 
-`id` はディレクトリ名と一致させます。検証で一致しなければエラーにします。
+`id` は置き場所から決まる名前と一致させます。`problems/` の下は何段でも掘れて、そこからの各段を `-` で繋いだものが id です (`problems/atcoder/abc172-d/` なら `atcoder-abc172-d`、`problems/gf2-64/pow/` なら `gf2-64-pow`)。1 段で置けばディレクトリ名がそのまま id です。検証で一致しなければエラーにし、同じ id が 2 か所から出てもエラーにします。判定サイトの問題は接頭辞のディレクトリ (`atcoder/`、`aoj/`、`yosupo/`、`yuki/`、`loj/` など) に、自作の問題は族のディレクトリ (`gf2-64/`、`modulo-test/` など) に置いてあります。族を持たない自作の問題は 1 段で置きます (2026-09-23 に平らな置き方から移しました。「問題ディレクトリの階層化とキーの -I の正規化の記録」)。
 
 `title` は表示にだけ使い、鍵には入りません。判定サイトから取っている問題は、`pj problems titles --fix` で判定サイトの名前に揃えます。手で書くと違う名前を付けてしまいます。移植のとき AOJ の 36 問のうち 24 問と yukicoder の 3 問がそうなっていて、AOJ の旧 API が消えていたので気づくのが遅れました。AOJ は新しいサイトの一覧の API から、yukicoder は問題の API から、Library Checker は `info.toml` から取ります。AtCoder はページから取りますが、Library の test の URL も 12 件が間違っていて 404 でした。間違いは 3 種類です。1 つ目はコンテストの slug の `_` と `-` の違いです (s8pc-1、cf17-final、nikkei2019-2-qual)。2 つ目は Good Bye rng_58 Day 2 が agc051 であることです。3 つ目は 2016 年から 2018 年の ARC で、問題 C から F の id が `a` から `d` になっていることです (arc060 の F は `arc060_d`)。test の実装 (使うヘッダ) と問題の内容を照らして直しました。id は URL の名前から作るので、旧 ARC の 6 問は `atcoder-arc060-d` のように改名しています。
 `local` や `manual` や `none` の問題には判定サイトの名前が無いので、手で付けます。
@@ -237,7 +237,7 @@ Linux では `/proc/self/status` の VmHWM を読みます。exec 後の mm だ�
 
 問題をまたいで同じものは `harness/pj.hpp` に置きます。include 一式、`i64` などの型別名、`must_scan`、`peak_rss_kb`、`report_metrics` です。`-Iharness` が入っているので `#include "pj.hpp"` で引けます。問題ごとの `common.hpp` は、その問題だけが共通で使うものを置く場所として残してあります。今の 3 問には該当するものが無いので、どれも持っていません。
 
-探索の順は `lib`、問題のディレクトリ、`harness`、`third_party/simde` です。問題のディレクトリが `harness` より先なので、問題ごとに同じ名前のヘッダを置けばそちらが勝ちます。
+探索の順は `lib`、問題のディレクトリ、`harness`、`problems`、`third_party/simde` です。問題のディレクトリが `harness` より先なので、問題ごとに同じ名前のヘッダを置けばそちらが勝ちます。`problems` は問題をまたぐヘッダ (`problems/_shared/`) を `#include "_shared/gf2-64/_common.hpp"` の形で引くためのもので、問題を何段掘って置いても同じ書き方で通ります。
 
 既存の `judge` がこれを踏んでいないのは、`/usr/bin/time -v` 越しに走らせているからです。fork する親が 1 MB ほどの C プログラムなので下駄が見えません。24000 件の記録の最小が 3 MB 台で、それがその高さです。
 
@@ -582,6 +582,8 @@ key = sha256( 提出のパス, submission_hash, harness_hash, problem_hash, case
               env, compiler_version, cxxflags, cpu_model )
 ```
 
+キーの材料の `cxxflags` は、実際のフラグのうち問題自身のディレクトリの `-I` を `-I@problem` に置き換えたものです (`build.key_cxxflags`)。記録の `cxxflags` の欄には実際のフラグをそのまま残します。問題をどこに置くかをキーから切り離すためで、これが無いと `problems/` の下でディレクトリを動かしただけでその問題の記録が全部測り直しになります (2026-09-23 に入れました。「問題ディレクトリの階層化とキーの -I の正規化の記録」)。
+
 提出のパスをキーに入れるのは、中身が同じ提出を別物として数えるためです。`submission_hash` は中身と include 閉包だけから作るので、バイト単位で同じ提出が 2 本あると同じ値になります。提出ページはパスごとに描くので、パスが違えば別の記録が要ります。リネームすると測り直しになりますが、新しいパスには記録が無いので、そちらの方が欲しい動きです。
 
 `problem_hash` は実行に影響する項目だけから作ります。`limits`、`harness`、`testdata`、`compare` です。`title` のような表示用の項目は外します。題名を直しただけで全部が走り直すのを避けるためです。
@@ -608,7 +610,7 @@ key = sha256( 提出のパス, submission_hash, harness_hash, problem_hash, case
 
 include 閉包は `#include "..."` を再帰的に辿って作ります。角括弧の include は辿りません。閉包の解決は `pj/include.py` に置いて、pytest で固めてください。
 
-閉包を辿るときの include パスは、コンパイル時と同じにしてください。`lib/`、問題のディレクトリ、`harness/`、`third_party/simde` です。ずれているとライブラリのヘッダを解決できず、閉包が欠けます。欠けた閉包はキーを誤らせるので、ライブラリを直しても再実行されなくなります。
+閉包を辿るときの include パスは、コンパイル時と同じにしてください。`lib/`、問題のディレクトリ、`harness/`、`problems/`、`third_party/simde` です。ずれているとライブラリのヘッダを解決できず、閉包が欠けます。欠けた閉包はキーを誤らせるので、ライブラリを直しても再実行されなくなります。
 
 この設計から出る結果を 4 つ書きます。
 
@@ -1808,6 +1810,28 @@ base の問題の順位表は (環境, モデル) ごとにいちばん新しい
 ### 入れなかったもの
 
 ジョブ内の計測の繰り返しは入れていません。「採らなかった選択肢」のとおり、周波数の振れは同じジョブの中では全部同じように落ち込むので、繰り返しても束の中の順位は変わりません。較正 (参照実装との比) と、アンカーだけ測り直してずれが大きければ束ごと測り直す節約案も採りませんでした。前者は VM の差が一様な倍率でないため、後者はしきい値が新しい調整点になるためです。
+
+## 問題ディレクトリの階層化とキーの -I の正規化の記録
+
+2026-09-23 に `problems/` の置き方を平らな 722 ディレクトリから階層に変えました。エディタで問題を探すのが大変になったのがきっかけです。
+
+`problems/` の下は何段でも掘れます。`problem.toml` を持つディレクトリが問題で、その下は探しません。持たないディレクトリはただの入れ物です。`_` か `.` で始まる名前 (`_shared`、`__pycache__`) は飛ばします。id は `problems/` からの各段を `-` で繋いだものです。`problems/atcoder/abc172-d/` が `atcoder-abc172-d`、`problems/gf2-64/pow/` が `gf2-64-pow` で、1 段で置いた問題は名前がそのまま id です。id を変えずに置き場所だけを変えたので、results の jsonl、保管庫のアセット名、サイトの URL、宣言の ref はどれも動いていません。同じ id が 2 か所から出たら `all_problem_dirs` が止めます (`pj/problem.py`)。
+
+判定サイトの問題は接頭辞のディレクトリに入れました。`aoj/` 178、`atcoder/` 154、`yuki/` 142、`yosupo/` 139、`loj/` 23、`hackerrank/` 13、`cf/` 8、`joisc/` 5、`codechef/` 4、`luogu/` 3、`ojuz/` 2、`cses/` 1、`kattis/` 1 です。自作は族で分けました。`modulo-test/` 14、`gf2-64/` 10、`constexpr/` 9、`1word-mod/` 4、`nimber/` 3、`modpow-test/` 2、`gcd-test/` 1 です。族を持たない 6 問 (mod-inv-prime、oeis-mod-tetration、plc-pool-test、remainder、warshall-floyd、wbt-pool-test) は 1 段のままです。`atcoder/` を `abc/` などでさらに分けることはできません。段を足すとそのぶん id に `-` が入るからです。importer (`pj problems import`) は判定サイトの接頭辞を持つ id を接頭辞のディレクトリの下に書き出します (`problem.dir_for_new`)。
+
+### キーの材料では問題のディレクトリの -I を印にします
+
+問題のディレクトリはコンパイルフラグに `-Iproblems/<id>` として入り、フラグはキーの一部です。そのままだとディレクトリを動かした問題はそれだけで測り直しになります。キーの材料を作るときだけ、問題自身の `-I` を `-I@problem` に置き換えることにしました (`build.key_cxxflags`)。実際のコンパイルと記録の `cxxflags` の欄は実際のパスのままです。`run` の `_decide` と `Freshness.key_for` の両方がこの関数を使い、`Freshness.diff` が「フラグが変わった」と言うときの比較は実際のフラグどうしで行います。
+
+この置き換えを入れた瞬間に全問題のキーの材料が変わるので、既存の記録は一度全部参考に落ちて測り直しになります。同じ日に入れた束の移行の測り直しと同じ規模です。以後はディレクトリを動かしても測り直しになりません。
+
+### 問題をまたぐヘッダは -Iproblems で引きます
+
+`problems/_shared/` のヘッダは `#include "../../_shared/gf2-64/_common.hpp"` のように相対パスで引いていました。問題が 1 段深くなると `../` が 1 つ増えるので、`-Iproblems` を足して `#include "_shared/gf2-64/_common.hpp"` の形にし、273 ファイルを書き換えました。探索の順は `lib`、問題のディレクトリ、`harness`、`problems`、`third_party/simde` です。`_shared` のヘッダのラベル (記録の `includes` と `file_hashes`) は `problems/_shared/...` から `_shared/...` に変わりました。
+
+### サイトのリンクは実際のパスを使います
+
+GitHub へ飛ぶリンク (提出のソース、ジェネレータ、参照実装、問題のディレクトリ) は id から `problems/<id>/...` を組んでいましたが、問題のディレクトリのリポジトリからの相対パスを問題の JSON の `dir` に載せてそれを使うようにしました。記録の `judge_sha` は測ったときのコミットなので、移す前に測った記録 (参考) のリンクは新しいパスと組み合わさって 404 になります。測り直しで入れ替わるまでの話です。
 
 ## 既存リポジトリから移すもの
 

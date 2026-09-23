@@ -52,7 +52,7 @@ def test_effective_cxxflags_append_the_include_dirs():
     flags = build_mod.effective_cxxflags(env, problem)
     assert flags.startswith(env.cxxflags)
     assert flags.endswith(
-        "-Ilib -Iproblems/yosupo-point-add-range-sum -Iharness -Ithird_party/simde"
+        "-Ilib -Iproblems/yosupo-point-add-range-sum -Iharness -Iproblems -Ithird_party/simde"
     )
 
 
@@ -185,3 +185,17 @@ def test_lscpu_names_the_arm_core():
 def test_lscpu_ignores_the_other_model_line():
     """lscpu には "Model:" もある。番号の方を拾ってはいけない。"""
     assert env_mod.parse_lscpu_model(LSCPU_AARCH64) != "0"
+
+
+def test_the_key_flags_hide_where_the_problem_lives():
+    """問題のディレクトリを動かしてもキーが変わらないように、キーの材料では -I を印にする。"""
+    env = env_mod.load("local")
+    problem = problem_mod.load_by_id("yosupo-point-add-range-sum")
+    real = build_mod.effective_cxxflags(env, problem)
+    key = build_mod.key_cxxflags(env, problem)
+    rel = problem.dir.relative_to(build_mod.ROOT).as_posix() if hasattr(build_mod, "ROOT") else "problems/"
+    assert f"-I{build_mod.PROBLEM_DIR_TOKEN}" in key
+    assert "yosupo" not in key.replace("-Ilib", "")
+    assert "-Iproblems" in real and "-Iproblems " in real + " "
+    assert "point-add-range-sum" in real
+    assert real.replace(f"-I{rel}", f"-I{build_mod.PROBLEM_DIR_TOKEN}") == key

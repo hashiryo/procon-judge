@@ -61,6 +61,8 @@ def record_for(problem, env, submission, *, cpu_model="EPYC", **over):
     """今のソースをその条件で測ったことにした記録。"""
     search = build_mod.include_dirs(problem)
     cxxflags = build_mod.effective_cxxflags(env, problem)
+    # キーの材料は問題のディレクトリの -I を印に置き換えたもの。記録の欄は実際のフラグ。
+    key_flags = build_mod.key_cxxflags(env, problem)
     sub = key_mod.submission_hash(problem.dir / submission, search)
     compiler = over.pop("compiler_version", COMPILER)
     cases_hash = over.pop("cases_hash", CASES_HASH)
@@ -72,7 +74,7 @@ def record_for(problem, env, submission, *, cpu_model="EPYC", **over):
         cases_hash=cases_hash,
         env=env.name,
         compiler_version=compiler,
-        cxxflags=cxxflags,
+        cxxflags=key_flags,
         cpu_model=cpu_model,
     )
     record = {

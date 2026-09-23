@@ -59,8 +59,13 @@ class Freshness:
         self._search = build_mod.include_dirs(problem)
         self._harness = key_mod.harness_key(problem, self._search)
         self._problem_hash = key_mod.problem_hash(problem)
+        # 実際のフラグ (記録の cxxflags と比べて「変わったか」を言うのに使う) と、
+        # キーの材料 (問題のディレクトリの -I を印に置き換えたもの) を分けて持つ。
         self._cxxflags = {
             env.name: build_mod.effective_cxxflags(env, problem) for env in envs
+        }
+        self._key_cxxflags = {
+            env.name: build_mod.key_cxxflags(env, problem) for env in envs
         }
         self._subs: dict[str, key_mod.SubmissionKey | None] = {}
 
@@ -95,7 +100,7 @@ class Freshness:
         sub = self._submission(submission)
         if sub is None or sub.unresolved:
             return None
-        cxxflags = self._cxxflags.get(env)
+        cxxflags = self._key_cxxflags.get(env)
         if cxxflags is None:
             return None
         return key_mod.compute(

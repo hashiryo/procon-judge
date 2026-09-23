@@ -429,6 +429,7 @@ def problem_payload(
         cxxflags.setdefault(cell.env, cell.cxxflags)
 
     source = problem.testdata.source if problem else ""
+    dir_rel = problem_dir_rel(problem, problem_id)
     return {
         "id": problem_id,
         "title": problem.title if problem else problem_id,
@@ -439,13 +440,16 @@ def problem_payload(
         "caution": source in CAUTION_SOURCES,
         "note": testdata_note(problem),
         # 自作のケースを作るファイル。GitHub へ飛ばすのに使う。
+        # 問題のディレクトリのリポジトリからの相対パス。problems/ の下は何段でも掘れる
+        # ので、id から組まずにここから取る。
+        "dir": dir_rel,
         "generator": (
-            f"problems/{problem_id}/{problem.testdata.generator}"
+            f"{dir_rel}/{problem.testdata.generator}"
             if problem and source == "local"
             else None
         ),
         "reference": (
-            f"problems/{problem_id}/{problem.testdata.reference}"
+            f"{dir_rel}/{problem.testdata.reference}"
             if problem and source == "local" and problem.testdata.reference
             else None
         ),
@@ -522,6 +526,12 @@ class SubmissionPage:
     # 取得元の表示名。空なら source から作る。none は比較の種別で表示が変わるので、
     # problem_payload が決めたものを持ち回る。
     source_label: str = ""
+    # 問題のディレクトリのリポジトリからの相対パス。空なら problems/<id>。
+    dir: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.dir:
+            object.__setattr__(self, "dir", f"problems/{self.problem_id}")
 
 
 def _ms(ns: int | None) -> str:
@@ -542,8 +552,21 @@ def _blob(repo: str | None, sha: str | None, rel: str) -> str | None:
     return f"{repo}/blob/{sha}/{rel}"
 
 
-def _submission_rel(problem_id: str, submission: str) -> str:
-    return f"problems/{problem_id}/{submission}"
+def problem_dir_rel(problem: problem_mod.Problem | None, problem_id: str) -> str:
+    """問題のディレクトリのリポジトリからの相対パス。GitHub へのリンクに使う。
+
+    問題が repo から消えていれば、平らに置いてあったときの場所を仮に返す。
+    """
+    if problem is None:
+        return f"problems/{problem_id}"
+    try:
+        return problem.dir.relative_to(ROOT).as_posix()
+    except ValueError:
+        return f"problems/{problem_id}"
+
+
+def _submission_rel(dir_rel: str, submission: str) -> str:
+    return f"{dir_rel}/{submission}"
 
 
 def _cell_row(page: SubmissionPage, c: Cell) -> str:
@@ -565,7 +588,7 @@ def _cell_row(page: SubmissionPage, c: Cell) -> str:
         fresh = '<td class="dim" title="今のソースと比べられませんでした">-</td>'
 
     commit = "-"
-    href = _blob(page.repo, c.judge_sha, _submission_rel(page.problem_id, page.submission))
+    href = _blob(page.repo, c.judge_sha, _submission_rel(page.dir, page.submission))
     if c.judge_sha:
         short = esc(c.judge_sha[:7])
         commit = f'<a class="mono" href="{esc(href)}">{short}</a>' if href else short
@@ -715,7 +738,7 @@ def _source_html(text: str | None) -> str:
 def submission_html(page: SubmissionPage, style_v: str) -> str:
     """提出ページの HTML。切り替えが無いので JavaScript は使わない。"""
     problem_html = urllib.parse.quote(page.problem_id) + ".html"
-    rel = _submission_rel(page.problem_id, page.submission)
+    rel = _submission_rel(page.dir, page.submission)
     github = _blob(page.repo, page.sha, rel)
 
     subtitle = f'<span class="mono">{esc(rel)}</span>'
@@ -1166,6 +1189,7 @@ def build(store: Store, out: Path) -> Summary:
                         url=payload["url"],
                         source=payload["source"],
                         source_label=payload["source_label"],
+                        dir=payload["dir"],
                         submission=submission,
                         cells=mine,
                         env_names=env_names,

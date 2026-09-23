@@ -118,15 +118,8 @@ function statusCell(row) {
 // その記録を測ったコミットのソース。いまの main ではない。
 function sourceHref(row) {
   if (!DATA.repo || !row.judge_sha) return null;
-  return (
-    DATA.repo +
-    "/blob/" +
-    row.judge_sha +
-    "/problems/" +
-    encodeURIComponent(DATA.id) +
-    "/" +
-    row.submission
-  );
+  // 問題のディレクトリは problems/ の下で何段でも掘れるので、id から組まずに dir を使う。
+  return DATA.repo + "/blob/" + row.judge_sha + "/" + DATA.dir + "/" + row.submission;
 }
 
 const COLUMNS = [
@@ -397,13 +390,8 @@ async function main() {
   if (DATA.repo) {
     const directory = el("span");
     const a = el("a", "ディレクトリ");
-    a.href =
-      DATA.repo +
-      "/tree/" +
-      (DATA.judge_sha || "main") +
-      "/problems/" +
-      encodeURIComponent(DATA.id);
-    a.title = "GitHub の problems/" + DATA.id;
+    a.href = DATA.repo + "/tree/" + (DATA.judge_sha || "main") + "/" + DATA.dir;
+    a.title = "GitHub の " + DATA.dir;
     directory.append(a);
     meta.push(directory);
   }

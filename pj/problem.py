@@ -28,6 +28,13 @@ SOURCE_PREFIXES = {
     "loj": "loj-",
 }
 
+# 判定サイトの問題の id の接頭辞 (DESIGN.md「problem.toml」の表)。importer が新しい問題を
+# 書き出すとき、この接頭辞を持つ id は problems/<接頭辞>/<残り>/ に置く。
+JUDGE_PREFIXES = (
+    "yosupo", "aoj", "yuki", "atcoder", "loj", "hackerrank", "cses", "joisc", "cf",
+    "ojuz", "codechef", "kattis", "luogu",
+)
+
 
 class ProblemError(Exception):
     """problem.toml が壊れているときに投げる。"""
@@ -107,9 +114,10 @@ def load(problem_dir: Path) -> Problem:
 
     pid = raw.get("id", "")
     _require(bool(pid), f"{toml_path}: id が必要です")
+    expected = problem_id_of(problem_dir)
     _require(
-        pid == problem_dir.name,
-        f"{toml_path}: id {pid!r} がディレクトリ名 {problem_dir.name!r} と一致しません",
+        pid == expected,
+        f"{toml_path}: id {pid!r} が置き場所から決まる名前 {expected!r} と一致しません",
     )
 
     limits_raw = raw.get("limits", {})
@@ -222,17 +230,72 @@ def warnings(problem: Problem) -> list[str]:
     return [f"id が {prefix!r} で始まっていません (testdata.source = {source!r})"]
 
 
+def problem_id_of(problem_dir: Path) -> str:
+    """ディレクトリの置き場所から決まる id。
+
+    problems/ の下は何段でも掘れて、problems/ からの各段を `-` で繋いだものが id になる。
+    problems/atcoder/abc172-d/ なら atcoder-abc172-d、problems/gf2-64/pow/ なら gf2-64-pow。
+    平らに置いた 1 段のものは今までどおりディレクトリ名がそのまま id。problems という
+    名前の祖先が無い (テストの一時ディレクトリなど) ときもディレクトリ名。
+    """
+    resolved = problem_dir.resolve()
+    parts: list[str] = []
+    for ancestor in [resolved, *resolved.parents]:
+        if ancestor.name == PROBLEMS_DIR.name and ancestor != resolved:
+            return "-".join(reversed(parts))
+        parts.append(ancestor.name)
+    return problem_dir.name
+
+
+def dir_for_new(problem_id: str, root: Path = PROBLEMS_DIR) -> Path:
+    """新しい問題を書き出す場所。判定サイトの接頭辞を持つ id は接頭辞のディレクトリの下。
+
+    自作の問題は族ごとの置き場所を人が決めるので、ここでは平らに置く。
+    """
+    prefix, sep, rest = problem_id.partition("-")
+    if sep and rest and prefix in JUDGE_PREFIXES:
+        return root / prefix / rest
+    return root / problem_id
+
+
 def load_by_id(problem_id: str) -> Problem:
-    problem_dir = PROBLEMS_DIR / problem_id
-    if not problem_dir.is_dir():
-        raise ProblemError(f"問題 {problem_id!r} がありません ({problem_dir})")
-    return load(problem_dir)
+    flat = PROBLEMS_DIR / problem_id
+    if (flat / "problem.toml").is_file():
+        return load(flat)
+    for problem_dir in all_problem_dirs():
+        if problem_id_of(problem_dir) == problem_id:
+            return load(problem_dir)
+    raise ProblemError(f"問題 {problem_id!r} がありません ({PROBLEMS_DIR} の下に見つかりません)")
 
 
 def all_problem_dirs() -> list[Path]:
+    """problem.toml を持つディレクトリを problems/ の下から何段でも探す。
+
+    problem.toml を持つディレクトリが問題で、その下は探さない。持たないディレクトリは
+    ただの入れ物。`_` か `.` で始まる名前 (_shared、__pycache__) は飛ばす。同じ id が
+    2 か所から出たら、どちらを測ればよいか決まらないので止める。
+    """
     if not PROBLEMS_DIR.is_dir():
         return []
-    return sorted(p for p in PROBLEMS_DIR.iterdir() if (p / "problem.toml").is_file())
+    found: list[Path] = []
+
+    def walk(directory: Path) -> None:
+        for child in sorted(directory.iterdir()):
+            if not child.is_dir() or child.name.startswith(("_", ".")):
+                continue
+            if (child / "problem.toml").is_file():
+                found.append(child)
+            else:
+                walk(child)
+
+    walk(PROBLEMS_DIR)
+    seen: dict[str, Path] = {}
+    for problem_dir in found:
+        pid = problem_id_of(problem_dir)
+        if pid in seen:
+            raise ProblemError(f"問題 {pid!r} が 2 か所にあります: {seen[pid]} と {problem_dir}")
+        seen[pid] = problem_dir
+    return sorted(found, key=problem_id_of)
 
 
 def resolve_submission(problem: Problem, given: str) -> Path:

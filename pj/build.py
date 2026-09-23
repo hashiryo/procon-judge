@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .environment import Environment
-from .paths import BUILD_CACHE_DIR, HARNESS_DIR, LIB_DIR, ROOT, SIMDE_DIR
+from .paths import BUILD_CACHE_DIR, HARNESS_DIR, LIB_DIR, PROBLEMS_DIR, ROOT, SIMDE_DIR
 from .problem import Problem
 
 # constexpr を重く回す実装や -flto のリンクで伸びるので上限を置く。超えたら CE。
@@ -27,16 +27,37 @@ class BuildResult:
     log: str
 
 
-def effective_cxxflags(env: Environment, problem: Problem) -> str:
-    """environments.toml のフラグに -I を足したもの。
+# キーの材料の中で、問題自身のディレクトリの -I を置き換える印。問題をどこに置くかを
+# キーから切り離すためで、これが無いと problems/ の下でディレクトリを動かしただけで
+# その問題の記録が全部測り直しになる。記録の cxxflags には実際のパスをそのまま残す。
+PROBLEM_DIR_TOKEN = "@problem"
 
-    記録の cxxflags にはこの文字列をそのまま入れる。キーの一部なので、
-    記録と実際のコンパイルがずれてはいけない。
-    include 閉包を辿るときの探索パスもこれと同じにする。
+
+def effective_cxxflags(env: Environment, problem: Problem) -> str:
+    """environments.toml のフラグに -I を足したもの。実際のコンパイルに使う。
+
+    記録の cxxflags にはこの文字列をそのまま入れる。include 閉包を辿るときの探索パス
+    もこれと同じにする。キーの材料は key_cxxflags の方で、問題のディレクトリだけが
+    置き換わっている。
     """
+    return _flags(env, problem, for_key=False)
+
+
+def key_cxxflags(env: Environment, problem: Problem) -> str:
+    """キーの材料にするフラグ。問題自身のディレクトリの -I を PROBLEM_DIR_TOKEN にしたもの。
+
+    run と Freshness の両方がこれを使う。二度書くと片方を直し忘れる。
+    """
+    return _flags(env, problem, for_key=True)
+
+
+def _flags(env: Environment, problem: Problem, *, for_key: bool) -> str:
     flags = shlex.split(env.cxxflags)
     for directory in include_dirs(problem):
-        flags.append(f"-I{_rel(directory)}")
+        if for_key and directory == problem.dir:
+            flags.append(f"-I{PROBLEM_DIR_TOKEN}")
+        else:
+            flags.append(f"-I{_rel(directory)}")
     return shlex.join(flags)
 
 
@@ -46,11 +67,15 @@ def include_dirs(problem: Problem) -> list[Path]:
     問題のディレクトリを harness より先に置く。問題ごとに同じ名前のヘッダを
     置いたら、そちらが勝つ方が使いやすい。
 
+    problems/ を足してあるのは、問題をまたぐヘッダ (problems/_shared/) を
+    `#include "_shared/gf2-64/_common.hpp"` の形で引くため。問題を何段掘って
+    置いても同じ書き方で通る。
+
     third_party/simde は submodule を初期化していなくても外さない。有無で外すと
     cxxflags が変わってキーが変わり、手元と CI で別の記録が増える。存在しない
     -I はコンパイラが黙って無視する。
     """
-    return [LIB_DIR, problem.dir, HARNESS_DIR, SIMDE_DIR]
+    return [LIB_DIR, problem.dir, HARNESS_DIR, PROBLEMS_DIR, SIMDE_DIR]
 
 
 def _rel(path: Path) -> str:

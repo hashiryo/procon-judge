@@ -275,6 +275,8 @@ def record_for(problem, env, submission="submissions/a.cpp"):
     """今のソースをその環境で測ったことにした記録。"""
     search = build_mod.include_dirs(problem)
     cxxflags = build_mod.effective_cxxflags(env, problem)
+    # キーの材料は問題のディレクトリの -I を印に置き換えたもの。記録の欄は実際のフラグ。
+    key_flags = build_mod.key_cxxflags(env, problem)
     sub = key_mod.submission_hash(problem.dir / submission, search)
     key = key_mod.compute(
         submission=submission,
@@ -284,7 +286,7 @@ def record_for(problem, env, submission="submissions/a.cpp"):
         cases_hash="h",
         env=env.name,
         compiler_version="g++-15",
-        cxxflags=cxxflags,
+        cxxflags=key_flags,
         cpu_model="EPYC",
     )
     return rec(key=key, submission=submission, env=env.name, cxxflags=cxxflags)
@@ -995,3 +997,25 @@ def test_problem_payload_carries_the_batch():
     assert rows["submissions/a.hpp"]["outside"] is False
     assert rows["submissions/b.hpp"]["outside"] is True
     assert payload["batched"] is False
+
+
+# --- 置き場所 ---------------------------------------------------------------
+
+
+def test_problem_payload_carries_the_directory(tmp_path):
+    directory = tmp_path / "problems" / "yuki" / "1234"
+    directory.mkdir(parents=True)
+    (directory / "problem.toml").write_text(FRESH_TOML.replace('id = "tmp-fresh"', 'id = "yuki-1234"'))
+    (directory / "submissions").mkdir()
+    (directory / "submissions" / "a.cpp").write_text(SOURCE)
+    problem = problem_mod.load(directory)
+    payload = site_build.problem_payload("yuki-1234", problem, [], "now")
+    # ROOT の外なので相対にできず、平らに置いたときの場所を仮に返す。
+    assert payload["dir"] == "problems/yuki-1234"
+    assert site_build.problem_dir_rel(None, "p") == "problems/p"
+
+
+def test_problem_dir_rel_is_relative_to_the_repository():
+    problem = problem_mod.load_by_id("yosupo-point-add-range-sum")
+    rel = site_build.problem_dir_rel(problem, problem.id)
+    assert rel.startswith("problems/") and rel.endswith("point-add-range-sum")
