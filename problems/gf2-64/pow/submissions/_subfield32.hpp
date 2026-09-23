@@ -65,21 +65,18 @@ constexpr ByteTable FROB16_RAW= []() {
 }();
 // 部分体 F_2^16 の埋め込み。SUBFIELD_BASIS[i] は下位 16 bit がちょうど 1 << i なので、
 // 元の下位 16 bit がそのまま識別子になり、embed_idx がその逆写像になる。
-constexpr u64 embed_idx(u16 idx) {
- static constexpr auto EMBED= []() {
-  u64 SUBFIELD_BASIS[]= {0x0000000000000001ULL, 0x5fbfaec6aeac0002ULL, 0xb06c601895640004ULL, 0xb013b5277b7c0008ULL, 0xb5ebb915248a0010ULL, 0x109bb25b2c600020ULL, 0xbf3bd95bd4190040ULL, 0x0fc66342279b0080ULL, 0xb6418f5e57c50100ULL, 0xaa194bd4b83f0200ULL, 0x1b5217b4dcc70400ULL, 0xbb06fa73867a0800ULL, 0x006fd55b23331000ULL, 0x4ae8fb39198c2000ULL, 0xfbd141b29b4f4000ULL, 0x1d9ce1776be78000ULL};
-  array<array<u64, 256>, 2> t{};
-  for(int half= 0; half < 2; ++half)
-   for(int i= 0; i < 256; ++i) {
-    u64 v= 0;
-    for(int b= 0; b < 8; ++b)
-     if((i >> b) & 1) v^= SUBFIELD_BASIS[b + half * 8];
-    t[half][i]= v;
-   }
-  return t;
- }();
- return EMBED[0][u8(idx)] ^ EMBED[1][idx >> 8];
-}
+struct EmbedTable {
+ u64 t[2][256];
+};
+constexpr EmbedTable EMBED= []() {
+ u64 SUBFIELD_BASIS[]= {0x0000000000000001ULL, 0x5fbfaec6aeac0002ULL, 0xb06c601895640004ULL, 0xb013b5277b7c0008ULL, 0xb5ebb915248a0010ULL, 0x109bb25b2c600020ULL, 0xbf3bd95bd4190040ULL, 0x0fc66342279b0080ULL, 0xb6418f5e57c50100ULL, 0xaa194bd4b83f0200ULL, 0x1b5217b4dcc70400ULL, 0xbb06fa73867a0800ULL, 0x006fd55b23331000ULL, 0x4ae8fb39198c2000ULL, 0xfbd141b29b4f4000ULL, 0x1d9ce1776be78000ULL};
+ EmbedTable r{};
+ for(int half= 0; half < 2; ++half)
+  for(int j= 0; j < 8; ++j)
+   for(int b= 0; b < (1 << j); ++b) r.t[half][(1 << j) | b]= r.t[half][b] ^ SUBFIELD_BASIS[j + half * 8];
+ return r;
+}();
+constexpr u64 embed_idx(u16 idx) { return EMBED.t[0][u8(idx)] ^ EMBED.t[1][idx >> 8]; }
 // μ_P (位数 65537) の 2 段 pow 表。log 表の方は norm / ratio のヘッダが足す。
 struct MuPow {
  u64 HI[257];
@@ -136,8 +133,9 @@ constexpr SigTables SIG= []() {
  r.LN[0]= 0;
  return r;
 }();
-// u ∈ μ_P の log (mp) と v ∈ μ_N の log (mn) から b^q の 2 因子を作る。
+// u ∈ μ_P の log (mp) と v ∈ μ_N の log (mn) から b^q の 2 因子を作る (2 段の表を使う版)。
 // 呼ぶ側が窓の結果と一緒に mul2 へ渡せるよう、掛け合わせる前の形で返している。
+// 表を 65537 要素そのまま持つ版は _subfield32_pwfull.hpp にある。
 GNU_TARGET("vpclmulqdq") inline pair<u64, u64> pow_pair(u32 mp, u32 mn) { return unpack(mul2(_mm256_set_epi64x(0, SIG.HI[mn >> 8], 0, MU_PW.HI[mp >> 8]), _mm256_set_epi64x(0, SIG.LO[mn & 255], 0, MU_PW.LO[mp & 255]))); }
 // 窓の畳み込みで使う frobK の 2 lane 版 (byte_window 系と同じ形)。結果は q0, q2 に入るので
 // そのまま mul2 の operand にできる。呼ぶ側で使うものだけが実体化される。

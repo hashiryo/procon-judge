@@ -5,16 +5,17 @@
 // 落とせば表引きが q < 2^32 を引き受けるので窓は 32 bit で済む。
 //
 // log の引き方 (_subfield32_ratio.hpp): b の F_2^16 座標 (b_0, b_1) の比で類を決めて引く (s を作らない)
-// pow 表 (_subfield32.hpp): 2 段の pow 表 (257 + 256 要素, 4 KB) + mul2 1 本
-// 窓 (_win32.hpp): 2 bit × 16 桁。葉に掛かる frob16 を frob16(a) の冪表に置き換える
+// pow 表 (_subfield32_pwfull.hpp): 65537 要素の pow 表をそのまま (512 KB × 2)、掛け算なし
+// 窓 (_win32.hpp): 2 bit × 16 桁。T は a^2, a^3 だけで木が 4 段
 //
 // r は 2^32 も取り得るが、そのときだけ a^(2^32) = frob32(a) を後から掛ける。
 //
 // 必要な拡張: VPCLMULQDQ + AVX2 (Intel Ice Lake / AMD Zen3 以降)。
 #pragma GCC optimize("O3,unroll-loops")
 #include "_subfield32_ratio.hpp"
+#include "_subfield32_pwfull.hpp"
 #include "_win32.hpp"
-namespace gf2_64_pow_subfield32_ratio_2bit_dual {
+namespace gf2_64_pow_subfield32_ratio_2bit_pwfull {
 using namespace gf2_64_pow_subfield32;
 using gf2_64_pclmul::frob32;
 GNU_TARGET("pclmul,vpclmulqdq") u64 pow(u64 a, u64 e) {
@@ -24,16 +25,16 @@ GNU_TARGET("pclmul,vpclmulqdq") u64 pow(u64 a, u64 e) {
  const u64 r= e - u64(q) * SPLIT;
  const u64 fa= frob32(a);
  auto [mp, mn]= subfield_exp2(mul(a, fa), q);  // (a^(2^32+1))^q = h_P^mp · h_N^mn
- auto [zp, zn]= pow_pair(mp, mn);
- auto [w0, w1]= win32_2bit_dual(a, u32(r));          // w0 w1 = a^(r mod 2^32)
+ auto [zp, zn]= pow_pair_full(mp, mn);
+ auto [w0, w1]= win32_2bit(a, u32(r));          // w0 w1 = a^(r mod 2^32)
  auto [x, y]= unpack(mul2(_mm256_set_epi64x(0, w0, 0, zp), _mm256_set_epi64x(0, w1, 0, zn)));
  const u64 res= mul(x, y);
  return r >> 32 ? mul(res, fa) : res;  // r = 2^32 のときだけ a^(2^32) が余る
 }
-}  // namespace gf2_64_pow_subfield32_ratio_2bit_dual
+}  // namespace gf2_64_pow_subfield32_ratio_2bit_pwfull
 struct GF2_64Op {
  static vector<u64> run(const vector<u64>& as, const vector<u64>& es) {
-  using gf2_64_pow_subfield32_ratio_2bit_dual::pow;
+  using gf2_64_pow_subfield32_ratio_2bit_pwfull::pow;
   vector<u64> ans(as.size());
   for(size_t i= 0; i < as.size(); ++i) ans[i]= pow(as[i], es[i]);
   return ans;

@@ -4,7 +4,8 @@
 // q < 2^16 だけを F_2^16 の表引きにし、残り 48 bit を窓で回していたが、F_2^32 まで
 // 落とせば表引きが q < 2^32 を引き受けるので窓は 32 bit で済む。
 //
-// 部分体側 (_subfield32_norm.hpp): s = b^(2^16-1) を作って y = s + s^-1 で引く
+// log の引き方 (_subfield32_norm.hpp): s = b^(2^16-1) を作って y = s + s^-1 で引く
+// pow 表 (_subfield32.hpp): 2 段の pow 表 (257 + 256 要素, 4 KB) + mul2 1 本
 // 窓 (_win32.hpp): 2 bit × 16 桁。T は a^2, a^3 だけで木が 4 段
 //
 // r は 2^32 も取り得るが、そのときだけ a^(2^32) = frob32(a) を後から掛ける。
@@ -22,7 +23,8 @@ GNU_TARGET("pclmul,vpclmulqdq") u64 pow(u64 a, u64 e) {
  const u32 q= u32(e / SPLIT);
  const u64 r= e - u64(q) * SPLIT;
  const u64 fa= frob32(a);
- auto [zp, zn]= subfield_pow2(mul(a, fa), q);  // zp zn = (a^(2^32+1))^q
+ auto [mp, mn]= subfield_exp2(mul(a, fa), q);  // (a^(2^32+1))^q = h_P^mp · h_N^mn
+ auto [zp, zn]= pow_pair(mp, mn);
  auto [w0, w1]= win32_2bit(a, u32(r));          // w0 w1 = a^(r mod 2^32)
  auto [x, y]= unpack(mul2(_mm256_set_epi64x(0, w0, 0, zp), _mm256_set_epi64x(0, w1, 0, zn)));
  const u64 res= mul(x, y);

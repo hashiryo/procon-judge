@@ -32,8 +32,9 @@ constexpr MuLn MU_LN= []() {
  }
  return r;
 }();
-// b = a^(2^32+1) ∈ F_2^32 と q から b^q の 2 因子を返す (積が b^q)。
-GNU_TARGET("pclmul,vpclmulqdq") inline pair<u64, u64> subfield_pow2(u64 b, u32 q) {
+// b = a^(2^32+1) ∈ F_2^32 と q から、b^q = h_P^mp · h_N^mn となる (mp, mn) を返す。
+// そこから元を作るのは pow_pair (_subfield32.hpp) か pow_pair_full (_subfield32_pwfull.hpp)。
+GNU_TARGET("pclmul,vpclmulqdq") inline pair<u32, u32> subfield_exp2(u64 b, u32 q) {
  const u64 t= mul(b, frob16(b));  // b^(2^16+1) = b^P
  u64 s= mul(b, sq(b));            // b^3
  s= mul(s, frob2(s));             // b^15
@@ -42,6 +43,6 @@ GNU_TARGET("pclmul,vpclmulqdq") inline pair<u64, u64> subfield_pow2(u64 b, u32 q
  const u64 fs= frob16(s);         // = s^-1
  u32 kp= MU_LN.LN[u16(s ^ fs)];
  if(s > fs) kp= MOD_P - kp;  // 表に入っているのは小さい方の log
- return pow_pair(u32(u64(kp) * q % MOD_P), u32(u64(SIG.LN[u16(t)]) * q % MOD_N));
+ return {u32(u64(kp) * q % MOD_P), u32(u64(SIG.LN[u16(t)]) * q % MOD_N)};
 }
 }  // namespace gf2_64_pow_subfield32
