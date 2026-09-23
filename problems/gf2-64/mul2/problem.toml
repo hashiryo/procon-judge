@@ -11,7 +11,7 @@ kind = "base"
 [testdata]
 source = "local"
 generator = "gen.py"
-count = 12
+count = 13
 reference = "submissions/reference.hpp"
 
 [compare]

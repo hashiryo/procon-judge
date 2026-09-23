@@ -14,6 +14,7 @@
 T mod 4 が 0 でないときに端数の処理が要る。T = 0, 1, 2, 3 は本体のループが 1 回も回らない側、
 T = 5, 6, 7 は回ったうえで端数が出る側で、どちらも踏ませる。
 """
+
 import random
 import sys
 
@@ -22,25 +23,60 @@ MASK64 = (1 << 64) - 1
 EDGE = [0, 1, 2, MASK64, MASK64 - 1]
 
 # seed -> (種類, 件数)
-CASES = {0: ("sample", 8), 1: ("small", 0), 2: ("small", 1), 3: ("small", 2), 4: ("small", 3), 5: ("small", 5),
-         6: ("small", 6), 7: ("small", 7), 8: ("edge", 201), 9: ("structured", 1001), 10: ("random", 10007),
-         11: ("random", 99999)}
+CASES = {
+    0: ("sample", 8),
+    1: ("small", 0),
+    2: ("small", 1),
+    3: ("small", 2),
+    4: ("small", 3),
+    5: ("small", 5),
+    6: ("small", 6),
+    7: ("small", 7),
+    8: ("edge", 201),
+    9: ("structured", 1001),
+    10: ("random", 10007),
+    11: ("random", 99999),
+    12: ("random", 1000000),
+}
 
 
 def make(kind: str, t: int, rng: random.Random) -> list:
     if kind == "sample":
-        return [(0, 0), (0, 1), (1, 1), (2, 2), (3, 5), (MASK64, 1), (MASK64, MASK64),
-                (0x12345678ABCDEF00, 0xFEDCBA9876543210)][:t]
+        return [
+            (0, 0),
+            (0, 1),
+            (1, 1),
+            (2, 2),
+            (3, 5),
+            (MASK64, 1),
+            (MASK64, MASK64),
+            (0x12345678ABCDEF00, 0xFEDCBA9876543210),
+        ][:t]
     if kind == "small":
-        return [(rng.choice(EDGE + [rng.randint(0, MASK64)]), rng.choice(EDGE + [rng.randint(0, MASK64)]))
-                for _ in range(t)]
+        return [
+            (
+                rng.choice(EDGE + [rng.randint(0, MASK64)]),
+                rng.choice(EDGE + [rng.randint(0, MASK64)]),
+            )
+            for _ in range(t)
+        ]
     if kind == "edge":
-        return [(rng.choice(EDGE + [rng.randint(0, MASK64)]), rng.choice(EDGE + [rng.randint(0, MASK64)]))
-                for _ in range(t)]
+        return [
+            (
+                rng.choice(EDGE + [rng.randint(0, MASK64)]),
+                rng.choice(EDGE + [rng.randint(0, MASK64)]),
+            )
+            for _ in range(t)
+        ]
     if kind == "structured":
         # 1 bit だけ立った値に近いもの。桁上がりの折り返しが端に寄る。
-        return [((1 << rng.randint(0, 63)) | rng.randint(0, 7), (1 << rng.randint(0, 63)) | rng.randint(0, 7))
-                for _ in range(t)]
+        return [
+            (
+                (1 << rng.randint(0, 63)) | rng.randint(0, 7),
+                (1 << rng.randint(0, 63)) | rng.randint(0, 7),
+            )
+            for _ in range(t)
+        ]
     if kind == "random":
         return [(rng.randint(0, MASK64), rng.randint(0, MASK64)) for _ in range(t)]
     raise ValueError(kind)
