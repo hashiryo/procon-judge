@@ -6,8 +6,9 @@
 // (0x00: 下位どうし、0x11: 上位どうし = mul2h)。reduce は prod の配置が IMM に依らないので共通。
 // 結果は各 half の下位 qword に入るので、u64 2 つで受け取るときは unpack を使う。
 //
-// 利用側ルール: gf2-64-mul/algos/* は本ファイルを使ってはいけない (mul の比較対象なので)。
-// それ以外の problem (sq/div/pow/sqrt/log) は building block として使用 OK。
+// 利用側ルール: gf2-64-mul2 の提出は本ファイルを使ってはいけない (2 並列 mul の比較対象なので、
+// 比べたい版は提出として置く)。それ以外の problem (div / pow / log / convolution) は
+// building block として使用 OK。
 #include "_common.hpp"
 namespace gf2_64_pclmul {
 const __m256i RED_TABLE= _mm256_setr_epi8(0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0);

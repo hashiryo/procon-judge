@@ -67,7 +67,7 @@ def cmd_problems_list(args: argparse.Namespace) -> int:
 def cmd_problems_check(args: argparse.Namespace) -> int:
     directories = problem_mod.all_problem_dirs()
     if args.problem:
-        directories = [d for d in directories if d.name == args.problem]
+        directories = [d for d in directories if problem_mod.problem_id_of(d) == args.problem]
         if not directories:
             return _die(f"問題 {args.problem!r} がありません")
     failed = 0
@@ -98,7 +98,7 @@ def cmd_problems_titles(args: argparse.Namespace) -> int:
     """題名を判定サイトの名前と突き合わせる。--fix で problem.toml を書き換える。"""
     directories = problem_mod.all_problem_dirs()
     if args.problem:
-        directories = [d for d in directories if d.name == args.problem]
+        directories = [d for d in directories if problem_mod.problem_id_of(d) == args.problem]
         if not directories:
             return _die(f"問題 {args.problem!r} がありません")
     titles = titles_mod.Titles()
@@ -165,7 +165,7 @@ def cmd_problems_import(args: argparse.Namespace) -> int:
 def cmd_submissions_list(args: argparse.Namespace) -> int:
     directories = problem_mod.all_problem_dirs()
     if args.problem:
-        directories = [d for d in directories if d.name == args.problem]
+        directories = [d for d in directories if problem_mod.problem_id_of(d) == args.problem]
         if not directories:
             return _die(f"問題 {args.problem!r} がありません")
     for directory in directories:
