@@ -6,7 +6,6 @@
 // 利用側ルール: gf2-64-sq/algos/* / gf2-64-mul/algos/* は本ファイルを使ってはいけない。
 // それ以外の problem (div/pow/sqrt/log) は building block として使用 OK。
 #include "_common.hpp"
-#include "mul.hpp"  // RED 定数を共有
 namespace gf2_64_pclmul {
 inline u64 spread_bits(u32 a) {
 #ifdef __BMI2__
@@ -23,7 +22,7 @@ inline u64 spread_bits(u32 a) {
 #endif
 }
 inline u64 sq(u64 a) {
- u64 h= spread_bits(a >> 32), d= h ^ (h << 1);
- return spread_bits(a) ^ RED[h >> 60] ^ d ^ (d << 3);
+ u64 h= spread_bits(u32(a >> 32)), d= h ^ (h << 1);
+ return spread_bits(u32(a)) ^ ((u8[]){0, 27, 90, 65})[a >> 62] ^ d ^ (d << 3);
 }
 }
