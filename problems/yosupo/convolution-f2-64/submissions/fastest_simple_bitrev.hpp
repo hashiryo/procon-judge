@@ -13,18 +13,16 @@
 // この上で、 真の DIF nim FFT (= bit-reverse intermediate を Phase A 内に
 // 自然に埋め込み、 master 表 contiguous access を実現する) を実装するのが次の段階。
 //
-// 必要拡張: PCLMUL のみ。
+// 必要拡張: GNU_TARGET("pclmul") のみ。
 
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/sq.hpp"
-
 namespace conv_f2_64_simple_bitrev {
 
 using gf2_64_pclmul::mul;
 using gf2_64_pclmul::sq;
-
 // =============================================================================
 // constexpr GF(2^64) mul / sq (chain を .rodata に焼くため)
 // =============================================================================
@@ -59,7 +57,6 @@ constexpr u64 mul_ce(u64 a, u64 b) {
  return lo ^ f1l ^ f2l;
 }
 constexpr u64 sq_ce(u64 a) { return mul_ce(a, a); }
-
 // =============================================================================
 // Artin-Schreier 連鎖 c[k] = P^k(2), P(x) = x²+x。
 // c[62] = 1, c[63] = 0 なので非零 basis は c[0..62] の 63 個。
@@ -71,10 +68,8 @@ constexpr auto CHAIN= []() {
  for(int k= 1; k < CHAIN_LEN; ++k) c[k]= sq_ce(c[k - 1]) ^ c[k - 1];
  return c;
 }();
-
-template<class T> int msb(T n) { return n == 0 ? -1 : 63 - __builtin_clzll(n); }
-template<class T> T ceil_pow2(T n) { return n <= 1 ? T(1) : T(1) << (msb(n - 1) + 1); }
-
+template <class T> int msb(T n) { return n == 0 ? -1 : 63 - __builtin_clzll(n); }
+template <class T> T ceil_pow2(T n) { return n <= 1 ? T(1) : T(1) << (msb(n - 1) + 1); }
 // =============================================================================
 // Twiddle: full table (size 2^i), 自然順
 //   level i での basis = CHAIN[CHAIN_LEN-i .. CHAIN_LEN-1] (suffix 直接参照)
@@ -96,7 +91,6 @@ struct nim_fft_data {
  }
 };
 inline nim_fft_data nim_data;
-
 // =============================================================================
 // nim FFT (out-of-place、 scalar mul、 全 twiddle 直接参照)
 // =============================================================================
@@ -142,7 +136,6 @@ inline void nim_fft(std::vector<u64>& f) {
   }
  }
 }
-
 inline void nim_ifft(std::vector<u64>& f) {
  int n= (int)f.size();
  std::vector<u64> f2(n);
@@ -187,7 +180,6 @@ inline void nim_ifft(std::vector<u64>& f) {
   }
  }
 }
-
 // in-place bit-reverse permutation (0..s-1 で適用、 s = 2^bits)
 inline void bit_reverse(std::vector<u64>& f) {
  int s= (int)f.size();
@@ -204,7 +196,6 @@ inline void bit_reverse(std::vector<u64>& f) {
   if(i < j) std::swap(f[i], f[j]);
  }
 }
-
 inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<u64> g) {
  int n= (int)f.size(), m= (int)g.size();
  int s= (int)ceil_pow2(u32(n + m - 1));
@@ -224,9 +215,7 @@ inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<u64> g) 
  f.resize(n + m - 1);
  return f;
 }
-
 }  // namespace conv_f2_64_simple_bitrev
-
 struct Solver {
  static std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
   using namespace conv_f2_64_simple_bitrev;

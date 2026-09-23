@@ -20,7 +20,7 @@
 //     Circ3 (2 component) で 2 並列 (c1, c2) を CRT 合成
 //   - butterfly の twiddle はどちらも cyclic shift (= rotate + XOR)
 //
-// 必要拡張: PCLMUL + SSE4.1。
+// 必要拡張: GNU_TARGET("pclmul") + SSE4.1。
 
 #pragma GCC optimize("O3,unroll-loops")
 
@@ -34,7 +34,7 @@ namespace conv_f2_64_schoenhage_strassen3 {
 struct F2XMod1000000000000001B {
  using uu64= unsigned long long;
  uu64 x;
- PCLMUL static uu64 mul(uu64 a, uu64 b) {
+ GNU_TARGET("pclmul") static uu64 mul(uu64 a, uu64 b) {
   __m128i ab= _mm_set_epi64x(a, b);
   __m128i xy= _mm_clmulepi64_si128(ab, ab, 1);
   uu64 X= _mm_extract_epi64(xy, 0), Y= _mm_extract_epi64(xy, 1);

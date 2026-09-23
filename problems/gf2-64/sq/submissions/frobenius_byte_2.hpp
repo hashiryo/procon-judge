@@ -6,7 +6,7 @@
 //
 //   テーブル構築には素朴 sq (reference 同様) を一度実行。 init は O(2K mul) で軽い。
 //
-// 期待: 8 lookup + 8 XOR ≈ 8-12 cyc。 PDEP 並みかやや速い可能性。 PCLMUL に依存しない
+// 期待: 8 lookup + 8 XOR ≈ 8-12 cyc。 PDEP 並みかやや速い可能性。 GNU_TARGET("pclmul") に依存しない
 //   ので非対応環境でも高速。 cache footprint は 16 KB で L1 fit。
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"

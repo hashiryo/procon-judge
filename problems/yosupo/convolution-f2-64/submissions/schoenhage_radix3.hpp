@@ -8,16 +8,16 @@
 // 核心アイディア: 補助多項式環 R[x]/(x^{2d}+x^d+1) では x^{3d}=1 が成立 (∵ char 2 で
 // (x^{3d}-1) = (x^d-1)(x^{2d}+x^d+1))、 つまり x^d が 1 の原始 3 乗根 ω として振る舞う。
 // したがって FFT の twiddle 乗算 ω·poly が **多項式の cyclic shift (= bit shift + XOR)**
-// で済み、 PCLMUL を一切使わずに butterfly が走る。 GF(2^64) 乗算は再帰の base case
+// で済み、 GNU_TARGET("pclmul") を一切使わずに butterfly が走る。 GF(2^64) 乗算は再帰の base case
 // (n ≤ 3 の小さい畳み込み) でのみ発生する。
 //
 // 我々の nim FFT との比較:
-//   - nim FFT: 各 butterfly に 1〜2 PCLMUL → 全体で O(n log n) PCLMUL
-//   - Schönhage radix-3: butterfly は XOR + shift のみ、 PCLMUL は base case のみ
-//     → 全体で O(N) 程度の PCLMUL (圧倒的に少ない)
+//   - nim FFT: 各 butterfly に 1〜2 GNU_TARGET("pclmul") → 全体で O(n log n) GNU_TARGET("pclmul")
+//   - Schönhage radix-3: butterfly は XOR + shift のみ、 GNU_TARGET("pclmul") は base case のみ
+//     → 全体で O(N) 程度の GNU_TARGET("pclmul") (圧倒的に少ない)
 //   - 代償: メモリ overhead 2x (環の dimension doubling)、 実装複雑度高
 //
-// 必要拡張: PCLMUL + SSE4.1。
+// 必要拡張: GNU_TARGET("pclmul") + SSE4.1。
 
 #pragma GCC optimize("O3,unroll-loops")
 
@@ -42,7 +42,7 @@ public:
  F_2_64& operator+=(const F_2_64& r) { p^= r.p; return *this; }
  F_2_64& operator-=(const F_2_64& r) { return operator+=(r); }
  // clang-format on
- PCLMUL F_2_64& operator*=(const F_2_64& r) {
+ GNU_TARGET("pclmul") F_2_64& operator*=(const F_2_64& r) {
   __m128i v= _mm_clmulepi64_si128(_mm_set_epi64x(0, p), _mm_set_epi64x(0, r.p), 0);
   std::uint64_t low= (std::uint64_t)_mm_extract_epi64(v, 0);
   std::uint64_t high= (std::uint64_t)_mm_extract_epi64(v, 1);

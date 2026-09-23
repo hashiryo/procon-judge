@@ -1,5 +1,5 @@
 #pragma once
-// 素朴 reference (golden): bit-by-bit clmul + 長除法 reduce。PCLMUL 使わない。
+// 素朴 reference (golden): bit-by-bit clmul + 長除法 reduce。GNU_TARGET("pclmul") 使わない。
 #include "_shared/gf2-64/_common.hpp"
 namespace gf2_64_ref {
 inline std::pair<u64, u64> clmul_loop(u64 a, u64 b) {

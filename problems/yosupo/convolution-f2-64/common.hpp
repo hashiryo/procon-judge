@@ -72,11 +72,11 @@
 #include <ranges>
 #include <span>
 #ifdef __x86_64__
-#define PCLMUL [[gnu::target("pclmul")]]
-#define VPCLMUL [[gnu::target("vpclmulqdq")]]
+#define GNU_TARGET("pclmul") [[gnu::target("pclmul")]]
+#define GNU_TARGET(x) [[gnu::target(x)]]
 #else
-#define PCLMUL
-#define VPCLMUL
+#define GNU_TARGET("pclmul")
+#define GNU_TARGET(x)
 #endif
 
 using namespace std;

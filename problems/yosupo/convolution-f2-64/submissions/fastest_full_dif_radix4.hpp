@@ -25,7 +25,7 @@
 //    で 1 本だけ。 DIT 全部入りの per-level halftable よりさらにコンパクト。
 //
 // 3. ska=0 ブロック完全 skip + mul2 ペアリング:
-//    block j=0 は ska=0 → ブロック全体が butterfly_0 (PCLMUL 無し) で済む。
+//    block j=0 は ska=0 → ブロック全体が butterfly_0 (GNU_TARGET("pclmul") 無し) で済む。
 //    j>0 のみ btf_fft_block_dif で SIMD 処理。
 //
 // 4. butterfly pair の SIMD pipeline (btf_fft_block_dif):
@@ -44,18 +44,16 @@
 // 7. submask 表 (SUBMASK_TBL) を constexpr で .rodata に焼く。 bc_to_lch /
 //    bc_to_mono の per-level submask 列挙を runtime build から table lookup に。
 //
-// 必要拡張: PCLMUL + VPCLMULQDQ + AVX2 + BMI2 (Ice Lake / Zen3 以降)。
+// 必要拡張: GNU_TARGET("pclmul") + VPCLMULQDQ + AVX2 + BMI2 (Ice Lake / Zen3 以降)。
 
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/sq.hpp"
-
 namespace conv_f2_64_full_dif_radix4 {
 
 using gf2_64_pclmul::mul;
 using gf2_64_pclmul::sq;
-
 // =============================================================================
 // constexpr GF(2^64) mul / sq
 // =============================================================================
@@ -90,7 +88,6 @@ constexpr u64 mul_ce(u64 a, u64 b) {
  return lo ^ f1l ^ f2l;
 }
 constexpr u64 sq_ce(u64 a) { return mul_ce(a, a); }
-
 // =============================================================================
 // Cantor chain。 β_l = CHAIN[62-l]、 β_l^2 + β_l = β_{l-1}、 β_0 = 1
 // =============================================================================
@@ -101,10 +98,8 @@ constexpr auto CHAIN= []() {
  for(int k= 1; k < CHAIN_LEN; ++k) c[k]= sq_ce(c[k - 1]) ^ c[k - 1];
  return c;
 }();
-
-template<class T> int msb(T n) { return n == 0 ? -1 : 63 - __builtin_clzll(n); }
-template<class T> T ceil_pow2(T n) { return n <= 1 ? T(1) : T(1) << (msb(n - 1) + 1); }
-
+template <class T> int msb(T n) { return n == 0 ? -1 : 63 - __builtin_clzll(n); }
+template <class T> T ceil_pow2(T n) { return n <= 1 ? T(1) : T(1) << (msb(n - 1) + 1); }
 // =============================================================================
 // Submask 表 (proper submasks of k for k=0..MAX_SUB_IDX)
 //   bc_to_lch / bc_to_mono の inner で使う x^{2^l} の oset (= 1<<l) を per-k で
@@ -135,7 +130,6 @@ constexpr SubmaskTable build_submask_tbl() {
  return t;
 }
 constexpr auto SUBMASK_TBL= build_submask_tbl();
-
 // =============================================================================
 // DIF master twiddle (single contiguous, level 非依存)
 //   M[j] = Σ_{L: j_L=1} β_{L+1}   (j ∈ [0, 2^(d-1)))
@@ -155,22 +149,16 @@ struct nim_fft_data {
  }
 };
 inline nim_fft_data nim_data;
-
 // =============================================================================
 // SIMD primitives (fastest_full_v2 から借用、 ska broadcast 化)
 // =============================================================================
-VPCLMUL inline __m256i expand_pair(const u64* p) {
+GNU_TARGET("vpclmulqdq") inline __m256i expand_pair(const u64* p) {
  __m128i v= _mm_loadu_si128((const __m128i*)p);
  return _mm256_permute4x64_epi64(_mm256_castsi128_si256(v), _MM_SHUFFLE(3, 1, 2, 0));
 }
-VPCLMUL inline __m128i pack_pair(__m256i v) {
- return _mm256_castsi256_si128(_mm256_permute4x64_epi64(v, _MM_SHUFFLE(3, 2, 2, 0)));
-}
-inline const __m256i RED_TABLE_DIF_R4= _mm256_setr_epi8(
- 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0,
- 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0);
-
-VPCLMUL inline __m256i clmul_reduce_pair(__m256i a_vec, __m256i b_vec) {
+GNU_TARGET("vpclmulqdq") inline __m128i pack_pair(__m256i v) { return _mm256_castsi256_si128(_mm256_permute4x64_epi64(v, _MM_SHUFFLE(3, 2, 2, 0))); }
+inline const __m256i RED_TABLE_DIF_R4= _mm256_setr_epi8(0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0);
+GNU_TARGET("vpclmulqdq") inline __m256i clmul_reduce_pair(__m256i a_vec, __m256i b_vec) {
  __m256i prod= _mm256_clmulepi64_epi128(a_vec, b_vec, 0);
  __m256i d_full= _mm256_xor_si256(prod, _mm256_slli_epi64(prod, 1));
  __m256i red1_full= _mm256_xor_si256(d_full, _mm256_slli_epi64(d_full, 3));
@@ -180,11 +168,10 @@ VPCLMUL inline __m256i clmul_reduce_pair(__m256i a_vec, __m256i b_vec) {
  __m256i red_vec= _mm256_shuffle_epi8(RED_TABLE_DIF_R4, indices);
  return _mm256_xor_si256(_mm256_xor_si256(prod, red1_shift), red_vec);
 }
-
 // DIF FFT butterfly (block 内 ska 一定): pair (i, i+1) を SIMD で。
 //   r = mul(hi, ska); lo' = lo ^ r; hi' = lo' ^ hi
 // ska_vec は呼び出し側で 1 度だけ broadcast されたもの。
-VPCLMUL inline void btf_fft_pair_dif(u64* f0_ptr, u64* f1_ptr, __m256i ska_vec) {
+GNU_TARGET("vpclmulqdq") inline void btf_fft_pair_dif(u64* f0_ptr, u64* f1_ptr, __m256i ska_vec) {
  __m256i hi_vec= expand_pair(f1_ptr);
  __m256i p_vec= clmul_reduce_pair(hi_vec, ska_vec);
  __m256i lo_vec= expand_pair(f0_ptr);
@@ -193,10 +180,9 @@ VPCLMUL inline void btf_fft_pair_dif(u64* f0_ptr, u64* f1_ptr, __m256i ska_vec) 
  _mm_storeu_si128((__m128i*)f0_ptr, pack_pair(t_vec));
  _mm_storeu_si128((__m128i*)f1_ptr, pack_pair(f1_new));
 }
-
 // DIF IFFT butterfly: 順序逆。
 //   hi_new = lo ^ hi (= s); lo_new = lo ^ s*ska
-VPCLMUL inline void btf_ifft_pair_dif(u64* f0_ptr, u64* f1_ptr, __m256i ska_vec) {
+GNU_TARGET("vpclmulqdq") inline void btf_ifft_pair_dif(u64* f0_ptr, u64* f1_ptr, __m256i ska_vec) {
  __m256i lo_vec= expand_pair(f0_ptr);
  __m256i hi_vec= expand_pair(f1_ptr);
  __m256i s_vec= _mm256_xor_si256(lo_vec, hi_vec);
@@ -205,15 +191,13 @@ VPCLMUL inline void btf_ifft_pair_dif(u64* f0_ptr, u64* f1_ptr, __m256i ska_vec)
  _mm_storeu_si128((__m128i*)f0_ptr, pack_pair(lo_new));
  _mm_storeu_si128((__m128i*)f1_ptr, pack_pair(s_vec));
 }
-
 // ska scalar → __m256i 形式 (lane 0, 2 のみ valid、 pair clmul の入力レイアウト)
 // 構造: (ska, 0, ska, 0)
-VPCLMUL inline __m256i broadcast_ska(u64 ska) {
+GNU_TARGET("vpclmulqdq") inline __m256i broadcast_ska(u64 ska) {
  __m128i lo= _mm_set_epi64x(0, ska);
  __m256i v= _mm256_castsi128_si256(lo);
  return _mm256_inserti128_si256(v, lo, 1);
 }
-
 // =============================================================================
 // Phase A (true DIF): bc_to_lch / bc_to_mono
 //   level 2, 3 は popcount(level-1) = 1 で単純 (1 submask {0})、 inner ops 1/i。
@@ -246,7 +230,6 @@ inline void bc_to_lch(u64* poly, int n) {
   }
  }
 }
-
 inline void bc_to_mono(u64* poly, int n) {
  if(n <= 1) return;
  int d= msb(n);
@@ -274,14 +257,13 @@ inline void bc_to_mono(u64* poly, int n) {
   }
  }
 }
-
 // =============================================================================
 // Phase B: DIF top-down butterflies、 j=0 完全 skip + i pair SIMD
 // =============================================================================
 // radix-4 forward butterfly group (q ≥ 2、 i pair SIMD):
 //   Q_j を __m256i pair で load → step1 (v) → step2 lower (u_lo) / upper (u_hi)
 //   ska=0 早期分岐は呼び出し側で処理 (関数 4 つに分岐、 ここでは general case のみ)
-VPCLMUL inline void btf_fft_radix4_pair(u64* base, int q, int q2, int q3, int i, __m256i v_vec, __m256i u_lo_vec, __m256i u_hi_vec) {
+GNU_TARGET("vpclmulqdq") inline void btf_fft_radix4_pair(u64* base, int q, int q2, int q3, int i, __m256i v_vec, __m256i u_lo_vec, __m256i u_hi_vec) {
  __m256i Q0= expand_pair(base + i);
  __m256i Q1= expand_pair(base + q + i);
  __m256i Q2= expand_pair(base + q2 + i);
@@ -302,9 +284,8 @@ VPCLMUL inline void btf_fft_radix4_pair(u64* base, int q, int q2, int q3, int i,
  _mm_storeu_si128((__m128i*)(base + q2 + i), pack_pair(R2));
  _mm_storeu_si128((__m128i*)(base + q3 + i), pack_pair(R3));
 }
-
-// j=0 special: v=0, u_lo=0、 u_hi=β_1 のみ非零。 1 PCLMUL のみ。
-VPCLMUL inline void btf_fft_radix4_pair_j0(u64* base, int q, int q2, int q3, int i, __m256i u_hi_vec) {
+// j=0 special: v=0, u_lo=0、 u_hi=β_1 のみ非零。 1 GNU_TARGET("pclmul") のみ。
+GNU_TARGET("vpclmulqdq") inline void btf_fft_radix4_pair_j0(u64* base, int q, int q2, int q3, int i, __m256i u_hi_vec) {
  __m256i Q0= expand_pair(base + i);
  __m256i Q1= expand_pair(base + q + i);
  __m256i Q2= expand_pair(base + q2 + i);
@@ -322,7 +303,6 @@ VPCLMUL inline void btf_fft_radix4_pair_j0(u64* base, int q, int q2, int q3, int
  _mm_storeu_si128((__m128i*)(base + q2 + i), pack_pair(R2));
  _mm_storeu_si128((__m128i*)(base + q3 + i), pack_pair(R3));
 }
-
 // scalar fallback (q=1: i のみ 1、 SIMD pair 立てられない)
 inline void btf_fft_radix4_scalar(u64* base, int q, int q2, int q3, u64 v, u64 u_lo, u64 u_hi) {
  u64 Q0= base[0], Q1= base[q], Q2= base[q2], Q3= base[q3];
@@ -347,8 +327,7 @@ inline void btf_fft_radix4_scalar(u64* base, int q, int q2, int q3, u64 v, u64 u
  base[q2]= R2;
  base[q3]= R3;
 }
-
-VPCLMUL inline void nim_fft(std::vector<u64>& f) {
+GNU_TARGET("vpclmulqdq") inline void nim_fft(std::vector<u64>& f) {
  int n= (int)f.size();
  if(n <= 1) return;
  int d= msb(n);
@@ -410,9 +389,8 @@ VPCLMUL inline void nim_fft(std::vector<u64>& f) {
   }
  }
 }
-
 // inverse butterfly group (general case)
-VPCLMUL inline void btf_ifft_radix4_pair(u64* base, int q, int q2, int q3, int i, __m256i v_vec, __m256i u_lo_vec, __m256i u_hi_vec) {
+GNU_TARGET("vpclmulqdq") inline void btf_ifft_radix4_pair(u64* base, int q, int q2, int q3, int i, __m256i v_vec, __m256i u_lo_vec, __m256i u_hi_vec) {
  __m256i R0= expand_pair(base + i);
  __m256i R1= expand_pair(base + q + i);
  __m256i R2= expand_pair(base + q2 + i);
@@ -433,8 +411,7 @@ VPCLMUL inline void btf_ifft_radix4_pair(u64* base, int q, int q2, int q3, int i
  _mm_storeu_si128((__m128i*)(base + q2 + i), pack_pair(Q2));
  _mm_storeu_si128((__m128i*)(base + q3 + i), pack_pair(Q3));
 }
-
-VPCLMUL inline void btf_ifft_radix4_pair_j0(u64* base, int q, int q2, int q3, int i, __m256i u_hi_vec) {
+GNU_TARGET("vpclmulqdq") inline void btf_ifft_radix4_pair_j0(u64* base, int q, int q2, int q3, int i, __m256i u_hi_vec) {
  __m256i R0= expand_pair(base + i);
  __m256i R1= expand_pair(base + q + i);
  __m256i R2= expand_pair(base + q2 + i);
@@ -452,7 +429,6 @@ VPCLMUL inline void btf_ifft_radix4_pair_j0(u64* base, int q, int q2, int q3, in
  _mm_storeu_si128((__m128i*)(base + q2 + i), pack_pair(Q2));
  _mm_storeu_si128((__m128i*)(base + q3 + i), pack_pair(Q3));
 }
-
 inline void btf_ifft_radix4_scalar(u64* base, int q, int q2, int q3, u64 v, u64 u_lo, u64 u_hi) {
  u64 R0= base[0], R1= base[q], R2= base[q2], R3= base[q3];
  u64 A3= R2 ^ R3;
@@ -476,8 +452,7 @@ inline void btf_ifft_radix4_scalar(u64* base, int q, int q2, int q3, u64 v, u64 
  base[q2]= Q2;
  base[q3]= Q3;
 }
-
-VPCLMUL inline void nim_ifft(std::vector<u64>& f) {
+GNU_TARGET("vpclmulqdq") inline void nim_ifft(std::vector<u64>& f) {
  int n= (int)f.size();
  if(n <= 1) return;
  int d= msb(n);
@@ -537,8 +512,7 @@ VPCLMUL inline void nim_ifft(std::vector<u64>& f) {
  }
  bc_to_mono(f.data(), n);
 }
-
-VPCLMUL inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<u64> g) {
+GNU_TARGET("vpclmulqdq") inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<u64> g) {
  int n= (int)f.size(), m= (int)g.size();
  int s= (int)ceil_pow2(u32(n + m - 1));
  f.resize(s);
@@ -551,11 +525,9 @@ VPCLMUL inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<
  f.resize(n + m - 1);
  return f;
 }
-
 }  // namespace conv_f2_64_full_dif_radix4
-
 struct Solver {
- VPCLMUL static std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
+ GNU_TARGET("vpclmulqdq") static std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
   using namespace conv_f2_64_full_dif_radix4;
   auto c= nim_convolution(a_in, b_in);
   return c;

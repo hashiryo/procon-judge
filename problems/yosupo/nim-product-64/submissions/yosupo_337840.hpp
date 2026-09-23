@@ -6,9 +6,9 @@
 //     - 線形同型 F_{2^64} ≅ GF(2)[x]/(x^64 + x^4 + x^3 + x + 1) を介する。
 //       nim 表現 → poly 表現は INV_COL[64] (基底変換行列) のバイト分割 lookup。
 //       poly 表現 → nim 表現は BASIS_COL[64] の同様の lookup。
-//     - poly × poly は PCLMUL (`_mm_clmulepi64_si128`) で 1 命令。
+//     - poly × poly は GNU_TARGET("pclmul") (`_mm_clmulepi64_si128`) で 1 命令。
 //     - 128-bit 結果を上記原始多項式で reduce (上位 4 bit 用テーブルを併用)。
-//   結果: 1 nim 積 = 8 byte lookup × 16 + 1 PCLMUL + 数 cycle reduce。
+//   結果: 1 nim 積 = 8 byte lookup × 16 + 1 GNU_TARGET("pclmul") + 数 cycle reduce。
 // 抽出方針:
 //   - 元の I/O (FastIO の mmap stdin / writebuf stdout) と big_alloc は省略
 //     (base.cpp 側の cin/cout で揃える)
@@ -65,7 +65,7 @@ inline uint64_t poly_to_nim(uint64_t c) {
 }
 // CE 対策メモ: clang は `#pragma GCC target` を無視するので関数単位で
 // `__attribute__((target("pclmul")))` を付ける。さらに always_inline は target が
-// 一致してないと「inline できない」と clang がエラーを出すので、PCLMUL を使う / 呼ぶ
+// 一致してないと「inline できない」と clang がエラーを出すので、GNU_TARGET("pclmul") を使う / 呼ぶ
 // 関数 (clmul, reduce_mod, nim_mul, run) **全てに伝播**させる必要がある。
 #if (defined(__x86_64__) || defined(__i386__)) && !defined(USE_SIMDE)
 #define PCLMUL_TARGET [[gnu::target("pclmul")]]

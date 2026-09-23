@@ -25,18 +25,16 @@
 //   → master M[j] = Σ_{L: j_L=1} β_{L+1} (size 2^(d-1)) で全 level の ska を提供。
 //   → contiguous master access が DIF の自然な benefit。
 //
-// 必要拡張: PCLMUL のみ。
+// 必要拡張: GNU_TARGET("pclmul") のみ。
 
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/sq.hpp"
-
 namespace conv_f2_64_simple_dif_true_notbl {
 
 using gf2_64_pclmul::mul;
 using gf2_64_pclmul::sq;
-
 // =============================================================================
 // constexpr GF(2^64) mul / sq
 // =============================================================================
@@ -71,7 +69,6 @@ constexpr u64 mul_ce(u64 a, u64 b) {
  return lo ^ f1l ^ f2l;
 }
 constexpr u64 sq_ce(u64 a) { return mul_ce(a, a); }
-
 // =============================================================================
 // Cantor chain。 β_l = CHAIN[62-l]、 β_l^2 + β_l = β_{l-1}、 β_0 = 1
 // =============================================================================
@@ -82,10 +79,8 @@ constexpr auto CHAIN= []() {
  for(int k= 1; k < CHAIN_LEN; ++k) c[k]= sq_ce(c[k - 1]) ^ c[k - 1];
  return c;
 }();
-
-template<class T> int msb(T n) { return n == 0 ? -1 : 63 - __builtin_clzll(n); }
-template<class T> T ceil_pow2(T n) { return n <= 1 ? T(1) : T(1) << (msb(n - 1) + 1); }
-
+template <class T> int msb(T n) { return n == 0 ? -1 : 63 - __builtin_clzll(n); }
+template <class T> T ceil_pow2(T n) { return n <= 1 ? T(1) : T(1) << (msb(n - 1) + 1); }
 // =============================================================================
 // DIF master twiddle (single contiguous table)
 //   M[j] = Σ_{L: j_L=1} β_{L+1}   (j ∈ [0, 2^(d-1)))
@@ -106,7 +101,6 @@ struct nim_fft_data {
  }
 };
 inline nim_fft_data nim_data;
-
 // =============================================================================
 // Phase A (true DIF, no shuffle): monomial → LCH natural
 //   level len = n, n/2, ..., 4 (top-down)。 各 level で contiguous block ごとに
@@ -141,7 +135,6 @@ inline void bc_to_lch(u64* poly, int n) {
   }
  }
 }
-
 // inverse bc (bc_to_mono): forward の XOR 列を逆順で適用。
 //   各 XOR は self-inverse、 但し src/dst dependency があるので順序が重要。
 //   outer level: 小→大 (forward の逆)、 block 内 i: 0 → half-1 (forward の逆)、
@@ -169,7 +162,6 @@ inline void bc_to_mono(u64* poly, int n) {
   }
  }
 }
-
 // =============================================================================
 // Phase B: DIF top-down butterflies (single ska per block, contiguous master)
 // =============================================================================
@@ -198,7 +190,6 @@ inline void nim_fft(std::vector<u64>& f) {
   }
  }
 }
-
 inline void nim_ifft(std::vector<u64>& f) {
  int n= (int)f.size();
  if(n <= 1) return;
@@ -223,7 +214,6 @@ inline void nim_ifft(std::vector<u64>& f) {
  }
  bc_to_mono(f.data(), n);
 }
-
 inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<u64> g) {
  int n= (int)f.size(), m= (int)g.size();
  int s= (int)ceil_pow2(u32(n + m - 1));
@@ -237,9 +227,7 @@ inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<u64> g) 
  f.resize(n + m - 1);
  return f;
 }
-
 }  // namespace conv_f2_64_simple_dif_true_notbl
-
 struct Solver {
  static std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
   using namespace conv_f2_64_simple_dif_true_notbl;

@@ -19,48 +19,46 @@
 // よって fft の butterfly で必要な 2 つの mul は次のように共有可能:
 //     hi * g0[k]              (= p)
 //     hi * g1[k] = hi * g0[k] ^ hi (∵ GF(2) 上の分配律)
-// すなわち 1 PCLMUL + 1 XOR で 2 butterfly 出力が両方計算できる。
-// (元: 1 butterfly あたり 2 PCLMUL → 新: 1 butterfly あたり 1 PCLMUL)
+// すなわち 1 GNU_TARGET("pclmul") + 1 XOR で 2 butterfly 出力が両方計算できる。
+// (元: 1 butterfly あたり 2 GNU_TARGET("pclmul") → 新: 1 butterfly あたり 1 GNU_TARGET("pclmul"))
 //
-// さらにこの「1 PCLMUL / butterfly」を 2 個まとめて VPCLMULQDQ (mul2) 1 命令で発行
+// さらにこの「1 GNU_TARGET("pclmul") / butterfly」を 2 個まとめて VPCLMULQDQ (mul2) 1 命令で発行
 // すれば、 **ピーク 2 butterfly / cycle** (元の 4 倍スループット) が狙える。
 //
 // IFFT 側の butterfly:
 //     f0_new = lo*g1 + hi*g0 = lo*(g0+1) + hi*g0 = (lo+hi)*g0 + lo
 //     f1_new = lo + hi
-// → s = lo+hi をまず計算、 1 PCLMUL (s*g0) で済む。 同様に mul2 で 2 並列化。
+// → s = lo+hi をまず計算、 1 GNU_TARGET("pclmul") (s*g0) で済む。 同様に mul2 で 2 並列化。
 //
 // 各ブロック先頭の i=0 では g0[0]=0 (= 正規化済み twiddle 表の先頭は常に 0) なので
-// PCLMUL も load も不要、 単に f0[0]=lo, f1[0]=lo^hi だけで済む。 これを
+// GNU_TARGET("pclmul") も load も不要、 単に f0[0]=lo, f1[0]=lo^hi だけで済む。 これを
 // cantor_sym のメインループから切り出し、 i=0 は単独処理 → 残り (i=1..half-1) を
 // pair で潰す構造に変更。
 //
-//   half=1 (len=2):                 i=0 単独 (PCLMUL なし)
+//   half=1 (len=2):                 i=0 単独 (GNU_TARGET("pclmul") なし)
 //   half=2 (len=4):                 i=0 単独 + i=1 単独 (1 scalar mul)
 //   half=N≥4:                       i=0 単独 + pair(1,2)..pair(N-3,N-2) + i=N-1 単独
 //
-// ペアの mul2 は 2 lane 両方が「有効な PCLMUL」 になり (cantor_sym v1 では i=0 ペア
+// ペアの mul2 は 2 lane 両方が「有効な GNU_TARGET("pclmul")」 になり (cantor_sym v1 では i=0 ペア
 // で lane 0 が hi*0 = 0 の無駄演算だった) 命令効率が上がる。 ただし Ice Lake では
-// VPCLMULQDQ も PCLMUL もスループット 1 / cycle (port 5 占有) なので命令数の差は
+// VPCLMULQDQ も GNU_TARGET("pclmul") もスループット 1 / cycle (port 5 占有) なので命令数の差は
 // 出ないが、 g0[0] の load 削減と分岐レス化でわずかに前段 IPC が改善する見込み。
 //
 // その他は raw_u64 と同一: subfield-split inv, constexpr CHAIN, Gray code init。
 //
-// 必要拡張: PCLMUL + VPCLMULQDQ + AVX2 + BMI2 (Ice Lake / Zen3 以降)。
+// 必要拡張: GNU_TARGET("pclmul") + VPCLMULQDQ + AVX2 + BMI2 (Ice Lake / Zen3 以降)。
 
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/sq.hpp"
 #include "_shared/gf2-64/frob.hpp"
-
 namespace conv_f2_64_halftable {
 
 using gf2_64_pclmul::frob16;
 using gf2_64_pclmul::frob32;
 using gf2_64_pclmul::mul;
 using gf2_64_pclmul::sq;
-
 // =============================================================================
 // constexpr GF(2^64) mul / sq (chain を .rodata に焼くため)
 // =============================================================================
@@ -95,7 +93,6 @@ constexpr u64 mul_ce(u64 a, u64 b) {
  return lo ^ f1l ^ f2l;
 }
 constexpr u64 sq_ce(u64 a) { return mul_ce(a, a); }
-
 // =============================================================================
 // Artin-Schreier 連鎖 c[k] = P^k(2), P(x) = x²+x。
 // 実測で c[62] = 1, c[63] = 0 なので非零 basis は c[0..62] の 63 個。
@@ -139,7 +136,6 @@ constexpr auto INV_LOW= []() {
  }
  return t;
 }();
-
 constexpr inline u64 embed_idx(u16 idx) {
  static constexpr auto EMBED= []() {
   u64 SUBFIELD_BASIS[]= {1ULL, 6899425322512154626ULL, 12712641506861907972ULL, 12687683756412895240ULL, 13108774640850436112ULL, 1196746230653255712ULL, 13779846473293824064ULL, 1136705091741089920ULL, 13132935623751303424ULL, 12256911237861802496ULL, 1968662052679910400ULL, 13476734309037115392ULL, 31478309824172032ULL, 5397840376063860736ULL, 18145356609018085376ULL, 2133828226494464000ULL};
@@ -155,10 +151,8 @@ constexpr inline u64 embed_idx(u16 idx) {
  }();
  return EMBED[0][u8(idx)] ^ EMBED[1][idx >> 8];
 }
-
 inline const __m256i RED_TABLE= _mm256_setr_epi8(0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0);
-
-VPCLMUL inline void mul2(const __m256i& a_vec, const __m256i& b_vec, u64& r0, u64& r1) {
+GNU_TARGET("vpclmulqdq") inline void mul2(const __m256i& a_vec, const __m256i& b_vec, u64& r0, u64& r1) {
  __m256i prod= _mm256_clmulepi64_epi128(a_vec, b_vec, 0);
  __m256i d_full= _mm256_xor_si256(prod, _mm256_slli_epi64(prod, 1));
  __m256i red1_full= _mm256_xor_si256(d_full, _mm256_slli_epi64(d_full, 3));
@@ -170,8 +164,7 @@ VPCLMUL inline void mul2(const __m256i& a_vec, const __m256i& b_vec, u64& r0, u6
  r0= _mm256_extract_epi64(result, 0);
  r1= _mm256_extract_epi64(result, 2);
 }
-
-VPCLMUL inline u64 inv(u64 a) {
+GNU_TARGET("vpclmulqdq") inline u64 inv(u64 a) {
  assert(a != 0);
  u64 a32= frob32(a);
  u64 N= mul(a, a32);
@@ -179,10 +172,8 @@ VPCLMUL inline u64 inv(u64 a) {
  mul2(_mm256_set_epi64x(0, N, 0, a32), _mm256_set1_epi64x(N16), a, N16);
  return mul(embed_idx(INV_LOW[u16(N16)]), a);
 }
-
-template<class T> int msb(T n) { return n == 0 ? -1 : 63 - __builtin_clzll(n); }
-template<class T> T ceil_pow2(T n) { return n <= 1 ? T(1) : T(1) << (msb(n - 1) + 1); }
-
+template <class T> int msb(T n) { return n == 0 ? -1 : 63 - __builtin_clzll(n); }
+template <class T> T ceil_pow2(T n) { return n <= 1 ? T(1) : T(1) << (msb(n - 1) + 1); }
 // =============================================================================
 // Twiddle: 下半分のみ (上半分は g[i]^1 = g[i+half] で復元可能なので不要)
 //   level i (i ≥ 1) の table 長 = 2^(i-1)
@@ -190,7 +181,7 @@ template<class T> T ceil_pow2(T n) { return n <= 1 ? T(1) : T(1) << (msb(n - 1) 
 // =============================================================================
 struct nim_fft_data {
  std::vector<std::vector<u64>> a;
- VPCLMUL void init(int n) {
+ GNU_TARGET("vpclmulqdq") void init(int n) {
   if((int)a.size() > n) return;
   a.resize(n + 1);
   std::vector<u64> b(n);
@@ -198,7 +189,7 @@ struct nim_fft_data {
   for(int i= n;; --i) {
    if(i > 0) {
     u64 inv_b= inv(b.back());
-    for(u64& x : b) x= mul(x, inv_b);
+    for(u64& x: b) x= mul(x, inv_b);
    }
    auto& na= a[i];
    // level i ≥ 1 は下半分 (j ∈ [0, 2^(i-1))) のみ。 これらの j は最上位 bit (k=i-1)
@@ -212,16 +203,15 @@ struct nim_fft_data {
    }
    if(i == 0) break;
    b.pop_back();
-   for(u64& x : b) x= sq(x) ^ x;
+   for(u64& x: b) x= sq(x) ^ x;
   }
  }
 };
 inline nim_fft_data nim_data;
-
 // =============================================================================
 // nim FFT (u64 そのまま、 + は ^、 * は mul / mul2)
 // =============================================================================
-VPCLMUL inline void nim_fft(std::vector<u64>& f) {
+GNU_TARGET("vpclmulqdq") inline void nim_fft(std::vector<u64>& f) {
  int n= (int)f.size();
  std::vector<u64> f2(n);
  int len= n;
@@ -254,7 +244,7 @@ VPCLMUL inline void nim_fft(std::vector<u64>& f) {
    const u64* g0= g.data();
    u64* f0= f.data() + l;
    u64* f1= f.data() + l + half;
-   // i = 0: g0[0] = 0 → PCLMUL も g0 ロードも不要
+   // i = 0: g0[0] = 0 → GNU_TARGET("pclmul") も g0 ロードも不要
    {
     u64 lo= f0[0], hi= f1[0];
     f0[0]= lo;
@@ -285,8 +275,7 @@ VPCLMUL inline void nim_fft(std::vector<u64>& f) {
   }
  }
 }
-
-VPCLMUL inline void nim_ifft(std::vector<u64>& f) {
+GNU_TARGET("vpclmulqdq") inline void nim_ifft(std::vector<u64>& f) {
  int n= (int)f.size();
  std::vector<u64> f2(n);
  int len= n;
@@ -349,8 +338,7 @@ VPCLMUL inline void nim_ifft(std::vector<u64>& f) {
   }
  }
 }
-
-VPCLMUL inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<u64> g) {
+GNU_TARGET("vpclmulqdq") inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<u64> g) {
  int n= (int)f.size(), m= (int)g.size();
  int s= (int)ceil_pow2(u32(n + m - 1));
  f.resize(s);
@@ -363,11 +351,9 @@ VPCLMUL inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<
  f.resize(n + m - 1);
  return f;
 }
-
 }  // namespace conv_f2_64_halftable
-
 struct Solver {
- VPCLMUL static std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
+ GNU_TARGET("vpclmulqdq") static std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
   using namespace conv_f2_64_halftable;
   auto c= nim_convolution(a_in, b_in);
   return c;

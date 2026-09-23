@@ -2,7 +2,7 @@
 // pclmul_subfield_split_v4_2 の preprocessing 完全 constexpr 化版:
 //
 // LN_SIGMA / PW_SIGMA_IDX (各 ~128 KiB) を natural 表現での σ chain で compile-time 構築。
-// PCLMUL の constexpr mul は不要 — chain は 16-bit polynomial の (cur<<1) ^ (Q_LOW & -hi)
+// GNU_TARGET("pclmul") の constexpr mul は不要 — chain は 16-bit polynomial の (cur<<1) ^ (Q_LOW & -hi)
 // で済むので 65535 周しても constexpr step 上限に余裕で収まる。
 //
 // 利点: init_tables 不要 → 初回 query の cold start 無し、コンパイラの定数畳み込みも狙える。
@@ -76,15 +76,15 @@ constexpr auto TABLES= []() {
  return t;
 }();
 const __m256i RED_TABLE= _mm256_setr_epi8(0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0);
-VPCLMUL inline __m256i mul2(const __m256i& a_vec, const __m256i& b_vec) {
+GNU_TARGET("vpclmulqdq") inline __m256i mul2(const __m256i& a_vec, const __m256i& b_vec) {
  __m256i prod= _mm256_clmulepi64_epi128(a_vec, b_vec, 0);
  __m256i d_full= _mm256_xor_si256(prod, _mm256_slli_epi64(prod, 1));
  __m256i red1_shift= _mm256_srli_si256(_mm256_xor_si256(d_full, _mm256_slli_epi64(d_full, 3)), 8);
  __m256i indices= _mm256_srli_si256(_mm256_srli_epi64(prod, 60), 8);
  return _mm256_xor_si256(_mm256_xor_si256(prod, red1_shift), _mm256_shuffle_epi8(RED_TABLE, indices));
 }
-VPCLMUL inline pair<u64, u64> unpack(const __m256i& vec) { return make_pair(u64(_mm256_extract_epi64(vec, 0)), u64(_mm256_extract_epi64(vec, 2))); }
-VPCLMUL u64 pow(u64 a, u64 e) {
+inline pair<u64, u64> unpack(const __m256i& vec) { return make_pair(u64(_mm256_extract_epi64(vec, 0)), u64(_mm256_extract_epi64(vec, 2))); }
+GNU_TARGET("vpclmulqdq") u64 pow(u64 a, u64 e) {
  if(!e) return 1;
  if(!a) return 0;
  constexpr u64 M_VAL= (~u64(0)) / 65535u;

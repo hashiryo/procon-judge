@@ -1,7 +1,7 @@
 #pragma once
 #include "../common.hpp"
 // シンプル baseline (見通し用):
-//   - VPCLMULQDQ なし (scalar PCLMUL のみ)
+//   - VPCLMULQDQ なし (scalar GNU_TARGET("pclmul") のみ)
 //   - halftable なし (twiddle 表は全長 2^i を保持)
 //   - Cantor 対称性最適化なし
 //   - butterfly pair の SIMD pipeline なし
@@ -11,7 +11,7 @@
 // このファイルは bit-reverse 順 reorganization の出発点。 一度シンプルな構造に戻して
 // から、 自然順 → bit-reverse 順への書き換えで master twiddle (a[n] のみ) 共有を試みる。
 //
-// 必要拡張: PCLMUL のみ (VPCLMULQDQ / AVX2 不要)。
+// 必要拡張: GNU_TARGET("pclmul") のみ (VPCLMULQDQ / AVX2 不要)。
 
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"

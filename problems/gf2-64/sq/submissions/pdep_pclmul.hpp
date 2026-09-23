@@ -8,10 +8,10 @@
 //
 // BMI2 が無い環境 (古い x86, ARM) ではビット並びを spread する loop で fallback。
 //
-// PCLMUL 比較:
-//   - PCLMUL sq: 1 PCLMUL (~5 cyc) + reduce
+// GNU_TARGET("pclmul") 比較:
+//   - GNU_TARGET("pclmul") sq: 1 GNU_TARGET("pclmul") (~5 cyc) + reduce
 //   - PDEP sq:   2 PDEP    (~3 cyc each, 並列) + reduce
-//   PCLMUL はレイテンシ長め、 PDEP は並列性高い。 throughput は PDEP がやや勝つ可能性
+//   GNU_TARGET("pclmul") はレイテンシ長め、 PDEP は並列性高い。 throughput は PDEP がやや勝つ可能性
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"
 namespace gf2_64_sq_pdep {
@@ -29,11 +29,11 @@ inline u64 spread_bits(u32 a) {
  return x;
 #endif
 }
-PCLMUL inline u64 sq(u64 a) {
+GNU_TARGET("pclmul") inline u64 sq(u64 a) {
  u64 h= spread_bits(u32(a >> 32));
- u64 b = (u64)_mm_clmulepi64_si128(_mm_cvtsi64_si128(h), _mm_cvtsi64_si128(0b11011), 0)[0];
- a = spread_bits(u32(a)) ^ ((u8[]){0, 27, 45, 54, 90, 65, 119, 108})[h >> 60];
- return  a ^ b;
+ u64 b= (u64)_mm_clmulepi64_si128(_mm_cvtsi64_si128(h), _mm_cvtsi64_si128(0b11011), 0)[0];
+ a= spread_bits(u32(a)) ^ ((u8[]){0, 27, 45, 54, 90, 65, 119, 108})[h >> 60];
+ return a ^ b;
 }
 }
 struct GF2_64Op {

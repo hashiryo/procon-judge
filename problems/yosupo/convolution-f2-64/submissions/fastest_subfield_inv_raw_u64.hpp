@@ -9,27 +9,25 @@
 //   - GF(2^64) の "加算" は実体としては XOR なので、 + より ^ の方がコードを読む
 //     人が「これは bit XOR」と即座に分かる。
 //   - 乗算は mul(a, b)、 平方は sq(a)、 逆元は inv(a) と関数呼びで統一すると、
-//     PCLMUL / VPCLMULQDQ / 部分体 inv のどれが走るかが一目で分かる。
+//     GNU_TARGET("pclmul") / VPCLMULQDQ / 部分体 inv のどれが走るかが一目で分かる。
 //   - struct のコンストラクタ / dtor / メンバ参照のノイズが消えてループが素直。
 //
 // 機能差はないが、 init() の inverse() は assert(a != 0) があるので i=0 で skip
 // するガードは引き続き必要。
 //
-// 必要拡張: PCLMUL + VPCLMULQDQ + AVX2 + BMI2 (Ice Lake / Zen3 以降)。
+// 必要拡張: GNU_TARGET("pclmul") + VPCLMULQDQ + AVX2 + BMI2 (Ice Lake / Zen3 以降)。
 
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/sq.hpp"
 #include "_shared/gf2-64/frob.hpp"
-
 namespace conv_f2_64_raw_u64 {
 
 using gf2_64_pclmul::frob16;
 using gf2_64_pclmul::frob32;
 using gf2_64_pclmul::mul;
 using gf2_64_pclmul::sq;
-
 // =============================================================================
 // constexpr GF(2^64) mul / sq (chain を .rodata に焼くため)
 // =============================================================================
@@ -64,7 +62,6 @@ constexpr u64 mul_ce(u64 a, u64 b) {
  return lo ^ f1l ^ f2l;
 }
 constexpr u64 sq_ce(u64 a) { return mul_ce(a, a); }
-
 // =============================================================================
 // Artin-Schreier 連鎖 c[k] = P^k(2), P(x) = x²+x。
 // 実測で c[62] = 1, c[63] = 0 なので非零 basis は c[0..62] の 63 個。
@@ -108,7 +105,6 @@ constexpr auto INV_LOW= []() {
  }
  return t;
 }();
-
 constexpr inline u64 embed_idx(u16 idx) {
  static constexpr auto EMBED= []() {
   u64 SUBFIELD_BASIS[]= {1ULL, 6899425322512154626ULL, 12712641506861907972ULL, 12687683756412895240ULL, 13108774640850436112ULL, 1196746230653255712ULL, 13779846473293824064ULL, 1136705091741089920ULL, 13132935623751303424ULL, 12256911237861802496ULL, 1968662052679910400ULL, 13476734309037115392ULL, 31478309824172032ULL, 5397840376063860736ULL, 18145356609018085376ULL, 2133828226494464000ULL};
@@ -124,10 +120,8 @@ constexpr inline u64 embed_idx(u16 idx) {
  }();
  return EMBED[0][u8(idx)] ^ EMBED[1][idx >> 8];
 }
-
 inline const __m256i RED_TABLE= _mm256_setr_epi8(0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0);
-
-VPCLMUL inline void mul2(const __m256i& a_vec, const __m256i& b_vec, u64& r0, u64& r1) {
+GNU_TARGET("vpclmulqdq") inline void mul2(const __m256i& a_vec, const __m256i& b_vec, u64& r0, u64& r1) {
  __m256i prod= _mm256_clmulepi64_epi128(a_vec, b_vec, 0);
  __m256i d_full= _mm256_xor_si256(prod, _mm256_slli_epi64(prod, 1));
  __m256i red1_full= _mm256_xor_si256(d_full, _mm256_slli_epi64(d_full, 3));
@@ -139,8 +133,7 @@ VPCLMUL inline void mul2(const __m256i& a_vec, const __m256i& b_vec, u64& r0, u6
  r0= _mm256_extract_epi64(result, 0);
  r1= _mm256_extract_epi64(result, 2);
 }
-
-VPCLMUL inline u64 inv(u64 a) {
+GNU_TARGET("vpclmulqdq") inline u64 inv(u64 a) {
  assert(a != 0);
  u64 a32= frob32(a);
  u64 N= mul(a, a32);
@@ -148,16 +141,14 @@ VPCLMUL inline u64 inv(u64 a) {
  mul2(_mm256_set_epi64x(0, N, 0, a32), _mm256_set1_epi64x(N16), a, N16);
  return mul(embed_idx(INV_LOW[u16(N16)]), a);
 }
-
-template<class T> int msb(T n) { return n == 0 ? -1 : 63 - __builtin_clzll(n); }
-template<class T> T ceil_pow2(T n) { return n <= 1 ? T(1) : T(1) << (msb(n - 1) + 1); }
-
+template <class T> int msb(T n) { return n == 0 ? -1 : 63 - __builtin_clzll(n); }
+template <class T> T ceil_pow2(T n) { return n <= 1 ? T(1) : T(1) << (msb(n - 1) + 1); }
 // =============================================================================
 // Twiddle: u64 配列で直接持つ (gf2 ラッパなし)
 // =============================================================================
 struct nim_fft_data {
  std::vector<std::vector<u64>> a;
- VPCLMUL void init(int n) {
+ GNU_TARGET("vpclmulqdq") void init(int n) {
   if((int)a.size() > n) return;
   a.resize(n + 1);
   std::vector<u64> b(n);
@@ -165,7 +156,7 @@ struct nim_fft_data {
   for(int i= n;; --i) {
    if(i > 0) {
     u64 inv_b= inv(b.back());
-    for(u64& x : b) x= mul(x, inv_b);
+    for(u64& x: b) x= mul(x, inv_b);
    }
    auto& na= a[i];
    na.resize(1 << i);
@@ -176,16 +167,15 @@ struct nim_fft_data {
    }
    if(i == 0) break;
    b.pop_back();
-   for(u64& x : b) x= sq(x) ^ x;
+   for(u64& x: b) x= sq(x) ^ x;
   }
  }
 };
 inline nim_fft_data nim_data;
-
 // =============================================================================
 // nim FFT (u64 そのまま、 + は ^、 * は mul / mul2)
 // =============================================================================
-VPCLMUL inline void nim_fft(std::vector<u64>& f) {
+GNU_TARGET("vpclmulqdq") inline void nim_fft(std::vector<u64>& f) {
  int n= (int)f.size();
  std::vector<u64> f2(n);
  int len= n;
@@ -229,8 +219,7 @@ VPCLMUL inline void nim_fft(std::vector<u64>& f) {
   }
  }
 }
-
-VPCLMUL inline void nim_ifft(std::vector<u64>& f) {
+GNU_TARGET("vpclmulqdq") inline void nim_ifft(std::vector<u64>& f) {
  int n= (int)f.size();
  std::vector<u64> f2(n);
  int len= n;
@@ -274,8 +263,7 @@ VPCLMUL inline void nim_ifft(std::vector<u64>& f) {
   }
  }
 }
-
-VPCLMUL inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<u64> g) {
+GNU_TARGET("vpclmulqdq") inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<u64> g) {
  int n= (int)f.size(), m= (int)g.size();
  int s= (int)ceil_pow2(u32(n + m - 1));
  f.resize(s);
@@ -288,11 +276,9 @@ VPCLMUL inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<
  f.resize(n + m - 1);
  return f;
 }
-
 }  // namespace conv_f2_64_raw_u64
-
 struct Solver {
- VPCLMUL static std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
+ GNU_TARGET("vpclmulqdq") static std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
   using namespace conv_f2_64_raw_u64;
   auto c= nim_convolution(a_in, b_in);
   return c;

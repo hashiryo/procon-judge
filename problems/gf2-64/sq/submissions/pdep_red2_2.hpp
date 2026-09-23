@@ -8,10 +8,10 @@
 //
 // BMI2 が無い環境 (古い x86, ARM) ではビット並びを spread する loop で fallback。
 //
-// PCLMUL 比較:
-//   - PCLMUL sq: 1 PCLMUL (~5 cyc) + reduce
+// GNU_TARGET("pclmul") 比較:
+//   - GNU_TARGET("pclmul") sq: 1 GNU_TARGET("pclmul") (~5 cyc) + reduce
 //   - PDEP sq:   2 PDEP    (~3 cyc each, 並列) + reduce
-//   PCLMUL はレイテンシ長め、 PDEP は並列性高い。 throughput は PDEP がやや勝つ可能性
+//   GNU_TARGET("pclmul") はレイテンシ長め、 PDEP は並列性高い。 throughput は PDEP がやや勝つ可能性
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"
 namespace gf2_64_sq_pdep {

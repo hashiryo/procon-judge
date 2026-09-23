@@ -1,12 +1,11 @@
 #pragma once
-// PCLMUL ベース版 + Pohlig-Hellman + BSGS。
-// reference.hpp と同じ構造だが mul/pow に PCLMUL を使う。
+// GNU_TARGET("pclmul") ベース版 + Pohlig-Hellman + BSGS。
+// reference.hpp と同じ構造だが mul/pow に GNU_TARGET("pclmul") を使う。
 #pragma GCC optimize("O3,unroll-loops")
 #if (defined(__x86_64__) || defined(__i386__)) && !defined(USE_SIMDE)
 #pragma GCC target("pclmul")
 #endif
 #include "_shared/gf2-64/_common.hpp"
-#include "_shared/gf2-64/pow.hpp"
 
 #if (defined(__x86_64__) || defined(__i386__)) && !defined(USE_SIMDE)
 #define PCLMUL_TARGET [[gnu::target("pclmul")]]
@@ -15,8 +14,15 @@
 #endif
 namespace gf2_64_pcl_log {
 using gf2_64_pclmul::mul;
-using gf2_64_pclmul::pow;
-
+GNU_TARGET("pclmul") inline u64 pow(u64 a, u64 e) {
+ u64 res= 1;
+ while(e) {
+  if(e & 1) res= mul(res, a);
+  a= sq(a);
+  e>>= 1;
+ }
+ return res;
+}
 constexpr std::array<u64, 7> ORDER_PRIMES= {3, 5, 17, 257, 641, 65537, 6700417};
 PCLMUL_TARGET inline u64 bsgs_subgroup(u64 base, u64 target, u64 q) {
  u64 m= 1;
@@ -41,8 +47,8 @@ PCLMUL_TARGET inline u64 bsgs_subgroup(u64 base, u64 target, u64 q) {
  return ~u64(0);
 }
 PCLMUL_TARGET inline u64 log_g(u64 x) {
- u64 N= GROUP_ORDER;
- u64 g= LOG_GENERATOR;
+ u64 N= 0xFFFFFFFFFFFFFFFFull;  // = 2^64 - 1
+ u64 g= 2;                      // 原始元 (P(x) = x^64+x^4+x^3+x+1 の下で)
  u64 result= 0;
  u64 mod= 1;
  for(u64 q: ORDER_PRIMES) {

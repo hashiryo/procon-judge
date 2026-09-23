@@ -17,7 +17,7 @@
 //    (2^(n+1) - 1 → 2^n - 1 entry, s=2^20 で 16MB → 8MB)、 L3 圏内に収まりやすく
 //    memory-bandwidth 改善。
 //
-// 3. g0[0] = 0 スキップ + mul2 ペアリング: 各ブロック先頭の i=0 は PCLMUL 不要、
+// 3. g0[0] = 0 スキップ + mul2 ペアリング: 各ブロック先頭の i=0 は GNU_TARGET("pclmul") 不要、
 //    残り (i=1..half-1) を 2 個ずつ VPCLMULQDQ で並列化。
 //
 // 4. butterfly pair の SIMD pipeline (btf_fft_pair / btf_ifft_pair):
@@ -34,7 +34,7 @@
 //    と一致 (`b.back() = c[62] = 1` が不変)、 inv/mul/sq/pop は全部 no-op だった。
 //    constexpr で焼いた CHAIN を直接参照する Gray code build だけに簡略化。
 //
-// 必要拡張: PCLMUL + VPCLMULQDQ + AVX2 + BMI2 (Ice Lake / Zen3 以降)。
+// 必要拡張: GNU_TARGET("pclmul") + VPCLMULQDQ + AVX2 + BMI2 (Ice Lake / Zen3 以降)。
 
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"
@@ -95,17 +95,17 @@ constexpr auto CHAIN= []() {
 // __m128i (a0, a1) → __m256i (a0, _, a1, _) への展開 (vpermq 1 命令)
 // _MM_SHUFFLE(d, c, b, a) は output[k] = src[k番目引数] を意味し、 ここでは
 // output = (src[0], src[2]=0, src[1], src[3]=0) が欲しいので imm = _MM_SHUFFLE(3, 1, 2, 0)。
-VPCLMUL inline __m256i expand_pair(const u64* p) {
+GNU_TARGET("vpclmulqdq") inline __m256i expand_pair(const u64* p) {
  __m128i v= _mm_loadu_si128((const __m128i*)p);
  return _mm256_permute4x64_epi64(_mm256_castsi128_si256(v), _MM_SHUFFLE(3, 1, 2, 0));
 }
 // __m256i (x0, _, x1, _) → __m128i (x0, x1) (lane 0, 2 を low 128 へ集約)
 // imm = _MM_SHUFFLE(3, 2, 2, 0): output = (src[0], src[2], src[2], src[3])。 low128 = (src[0], src[2])。
-VPCLMUL inline __m128i pack_pair(__m256i v) { return _mm256_castsi256_si128(_mm256_permute4x64_epi64(v, _MM_SHUFFLE(3, 2, 2, 0))); }
+GNU_TARGET("vpclmulqdq") inline __m128i pack_pair(__m256i v) { return _mm256_castsi256_si128(_mm256_permute4x64_epi64(v, _MM_SHUFFLE(3, 2, 2, 0))); }
 // VPCLMULQDQ + 並列 reduction を __m256i で完結 (mul2 と同 idiom、 結果は (p0, _, p1, _))
 
 inline const __m256i RED_TABLE= _mm256_setr_epi8(0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0);
-VPCLMUL inline __m256i clmul_reduce_pair(__m256i a_vec, __m256i b_vec) {
+GNU_TARGET("vpclmulqdq") inline __m256i clmul_reduce_pair(__m256i a_vec, __m256i b_vec) {
  __m256i prod= _mm256_clmulepi64_epi128(a_vec, b_vec, 0);
  __m256i d_full= _mm256_xor_si256(prod, _mm256_slli_epi64(prod, 1));
  __m256i red1_full= _mm256_xor_si256(d_full, _mm256_slli_epi64(d_full, 3));
@@ -117,7 +117,7 @@ VPCLMUL inline __m256i clmul_reduce_pair(__m256i a_vec, __m256i b_vec) {
 }
 // FFT 用 butterfly pair: (i, i+1) を一括処理。
 // 計算: t = lo ^ hi*g0; f0' = t; f1' = t ^ hi
-VPCLMUL inline void btf_fft_pair(u64* f0_ptr, u64* f1_ptr, const u64* g0_ptr) {
+GNU_TARGET("vpclmulqdq") inline void btf_fft_pair(u64* f0_ptr, u64* f1_ptr, const u64* g0_ptr) {
  __m256i hi_vec= expand_pair(f1_ptr);
  __m256i g_vec= expand_pair(g0_ptr);
  __m256i p_vec= clmul_reduce_pair(hi_vec, g_vec);
@@ -129,7 +129,7 @@ VPCLMUL inline void btf_fft_pair(u64* f0_ptr, u64* f1_ptr, const u64* g0_ptr) {
 }
 // IFFT 用 butterfly pair:
 // 計算: s = lo ^ hi; f0' = lo ^ s*g0; f1' = s
-VPCLMUL inline void btf_ifft_pair(u64* f0_ptr, u64* f1_ptr, const u64* g0_ptr) {
+GNU_TARGET("vpclmulqdq") inline void btf_ifft_pair(u64* f0_ptr, u64* f1_ptr, const u64* g0_ptr) {
  __m256i lo_vec= expand_pair(f0_ptr);
  __m256i hi_vec= expand_pair(f1_ptr);
  __m256i s_vec= _mm256_xor_si256(lo_vec, hi_vec);
@@ -171,7 +171,7 @@ inline nim_fft_data nim_data;
 // =============================================================================
 // nim FFT (u64 そのまま、 + は ^、 * は mul / mul2)
 // =============================================================================
-VPCLMUL inline void nim_fft(std::vector<u64>& f) {
+GNU_TARGET("vpclmulqdq") inline void nim_fft(std::vector<u64>& f) {
  int n= (int)f.size();
  std::vector<u64> f2(n);
  int len= n;
@@ -242,7 +242,7 @@ VPCLMUL inline void nim_fft(std::vector<u64>& f) {
    const u64* g0= g.data();
    u64* f0= f.data() + l;
    u64* f1= f.data() + l + half;
-   // i = 0: g0[0] = 0 → PCLMUL も g0 ロードも不要
+   // i = 0: g0[0] = 0 → GNU_TARGET("pclmul") も g0 ロードも不要
    {
     u64 lo= f0[0], hi= f1[0];
     f0[0]= lo;
@@ -264,7 +264,7 @@ VPCLMUL inline void nim_fft(std::vector<u64>& f) {
   }
  }
 }
-VPCLMUL inline void nim_ifft(std::vector<u64>& f) {
+GNU_TARGET("vpclmulqdq") inline void nim_ifft(std::vector<u64>& f) {
  int n= (int)f.size();
  std::vector<u64> f2(n);
  int len= n;
@@ -353,7 +353,7 @@ VPCLMUL inline void nim_ifft(std::vector<u64>& f) {
   }
  }
 }
-VPCLMUL inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<u64> g) {
+GNU_TARGET("vpclmulqdq") inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<u64> g) {
  int n= (int)f.size(), m= (int)g.size();
  int s= (int)ceil_pow2(u32(n + m - 1));
  f.resize(s);
@@ -368,7 +368,7 @@ VPCLMUL inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<
 }
 }  // namespace conv_f2_64_full_v2
 struct Solver {
- VPCLMUL static std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
+ GNU_TARGET("vpclmulqdq") static std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
   using namespace conv_f2_64_full_v2;
   auto c= nim_convolution(a_in, b_in);
   return c;

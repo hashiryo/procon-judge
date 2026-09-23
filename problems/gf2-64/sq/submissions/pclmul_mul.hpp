@@ -1,10 +1,10 @@
 #pragma once
-// sq(a) = mul(a, a) を PCLMUL で計算 (素朴ベースライン)。
+// sq(a) = mul(a, a) を GNU_TARGET("pclmul") で計算 (素朴ベースライン)。
 // 自己完結 (= _shared/pclmul_core.hpp に依存しない、 sq の比較対象なので)。
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"
 namespace gf2_64_sq_pclmul_mul {
-PCLMUL inline u64 sq(u64 a) {
+GNU_TARGET("pclmul") inline u64 sq(u64 a) {
  __m128i av= _mm_cvtsi64_si128(a);
  __m128i v= _mm_clmulepi64_si128(av, av, 0);
  u64 h= (u64)v[1], d= h ^ (h << 1);
