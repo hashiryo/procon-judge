@@ -1,0 +1,255 @@
+# procon-judge
+
+自分用のオンラインジャッジです。`problems/<id>/` に問題を、`problems/<id>/submissions/` に提出を置いて main に push します。GitHub Actions が 4 つの環境 (x64 と arm、それぞれ gcc と clang) で提出をコンパイルして走らせ、正誤と時間とメモリを記録します。記録は `results` ブランチに溜まり、順位表と提出ページを https://hashiryo.github.io/procon-judge/ に出します。設計と実装の記録は [DESIGN.md](DESIGN.md) にあり、この README はそこから日常の操作だけを抜き出したものです。
+
+AtCoder の提出ページに無いものが 1 つあります。提出はリポジトリの中のファイルなので、include している自分のライブラリ (hashiryo/Library) が変わると自動で測り直され、同じ URL のページが最新の記録を指し続けます。
+
+## 手元の用意
+
+`uv` があれば動きます。依存は `pyproject.toml` にあり、`uv run pj --help` で CLI が出ます。
+
+```
+git clone https://github.com/hashiryo/procon-judge.git
+cd procon-judge
+git submodule update --init third_party/simde
+git clone --depth=1 https://github.com/hashiryo/Library.git lib
+uv run pj problems list | head
+```
+
+`lib/` はライブラリの clone で、git 管理外です。CI は実行のたびに最新を clone するので、手元も自分で clone します。無いままだと `mylib/...` を include する提出が include 未解決になって走りません。
+
+手元の環境は `environments.toml` の `local` で、`c++` (macOS では Apple clang) を使います。CI の 4 環境は GitHub のランナーでしか動きません。
+
+テストデータの保管庫は private リポジトリ hashiryo/procon-judge-testdata の Release アセットです。読み書きするには fine-grained PAT を環境変数 `TESTDATA_TOKEN` に入れます。無くても、判定サイトから直接取れる取得元 (Library Checker、AOJ、yukicoder、LOJ) は原本から取れます。yukicoder は `YUKICODER_TOKEN` も要ります。
+
+`.results/` は `results` ブランチの中身 (問題ごとの jsonl) を置く場所で、これも git 管理外です。手元で `pj plan` や `pj site build` を試すときや、CI で測り済みのものを飛ばして走らせたいときに用意します。無ければ全部が未計測として扱われるだけです。
+
+```
+git fetch origin results
+rm -rf .results && mkdir .results
+git archive origin/results | tar -x -C .results
+```
+
+## リポジトリの構成
+
+| 場所 | 中身 |
+| --- | --- |
+| `problems/<id>/problem.toml` | 問題の定義。id、制限、ハーネスの種別、テストデータの取得元、出力比較 |
+| `problems/<id>/base.cpp` | ハーネス。`harness.kind = "base"` のときだけ |
+| `problems/<id>/common.hpp` | その問題の提出だけが共有するもの。省略可 |
+| `problems/<id>/gen.py` | 自作テストデータのジェネレータ。`testdata.source = "local"` のときだけ |
+| `problems/<id>/submissions/` | 提出。base なら `.hpp`、raw なら `.cpp` |
+| `problems/_shared/<名前>/` | 問題をまたいで提出が使うヘッダ。problem.toml が無いので問題ではない |
+| `harness/pj.hpp` | 全問題のハーネスと提出が共有するもの |
+| `environments.toml` | 環境 (コンパイラとフラグ) の定義 |
+| `testdata.toml` | Library Checker の問題集のコミットの pin |
+| `libraries.toml` | 提出が include するライブラリと、そのページへのリンクの形 |
+| `pj/` | 実装 (Python)。`tests/` に pytest |
+| `.github/workflows/judge.yml` | CI |
+
+## 問題を足す
+
+### 1. ディレクトリと problem.toml
+
+`problems/<id>/` を作り、`problem.toml` を置きます。`id` はディレクトリ名と一致させます。id は `<出どころ>-<問題>` の形で、出どころはテストデータの取得元ではなく、問題そのものがどこの問題かです。
+
+| 出どころ | 接頭辞 | 例 |
+| --- | --- | --- |
+| Library Checker | `yosupo-` | `yosupo-unionfind` |
+| AOJ | `aoj-` | `aoj-DSL_2_B` |
+| yukicoder | `yuki-` | `yuki-1234` |
+| AtCoder | `atcoder-` | `atcoder-abc172-d` |
+| LOJ | `loj-` | `loj-6620` |
+| HackerRank、CSES、Codeforces など | `hackerrank-`、`cses-`、`cf-` | `cses-2132` |
+| 自作 | 付けない | `gf2-64-pow` |
+
+id は記録のキーと保管庫のアセット名に入るので、あとから変えると記録が全部測り直しになり、保管庫のアセットも孤児になります。付けるときに決めます。
+
+Library Checker の問題を、自分のライブラリと手書きの実装で比べる形の例です。
+
+```toml
+id = "yosupo-unionfind"
+title = "Unionfind"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "data_structure/unionfind"
+
+[compare]
+kind = "checker"
+```
+
+自作のテストデータで速さを比べる形の例です。
+
+```toml
+id = "gf2-64-pow"
+title = "GF(2^64) の冪"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 7
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+```
+
+`title` は表示にだけ使います。判定サイトから取る問題は `uv run pj problems titles --problem <id> --fix` で判定サイトの名前に揃えます。手で書くと違う名前になりがちです。`local` や `manual` や `none` の問題には判定サイトの名前が無いので手で付けます。`url` は元の問題のページで、`source` が `none` か `manual` の問題だけに書きます。ほかは `source` と `name` から組めます。
+
+`[limits]` の `tle_sec` はケースごとの実時間の上限で、超えたら kill して TLE にします。`mle_mb` はピーク RSS の後判定です。入力を全部メモリに読むハーネスの形なので、元の判定サイトの制限に合わせる意味はなく、このハーネスでの制限として決めます。RSS には実行ファイルと libc のぶんで何もしないプログラムでも数 MB が乗るので、きつくしすぎないでください。既定は 5 秒と 256 MB です。
+
+`[harness]` の `kind` は `base` か `raw` です。`base` は問題が `base.cpp` を持ち、提出はそれが決めたインターフェースを実装します。入出力はハーネスが担当し、計測区間の時間 (algo 時間) が順位表の基準になります。`raw` は提出が `main()` ごと持ち、判定サイトの入出力をそのまま読み書きします。実装が 1 本しか無い verify の置き場で、計測区間が無いので順位表にはなりません。
+
+`[testdata]` の `source` はテストデータの取得元です。
+
+| source | 説明 | 追加の項目 |
+| --- | --- | --- |
+| `library_checker` | yosupo06/library-checker-problems を `testdata.toml` のコミットで clone して生成します | `name` に問題のパス |
+| `aoj` | judgedat の API から取ります | `name` に問題 ID |
+| `yukicoder` | API から取ります。`YUKICODER_TOKEN` が要ります | `name` に問題 ID |
+| `loj` | API から取ります | `name` に問題の番号 |
+| `manual` | 手で取り込んで保管庫に置いたものだけを使います | `name` に識別子 (通常は id) |
+| `local` | リポジトリ内のジェネレータと参照実装で作ります | `generator`、`count`、`reference` |
+| `none` | テストデータを使いません | なし |
+
+`[compare]` の `kind` は出力の比べ方です。
+
+| kind | 説明 |
+| --- | --- |
+| `tokens` | 空白と改行を無視してトークン列を比べます。既定です |
+| `float` | トークン比較で数値の誤差を許します。`abs_tol` か `rel_tol` を書きます |
+| `checker` | Library Checker が同梱するチェッカに委ねます |
+| `exit_code` | 期待出力を使わず、終了コードが 0 なら AC です。`source = "none"` の自己検証用です |
+| `compile_only` | 実行せず、コンパイルが通れば AC です。テストデータが公開されていない AtCoder の問題はこれにします |
+
+書いたら `uv run pj problems check --problem <id>` で検証します。id とディレクトリ名の不一致や、`source` と接頭辞の食い違いはここで分かります。
+
+### 2. ハーネス base.cpp
+
+`kind = "base"` の問題は `base.cpp` を書きます。入力を全部読んでから計測区間に入り、提出が実装する型か関数を呼び、出力は文字列に溜めて最後に書き、末尾で `report_metrics` に計測区間のナノ秒を渡します。
+
+```cpp
+#include "pj.hpp"
+#ifndef SUBMISSION_HPP
+#define SUBMISSION_HPP "submissions/naive.hpp"
+#endif
+#include SUBMISSION_HPP
+
+signed main() {
+  int n, q;
+  must_scan(scanf("%d %d", &n, &q), 2);
+  vector<array<int, 3>> qs(q);
+  for (auto &e : qs) must_scan(scanf("%d %d %d", &e[0], &e[1], &e[2]), 3);
+
+  Solver uf(n);
+  string out;
+  auto t0 = chrono::steady_clock::now();
+  for (auto &e : qs) {
+    if (e[0] == 0) uf.unite(e[1], e[2]);
+    else out += uf.same(e[1], e[2]) ? "1\n" : "0\n";
+  }
+  auto t1 = chrono::steady_clock::now();
+
+  fputs(out.c_str(), stdout);
+  report_metrics((long long)chrono::duration_cast<chrono::nanoseconds>(t1 - t0).count());
+}
+```
+
+`SUBMISSION_HPP` は `pj` がコンパイルのとき `-D` で提出ごとに差し替えます。`#ifndef` の既定はエディタで単体表示したときの補完のためです。
+
+インターフェースは問題ごとに決めますが、形は 2 つに寄せます。クエリを順に処理する問題は、構築に初期状態だけを渡して計測区間の中でクエリを 1 つずつ渡す `Solver` にします。先の入力を構築へ渡すと、オフラインの前処理を計測区間の外に置ける実装だけが有利になるからです。1 回の計算で答えが出る問題は、構築と `run()` と `answer()` の 3 段に分けます。内部表現への変換が計測区間の外に出ます。
+
+ハーネスからは `mylib/...` を include しません。ライブラリを取れなかった回に問題ごと止まるのと、ライブラリを直しただけで手書きの実装まで測り直しになるのを避けるためです。剰余を扱う問題でも入出力は素の整数でやりとりして、提出が自分の型に直します。同じ問題の提出だけで共有したいもの (作用素の定義など) は `common.hpp` に置きます。こちらはライブラリを include してかまいません。
+
+`harness/pj.hpp` には `must_scan`、`read_token`、`read_ints`、`print_all`、`report_metrics` があります。ここを変えると全問題が測り直しになるので、問題ごとの事情は `common.hpp` に書きます。
+
+### 3. テストデータ
+
+判定サイトから取る取得元 (`library_checker`、`aoj`、`yukicoder`、`loj`) は何もしなくてよいです。CI が最初に測るとき原本から取って保管庫へ上げ、以後は保管庫から取ります。手元で先に確かめるなら `uv run pj fetch --problem <id>` です。
+
+`local` は `gen.py` と参照実装を書きます。`gen.py` は seed を 1 つ引数に取り、そのケースの入力を stdout に出します。`count` 個の seed を 0 から順に使うので生成は決定的です。`uv run --script` で動かすので、依存があれば PEP 723 のメタデータで書きます。参照実装は `kind = "base"` なら提出と同じ形の `.hpp` で、`submissions/reference.hpp` に置いて `reference` にそのパスを書けば、期待出力を作るものがそのまま順位表の 1 行になります。ジェネレータかハーネスか参照実装を直せば、期待出力も作り直されます。手元で作って中身を見るなら `uv run pj fetch --problem <id>` で、置き場が表示されます。
+
+`manual` は手元で `.in` と `.out` を同じ名前で 1 つのディレクトリに並べ、取り込んで保管庫へ上げます。保管庫に無い `manual` の問題は CI が測らないので、push の前に上げます。ケース名は記録のキーに入るので、あとから変えません。
+
+```
+uv run pj testdata import --problem <id> --dir <ディレクトリ>
+uv run pj mirror push --problem <id>
+```
+
+`none` はテストデータを使いません。自己検証の提出 (assert で自分を検証して 0 で終わるもの) は `compare.kind = "exit_code"` にします。入力を読む提出でテストデータが無いもの (AtCoder) は `compare.kind = "compile_only"` にします。
+
+### 4. 提出を置く
+
+`problems/<id>/submissions/` にファイルを置きます。`base` の提出はハーネスから include されるので `.hpp`、`raw` の提出はそれ自体が翻訳単位なので `.cpp` です。先頭が `_` のファイルは提出として扱いません。
+
+自分のライブラリを使う提出は `#include "mylib/data_structure/UnionFind.hpp"` のように `lib/` からの相対パスで書きます。全環境のフラグに `-Ilib` が入っています。慣習として、ライブラリを使う提出は `lib.hpp`、同じ問題に複数あれば `lib-<実装>.hpp`、手書きの素朴な実装は `naive.hpp` と名付けますが、`pj` はこの名前に意味を持たせません。ライブラリとの紐付けは include の一覧から作ります。
+
+問題をまたいで使うヘッダは `problems/_shared/<名前>/` に置き、提出から `#include "../../_shared/gf2-64/_common.hpp"` のように相対パスで引きます。
+
+提出のパスはそのまま識別子です。順位表と提出ページとライブラリ側のサイトからのリンクがこのパスを指すので、リネームすると別の提出として測り直しになります。
+
+### 5. 手元で確かめる
+
+```
+uv run pj problems check --problem <id>
+uv run pj run --env local --problem <id> --dry-run
+uv run pj run --env local --problem <id>
+uv run pj repro --problem <id> --submission submissions/<name>.hpp --case <ケース名>
+```
+
+`--dry-run` は走らせる対象を出すだけです。`pj run` は記録を `.results/` に書くので、別の場所に書きたければ `--out` を渡します。`pj repro` はテストデータを取って手元のコンパイラで組み、そのケースだけ走らせて、完全な差分と入力、期待出力、実際の出力のファイルの場所を出します。記録は書きません。
+
+macOS の `local` は Apple clang と libc++ なので、CI の 4 環境 (どれも libstdc++) と結果が同じとは限りません。ライブラリの一部 (`std::__lg` を使うヘッダ) は手元では CE になります。
+
+サイトを手元で見るなら `uv run pj site build --out /tmp/pj-site` で作り、そのディレクトリを `python3 -m http.server` などで開きます。
+
+### 6. push すると起きること
+
+main に push すると `judge.yml` が動きます。`test` が `pj` 自身の pytest を回し、`plan` が組 (x64 と arm) ごとにジョブの本数を決めます。`run` のジョブはそれぞれ CPU モデルを検出して、問題を 1 つずつ宣言しては測ります。`collect` が記録を `results` ブランチに追記してサイトを Pages に出します。同じ問題を同じ CPU モデルで二重に測ることはありません。
+
+測り直しになるのは、ソース (提出とその include 閉包、ハーネス、problem.toml) とテストデータと環境と CPU モデルから作るキーの記録が無いものだけです。整形やコメントの変更ではキーが変わりません。`base` の問題は (問題, 環境, CPU モデル) を束として扱い、1 本でも未計測なら全提出を同じジョブで測り直します。同じ CPU モデルでも VM ごとに速さが 2 割ほど違うので、順位表は同じジョブで測った記録どうしでだけ比べます。提出を 1 本足すと、その問題の他の提出も測り直されるのはこのためです。`raw` の問題はキーごとに測ります。
+
+ライブラリ (hashiryo/Library) の master への push もこちらを起こし、変わったヘッダを閉包に持つ提出だけが測り直されます。取りこぼしは 1 日 2 回の schedule が拾います。
+
+結果はサイトの問題一覧と順位表、提出ページに出ます。順位表は環境と CPU モデルを選んで見ます。参考の印が付いた行は測ってからソースが変わったもので、次の計測で入れ替わります。
+
+## 既存の問題に提出を足す
+
+`problems/<id>/submissions/` にファイルを置いて push するだけです。`base` の問題なら、`base.cpp` が呼ぶ型と関数を実装します。手元で `uv run pj run --env local --problem <id> --submission submissions/<name>.hpp` と 1 本だけ走らせて確かめられます。1 本だけ指定したときは束を作らないので、手元の記録が順位表を乱すことはありません。
+
+## コマンド一覧
+
+| コマンド | 何をするか |
+| --- | --- |
+| `pj problems list` | 問題の一覧。`--json` で機械向けの形 |
+| `pj problems check [--problem ID]` | problem.toml の検証 |
+| `pj problems titles [--problem ID] [--fix]` | 題名を判定サイトの名前と突き合わせる |
+| `pj submissions list [--problem ID]` | 提出の一覧 |
+| `pj fetch --problem ID [--refresh] [--from-origin]` | テストデータを取る。`--refresh` はキャッシュを無視し、`--from-origin` は保管庫も飛ばして原本から取る |
+| `pj testdata import --problem ID --dir PATH` | 手元で落としたテストデータを取り込む |
+| `pj mirror status [--problem ID]` | 保管庫の状態 |
+| `pj mirror push --problem ID [--force]` | 保管庫へ上げる。`--force` は取り直したデータに入れ替えるとき用 |
+| `pj run --env ENV [--problem ID] [--submission PATH] [--dry-run] [--out DIR]` | 実行して記録を出す |
+| `pj repro --problem ID --submission PATH [--case NAME]` | 1 提出を手元で走らせて差分を見る |
+| `pj records list` | 記録の一覧 |
+| `pj records append DIR...` | ほかの jsonl を記録に取り込む |
+| `pj site build [--out DIR] [--store DIR]` | 記録からサイトを作る |
+| `pj plan` | CI の matrix を出す |
+| `pj problems import PATH...` | competitive-verifier 形式の test を raw の問題として取り込む。移行の道具 |
+
+`uv run pj <コマンド> --help` で引数が出ます。
