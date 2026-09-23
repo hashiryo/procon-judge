@@ -12,6 +12,7 @@
 // log/exp テーブルは Nimber.hpp と同じ recurrence で構築 (PW[i] = nim 表現での s^i)。
 
 #include "_shared/gf2-64/_common.hpp"
+#include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/sq.hpp"
 #include "_shared/gf2-64/frob.hpp"
 #include "_shared/gf2-64/basis_change.hpp"

@@ -17,6 +17,7 @@
 #pragma GCC target("pclmul,bmi2")
 #endif
 #include "_shared/gf2-64/_common.hpp"
+#include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/sq.hpp"
 
 #if (defined(__x86_64__) || defined(__i386__)) && !defined(USE_SIMDE)

@@ -11,6 +11,7 @@
 //   baseline の "naive binary" の意味がなくなる。 pow 計算ロジックは algo 内に閉じる。
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"
+#include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/sq.hpp"
 namespace gf2_64_pow_pclmul_binary {
 using gf2_64_pclmul::mul;

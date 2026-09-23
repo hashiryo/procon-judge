@@ -12,6 +12,7 @@
 #pragma GCC optimize("O3,unroll-loops")
 
 #include "_shared/gf2-64/_common.hpp"
+#include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/sq.hpp"
 #include "_shared/gf2-64/frob.hpp"
 namespace gf2_64_pclmul_norm_pext_compact {

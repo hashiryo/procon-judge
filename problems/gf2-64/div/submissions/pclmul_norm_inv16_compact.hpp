@@ -8,6 +8,7 @@
 // 期待: 6 lookups 節約 (per inv)、~18 cycle 改善。
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"
+#include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/sq.hpp"
 #include "_shared/gf2-64/frob.hpp"
 #include "_shared/gf2-64/basis_change.hpp"

@@ -1,4 +1,11 @@
 #pragma once
+// v34_2 の 2 並列 mul を _shared/gf2-64/mul2.hpp のものに置き換えた版。計算そのものは v34_2 と同じで、
+// ローカルの表と 2 並列 mul を消して共有版を呼ぶようにしただけ。
+// mul2_2 は 1 回目の結果を unpack せずに 2 回目の operand へ渡していただけなので、
+// 共有の mul2 を 2 つ重ねて最後に unpack を 1 回だけ掛ける形にしてある。
+// 共有版は結果のベクタを返すので、u64 2 つで受けるところは tie(..)= unpack(..) になる。
+//
+// 以下のアルゴリズムは v34_2 と同じ:
 // v31 + BSGSTable6700417::solve に VPCLMUL (mul2) 適用:
 //   - 初期 setup を t[0]*inv^k (k=1..3) の独立 mul に展開し mul2 で 2 並列化。
 //     (k=3 用に constexpr mul_ce で inv3_base_m を事前計算)
@@ -11,6 +18,7 @@
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
+#include "_shared/gf2-64/mul2.hpp"
 #include "_shared/gf2-64/sq.hpp"
 #include "_shared/gf2-64/frob.hpp"
 namespace gf2_64_log_pohlig_v11 {
@@ -24,43 +32,9 @@ using gf2_64_pclmul::frob6;
 using gf2_64_pclmul::frob7;
 using gf2_64_pclmul::frob8;
 using gf2_64_pclmul::mul;
+using gf2_64_pclmul::mul2;
 using gf2_64_pclmul::sq;
-const __m256i RED_TABLE= _mm256_setr_epi8(0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0);
-// VPCLMUL 2 並列 mul + 並列 reduction (vmul_3_2 と同じ idiom)
-GNU_TARGET("vpclmulqdq") inline __m256i mul2(__m256i a_vec, __m256i b_vec, u64& r0, u64& r1) {
- __m256i prod= _mm256_clmulepi64_epi128(a_vec, b_vec, 0);
- __m256i d_full= _mm256_xor_si256(prod, _mm256_slli_epi64(prod, 1));
- __m256i red1_full= _mm256_xor_si256(d_full, _mm256_slli_epi64(d_full, 3));
- __m256i red1_shift= _mm256_srli_si256(red1_full, 8);
- __m256i h_idx= _mm256_srli_epi64(prod, 60);
- __m256i indices= _mm256_srli_si256(h_idx, 8);
- __m256i red_vec= _mm256_shuffle_epi8(RED_TABLE, indices);
- __m256i result= _mm256_xor_si256(_mm256_xor_si256(prod, red1_shift), red_vec);
- r0= _mm256_extract_epi64(result, 0);
- r1= _mm256_extract_epi64(result, 2);
- return result;
-}
-GNU_TARGET("vpclmulqdq") inline __m256i mul2_2(__m256i a_vec, __m256i b_vec, __m256i c_vec, u64& r0, u64& r1) {
- __m256i prod= _mm256_clmulepi64_epi128(a_vec, b_vec, 0);
- __m256i d_full= _mm256_xor_si256(prod, _mm256_slli_epi64(prod, 1));
- __m256i red1_full= _mm256_xor_si256(d_full, _mm256_slli_epi64(d_full, 3));
- __m256i red1_shift= _mm256_srli_si256(red1_full, 8);
- __m256i h_idx= _mm256_srli_epi64(prod, 60);
- __m256i indices= _mm256_srli_si256(h_idx, 8);
- __m256i red_vec= _mm256_shuffle_epi8(RED_TABLE, indices);
- __m256i result= _mm256_xor_si256(_mm256_xor_si256(prod, red1_shift), red_vec);
- prod= _mm256_clmulepi64_epi128(result, c_vec, 0);
- d_full= _mm256_xor_si256(prod, _mm256_slli_epi64(prod, 1));
- red1_full= _mm256_xor_si256(d_full, _mm256_slli_epi64(d_full, 3));
- red1_shift= _mm256_srli_si256(red1_full, 8);
- h_idx= _mm256_srli_epi64(prod, 60);
- indices= _mm256_srli_si256(h_idx, 8);
- red_vec= _mm256_shuffle_epi8(RED_TABLE, indices);
- result= _mm256_xor_si256(_mm256_xor_si256(prod, red1_shift), red_vec);
- r0= _mm256_extract_epi64(result, 0);
- r1= _mm256_extract_epi64(result, 2);
- return result;
-}
+using gf2_64_pclmul::unpack;
 // =============================================================================
 // constexpr GF(2^64) 乗算 (PerfectHash641 の build 用).
 // GNU_TARGET("pclmul") intrinsic は constexpr 化できないため、4-bit windowed CLMUL で実装。
@@ -258,15 +232,15 @@ struct BSGSTable6700417 {
   // mul2: lane0 -> first scalar, lane2 -> second scalar.
   t[0]= target;
   // (t[1], t[2]) = (target*inv, target*inv2)  -- 2 並列
-  mul2(_mm256_set1_epi64x(target), _mm256_set_epi64x(0, inv2_base_m, 0, inv_base_m), t[1], t[2]);
+  tie(t[1], t[2])= unpack(mul2(_mm256_set1_epi64x(target), _mm256_set_epi64x(0, inv2_base_m, 0, inv_base_m)));
   // (t[3], t_n[0]) = (target*inv3, target*inv4)  -- 2 並列
-  mul2(_mm256_set1_epi64x(target), _mm256_set_epi64x(0, inv4_base_m, 0, inv3_base_m), t[3], t_n[0]);
+  tie(t[3], t_n[0])= unpack(mul2(_mm256_set1_epi64x(target), _mm256_set_epi64x(0, inv4_base_m, 0, inv3_base_m)));
   // t_n[1..3] = t[1..3] * inv4  ->  pair (t_n[1], t_n[2]) と (t_n[3], t_n2[0]) で並列化
   __m256i inv4_v= _mm256_set1_epi64x(inv4_base_m);
-  mul2(_mm256_set_epi64x(0, t[2], 0, t[1]), inv4_v, t_n[1], t_n[2]);
-  mul2(_mm256_set_epi64x(0, t_n[0], 0, t[3]), inv4_v, t_n[3], t_n2[0]);
+  tie(t_n[1], t_n[2])= unpack(mul2(_mm256_set_epi64x(0, t[2], 0, t[1]), inv4_v));
+  tie(t_n[3], t_n2[0])= unpack(mul2(_mm256_set_epi64x(0, t_n[0], 0, t[3]), inv4_v));
   // t_n2[1..3] = t_n[1..3] * inv4  ->  mul2 x2 (奇数分は無駄 lane なし)
-  mul2(_mm256_set_epi64x(0, t_n[2], 0, t_n[1]), inv4_v, t_n2[1], t_n2[2]);
+  tie(t_n2[1], t_n2[2])= unpack(mul2(_mm256_set_epi64x(0, t_n[2], 0, t_n[1]), inv4_v));
   // 残り1個 (t_n2[3]) は scalar mul で済ます
   t_n2[3]= mul(t_n[3], inv4_base_m);
   for(int j= 0; j < 4; ++j) {
@@ -291,8 +265,8 @@ struct BSGSTable6700417 {
    }
    if(i + 12 <= max_i) {
     // t_n2[0..3] = t_n[0..3] * inv4  -- mul2 x2 で 4 並列
-    mul2(_mm256_set_epi64x(0, t_n[1], 0, t_n[0]), inv4_v, t_n2[0], t_n2[1]);
-    mul2(_mm256_set_epi64x(0, t_n[3], 0, t_n[2]), inv4_v, t_n2[2], t_n2[3]);
+    tie(t_n2[0], t_n2[1])= unpack(mul2(_mm256_set_epi64x(0, t_n[1], 0, t_n[0]), inv4_v));
+    tie(t_n2[2], t_n2[3])= unpack(mul2(_mm256_set_epi64x(0, t_n[3], 0, t_n[2]), inv4_v));
     for(int j= 0; j < 4; ++j) _mm_prefetch((const char*)&tab[u32(t_n2[j]) & mask], _MM_HINT_T0);
    }
   }
@@ -312,17 +286,18 @@ void init_tables() {
 u64 log_g(u64 x) {
  assert(x);
  u64 N, s, x_f16, x_65537, x_6700417, x_641;
- __m256i Ns= mul2(_mm256_set_epi64x(0, sq(x), 0, frob32(x)), _mm256_set1_epi64x(x), N, s);
- mul2(_mm256_set_epi64x(0, frob2(s), 0, frob16(N)), Ns, x_f16, s);
+ __m256i Ns= mul2(_mm256_set_epi64x(0, sq(x), 0, frob32(x)), _mm256_set1_epi64x(x));
+ tie(N, s)= unpack(Ns);
+ tie(x_f16, s)= unpack(mul2(_mm256_set_epi64x(0, frob2(s), 0, frob16(N)), Ns));
  s= mul(s, frob4(s));
  s= mul(s, frob8(s));  // 2^16-1
- mul2(_mm256_set_epi64x(0, frob16(s), 0, frob32(s)), _mm256_set1_epi64x(s), x_65537, s);
+ tie(x_65537, s)= unpack(mul2(_mm256_set_epi64x(0, frob16(s), 0, frob32(s)), _mm256_set1_epi64x(s)));
  u64 s7= frob7(s);
  u64 T2= sq(s7), T3= mul(s7, T2);
  u64 T24= frob3(T3), T48= frob4(T3);
  u64 T51, T72;
- mul2(_mm256_set_epi64x(0, T3, 0, T24), _mm256_set1_epi64x(T48), T72, T51);
- mul2_2(_mm256_set_epi64x(0, T2, 0, frob10(T51)), _mm256_set_epi64x(0, T3, 0, mul(T72, T51)), _mm256_set1_epi64x(s), x_641, x_6700417);
+ tie(T72, T51)= unpack(mul2(_mm256_set_epi64x(0, T3, 0, T24), _mm256_set1_epi64x(T48)));
+ tie(x_641, x_6700417)= unpack(mul2(mul2(_mm256_set_epi64x(0, T2, 0, frob10(T51)), _mm256_set_epi64x(0, T3, 0, mul(T72, T51))), _mm256_set1_epi64x(s)));
  const u16 r1= LN16[u16(x_f16)];
  const u32 r0= PerfectHash641::lookup(x_641);
  const u32 r2= direct_65537.lookup(x_65537);

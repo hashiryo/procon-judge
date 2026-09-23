@@ -22,6 +22,7 @@
 #pragma GCC target("pclmul,vpclmulqdq,avx,avx2")
 #endif
 #include "_shared/gf2-64/_common.hpp"
+#include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/sq.hpp"
 #include "_shared/gf2-64/frob.hpp"
 using gf2_64_pclmul::frob16;

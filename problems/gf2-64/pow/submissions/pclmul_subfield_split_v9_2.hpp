@@ -14,6 +14,8 @@
 //   (12 bit × 4 lane, 各 lane 3 nibble, init + 2 反復, b は lane0 最下位に織り込み)
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"
+#include "_shared/gf2-64/mul.hpp"
+#include "_shared/gf2-64/mul2.hpp"
 #include "_shared/gf2-64/sq.hpp"
 #include "_shared/gf2-64/frob.hpp"
 namespace gf2_64_pow_subfield_split_v8_3 {
@@ -24,7 +26,9 @@ using gf2_64_pclmul::FROB4_BYTE;
 using gf2_64_pclmul::FROB12_BYTE;
 using gf2_64_pclmul::FROB36_BYTE;
 using gf2_64_pclmul::mul;
+using gf2_64_pclmul::mul2;
 using gf2_64_pclmul::sq;
+using gf2_64_pclmul::unpack;
 // embed: low 16-bit subfield 識別子 → 64-bit poly 表現 (subfield 元の埋め込み)
 constexpr u64 embed_idx(u16 idx) {
  static constexpr auto EMBED= []() {
@@ -72,18 +76,6 @@ constexpr auto TABLES= []() {
  t.LN_SIGMA[0]= 0;
  return t;
 }();
-const __m256i RED_TABLE= _mm256_setr_epi8(0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0);
-// 2 並列 mul: IMM で各 128bit half のどの qword を掛けるか選ぶ (0x00: low×low, 0x11: high×high)。
-// reduction は prod 配置が IMM に依らないので共通。
-template <int IMM> GNU_TARGET("vpclmulqdq") inline __m256i mul2t(const __m256i& a_vec, const __m256i& b_vec) {
- __m256i prod= _mm256_clmulepi64_epi128(a_vec, b_vec, IMM);
- __m256i d_full= _mm256_xor_si256(prod, _mm256_slli_epi64(prod, 1));
- __m256i red1_shift= _mm256_srli_si256(_mm256_xor_si256(d_full, _mm256_slli_epi64(d_full, 3)), 8);
- __m256i indices= _mm256_srli_si256(_mm256_srli_epi64(prod, 60), 8);
- return _mm256_xor_si256(_mm256_xor_si256(prod, red1_shift), _mm256_shuffle_epi8(RED_TABLE, indices));
-}
-GNU_TARGET("vpclmulqdq") inline __m256i mul2(const __m256i& a_vec, const __m256i& b_vec) { return mul2t<0x00>(a_vec, b_vec); }
-GNU_TARGET("vpclmulqdq") inline __m256i mul2h(const __m256i& a_vec, const __m256i& b_vec) { return mul2t<0x11>(a_vec, b_vec); }
 
 inline __m256i frob4_2lane(u64 a0, u64 a1) {
  __m256i vA= _mm256_set_epi64x(0, FROB4_BYTE[0][u8(a1)], 0, FROB4_BYTE[0][u8(a0)]);
@@ -95,7 +87,6 @@ inline __m256i frob12_frob36(u64 a0, u64 a1) {
  for(int i= 1; i < 8; ++i)vA= _mm256_xor_si256(vA, _mm256_set_epi64x(0, FROB36_BYTE[i][u8(a1 >> (8 * i))], 0, FROB12_BYTE[i][u8(a0 >> (8 * i))]));
  return vA;
 }
-inline pair<u64, u64> unpack(const __m256i& vec) { return make_pair(u64(_mm256_extract_epi64(vec, 0)), u64(_mm256_extract_epi64(vec, 2))); }
 GNU_TARGET("pclmul,vpclmulqdq") u64 pow(u64 a, u64 e) {
  if(!e) return 1;
  if(!a) return 0;

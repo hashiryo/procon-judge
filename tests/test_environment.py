@@ -52,7 +52,7 @@ def test_effective_cxxflags_append_the_include_dirs():
     flags = build_mod.effective_cxxflags(env, problem)
     assert flags.startswith(env.cxxflags)
     assert flags.endswith(
-        "-Ilib -Iproblems/yosupo-point-add-range-sum -Iharness -Iproblems -Ithird_party/simde"
+        "-Ilib -Iproblems/yosupo/point-add-range-sum -Iharness -Iproblems -Ithird_party/simde"
     )
 
 

@@ -72,10 +72,8 @@
 #include <ranges>
 #include <span>
 #ifdef __x86_64__
-#define GNU_TARGET("pclmul") [[gnu::target("pclmul")]]
 #define GNU_TARGET(x) [[gnu::target(x)]]
 #else
-#define GNU_TARGET("pclmul")
 #define GNU_TARGET(x)
 #endif
 

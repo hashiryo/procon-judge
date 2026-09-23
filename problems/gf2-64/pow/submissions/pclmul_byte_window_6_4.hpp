@@ -18,6 +18,8 @@
 // 必要な拡張: VPCLMULQDQ + AVX2 (Intel Ice Lake / AMD Zen3 以降, dashboard EPYC 7763 で動作)。
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"
+#include "_shared/gf2-64/mul.hpp"
+#include "_shared/gf2-64/mul2.hpp"
 #include "_shared/gf2-64/sq.hpp"
 #include "_shared/gf2-64/frob.hpp"
 namespace gf2_64_pow_byte_window_6_2 {
@@ -26,15 +28,9 @@ using gf2_64_pclmul::frob32;
 using gf2_64_pclmul::FROB48_BYTE;
 using gf2_64_pclmul::FROB4_BYTE;
 using gf2_64_pclmul::mul;
+using gf2_64_pclmul::mul2;
 using gf2_64_pclmul::sq;
-const __m256i RED_TABLE= _mm256_setr_epi8(0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0);
-GNU_TARGET("vpclmulqdq") inline __m256i mul2(const __m256i& a_vec, const __m256i& b_vec) {
- __m256i prod= _mm256_clmulepi64_epi128(a_vec, b_vec, 0);
- __m256i d_full= _mm256_xor_si256(prod, _mm256_slli_epi64(prod, 1));
- __m256i red1_shift= _mm256_srli_si256(_mm256_xor_si256(d_full, _mm256_slli_epi64(d_full, 3)), 8);
- __m256i indices= _mm256_srli_si256(_mm256_srli_epi64(prod, 60), 8);
- return _mm256_xor_si256(_mm256_xor_si256(prod, red1_shift), _mm256_shuffle_epi8(RED_TABLE, indices));
-}
+using gf2_64_pclmul::unpack;
 inline __m256i frob4_2lane(u64 a0, u64 a1) {
  __m256i vA= _mm256_set_epi64x(FROB4_BYTE[1][u8(a1 >> 8)], FROB4_BYTE[0][u8(a1)], FROB4_BYTE[1][u8(a0 >> 8)], FROB4_BYTE[0][u8(a0)]);
  __m256i vB= _mm256_set_epi64x(FROB4_BYTE[3][u8(a1 >> 24)], FROB4_BYTE[2][u8(a1 >> 16)], FROB4_BYTE[3][u8(a0 >> 24)], FROB4_BYTE[2][u8(a0 >> 16)]);
@@ -51,7 +47,6 @@ inline __m256i frob16_frob48(u64 a0, u64 a1) {
  __m256i y= _mm256_xor_si256(_mm256_xor_si256(vA, vB), _mm256_xor_si256(vC, vD));
  return _mm256_xor_si256(y, _mm256_srli_si256(y, 8));
 }
-inline pair<u64, u64> unpack(const __m256i& vec) { return make_pair(u64(_mm256_extract_epi64(vec, 0)), u64(_mm256_extract_epi64(vec, 2))); }
 GNU_TARGET("pclmul,vpclmulqdq") u64 pow(u64 a, u64 e) {
  if(e == 0) return 1;
  // T[i] = a^i for i = 0..15、 binary-tree で 4 層に分けて VPCLMUL 並列化 (6 と同一)

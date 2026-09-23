@@ -15,6 +15,7 @@
 //   本実装は最大 16 個 (4-bit chunk 数) の lookup と mul → dense e で大幅に少ない
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"
+#include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/sq.hpp"
 #include "_shared/gf2-64/frob.hpp"
 namespace gf2_64_pow_frob_lookup_byte_window {

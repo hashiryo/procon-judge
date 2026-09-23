@@ -6,6 +6,8 @@
 #pragma GCC target("pclmul")
 #endif
 #include "_shared/gf2-64/_common.hpp"
+#include "_shared/gf2-64/mul.hpp"
+#include "_shared/gf2-64/sq.hpp"
 
 #if (defined(__x86_64__) || defined(__i386__)) && !defined(USE_SIMDE)
 #define PCLMUL_TARGET [[gnu::target("pclmul")]]
@@ -14,6 +16,7 @@
 #endif
 namespace gf2_64_pcl_log {
 using gf2_64_pclmul::mul;
+using gf2_64_pclmul::sq;
 GNU_TARGET("pclmul") inline u64 pow(u64 a, u64 e) {
  u64 res= 1;
  while(e) {
