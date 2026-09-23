@@ -886,8 +886,13 @@ HEADERS_SCHEMA = 1
 def env_summary(cells: Sequence[Cell], env_names: Sequence[str]) -> list[dict]:
     """1 提出の記録を環境ごとに畳む。ライブラリ側のサイトが表に出す単位。
 
-    同じ環境でも CPU モデルが複数あるので、状態は全部 AC のときだけ AC、
-    現行は全部現行のときだけ True にする。記録の無い環境も行に出す。
+    同じ環境でも CPU モデルが複数ある。現行 (current が True か None) の記録が
+    1 本でもあればそれだけを見て、状態は現行の記録が全部 AC のときだけ AC にする。
+    参考 (current が False) の記録は測ってからソースが変わったもので、今のソースの
+    証拠にならないので、現行の記録があるときは数えない。網羅モードの run は環境ごとに
+    1 モデルしか新しくしないので、他のモデルに参考が残っている間も、現行の記録が
+    1 本あれば環境の状態はそれで決まる。現行の記録が 1 本も無ければ参考の記録で
+    状態を出し、current は False。記録の無い環境も行に出す。
     """
     by_env: dict[str, list[Cell]] = {}
     for cell in cells:
@@ -900,21 +905,23 @@ def env_summary(cells: Sequence[Cell], env_names: Sequence[str]) -> list[dict]:
             out.append({"env": env, "status": None, "current": None, "models": 0,
                         "algo_ns": None})
             continue
-        bad = [c.status for c in group if c.status != "AC"]
-        flags = [c.current for c in group]
-        if any(f is False for f in flags):
+        live = [c for c in group if c.current is not False]
+        pool = live or group
+        bad = [c.status for c in pool if c.status != "AC"]
+        if not live:
             current: bool | None = False
-        elif any(f is None for f in flags):
+        elif any(c.current is None for c in live):
             current = None
         else:
             current = True
-        algo = [c.algo_ns for c in group if c.status == "AC" and c.algo_ns is not None]
+        algo = [c.algo_ns for c in pool if c.status == "AC" and c.algo_ns is not None]
         out.append(
             {
                 "env": env,
                 "status": bad[0] if bad else "AC",
                 "current": current,
-                "models": len(group),
+                # 数えたモデルの数。現行があればそのモデルだけ。
+                "models": len(pool),
                 "algo_ns": min(algo) if algo else None,
             }
         )

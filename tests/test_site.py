@@ -574,17 +574,47 @@ def test_build_writes_one_json_per_library_header(tmp_path, fake_library, monkey
 
 
 def test_env_summary_folds_models_into_environments():
+    """現行の記録が 1 本あれば、他のモデルの参考は数えない。網羅モードの run は環境ごとに
+    1 モデルしか新しくしないので、参考が残っている間もヘッダの印が落ちないようにする。"""
     cells = [
         rec_cell(env="x64-gcc", cpu_model="A", status="AC", current=True),
         rec_cell(env="x64-gcc", cpu_model="B", status="TLE", current=False),
         rec_cell(env="arm-gcc", cpu_model="N2", status="AC", current=True),
     ]
     summary = {row["env"]: row for row in site_build.env_summary(cells, ["x64-gcc", "arm-gcc", "arm-clang"])}
+    assert summary["x64-gcc"]["status"] == "AC"
+    assert summary["x64-gcc"]["current"] is True
+    assert summary["x64-gcc"]["models"] == 1
+    assert summary["arm-gcc"] == {"env": "arm-gcc", "status": "AC", "current": True, "models": 1, "algo_ns": 1000}
+    assert summary["arm-clang"]["status"] is None
+
+
+def test_env_summary_reports_a_failure_on_any_current_model():
+    """現行の記録どうしでは、1 モデルでも落ちていれば落ちている。"""
+    cells = [
+        rec_cell(env="x64-gcc", cpu_model="A", status="AC", current=True),
+        rec_cell(env="x64-gcc", cpu_model="B", status="RE", current=True),
+    ]
+    row = site_build.env_summary(cells, ["x64-gcc"])[0]
+    assert row["status"] == "RE"
+    assert row["current"] is True
+    assert row["models"] == 2
+
+
+def test_env_summary_falls_back_to_the_stale_records():
+    """現行の記録が 1 本も無ければ、参考の記録で状態を出して current は False。"""
+    cells = [
+        rec_cell(env="x64-gcc", cpu_model="A", status="AC", current=False),
+        rec_cell(env="x64-gcc", cpu_model="B", status="TLE", current=False),
+        rec_cell(env="arm-gcc", cpu_model="N2", status="AC", current=None),
+    ]
+    summary = {row["env"]: row for row in site_build.env_summary(cells, ["x64-gcc", "arm-gcc"])}
     assert summary["x64-gcc"]["status"] == "TLE"
     assert summary["x64-gcc"]["current"] is False
     assert summary["x64-gcc"]["models"] == 2
-    assert summary["arm-gcc"] == {"env": "arm-gcc", "status": "AC", "current": True, "models": 1, "algo_ns": 1000}
-    assert summary["arm-clang"]["status"] is None
+    # 判定できない (None) ものは現行と同じ扱い。
+    assert summary["arm-gcc"]["current"] is None
+    assert summary["arm-gcc"]["status"] == "AC"
 
 
 def rec_cell(**over):
