@@ -35,10 +35,9 @@ GNU_TARGET("vpclmulqdq") inline __m256i mul2(const __m256i& a_vec, const __m256i
  __m256i indices= _mm256_srli_si256(_mm256_srli_epi64(prod, 60), 8);
  return _mm256_xor_si256(_mm256_xor_si256(prod, red1_shift), _mm256_shuffle_epi8(RED_TABLE, indices));
 }
-
 inline __m256i frob4_2lane(u64 a0, u64 a1) {
  __m256i vA= _mm256_set_epi64x(0, FROB4_BYTE[0][u8(a1)], 0, FROB4_BYTE[0][u8(a0)]);
- for(int i= 1; i < 8; ++i)vA= _mm256_xor_si256(vA, _mm256_set_epi64x(0, FROB4_BYTE[i][u8(a1 >> (8 * i))], 0, FROB4_BYTE[i][u8(a0 >> (8 * i))]));
+ for(int i= 1; i < 8; ++i) vA= _mm256_xor_si256(vA, _mm256_set_epi64x(0, FROB4_BYTE[i][u8(a1 >> (8 * i))], 0, FROB4_BYTE[i][u8(a0 >> (8 * i))]));
  return vA;
 }
 inline pair<u64, u64> unpack(const __m256i& vec) { return make_pair(u64(_mm256_extract_epi64(vec, 0)), u64(_mm256_extract_epi64(vec, 2))); }
