@@ -3,7 +3,14 @@
 // O(nm) 素朴: pclmul mul を nested loop で。 大きい n, m では TLE する想定。
 #pragma GCC optimize("O3,unroll-loops")
 #if (defined(__x86_64__) || defined(__i386__)) && !defined(USE_SIMDE)
+#if defined(__clang__)
+// clang は #pragma GCC target を無視するので、-march に頼らず同じ一覧を attribute push で宣言する。
+// push はこのファイルの最後で pop する。
+#pragma clang attribute push(__attribute__((target("pclmul"))), apply_to = function)
+#define PJ_CLANG_TARGET_PUSHED 1
+#else
 #pragma GCC target("pclmul")
+#endif
 #include <immintrin.h>
 #endif
 
@@ -46,3 +53,8 @@ struct Solver {
   return c;
  }
 };
+
+#ifdef PJ_CLANG_TARGET_PUSHED
+#undef PJ_CLANG_TARGET_PUSHED
+#pragma clang attribute pop
+#endif

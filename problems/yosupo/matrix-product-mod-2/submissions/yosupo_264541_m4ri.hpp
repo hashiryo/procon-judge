@@ -15,7 +15,14 @@
 
 #pragma GCC optimize("O3,unroll-loops")
 #if (defined(__x86_64__) || defined(__i386__)) && !defined(USE_SIMDE)
+#if defined(__clang__)
+// clang は #pragma GCC target を無視するので、-march に頼らず同じ一覧を attribute push で宣言する。
+// push はこのファイルの最後で pop する。
+#pragma clang attribute push(__attribute__((target("avx2"))), apply_to = function)
+#define PJ_CLANG_TARGET_PUSHED 1
+#else
 #pragma GCC target("avx2")
+#endif
 #endif
 
 namespace yosupo_264541 {
@@ -68,3 +75,8 @@ struct Mul {
   return res;
  }
 };
+
+#ifdef PJ_CLANG_TARGET_PUSHED
+#undef PJ_CLANG_TARGET_PUSHED
+#pragma clang attribute pop
+#endif
