@@ -32,7 +32,7 @@ inline int low(uint64_t x) { return x == 0 ? -1 : __builtin_ctzll(x); }
 
 // FJ64_262K table + prime_test を取り込む (primality-test の fastest を再利用)。
 // algos/ 内の相対 include はテストハーネスでも -I が通るので問題なし。
-#include "../../yosupo-primality-test/submissions/yosupo_fastest.hpp"
+#include "../../primality-test/submissions/yosupo_fastest.hpp"
 // 上で algos/_common.hpp が再 include されるが #pragma once で防がれる。
 // `Primality` struct も定義されてしまうのでこの hpp 単体ではコンパイル不能。
 // → algos/yosupo_fastest.hpp 内で Primality を匿名化したいが侵襲的なので、
