@@ -370,7 +370,7 @@ GNU_TARGET("pclmul,vpclmulqdq") u64 log_g(u64 x) {
  const u64 s= mul(mul(embed_idx(u16(lnv >> 16)), g), x32);
  u64 s7= frob7(s);
  u64 T2= sq(s7), T3= mul(s7, T2);
- __m256i T24_48= frob3_frob4(T3, T3);
+ __m256i T24_48= frob3_frob4(T3);
  auto [T72, T51]= unpack(mul2(T24_48, _mm256_set_epi64x(0, T3, 0, _mm256_extract_epi64(T24_48, 2))));
  auto [x_641, x_6700417]= unpack(mul2(mul2(_mm256_set_epi64x(0, T2, 0, frob10(T51)), _mm256_set_epi64x(0, T3, 0, mul(T72, T51))), _mm256_set1_epi64x(s)));
  const u16 r1= u16(lnv);
