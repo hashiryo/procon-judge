@@ -2,11 +2,11 @@
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"
 namespace gf2_64_mul_pclmul_baseline {
-constexpr u8 RED_TABLE[]= {0, 27, 45, 54, 90, 65, 119, 108};
+constexpr u8 RED[]= {0, 27, 45, 54, 90, 65, 119, 108};
 GNU_TARGET("pclmul") inline u64 mul(u64 a, u64 b) {
  __m128i v= _mm_clmulepi64_si128(_mm_cvtsi64_si128(a), _mm_cvtsi64_si128(b), 0);
  u64 h= (u64)v[1], d= h ^ (h << 1);
- return (u64)v[0] ^ RED_TABLE[h >> 60] ^ d ^ (d << 3);
+ return (u64)v[0] ^ RED[h >> 60] ^ d ^ (d << 3);
 }
 }
 struct GF2_64Op {

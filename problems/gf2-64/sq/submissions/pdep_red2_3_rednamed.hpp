@@ -31,10 +31,10 @@ inline u64 spread_bits(u32 a) {
  return x;
 }
 #endif
-constexpr u8 RED[4]= {0, 27, 90, 65};  // RED[h>>62] の補正値
+constexpr u8 RED_SQ[4]= {0, 27, 90, 65};  // RED_SQ[h>>62] の補正値
 GNU_TARGET("bmi2") inline u64 sq(u64 a) {
  u64 h= spread_bits(u32(a >> 32)), d= h ^ (h << 1);
- return spread_bits(u32(a)) ^ RED[a >> 62] ^ d ^ (d << 3);
+ return spread_bits(u32(a)) ^ RED_SQ[a >> 62] ^ d ^ (d << 3);
 }
 }
 struct GF2_64Op {

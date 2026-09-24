@@ -151,7 +151,7 @@ constexpr inline u64 embed_idx(u16 idx) {
  }();
  return EMBED[0][u8(idx)] ^ EMBED[1][idx >> 8];
 }
-inline const __m256i RED_TABLE= GF2_64_M256_SETR_EPI8(0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0);
+inline const __m256i RED256= GF2_64_M256_SETR_EPI8(0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0);
 GNU_TARGET("vpclmulqdq") inline void mul2(const __m256i& a_vec, const __m256i& b_vec, u64& r0, u64& r1) {
  __m256i prod= _mm256_clmulepi64_epi128(a_vec, b_vec, 0);
  __m256i d_full= _mm256_xor_si256(prod, _mm256_slli_epi64(prod, 1));
@@ -159,7 +159,7 @@ GNU_TARGET("vpclmulqdq") inline void mul2(const __m256i& a_vec, const __m256i& b
  __m256i red1_shift= _mm256_srli_si256(red1_full, 8);
  __m256i h_idx= _mm256_srli_epi64(prod, 60);
  __m256i indices= _mm256_srli_si256(h_idx, 8);
- __m256i red_vec= _mm256_shuffle_epi8(RED_TABLE, indices);
+ __m256i red_vec= _mm256_shuffle_epi8(RED256, indices);
  __m256i result= _mm256_xor_si256(_mm256_xor_si256(prod, red1_shift), red_vec);
  r0= _mm256_extract_epi64(result, 0);
  r1= _mm256_extract_epi64(result, 2);

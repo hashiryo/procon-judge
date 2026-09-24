@@ -7,12 +7,12 @@
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 namespace gf2_64_mul2_2lane {
-const __m256i RED_TABLE= GF2_64_M256_SETR_EPI8(0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0);
+const __m256i RED256= GF2_64_M256_SETR_EPI8(0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0);
 GNU_TARGET("vpclmulqdq") inline __m256i mul2(const __m256i& a_vec, const __m256i& b_vec) {
  __m256i prod= _mm256_clmulepi64_epi128(a_vec, b_vec, 0);
  __m256i h= _mm256_srli_si256(prod, 8);
  __m256i d= _mm256_xor_si256(h, _mm256_slli_epi64(h, 1));
- return _mm256_xor_si256(_mm256_xor_si256(prod, _mm256_shuffle_epi8(RED_TABLE, _mm256_srli_epi64(h, 60))), _mm256_xor_si256(d, _mm256_slli_epi64(d, 3)));
+ return _mm256_xor_si256(_mm256_xor_si256(prod, _mm256_shuffle_epi8(RED256, _mm256_srli_epi64(h, 60))), _mm256_xor_si256(d, _mm256_slli_epi64(d, 3)));
 }
 }
 struct GF2_64Op {

@@ -104,7 +104,7 @@ GNU_TARGET("vpclmulqdq") inline __m256i expand_pair(const u64* p) {
 GNU_TARGET("vpclmulqdq") inline __m128i pack_pair(__m256i v) { return _mm256_castsi256_si128(_mm256_permute4x64_epi64(v, _MM_SHUFFLE(3, 2, 2, 0))); }
 // VPCLMULQDQ + 並列 reduction を __m256i で完結 (mul2 と同 idiom、 結果は (p0, _, p1, _))
 
-inline const __m256i RED_TABLE= GF2_64_M256_SETR_EPI8(0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0);
+inline const __m256i RED256= GF2_64_M256_SETR_EPI8(0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0);
 GNU_TARGET("vpclmulqdq") inline __m256i clmul_reduce_pair(__m256i a_vec, __m256i b_vec) {
  __m256i prod= _mm256_clmulepi64_epi128(a_vec, b_vec, 0);
  __m256i d_full= _mm256_xor_si256(prod, _mm256_slli_epi64(prod, 1));
@@ -112,7 +112,7 @@ GNU_TARGET("vpclmulqdq") inline __m256i clmul_reduce_pair(__m256i a_vec, __m256i
  __m256i red1_shift= _mm256_srli_si256(red1_full, 8);
  __m256i h_idx= _mm256_srli_epi64(prod, 60);
  __m256i indices= _mm256_srli_si256(h_idx, 8);
- __m256i red_vec= _mm256_shuffle_epi8(RED_TABLE, indices);
+ __m256i red_vec= _mm256_shuffle_epi8(RED256, indices);
  return _mm256_xor_si256(_mm256_xor_si256(prod, red1_shift), red_vec);
 }
 // FFT 用 butterfly pair: (i, i+1) を一括処理。

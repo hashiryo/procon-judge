@@ -29,7 +29,7 @@
 #include "_common.hpp"
 namespace gf2_64_pclmul {
 namespace _frob_detail {
-constexpr u8 RED_TABLE[]= {0, 27, 45, 54, 90, 65, 119, 108};
+constexpr u8 RED[]= {0, 27, 45, 54, 90, 65, 119, 108};
 constexpr u64 spread_constexpr(u32 a) {
  u64 x= a;
  x= (x | (x << 16)) & 0x0000FFFF0000FFFFull;
@@ -42,7 +42,7 @@ constexpr u64 spread_constexpr(u32 a) {
 constexpr u64 sq_constexpr(u64 a) {
  u64 h= spread_constexpr(u32(a >> 32));
  u64 d= h ^ (h << 1);
- return spread_constexpr(u32(a)) ^ RED_TABLE[h >> 60] ^ d ^ (d << 3);
+ return spread_constexpr(u32(a)) ^ RED[h >> 60] ^ d ^ (d << 3);
 }
 using Basis= array<u64, 64>;             // basis[i] = frobK(1 << i)
 using Table= array<array<u64, 256>, 8>;  // table[p][b] = frobK(b << 8p)
