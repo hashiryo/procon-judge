@@ -521,7 +521,7 @@ CI は既定ブランチを `lib/` へ clone して、その SHA を記録の `l
   "cpu_arch": "x86_64",
   "cpu_model": "AMD EPYC 7763 64-Core Processor",
   "compiler_version": "g++ (Ubuntu 15.1.0-1ubuntu1) 15.1.0",
-  "cxxflags": "-std=gnu++23 -O2 -march=x86-64-v3 ...",
+  "cxxflags": "-std=gnu++23 -Wall -Wextra -O2 -flto=auto -pthread ...",
   "cases_hash": "b851e7bd8718d0d6",
   "case_count": 42,
   "submission_hash": "9c4e...",
@@ -641,13 +641,13 @@ CPU モデルはジョブが始まるまで分かりません。したがって�
 name = "x64-gcc"
 runs_on = "ubuntu-24.04"
 cxx = "g++-15"
-cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=x86-64-v3 -flto=auto -pthread"
+cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -flto=auto -pthread"
 
 [[env]]
 name = "x64-clang"
 runs_on = "ubuntu-24.04"
 cxx = "clang++-21"
-cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=x86-64-v3 -flto=auto -pthread -fuse-ld=lld"
+cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -flto=auto -pthread -fuse-ld=lld"
 
 [[env]]
 name = "arm-gcc"
@@ -669,6 +669,8 @@ cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALI
 ```
 
 `runs_on = "self"` は手元専用で、CI のマトリクスには出しません。Mac の Apple clang を使うので `-march` は付けません。
+
+x64 の 2 環境にも `-march` は付けません。使う命令は、提出のソースで `#pragma GCC target` や関数の target の属性として宣言します。`-march=x86-64-v3` は宣言を書き忘れたコードも黙って通すので、2026-09-25 に外しました (「-march を外してソースで宣言する記録」)。
 
 引き金ごとに走らせる環境を絞る仕組みは入れません。4 環境を並列で回しても 1 分半なので、変更ごとの費用を削る意味がありません。
 
@@ -1879,7 +1881,7 @@ run の記録は collect が最後に results へ push するまで results に�
 
 2026-09-24 に、コンパイラへ `-march` を渡さず、使う命令はソースで宣言する方針に決めました。`-march=x86-64-v3` は AVX2 や BMI2 を黙って使えるようにするので、宣言を書き忘れたコードでも procon-judge では通ります。そういうコードを `-march` を付けない判定サイトに出すと CE になります。Codeforces の G++ のコマンドには `-march` がありません。手元の clang で x86_64 向けに比べると、v3 では組めて `-march` なしでは組めない提出が 66 本ありました。自動ベクトル化や 1 命令の popcount も `-march` で決まるので、宣言したぶんだけ速く出る形で測る方が、宣言を書く習慣に合います。
 
-切り替えは 3 段に分けました。1 段目と 2 段目はソースの書き換えで、`-march=x86-64-v3` のままでも同じ経路を通ります。3 段目で x64 の 2 環境から `-march` を外します。arm の `-march=armv8.2-a` は別に決めます。SIMDe が PMULL を使うかどうかは全体のフラグで決まり、関数ごとの宣言では変えられないからです。
+切り替えは 3 段に分けました。1 段目と 2 段目はソースの書き換えで、`-march=x86-64-v3` のままでも同じ経路を通ります。3 段目で、2026-09-25 に x64 の 2 環境から `-march` を外しました。arm の `-march=armv8.2-a` は別に決めます。SIMDe が PMULL を使うかどうかは全体のフラグで決まり、関数ごとの宣言では変えられないからです。
 
 ### 機能のマクロで分けた経路を先に直しました
 
@@ -1900,6 +1902,12 @@ pclmul を家族の一覧に入れたので、今の v3 のもとで起きてい
 ### 名前空間の 256 bit の定数はベクタのリテラルで初期化します
 
 名前空間に置いた `const __m256i RED_TABLE= _mm256_setr_epi8(...)` の初期化は、コンパイラが作る関数の中で走ります。clang の attribute push はユーザーが書いた関数にしか付かないので、`-march` なしではその関数に AVX が無く、CE になります。x86 では `GF2_64_M256_SETR_EPI8` で、関数を呼ばないベクタのリテラルにしました。値の並びは `_mm256_setr_epi8` と同じで、SIMDe のときは `_mm256_setr_epi8` のままです。
+
+### 3 段目で -march を外しました
+
+外す前に、家族の外で `#pragma GCC target` だけを書いていた 9 本に、clang 向けの宣言を並べました。clang はこの pragma を無視するので、intrinsics を使っていれば CE で気づけますが、自動ベクトル化に頼るコードは黙って遅くなります。手元の clang で組むと、9 本とも前は 256 bit の命令が 0 でした。AVX-512 の 2 本は、前は clang で CE で、今は GCC と同じく AVX-512 のある CPU でだけ走ります。
+
+キーのフラグが変わるので、x64 の記録は外した回に全部測り直しになりました。Library の PR の検査も `-march` を外しました。ただしその検査は構文だけを見るので、宣言の書き忘れは見つけられません。書き忘れの CE はインライン展開のときに出るので、見つけるのは procon-judge の記録です。
 
 ### 宣言の push は GitHub の 500 を受けてもジョブを止めません
 

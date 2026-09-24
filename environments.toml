@@ -2,18 +2,21 @@
 # cxxflags は -I を足す前の形。pj が -Ilib、問題のディレクトリ、-Ithird_party/simde
 # を足してからコンパイルする。記録の cxxflags には足したあとの文字列が入る。
 # runs_on = "self" は手元専用で、CI のマトリクスには出さない。
+# x64 には -march を付けない。使う命令 (AVX2、BMI2、pclmul など) はソースで宣言する。
+# -march=x86-64-v3 は宣言を書き忘れたコードも黙って通すので 2026-09-25 に外した
+# (DESIGN.md の「-march を外してソースで宣言する記録」)。arm の -march は別に決める。
 
 [[env]]
 name = "x64-gcc"
 runs_on = "ubuntu-24.04"
 cxx = "g++-15"
-cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=x86-64-v3 -flto=auto -pthread"
+cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -flto=auto -pthread"
 
 [[env]]
 name = "x64-clang"
 runs_on = "ubuntu-24.04"
 cxx = "clang++-21"
-cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=x86-64-v3 -flto=auto -pthread -fuse-ld=lld"
+cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -flto=auto -pthread -fuse-ld=lld"
 
 [[env]]
 name = "arm-gcc"
