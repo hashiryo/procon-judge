@@ -42,7 +42,7 @@ public:
  F_2_64& operator+=(const F_2_64& r) { p^= r.p; return *this; }
  F_2_64& operator-=(const F_2_64& r) { return operator+=(r); }
  // clang-format on
- GNU_TARGET("pclmul") F_2_64& operator*=(const F_2_64& r) {
+ GNU_TARGET("pclmul,sse4.1") F_2_64& operator*=(const F_2_64& r) {
   __m128i v= _mm_clmulepi64_si128(_mm_set_epi64x(0, p), _mm_set_epi64x(0, r.p), 0);
   std::uint64_t low= (std::uint64_t)_mm_extract_epi64(v, 0);
   std::uint64_t high= (std::uint64_t)_mm_extract_epi64(v, 1);

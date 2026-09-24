@@ -1909,6 +1909,13 @@ pclmul を家族の一覧に入れたので、今の v3 のもとで起きてい
 
 キーのフラグが変わるので、x64 の記録は外した回に全部測り直しになりました。Library の PR の検査も `-march` を外しました。ただしその検査は構文だけを見るので、宣言の書き忘れは見つけられません。書き忘れの CE はインライン展開のときに出るので、見つけるのは procon-judge の記録です。
 
+外した回の測り直し (af79ee7) で判定が変わったのは 7 件でした。4 件は AVX-512 や GFNI のない EPYC 7763 に当たって RE になったもので、同じ CPU では前から RE でした。modulo-test-runtime-30-even の long_double.hpp の TLE は、同じ 7763 で前は最長 7.4 秒の AC だったので、`-march` を外して遅くなったものです。残りの 2 件は convolution-f2-64 の schoenhage の 2 本で、x64-gcc で CE になりました。pclmul だけを宣言した関数で SSE4.1 の `_mm_extract_epi64` を使っていたので、宣言に sse4.1 を足しました。clang はこの intrinsic を SSE4.1 なしで組めるので AC のままでした。
+
+判定は変わらないまま、x64-gcc でだけ 2 倍から 5 倍遅くなった提出が 9 本あります。どれも Library Checker の写しで、`#pragma GCC optimize("Ofast")` と `#pragma GCC target` を両方書いています。GCC は fast-math (中の finite-math-only) のもとで target を組み直すと、宣言より前に定義された関数と target のフラグが食い違い、その関数をインライン展開しません。base.cpp は提出より先に pj.hpp と common.hpp を読むので、`std::vector::operator[]` のような標準ライブラリの関数がすべて宣言より前に来て、測る関数に展開されなくなります。判定サイトでは pragma が `#include <bits/stdc++.h>` より前にあるので、この食い違いは起きません。`-march=x86-64-v3` を付けていたあいだは pragma が何も足さないので隠れていました。clang はインライン展開してよいかを命令セットの包含だけで決めるので、影響を受けません。characteristic-polynomial の写しを x86 の GCC 15 で組むと、展開を断った数は今の読み込み順で 882、提出を pj.hpp より先に読む順で 2 でした。直し方は未定です。
+
+RED_TABLE の名前の衝突 (940963a で mul.hpp と mul2.hpp が同じ名前空間に同じ名前の表を持った) で CE だった 58 本の陰に、gf2-64-log の 15 本の宣言の漏れが隠れていました。構造体の static inline メンバの `__m256i` を、`_mm256_set_epi64x` と `_mm256_set1_epi64x` で初期化していました。2 段目の `_mm256_setr_epi8` と同じ理由で、`-march` なしの clang では CE になります。`_common.hpp` に `GF2_64_M256_SET_EPI64X` と `GF2_64_M256_SET1_EPI64X` を足して、リテラルで初期化するようにしました。
+
+
 ### 宣言の push は GitHub の 500 を受けてもジョブを止めません
 
 2026-09-24 の run で、宣言の ref の push に GitHub が 500 を返し、2 秒おき 3 回のやり直しが全部外れて、2 本のジョブが止まりました。間隔を倍々に延ばして 5 回までやり直し、それでも通らなければその問題だけを飛ばして次へ進むようにしました。飛ばした問題は次の run が拾います。宣言の一覧が取れないときは、手元の一覧のまま進みます。

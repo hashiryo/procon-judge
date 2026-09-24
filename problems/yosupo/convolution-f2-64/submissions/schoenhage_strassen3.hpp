@@ -34,7 +34,7 @@ namespace conv_f2_64_schoenhage_strassen3 {
 struct F2XMod1000000000000001B {
  using uu64= unsigned long long;
  uu64 x;
- GNU_TARGET("pclmul") static uu64 mul(uu64 a, uu64 b) {
+ GNU_TARGET("pclmul,sse4.1") static uu64 mul(uu64 a, uu64 b) {
   __m128i ab= _mm_set_epi64x(a, b);
   __m128i xy= _mm_clmulepi64_si128(ab, ab, 1);
   uu64 X= _mm_extract_epi64(xy, 0), Y= _mm_extract_epi64(xy, 1);
