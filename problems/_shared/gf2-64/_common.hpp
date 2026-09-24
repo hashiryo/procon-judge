@@ -23,12 +23,17 @@
 // 名前空間に置く 256 bit の定数を初期化するためのもの。_mm256_setr_epi8 で初期化すると、その
 // 処理はコンパイラが作る関数の中で走る。clang の attribute push はその関数に target を付けない
 // ので、-march なしでは AVX が無いと言われて CE になる。x86 では関数を呼ばないベクタのリテラルに
-// して、定数として初期化する。値の並びは _mm256_setr_epi8 と同じ。
+// して、定数として初期化する。値の並びは _mm256_setr_epi8 と同じ。構造体の static inline メンバで
+// 使う _mm256_set_epi64x と _mm256_set1_epi64x も同じ形で用意する。
 #if defined(__x86_64__) && !defined(USE_SIMDE)
 typedef char gf2_64_i8x32 __attribute__((vector_size(32)));
 #define GF2_64_M256_SETR_EPI8(...) ((__m256i)(gf2_64_i8x32){__VA_ARGS__})
+#define GF2_64_M256_SET_EPI64X(e3, e2, e1, e0) ((__m256i){(long long)(e0), (long long)(e1), (long long)(e2), (long long)(e3)})
+#define GF2_64_M256_SET1_EPI64X(x) GF2_64_M256_SET_EPI64X(x, x, x, x)
 #else
 #define GF2_64_M256_SETR_EPI8(...) _mm256_setr_epi8(__VA_ARGS__)
+#define GF2_64_M256_SET_EPI64X(e3, e2, e1, e0) _mm256_set_epi64x(e3, e2, e1, e0)
+#define GF2_64_M256_SET1_EPI64X(x) _mm256_set1_epi64x(x)
 #endif
 
 // bits/stdc++.h は Apple clang に無いので名指しで include する (旧 judge からの移植)。

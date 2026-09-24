@@ -309,10 +309,10 @@ struct BSGSTable6700417 {
   return r;
  }();
  // 定数のベクタは 1 度だけ作る。lane0 が z 側 (g^-2mk)、lane1 が z^-1 側 (g^+2mk)。
- static inline const __m256i V_S1= _mm256_set_epi64x(0, up_1, 0, step_1);
- static inline const __m256i V_S2= _mm256_set_epi64x(0, up_2, 0, step_2);
- static inline const __m256i V_S3= _mm256_set_epi64x(0, up_3, 0, step_3);
- static inline const __m256i V_S4= _mm256_set_epi64x(0, up_4, 0, step_4);
+ static inline const __m256i V_S1= GF2_64_M256_SET_EPI64X(0, up_1, 0, step_1);
+ static inline const __m256i V_S2= GF2_64_M256_SET_EPI64X(0, up_2, 0, step_2);
+ static inline const __m256i V_S3= GF2_64_M256_SET_EPI64X(0, up_3, 0, step_3);
+ static inline const __m256i V_S4= GF2_64_M256_SET_EPI64X(0, up_4, 0, step_4);
  u32 solve(u64 target) const {
   const u64 iv= frob32(target);  // = target^-1。以降 frob32 は呼ばない
   // (z, w) の組をベクタ 1 本で持つ。mul2 の出力がそのまま次の入力の形なので詰め直しが要らない。

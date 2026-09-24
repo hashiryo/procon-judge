@@ -320,9 +320,9 @@ struct BSGSTable6700417 {
   return r;
  }();
  // 定数のベクタは 1 度だけ作る (関数の中で組むと毎回即値の組み立てが走る)
- static inline const __m256i V_S01= _mm256_set_epi64x(0, step_1, 0, 1);
- static inline const __m256i V_S23= _mm256_set_epi64x(0, step_3, 0, step_2);
- static inline const __m256i V_S4= _mm256_set1_epi64x(step_4);
+ static inline const __m256i V_S01= GF2_64_M256_SET_EPI64X(0, step_1, 0, 1);
+ static inline const __m256i V_S23= GF2_64_M256_SET_EPI64X(0, step_3, 0, step_2);
+ static inline const __m256i V_S4= GF2_64_M256_SET1_EPI64X(step_4);
  u32 solve(u64 target) const {
   // stream は (0,1) と (2,3) の 2 本のベクタで持つ。mul2 の出力 (q0, q2) がそのまま
   // 次の mul2 の operand の置き場所なので、段を進めるのに詰め直しが要らない。
