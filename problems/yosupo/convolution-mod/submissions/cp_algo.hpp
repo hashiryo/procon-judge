@@ -28,6 +28,20 @@
 // simde が `_mm256_mul_epu32` 等を提供しているので AVX2 パスを使うべき。
 // fallback の `u64x4 * u64x4` は別計算になり WA になるため、AVX2 マクロを立てて
 // simde ヘッダを include する。
+#if (defined(__x86_64__) || defined(__i386__)) && !defined(USE_SIMDE)
+#if defined(__clang__)
+// clang は #pragma GCC target を無視するので、-march に頼らず同じ一覧を attribute push で宣言する。
+// push はこのファイルの最後で pop する。GCC の pragma と違って __AVX2__ などは立たないので、
+// 本体の分岐が GCC と同じ経路を通るよう、見ているマクロだけを立てる (SIMDe で __AVX2__ を立てるのと同じ)。
+#pragma clang attribute push(__attribute__((target("avx2,bmi,bmi2"))), apply_to = function)
+#define PJ_CLANG_TARGET_PUSHED 1
+#ifndef __AVX2__
+#define __AVX2__ 1
+#endif
+#else
+#pragma GCC target("avx2,bmi,bmi2")
+#endif
+#endif
 #ifdef USE_SIMDE
 #include <simde/x86/avx2.h>
 #ifndef __AVX2__
@@ -663,3 +677,8 @@ struct Conv {
   return r;
  }
 };
+
+#ifdef PJ_CLANG_TARGET_PUSHED
+#undef PJ_CLANG_TARGET_PUSHED
+#pragma clang attribute pop
+#endif

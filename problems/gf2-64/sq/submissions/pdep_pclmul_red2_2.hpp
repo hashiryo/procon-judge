@@ -15,10 +15,12 @@
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"
 namespace gf2_64_sq_pdep {
-inline u64 spread_bits(u32 a) {
-#ifdef __BMI2__
- return _pdep_u64(u64(a), 0x5555555555555555ull);
+// PDEP (BMI2) は -march に頼らず、x86 のときだけ宣言して使う。x86 以外 (SIMDe) は bit interleave。
+// sq と run にも bmi2 を宣言して、インライン展開が今までどおり効くようにしている。
+#if defined(__x86_64__) && !defined(USE_SIMDE)
+GNU_TARGET("bmi2") inline u64 spread_bits(u32 a) { return _pdep_u64(u64(a), 0x5555555555555555ull); }
 #else
+inline u64 spread_bits(u32 a) {
  // fallback: bit interleave for 32-bit input
  u64 x= a;
  x= (x | (x << 16)) & 0x0000FFFF0000FFFFull;
@@ -27,12 +29,12 @@ inline u64 spread_bits(u32 a) {
  x= (x | (x << 2)) & 0x3333333333333333ull;
  x= (x | (x << 1)) & 0x5555555555555555ull;
  return x;
-#endif
 }
-GNU_TARGET("pclmul") inline u64 sq(u64 a) { return spread_bits(u32(a)) ^ ((u8[]){0, 27, 90, 65})[a >> 62] ^ (u64)_mm_clmulepi64_si128(_mm_cvtsi64_si128(spread_bits(u32(a >> 32))), _mm_cvtsi64_si128(0b11011), 0)[0]; }
+#endif
+GNU_TARGET("pclmul,bmi2") inline u64 sq(u64 a) { return spread_bits(u32(a)) ^ ((u8[]){0, 27, 90, 65})[a >> 62] ^ (u64)_mm_clmulepi64_si128(_mm_cvtsi64_si128(spread_bits(u32(a >> 32))), _mm_cvtsi64_si128(0b11011), 0)[0]; }
 }
 struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as) {
+ GNU_TARGET("bmi2") static vector<u64> run(const vector<u64>& as) {
   using gf2_64_sq_pdep::sq;
   vector<u64> ans(as.size());
   for(size_t i= 0; i < as.size(); ++i) ans[i]= sq(as[i]);
