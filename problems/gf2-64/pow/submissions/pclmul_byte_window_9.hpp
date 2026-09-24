@@ -59,7 +59,7 @@ inline __m256i frob8_2lane(u64 a0, u64 a1) {
  __m128i v6= _mm_set_epi64x(FROB8_BYTE[6][u8(a1 >> 48)], FROB8_BYTE[6][u8(a0 >> 48)]);
  __m128i v7= _mm_set_epi64x(FROB8_BYTE[7][u8(a1 >> 56)], FROB8_BYTE[7][u8(a0 >> 56)]);
  __m128i y= _mm_xor_si128(_mm_xor_si128(_mm_xor_si128(v0, v1), _mm_xor_si128(v2, v3)), _mm_xor_si128(_mm_xor_si128(v4, v5), _mm_xor_si128(v6, v7)));
- _mm256_permute4x64_epi64(_mm256_castsi128_si256(y), _MM_SHUFFLE(1, 1, 0, 0));
+ return _mm256_permute4x64_epi64(_mm256_castsi128_si256(y), _MM_SHUFFLE(1, 1, 0, 0));
 }
 // inline __m256i frob16_2lane(u64 a0, u64 a1) {
 //  __m256i vA= _mm256_set_epi64x(FROB16_BYTE[1][u8(a1 >> 8)], FROB16_BYTE[0][u8(a1)], FROB16_BYTE[1][u8(a0 >> 8)], FROB16_BYTE[0][u8(a0)]);
@@ -79,7 +79,7 @@ inline __m256i frob16_2lane(u64 a0, u64 a1) {
  __m128i v6= _mm_set_epi64x(FROB16_BYTE[6][u8(a1 >> 48)], FROB16_BYTE[6][u8(a0 >> 48)]);
  __m128i v7= _mm_set_epi64x(FROB16_BYTE[7][u8(a1 >> 56)], FROB16_BYTE[7][u8(a0 >> 56)]);
  __m128i y= _mm_xor_si128(_mm_xor_si128(_mm_xor_si128(v0, v1), _mm_xor_si128(v2, v3)), _mm_xor_si128(_mm_xor_si128(v4, v5), _mm_xor_si128(v6, v7)));
- _mm256_permute4x64_epi64(_mm256_castsi128_si256(y), _MM_SHUFFLE(1, 1, 0, 0));
+ return _mm256_permute4x64_epi64(_mm256_castsi128_si256(y), _MM_SHUFFLE(1, 1, 0, 0));
 }
 // inline __m256i frob32_2lane(u64 a0, u64 a1) {
 //  __m256i vA= _mm256_set_epi64x(FROB32_BYTE[1][u8(a1 >> 8)], FROB32_BYTE[0][u8(a1)], FROB32_BYTE[1][u8(a0 >> 8)], FROB32_BYTE[0][u8(a0)]);
@@ -99,7 +99,7 @@ inline __m256i frob32_2lane(u64 a0, u64 a1) {
  __m128i v6= _mm_set_epi64x(FROB32_BYTE[6][u8(a1 >> 48)], FROB32_BYTE[6][u8(a0 >> 48)]);
  __m128i v7= _mm_set_epi64x(FROB32_BYTE[7][u8(a1 >> 56)], FROB32_BYTE[7][u8(a0 >> 56)]);
  __m128i y= _mm_xor_si128(_mm_xor_si128(_mm_xor_si128(v0, v1), _mm_xor_si128(v2, v3)), _mm_xor_si128(_mm_xor_si128(v4, v5), _mm_xor_si128(v6, v7)));
- _mm256_permute4x64_epi64(_mm256_castsi128_si256(y), _MM_SHUFFLE(1, 1, 0, 0));
+ return _mm256_permute4x64_epi64(_mm256_castsi128_si256(y), _MM_SHUFFLE(1, 1, 0, 0));
 }
 GNU_TARGET("pclmul,vpclmulqdq") u64 pow(u64 a, u64 e) {
  if(e == 0) return 1;
