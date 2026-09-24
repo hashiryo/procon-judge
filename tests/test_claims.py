@@ -182,3 +182,75 @@ def test_stale_skips_the_runs_that_are_still_active():
     assert claims_mod.stale(refs, "10", active={"9"}) == [refs[0], refs[2]]
     assert claims_mod.run_of(refs[1]) == "9"
     assert claims_mod.run_of("refs/heads/main") is None
+
+
+def _fake_push(monkeypatch, outcomes):
+    """push だけを差し替える。outcomes を先頭から 1 つずつ返し、尽きたら本物に渡す。
+
+    GitHub の 500 は「[remote rejected] ... (Internal Server Error)」で返る (2026-09-24 の CI)。
+    """
+    real = subprocess.run
+    calls = []
+
+    def run(cmd, *args, **kwargs):
+        if "push" in cmd and outcomes:
+            calls.append(cmd)
+            code, err = outcomes.pop(0)
+            return subprocess.CompletedProcess(cmd, code, "", err)
+        return real(cmd, *args, **kwargs)
+
+    monkeypatch.setattr(claims_mod.subprocess, "run", run)
+    return calls
+
+
+SERVER_ERROR = " ! [remote rejected] abc -> refs/claims/x (Internal Server Error)\nerror: failed to push some refs\n"
+
+
+def test_a_server_error_is_retried_and_then_the_claim_goes_through(remote, monkeypatch):
+    _, a, b = remote
+    calls = _fake_push(monkeypatch, [(1, SERVER_ERROR), (1, SERVER_ERROR)])
+    job0 = claims_mod.Claims("1", "x64", MODEL, job=0, repo=a)
+    assert job0.claim("p") is True
+    assert len(calls) == 2
+    # 3 回目は本物の push で通っている。
+    assert claims_mod.Claims("1", "x64", MODEL, job=1, repo=b).taken() == {"p"}
+
+
+def test_a_server_error_that_does_not_go_away_is_a_claim_error(remote, monkeypatch):
+    _, a, _ = remote
+    calls = _fake_push(monkeypatch, [(1, SERVER_ERROR)] * claims_mod.RETRIES)
+    with pytest.raises(claims_mod.ClaimError, match="Internal Server Error"):
+        claims_mod.Claims("1", "x64", MODEL, repo=a).claim("p")
+    assert len(calls) == claims_mod.RETRIES
+
+
+def test_the_wait_doubles_between_retries(monkeypatch):
+    slept = []
+    monkeypatch.setattr(claims_mod, "RETRY_WAIT_SEC", 2.0)
+    monkeypatch.setattr(claims_mod.time, "sleep", slept.append)
+    for attempt in range(1, claims_mod.RETRIES):
+        claims_mod._wait(attempt)
+    assert slept == [2.0, 4.0, 8.0, 16.0]
+
+
+class _BrokenClaims:
+    def claim(self, problem_id):
+        raise claims_mod.ClaimError("refs/claims/x を push できません: Internal Server Error")
+
+    def taken(self):
+        raise claims_mod.ClaimError("git ls-remote: Internal Server Error")
+
+
+def test_the_job_skips_a_problem_it_cannot_claim(capsys):
+    """1 問の宣言が通らないだけでジョブごと止めない。その問題は次の run が拾う。"""
+    from pj import cli
+
+    assert cli._try_claim(_BrokenClaims(), "p") is None
+    assert "p を宣言できないので飛ばします" in capsys.readouterr().err
+
+
+def test_the_job_keeps_its_list_when_the_claims_cannot_be_listed(capsys):
+    from pj import cli
+
+    assert cli._taken_or(_BrokenClaims(), {"q"}) == {"q"}
+    assert "宣言の一覧を取れない" in capsys.readouterr().err

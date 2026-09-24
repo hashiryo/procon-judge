@@ -37,8 +37,10 @@ NAMESPACE = "refs/claims"
 # 網羅モードの宣言の、CPU モデルの位置に入る固定の名前。
 ANY = "any"
 GIT_TIMEOUT_SEC = 120
-# 網の都合で失敗したときのやり直し。弾かれた (取られていた) のはやり直さない。
-RETRIES = 3
+# 網や GitHub の都合で失敗したときのやり直し。弾かれた (取られていた) のはやり直さない。
+# GitHub は宣言の push に 500 (Internal Server Error) を返すことがあり、2026-09-24 の run では
+# 2 秒おきの 3 回が全部外れた。間隔を倍々に空けて 5 回まで (待ちは合わせて 30 秒) やり直す。
+RETRIES = 5
 RETRY_WAIT_SEC = 2.0
 # 掃除で 1 回の push に載せる ref の数。
 DELETE_CHUNK = 100
@@ -70,6 +72,11 @@ def slug(text: str) -> str:
     if cleaned.endswith(".lock"):
         cleaned = cleaned[: -len(".lock")] + "-lock"
     return cleaned or "unknown"
+
+
+def _wait(attempt: int) -> None:
+    """attempt 回目に失敗したあとの待ち。2 秒、4 秒、8 秒と倍々に延ばす。"""
+    time.sleep(RETRY_WAIT_SEC * 2 ** (attempt - 1))
 
 
 def _git(repo: Path, *args: str, env: dict[str, str] | None = None) -> str:
@@ -121,7 +128,7 @@ class Claims:
             except ClaimError as e:
                 last = e
                 if attempt < RETRIES:
-                    time.sleep(RETRY_WAIT_SEC)
+                    _wait(attempt)
         else:
             assert last is not None
             raise last
@@ -135,8 +142,10 @@ class Claims:
     def claim(self, problem_id: str) -> bool:
         """宣言する。取れたら True、他のジョブが先に取っていたら False。
 
-        網の都合で push が終わらなかったときは少しやり直す。同じ sha を押すので、
-        実は通っていた回のやり直しは up-to-date で True になる。
+        網や GitHub の都合で push が通らなかったときは、間を空けてやり直す。同じ sha を
+        押すので、実は通っていた回のやり直しは up-to-date で True になる。GitHub の 500 は
+        「[remote rejected] ... (Internal Server Error)」で返り、先に取られていたときの
+        「[rejected]」とは別なので、やり直しの側に入る。やり直しても通らなければ ClaimError。
         """
         ref = self.ref(problem_id)
         commit = self._commit(problem_id)
@@ -161,7 +170,7 @@ class Claims:
             except (subprocess.SubprocessError, OSError) as e:
                 if attempt == RETRIES:
                     raise ClaimError(f"{ref} を push できません: {e}") from e
-                time.sleep(RETRY_WAIT_SEC)
+                _wait(attempt)
                 continue
             if proc.returncode == 0:
                 return True
@@ -172,7 +181,7 @@ class Claims:
                 raise ClaimError(
                     f"{ref} を push できません: {proc.stderr.strip()[-500:]}"
                 )
-            time.sleep(RETRY_WAIT_SEC)
+            _wait(attempt)
         raise AssertionError("unreachable")
 
     def _commit(self, problem_id: str) -> str:

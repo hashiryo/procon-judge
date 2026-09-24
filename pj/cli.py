@@ -445,7 +445,7 @@ def _run_claiming(
     borrowed = store.cases_hashes()
     batches = store.batches()
     batch_id = batch_mod.ci_id(args.claim_run, scope, args.job)
-    taken = claims.taken()
+    taken = _taken_or(claims, set())
     unavailable = _without_testdata(problems)
     print(
         f"{'網羅' if mode == 'cover' else '全モデル'}モード。宣言済み {len(taken)} 問から始めます"
@@ -454,7 +454,7 @@ def _run_claiming(
     )
 
     started = time.monotonic()
-    claimed = executed = skipped = lost = nothing = already = 0
+    claimed = executed = skipped = lost = nothing = already = unclaimable = 0
     timed_out = False
     for problem_id in sequence:
         if run_mod.out_of_time(started, args.minutes, time.monotonic()):
@@ -482,9 +482,15 @@ def _run_claiming(
         if not measuring:
             nothing += 1
             continue
-        if not claims.claim(problem_id):
+        got = _try_claim(claims, problem_id)
+        if got is None:
+            # GitHub の都合で宣言が通らない。宣言せずに測ると他のジョブと二重になりうるので、
+            # この問題は飛ばして次へ進む。次の run が未計測として拾う。
+            unclaimable += 1
+            continue
+        if not got:
             lost += 1
-            taken = claims.taken()
+            taken = _taken_or(claims, taken)
             continue
         claimed += 1
         print(f"宣言 {claimed}: {problem_id}", file=sys.stderr)
@@ -508,6 +514,7 @@ def _run_claiming(
         f"スキップ {skipped} 件",
         f"宣言済みで飛ばした {already} 問",
         f"同時に取ろうとして負けた {lost} 問",
+        *([f"GitHub の都合で宣言できず飛ばした {unclaimable} 問"] if unclaimable else []),
         f"{'揃っていて' if mode == 'cover' else 'このモデルでは'}仕事なし {nothing} 問",
     ]
     if timed_out:
@@ -612,6 +619,28 @@ def _print_summary(
     if worklist.blocked:
         parts.append(f"include 未解決 {len(worklist.blocked)} 件")
     print(" / ".join(parts), file=file)
+
+
+def _try_claim(claims: claims_mod.Claims, problem_id: str) -> bool | None:
+    """宣言する。取れたら True、先に取られていたら False、GitHub の都合で決まらなければ None。
+
+    宣言は効率のためのもので、正しさは記録の重複排除が守る。1 問の宣言が通らないだけで
+    ジョブごと止めると、その後に測れたはずの問題まで落とすので、警告を出して続ける。
+    """
+    try:
+        return claims.claim(problem_id)
+    except claims_mod.ClaimError as e:
+        print(f"warning: {problem_id} を宣言できないので飛ばします: {e}", file=sys.stderr)
+        return None
+
+
+def _taken_or(claims: claims_mod.Claims, fallback: set[str]) -> set[str]:
+    """今ある宣言。取れなければ fallback のまま進む。宣言そのものが排他を守るので、一覧が古くても壊れない。"""
+    try:
+        return claims.taken()
+    except claims_mod.ClaimError as e:
+        print(f"warning: 宣言の一覧を取れないので、手元の一覧のまま進めます: {e}", file=sys.stderr)
+        return fallback
 
 
 def cmd_claims_clean(args: argparse.Namespace) -> int:
