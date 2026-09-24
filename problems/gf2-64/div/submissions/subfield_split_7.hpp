@@ -31,6 +31,7 @@ using gf2_64_pclmul::frob32;
 using gf2_64_pclmul::mul;
 using gf2_64_pclmul::mul2;
 using gf2_64_pclmul::sq;
+using gf2_64_pclmul::unpack;
 constexpr auto INV_LOW= []() {
  u16 col[]= {1U, 11778U, 7028U, 51115U, 48663U, 26081U, 17458U, 40223U, 30334U, 42368U, 14380U, 2223U, 49688U, 11217U, 44239U, 63445U};
  u16 T_lo[256]= {};
