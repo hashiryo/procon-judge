@@ -10,7 +10,7 @@
 #include "_shared/gf2-64/sq.hpp"
 
 #if (defined(__x86_64__) || defined(__i386__)) && !defined(USE_SIMDE)
-#define PCLMUL_TARGET [[gnu::target("pclmul")]]
+#define PCLMUL_TARGET GNU_TARGET("pclmul")
 #else
 #define PCLMUL_TARGET
 #endif

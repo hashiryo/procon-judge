@@ -11,7 +11,7 @@
 // building block として使用 OK。
 #include "_common.hpp"
 namespace gf2_64_pclmul {
-const __m256i RED_TABLE= _mm256_setr_epi8(0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0);
+const __m256i RED_TABLE= GF2_64_M256_SETR_EPI8(0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0);
 template <int IMM= 0> GNU_TARGET("vpclmulqdq") inline __m256i mul2(const __m256i& a_vec, const __m256i& b_vec) {
  __m256i prod= _mm256_clmulepi64_epi128(a_vec, b_vec, IMM);
  __m256i h= _mm256_srli_si256(prod, 8);

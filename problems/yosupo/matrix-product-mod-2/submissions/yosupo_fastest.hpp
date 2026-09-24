@@ -29,6 +29,15 @@ struct Mul {
 #else
 
 #pragma GCC optimize("O3,unroll-loops,rename-registers")
+// -march に頼らず、使う AVX2 をここで宣言する (この分岐は x86_64 だけ)。
+#if defined(__clang__)
+// clang は #pragma GCC target を無視するので、-march に頼らず同じ一覧を attribute push で宣言する。
+// push はこのファイルの最後で pop する。
+#pragma clang attribute push(__attribute__((target("avx2"))), apply_to = function)
+#define PJ_CLANG_TARGET_PUSHED 1
+#else
+#pragma GCC target("avx2")
+#endif
 #include <immintrin.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -205,3 +214,8 @@ struct Mul {
 };
 
 #endif // __x86_64__
+
+#ifdef PJ_CLANG_TARGET_PUSHED
+#undef PJ_CLANG_TARGET_PUSHED
+#pragma clang attribute pop
+#endif

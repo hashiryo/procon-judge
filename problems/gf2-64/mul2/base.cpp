@@ -25,3 +25,8 @@ signed main() {
   print_all(r);
   report_metrics((long long)chrono::duration_cast<chrono::nanoseconds>(t1 - t0).count());
 }
+
+// _shared/gf2-64/_common.hpp が開いた宣言の領域を閉じる。clang は翻訳単位の中で閉じる必要がある。
+#ifdef GF2_64_TARGET_END
+GF2_64_TARGET_END
+#endif

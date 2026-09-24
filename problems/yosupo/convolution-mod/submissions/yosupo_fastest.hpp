@@ -16,7 +16,14 @@
 #ifdef USE_SIMDE
 #include <simde/x86/avx2.h>
 #else
+#if defined(__clang__)
+// clang は #pragma GCC target を無視するので、-march に頼らず同じ一覧を attribute push で宣言する。
+// push はこのファイルの最後で pop する。
+#pragma clang attribute push(__attribute__((target("avx2"))), apply_to = function)
+#define PJ_CLANG_TARGET_PUSHED 1
+#else
 #pragma GCC target("avx2")
+#endif
 #include <immintrin.h>
 #endif
 #include <sys/mman.h>
@@ -413,3 +420,8 @@ struct Conv {
   return r;
  }
 };
+
+#ifdef PJ_CLANG_TARGET_PUSHED
+#undef PJ_CLANG_TARGET_PUSHED
+#pragma clang attribute pop
+#endif

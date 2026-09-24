@@ -5,6 +5,17 @@
 #else
 #include <immintrin.h>
 #endif
+// -march に頼らず、使う AVX2 をここで宣言する (x86 のときだけ)。
+#if (defined(__x86_64__) || defined(__i386__)) && !defined(USE_SIMDE)
+#if defined(__clang__)
+// clang は #pragma GCC target を無視するので、-march に頼らず同じ一覧を attribute push で宣言する。
+// push はこのファイルの最後で pop する。
+#pragma clang attribute push(__attribute__((target("avx2"))), apply_to = function)
+#define PJ_CLANG_TARGET_PUSHED 1
+#else
+#pragma GCC target("avx2")
+#endif
+#endif
 // AVX2 で内側 j ループをベクトル化した Warshall-Floyd。
 // k, i 固定で d[i][j] = min(d[i][j], d[i][k] + d[k][j]) の j 軸を 8-wide で処理。
 // Vp は 8 の倍数を仮定 (パディング列は INF で埋まっている)。
@@ -29,3 +40,8 @@ struct WF {
   }
  }
 };
+
+#ifdef PJ_CLANG_TARGET_PUSHED
+#undef PJ_CLANG_TARGET_PUSHED
+#pragma clang attribute pop
+#endif
