@@ -59,7 +59,7 @@ inline __m256i frob16_2lane(u64 a0, u64 a1) {
 }
 inline __m256i frob16_4lane(u64 a0, u64 a1, u64 a2, u64 a3) {
  __m256i vA= _mm256_set_epi64x(FROB16_BYTE[0][u8(a3)], FROB16_BYTE[0][u8(a2)], FROB16_BYTE[0][u8(a1)], FROB16_BYTE[0][u8(a0)]);
- __m256i vB= _mm256_set_epi64x(FROB16_BYTE[1][u8(a3 >> 8)], FROB16_BYTE[1][u8(a1 >> 8)], FROB16_BYTE[1][u8(a1 >> 8)], FROB16_BYTE[1][u8(a0 >> 8)]);
+ __m256i vB= _mm256_set_epi64x(FROB16_BYTE[1][u8(a3 >> 8)], FROB16_BYTE[1][u8(a2 >> 8)], FROB16_BYTE[1][u8(a1 >> 8)], FROB16_BYTE[1][u8(a0 >> 8)]);
  __m256i vC= _mm256_set_epi64x(FROB16_BYTE[2][u8(a3 >> 16)], FROB16_BYTE[2][u8(a2 >> 16)], FROB16_BYTE[2][u8(a1 >> 16)], FROB16_BYTE[2][u8(a0 >> 16)]);
  __m256i vD= _mm256_set_epi64x(FROB16_BYTE[3][u8(a3 >> 24)], FROB16_BYTE[3][u8(a2 >> 24)], FROB16_BYTE[3][u8(a1 >> 24)], FROB16_BYTE[3][u8(a0 >> 24)]);
  __m256i vE= _mm256_set_epi64x(FROB16_BYTE[4][u8(a3 >> 32)], FROB16_BYTE[4][u8(a2 >> 32)], FROB16_BYTE[4][u8(a1 >> 32)], FROB16_BYTE[4][u8(a0 >> 32)]);
@@ -82,7 +82,7 @@ inline __m256i frob32_2lane(u64 a0, u64 a1) {
 }
 inline __m256i frob32_4lane(u64 a0, u64 a1, u64 a2, u64 a3) {
  __m256i vA= _mm256_set_epi64x(FROB32_BYTE[0][u8(a3)], FROB32_BYTE[0][u8(a2)], FROB32_BYTE[0][u8(a1)], FROB32_BYTE[0][u8(a0)]);
- __m256i vB= _mm256_set_epi64x(FROB32_BYTE[1][u8(a3 >> 8)], FROB32_BYTE[1][u8(a1 >> 8)], FROB32_BYTE[1][u8(a1 >> 8)], FROB32_BYTE[1][u8(a0 >> 8)]);
+ __m256i vB= _mm256_set_epi64x(FROB32_BYTE[1][u8(a3 >> 8)], FROB32_BYTE[1][u8(a2 >> 8)], FROB32_BYTE[1][u8(a1 >> 8)], FROB32_BYTE[1][u8(a0 >> 8)]);
  __m256i vC= _mm256_set_epi64x(FROB32_BYTE[2][u8(a3 >> 16)], FROB32_BYTE[2][u8(a2 >> 16)], FROB32_BYTE[2][u8(a1 >> 16)], FROB32_BYTE[2][u8(a0 >> 16)]);
  __m256i vD= _mm256_set_epi64x(FROB32_BYTE[3][u8(a3 >> 24)], FROB32_BYTE[3][u8(a2 >> 24)], FROB32_BYTE[3][u8(a1 >> 24)], FROB32_BYTE[3][u8(a0 >> 24)]);
  __m256i vE= _mm256_set_epi64x(FROB32_BYTE[4][u8(a3 >> 32)], FROB32_BYTE[4][u8(a2 >> 32)], FROB32_BYTE[4][u8(a1 >> 32)], FROB32_BYTE[4][u8(a0 >> 32)]);
