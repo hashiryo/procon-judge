@@ -15,7 +15,7 @@ from pathlib import Path
 from . import batch as batch_mod
 from . import claims as claims_mod
 from . import environment as env_mod
-from . import fetch
+from . import fetch, tryout
 from . import migrate as migrate_mod
 from . import plan as plan_mod
 from . import problem as problem_mod
@@ -707,6 +707,37 @@ def cmd_repro(args: argparse.Namespace) -> int:
         return _die(str(e))
 
 
+def cmd_try(args: argparse.Namespace) -> int:
+    """手元で組んで、自分で用意した入力で走らせる。判定も記録もしない。"""
+    by_file = args.file is not None
+    by_submission = args.problem is not None or args.submission is not None
+    if by_file == by_submission:
+        return _die("ファイルか、--problem と --submission の組のどちらか一方を渡してください")
+    if by_submission and (args.problem is None or args.submission is None):
+        return _die("--problem と --submission は両方渡してください")
+    env = env_mod.load(args.env)
+    input_path = None
+    if args.input is not None:
+        input_path = Path(args.input).expanduser().resolve()
+        if not input_path.is_file():
+            return _die(f"入力のファイル {args.input} がありません")
+
+    if by_file:
+        source = Path(args.file).expanduser().resolve()
+        if not source.is_file():
+            return _die(f"{args.file} がありません")
+        print(f"{env.cxx} でコンパイルします", file=sys.stderr)
+        built = tryout.build_file(source, env)
+    else:
+        problem = problem_mod.load_by_id(args.problem)
+        submission = Path(args.submission)
+        if not (problem.dir / submission).is_file():
+            return _die(f"{problem.id} に提出 {submission} がありません")
+        print(f"{env.cxx} でコンパイルします", file=sys.stderr)
+        built = tryout.build_submission(problem, submission, env)
+    return tryout.run_built(built, input_path=input_path)
+
+
 def cmd_records_list(args: argparse.Namespace) -> int:
     store = Store(Path(args.store) if args.store else RESULTS_DIR)
     for problem_id in store.problem_ids():
@@ -873,6 +904,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_repro.add_argument("--env", default="local")
     p_repro.set_defaults(func=cmd_repro)
+
+    p_try = sub.add_parser(
+        "try", help="手元で組んで、自分で用意した入力で走らせる (printf デバッグ用。判定も記録もしない)"
+    )
+    p_try.add_argument(
+        "file", nargs="?",
+        help="組む .cpp。提出と同じ探索パスで組む。--problem と --submission を渡すときは省く",
+    )
+    p_try.add_argument("--problem", help="提出をハーネスごと組むときの問題 id")
+    p_try.add_argument("--submission", help="submissions/xxx.hpp の形")
+    p_try.add_argument("--input", help="標準入力にするファイル。省くと端末の標準入力をそのまま渡す")
+    p_try.add_argument("--env", default="local")
+    p_try.set_defaults(func=cmd_try)
 
     claims_cmd = sub.add_parser("claims", help="CI のジョブが仕事を取るための宣言").add_subparsers(
         dest="subcommand", required=True

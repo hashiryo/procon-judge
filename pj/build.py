@@ -6,6 +6,7 @@ import shlex
 import shutil
 import subprocess
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -91,11 +92,13 @@ def build(
     env: Environment,
     *,
     out_dir: Path | None = None,
+    extra_flags: Sequence[str] = (),
 ) -> BuildResult:
     """翻訳単位を 1 つコンパイルする。
 
     kind = "base" なら base.cpp を、提出のパスを SUBMISSION_HPP に渡して組む。
     kind = "raw" なら提出そのものが翻訳単位。
+    extra_flags は pj try が手元で試すときだけ足すもので、記録の cxxflags には入らない。
     """
     out_dir = out_dir or BUILD_CACHE_DIR / problem.id / env.name
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -110,8 +113,33 @@ def build(
         source = problem.base_cpp
     else:
         source = problem.dir / submission
-    cmd += ["-o", str(binary), str(source)]
+    cmd += [*extra_flags, "-o", str(binary), str(source)]
+    return _compile(cmd, binary, cxxflags)
 
+
+def build_file(
+    source: Path,
+    env: Environment,
+    *,
+    out_dir: Path,
+    extra_flags: Sequence[str] = (),
+) -> BuildResult:
+    """問題に属さない 1 ファイルを、環境のフラグと提出と同じ探索パスで組む (pj try 用)。
+
+    問題のディレクトリが無いので、-I は lib、harness、problems、SIMDe の 4 つ。source は
+    絶対パスで渡す。コンパイラは ROOT で動かすので、相対パスだとずれる。
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    binary = out_dir / (source.stem + ".bin")
+    if binary.exists():
+        binary.unlink()
+    flags = shlex.split(env.cxxflags)
+    flags += [f"-I{_rel(d)}" for d in (LIB_DIR, HARNESS_DIR, PROBLEMS_DIR, SIMDE_DIR)]
+    cmd = [env.cxx, *flags, *extra_flags, "-o", str(binary), str(source)]
+    return _compile(cmd, binary, shlex.join(flags))
+
+
+def _compile(cmd: list[str], binary: Path, cxxflags: str) -> BuildResult:
     t0 = time.monotonic()
     try:
         proc = subprocess.run(

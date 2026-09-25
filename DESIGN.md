@@ -707,6 +707,9 @@ pj records squash                            results ブランチの履歴を畳
 pj bundle --problem ID --submission PATH     1 ファイルに展開する
 pj repro --problem ID --submission PATH [--case NAME | --cases N] [--env NAME]
                                              手元で走らせて、落ちたケースの差分とファイルの場所を見る。--cases N は名前順の先頭 N ケースだけ
+pj try FILE [--input F] [--env NAME]         1 ファイルを提出と同じ探索パスで組み、自分の入力で走らせる (printf デバッグ用)
+pj try --problem ID --submission PATH [--input F]
+                                             提出をハーネスごと組み、自分の入力で走らせる。判定も記録もしない
 pj site build [--out DIR] [--store DIR]   記録から静的なサイトを作る
 ```
 
