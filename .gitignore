@@ -1,8 +1,9 @@
 .cache/
 .results/
 /site/
-# CI が実行のたびに clone する。pin しないので git には置かない。
-/lib/
+# CI が実行のたびに clone する。pin しないので git には置かない。手元では Library の
+# 作業ツリーへのシンボリックリンクでもよいので、末尾に / を付けない (付けるとリンクに合わない)。
+/lib
 .venv/
 __pycache__/
 *.pyc

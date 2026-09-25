@@ -16,7 +16,9 @@ git clone --depth=1 https://github.com/hashiryo/Library.git lib
 uv run pj problems list | head
 ```
 
-`lib/` はライブラリの clone で、git 管理外です。CI は実行のたびに最新を clone するので、手元も自分で clone します。無いままだと `mylib/...` を include する提出が include 未解決になって走りません。
+`lib/` はライブラリの置き場で、git 管理外です。CI は実行のたびに最新を clone するので、手元も自分で用意します。無いままだと `mylib/...` を include する提出が include 未解決になって走りません。
+
+Library の作業ツリーが隣にあるなら、clone せず、`ln -s ../Library lib` でシンボリックリンクを張ってもかまいません。Library でまだ commit していない変更を、手元の `pj repro` などでそのまま試せます。CI は `lib/` を見ずに Library の既定のブランチを取るので、CI に測らせるときは Library を先に push します。
 
 手元の環境は `environments.toml` の `local` で、`c++` (macOS では Apple clang) を使います。CI の 4 環境は GitHub のランナーでしか動きません。
 
