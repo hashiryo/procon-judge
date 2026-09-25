@@ -1,7 +1,8 @@
 """pj try。手元で組んで、自分で用意した入力で走らせる。printf デバッグのための口。
 
 pj repro が決まったテストデータで判定するのに対して、こちらは判定しない。標準入力は
-ファイルか端末から渡し、stdout と stderr は捕まえずに端末へそのまま流す。記録は書かない。
+ファイルか、問題のテストケースか、端末から渡す。stdout と stderr は捕まえずに端末へそのまま
+流す。記録は書かない。テストケースを渡したときは、見比べられるよう期待出力の場所を出す。
 
 Library の include/ を探索パスの最後に足し、__LOCAL を立てる。debug.hpp の debug(...) と、
 Apple clang に無い bits/stdc++.h のシムがそのまま使える。SIMDe は third_party/simde の方が
@@ -18,11 +19,30 @@ from pathlib import Path
 from typing import TextIO
 
 from . import build as build_mod
+from . import fetch
 from .environment import Environment
 from .paths import CACHE_DIR, LIB_DIR
 from .problem import Problem
 
 TRY_CACHE_DIR = CACHE_DIR / "try"
+# ケースが見つからないときに例として並べる数。
+SUGGEST_CASES = 10
+
+
+class TryError(Exception):
+    """走らせられないときに投げる。"""
+
+
+def find_case(problem: Problem, env: Environment, name: str) -> fetch.Case:
+    """問題のテストケースを名前で探す。手元に無ければ pj repro と同じく取ってくる。"""
+    if not fetch.needs_testdata(problem):
+        raise TryError(f"{problem.id} はテストデータを使わない問題です")
+    testcases = fetch.ensure(problem, env=env)
+    for case in testcases.cases:
+        if case.name == name:
+            return case
+    names = ", ".join(c.name for c in testcases.cases[:SUGGEST_CASES])
+    raise TryError(f"{problem.id} にケース {name!r} がありません (例: {names})")
 
 
 def extra_flags() -> list[str]:
@@ -48,10 +68,17 @@ def build_submission(problem: Problem, submission: Path, env: Environment) -> bu
     return build_mod.build(problem, submission, env, out_dir=out_dir, extra_flags=extra_flags())
 
 
-def run_built(built: build_mod.BuildResult, *, input_path: Path | None, err: TextIO = sys.stderr) -> int:
+def run_built(
+    built: build_mod.BuildResult,
+    *,
+    input_path: Path | None,
+    expected_path: Path | None = None,
+    err: TextIO = sys.stderr,
+) -> int:
     """組めていれば走らせて終了コードを返す。組めなければ 1。
 
     input_path が無ければ、端末の標準入力をそのまま渡す (pj try x.cpp < in.txt でもよい)。
+    expected_path はテストケースの期待出力で、判定はせずに場所だけを最後に出す。
     """
     if not built.ok:
         print(f"CE ({built.seconds:.1f}s)", file=err)
@@ -80,4 +107,6 @@ def run_built(built: build_mod.BuildResult, *, input_path: Path | None, err: Tex
         print(f"\nシグナル {-code} で落ちました ({ms} ms)", file=err)
         return 128 - code
     print(f"\n終了コード {code} ({ms} ms)", file=err)
+    if expected_path is not None:
+        print(f"期待出力   {expected_path}", file=err)
     return code

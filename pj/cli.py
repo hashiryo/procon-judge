@@ -708,34 +708,51 @@ def cmd_repro(args: argparse.Namespace) -> int:
 
 
 def cmd_try(args: argparse.Namespace) -> int:
-    """手元で組んで、自分で用意した入力で走らせる。判定も記録もしない。"""
-    by_file = args.file is not None
-    by_submission = args.problem is not None or args.submission is not None
-    if by_file == by_submission:
-        return _die("ファイルか、--problem と --submission の組のどちらか一方を渡してください")
-    if by_submission and (args.problem is None or args.submission is None):
-        return _die("--problem と --submission は両方渡してください")
+    """手元で組んで、自分で用意した入力か問題のテストケースで走らせる。判定も記録もしない。
+
+    形は 3 つ。ファイルだけ、ファイルと --problem と --case (その問題のケースを入力にする)、
+    --problem と --submission (提出をハーネスごと組む)。
+    """
+    if args.file is not None and args.submission is not None:
+        return _die("ファイルと --submission は一緒に渡せません")
+    if args.file is None and (args.problem is None or args.submission is None):
+        if args.problem is not None or args.submission is not None:
+            return _die("--problem と --submission は両方渡してください")
+        return _die("ファイルか、--problem と --submission の組を渡してください")
+    if args.case is not None and args.problem is None:
+        return _die("--case は --problem と一緒に渡してください")
+    if args.file is not None and args.problem is not None and args.case is None:
+        return _die("ファイルに --problem を付けるのは、--case でその問題のケースを入力にするときだけです")
+
     env = env_mod.load(args.env)
-    input_path = None
+    problem = problem_mod.load_by_id(args.problem) if args.problem is not None else None
+    input_path = expected_path = None
     if args.input is not None:
         input_path = Path(args.input).expanduser().resolve()
         if not input_path.is_file():
             return _die(f"入力のファイル {args.input} がありません")
+    elif args.case is not None:
+        assert problem is not None
+        try:
+            case = tryout.find_case(problem, env, args.case)
+        except (tryout.TryError, fetch.FetchError) as e:
+            return _die(str(e))
+        input_path, expected_path = case.in_path, case.out_path
 
-    if by_file:
+    if args.file is not None:
         source = Path(args.file).expanduser().resolve()
         if not source.is_file():
             return _die(f"{args.file} がありません")
         print(f"{env.cxx} でコンパイルします", file=sys.stderr)
         built = tryout.build_file(source, env)
     else:
-        problem = problem_mod.load_by_id(args.problem)
+        assert problem is not None
         submission = Path(args.submission)
         if not (problem.dir / submission).is_file():
             return _die(f"{problem.id} に提出 {submission} がありません")
         print(f"{env.cxx} でコンパイルします", file=sys.stderr)
         built = tryout.build_submission(problem, submission, env)
-    return tryout.run_built(built, input_path=input_path)
+    return tryout.run_built(built, input_path=input_path, expected_path=expected_path)
 
 
 def cmd_records_list(args: argparse.Namespace) -> int:
@@ -912,9 +929,15 @@ def build_parser() -> argparse.ArgumentParser:
         "file", nargs="?",
         help="組む .cpp。提出と同じ探索パスで組む。--problem と --submission を渡すときは省く",
     )
-    p_try.add_argument("--problem", help="提出をハーネスごと組むときの問題 id")
+    p_try.add_argument(
+        "--problem", help="問題 id。--submission と組むか、ファイルと --case に組んで使う"
+    )
     p_try.add_argument("--submission", help="submissions/xxx.hpp の形")
-    p_try.add_argument("--input", help="標準入力にするファイル。省くと端末の標準入力をそのまま渡す")
+    source = p_try.add_mutually_exclusive_group()
+    source.add_argument("--input", help="標準入力にするファイル。--input も --case も省くと端末の標準入力を渡す")
+    source.add_argument(
+        "--case", help="--problem のテストケースの入力を標準入力にする。手元に無ければ取ってくる"
+    )
     p_try.add_argument("--env", default="local")
     p_try.set_defaults(func=cmd_try)
 

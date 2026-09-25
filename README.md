@@ -229,11 +229,12 @@ uv run pj repro --problem <id> --submission submissions/<name>.hpp --case <ケ�
 uv run pj repro --problem <id> --submission submissions/<name>.hpp --cases 3
 uv run pj try scratch/a.cpp < in.txt
 uv run pj try --problem <id> --submission submissions/<name>.hpp --input in.txt
+uv run pj try --problem <id> --submission submissions/<name>.hpp --case <ケース名>
 ```
 
 `--dry-run` は走らせる対象を出すだけです。`pj run` は記録を `.results/` に書くので、別の場所に書きたければ `--out` を渡します。`pj repro` はテストデータを取って手元のコンパイラで組み、そのケースだけ走らせて、完全な差分と入力、期待出力、実際の出力のファイルの場所を出します。記録は書きません。`--case` の代わりに `--cases N` を付けると、ケースを名前順に並べた先頭から N ケースだけを走らせます。CI を待つ前に、組めていくつかのケースが通るかを手早く見るときに使います。テストデータは問題ごとにまとめて取るので、取る量は変わりません。
 
-`pj try` は、判定をせずに手元で組んで走らせるだけの口です。printf デバッグに使います。1 つ目の形は、どこに置いた .cpp でも、`local` と同じコンパイラとフラグ、提出と同じ探索パスで組みます。`lib/` を Library の作業ツリーへのリンクにしていれば、書きかけのヘッダもそのまま include できます。2 つ目の形は、提出をハーネスごと組み、自分で書いた入力を与えて走らせます。どちらも `-D__LOCAL` を立て、Library の `include/` を探索パスの最後に足します。そのため、`#include "debug.hpp"` の `debug(...)` と、Apple clang に無い `bits/stdc++.h` が使えます。標準入力は `--input` のファイルか端末から読み、stdout と stderr はそのまま画面に出します。記録は書きません。試し書きは `scratch/` に置けば git に入りません。
+`pj try` は、判定をせずに手元で組んで走らせるだけの口です。printf デバッグに使います。1 つ目の形は、どこに置いた .cpp でも、`local` と同じコンパイラとフラグ、提出と同じ探索パスで組みます。`lib/` を Library の作業ツリーへのリンクにしていれば、書きかけのヘッダもそのまま include できます。2 つ目の形は、提出をハーネスごと組み、自分で書いた入力を与えて走らせます。どちらも `-D__LOCAL` を立て、Library の `include/` を探索パスの最後に足します。そのため、`#include "debug.hpp"` の `debug(...)` と、Apple clang に無い `bits/stdc++.h` が使えます。標準入力は `--input` のファイルか端末から読み、stdout と stderr はそのまま画面に出します。`--input` の代わりに `--case <ケース名>` を付けると、問題のテストケースの入力を渡します。1 ファイルの形でも、`--problem <id> --case <ケース名>` と付ければ使えます。判定はせず、最後に期待出力のファイルの場所を出します。記録は書きません。試し書きは `scratch/` に置けば git に入りません。
 
 macOS の `local` は Apple clang と libc++ なので、CI の 4 環境 (どれも libstdc++) と結果が同じとは限りません。`std::__lg` を使う提出 (Library Checker の写しなど) は、手元では CE になります。
 
