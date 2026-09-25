@@ -1949,11 +1949,14 @@ include したあとで足す形にしなかったのは、clang に効かない
 
 ```cpp
 #if defined(__x86_64__) && defined(__GNUC__) && !defined(__clang__)
+#include <bits/allocator.h>
 #pragma GCC target("sse3,ssse3,sse4.1,sse4.2,popcnt,cx16,sahf,avx,avx2,bmi,bmi2,fma,f16c,lzcnt,movbe,pclmul,vpclmulqdq")
 #endif
 ```
 
 `__x86_64__` を条件に入れるのは、x86 以外の CPU では GCC が x86 の命令名を CE にするからです。clang 向けには何も入れません。AtCoder は `-march=native` で組むと理解しているので、宣言が要らないはずです。
+
+pragma の前に `<bits/allocator.h>` だけを読むのは、GCC 13 と 14 のバグを避けるためです (2026-09-25 に足しました)。この 2 つでは、pragma を標準ライブラリより前に置くと、vector や string を使うだけで CE になります。libstdc++ 13 と 14 は `std::allocator` のデストラクタに always_inline を付けています。pragma の後ろで定義されたそれを、pragma の命令を持たない暗黙のデストラクタへ展開できないのが原因です。clang の push を前へ置いたときの CE と同じ形です。Codeforces の 64 bit の C++ は GCC 13 (G++20) と 14 (G++23) なので、これが無いとほぼすべての提出が CE になります。docker の GCC 11.5、12.5、13.5、14.4、15.3 (x86 の Linux) で、この形のバンドル結果が警告なしで組め、std::sort に渡したラムダも展開されることを確かめました。宣言が付かないのは allocator の小さな関数だけです。
 
 キーのフラグが変わるので、戻した回で x64 の記録は全部測り直しになりました。Library の PR の検査も同じオプションで組むようにしました。
 

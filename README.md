@@ -205,7 +205,7 @@ uv run pj mirror push --problem <id>
 
 提出のパスはそのまま識別子です。順位表と提出ページとライブラリ側のサイトからのリンクがこのパスを指すので、リネームすると別の提出として測り直しになります。
 
-x64 の環境は、土台の命令をコンパイラのオプションで渡します。x86-64-v3 の命令 (AVX2、BMI2、FMA、popcnt など) に pclmul と vpclmulqdq を足したもので、フラグは `-march=x86-64-v3 -mpclmul -mvpclmulqdq` です。土台の命令は、提出で宣言しなくても使えます。判定サイトへ出すときは、同じ一覧の `#pragma GCC target` を提出の先頭に置きます。これは algo-workspace のバンドラで入れる予定です。一覧は DESIGN.md の「土台の命令をオプションに戻しました」にあります。
+x64 の環境は、土台の命令をコンパイラのオプションで渡します。x86-64-v3 の命令 (AVX2、BMI2、FMA、popcnt など) に pclmul と vpclmulqdq を足したもので、フラグは `-march=x86-64-v3 -mpclmul -mvpclmulqdq` です。土台の命令は、提出で宣言しなくても使えます。判定サイトへ出すときは、algo-workspace のバンドラが、同じ一覧の `#pragma GCC target` を提出の先頭に入れます。GCC 13 と 14 のバグを避けるため、その前に `<bits/allocator.h>` だけを読みます。一覧と理由は DESIGN.md の「土台の命令をオプションに戻しました」にあります。
 
 vpclmulqdq を使うコードは、`__builtin_cpu_supports("vpclmulqdq")` で実行時に分け、持たない CPU 向けの経路も書いてください。Codeforces の判定機が vpclmulqdq を持たないためです。vpclmulqdq の intrinsics はすべて分岐の内側に置き、分岐はループの外に置いて判定を 1 回で済ませます。GitHub の x64 ランナーはどれも vpclmulqdq を持つので、持たない側の経路は procon-judge では測られません。
 
