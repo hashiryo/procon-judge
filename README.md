@@ -227,14 +227,11 @@ uv run pj run --env local --problem <id> --dry-run
 uv run pj run --env local --problem <id>
 uv run pj repro --problem <id> --submission submissions/<name>.hpp --case <ケース名>
 uv run pj repro --problem <id> --submission submissions/<name>.hpp --cases 3
-uv run pj try scratch/a.cpp < in.txt
-uv run pj try --problem <id> --submission submissions/<name>.hpp --input in.txt
-uv run pj try --problem <id> --submission submissions/<name>.hpp --case <ケース名>
 ```
 
 `--dry-run` は走らせる対象を出すだけです。`pj run` は記録を `.results/` に書くので、別の場所に書きたければ `--out` を渡します。`pj repro` はテストデータを取って手元のコンパイラで組み、そのケースだけ走らせて、完全な差分と入力、期待出力、実際の出力のファイルの場所を出します。記録は書きません。`--case` の代わりに `--cases N` を付けると、ケースを名前順に並べた先頭から N ケースだけを走らせます。CI を待つ前に、組めていくつかのケースが通るかを手早く見るときに使います。テストデータは問題ごとにまとめて取るので、取る量は変わりません。
 
-`pj try` は、判定をせずに手元で組んで走らせるだけの口です。printf デバッグに使います。1 つ目の形は、どこに置いた .cpp でも、`local` と同じコンパイラとフラグ、提出と同じ探索パスで組みます。`lib/` を Library の作業ツリーへのリンクにしていれば、書きかけのヘッダもそのまま include できます。2 つ目の形は、提出をハーネスごと組み、自分で書いた入力を与えて走らせます。どちらも `-D__LOCAL` を立て、Library の `include/` を探索パスの最後に足します。そのため、`#include "debug.hpp"` の `debug(...)` と、Apple clang に無い `bits/stdc++.h` が使えます。標準入力は `--input` のファイルか端末から読み、stdout と stderr はそのまま画面に出します。`--input` の代わりに `--case <ケース名>` を付けると、問題のテストケースの入力を渡します。1 ファイルの形でも、`--problem <id> --case <ケース名>` と付ければ使えます。判定はせず、最後に期待出力のファイルの場所を出します。記録は書きません。試し書きは `scratch/` に置けば git に入りません。
+判定をせずに、自分で用意した入力や問題のテストケースで走らせたいときは、下の「手元で試し書きを走らせる」の `pj try` を使います。
 
 macOS の `local` は Apple clang と libc++ なので、CI の 4 環境 (どれも libstdc++) と結果が同じとは限りません。`std::__lg` を使う提出 (Library Checker の写しなど) は、手元では CE になります。
 
@@ -255,6 +252,57 @@ run にはモードが 2 つあります。push と Library の dispatch は網�
 ## 既存の問題に提出を足す
 
 問題のディレクトリの `submissions/` にファイルを置いて push するだけです。`base` の問題なら、`base.cpp` が呼ぶ型と関数を実装します。手元で `uv run pj run --env local --problem <id> --submission submissions/<name>.hpp` と 1 本だけ走らせて確かめられます。1 本だけ指定したときは束を作らないので、手元の記録が順位表を乱すことはありません。
+
+## 手元で試し書きを走らせる
+
+`pj try` は、判定も記録もせずに、手元で組んで走らせるだけの口です。Library の実装を printf デバッグしながら書くときに使います。
+
+```
+uv run pj try scratch/a.cpp                                    # 標準入力は端末から
+uv run pj try scratch/a.cpp --input in.txt                     # ファイルを標準入力に
+uv run pj try scratch/a.cpp --problem <id> --case <ケース名>     # 問題のテストケースを標準入力に
+uv run pj try --problem <id> --submission submissions/<name>.hpp --case <ケース名>
+```
+
+1 ファイルの形は、どこに置いた .cpp でも、`local` 環境と同じコンパイラとフラグ、提出と同じ探索パスで組みます。`lib/` を Library の作業ツリーへのリンクにしておけば、まだ commit していないヘッダもそのまま include できます。`scratch/` は git に入らないので、試し書きの置き場に使えます。最後の形は、提出をハーネスごと組みます。
+
+どちらの形でも `-D__LOCAL` を立て、Library の `include/` を探索パスの最後に足します。そのため `#include "debug.hpp"` の 1 行で、次のマクロが使えます。Apple clang に無い `bits/stdc++.h` も、Library のシムで読めます。
+
+| マクロ | 出すもの |
+| --- | --- |
+| `debug(a, b, ...)` | 変数名と値。vector や map、pair、tuple などは中身まで出します |
+| `checkpoint()` | そこを通ったこと |
+| `debugArray(x, n)` | 配列 x の先頭 n 個 |
+| `debugMatrix(x, h, w)` | 2 次元配列 x の h 行 w 列 |
+
+どれも、関数名と行番号とファイル名を添えて stderr に出します。
+
+stdout と stderr は捕まえずに、そのまま画面に出します。最後に終了コードと実行時間を出します。`--case` を付けたときは、テストデータが手元に無ければ取ってきます。判定はしませんが、最後に期待出力のファイルの場所を出すので、見比べられます。`--case` に無いケース名を渡すと、ケース名の例を並べます。
+
+```cpp
+// scratch/a.cpp
+#include "debug.hpp"
+#include "mylib/algebra/ModInt.hpp"
+int main() {
+  using Mint = ModInt<998244353>;
+  int k;
+  std::cin >> k;
+  Mint b = Mint(3).pow(k);
+  std::vector<int> v = {1, 2, 3};
+  debug(k, b, v);
+  std::cout << b << '\n';
+}
+```
+
+```
+$ echo 10 | uv run pj try scratch/a.cpp
+c++ でコンパイルします
+コンパイル完了 (4.4s)
+k, b, v = 10, 59049, [1, 2, 3] in main (L9) .../scratch/a.cpp
+59049
+
+終了コード 0 (560 ms)
+```
 
 ## 問題を消す
 
@@ -283,7 +331,9 @@ git push origin results
 | `pj mirror status [--problem ID]` | 保管庫の状態 |
 | `pj mirror push --problem ID [--force]` | 保管庫へ上げる。`--force` は取り直したデータに入れ替えるとき用 |
 | `pj run --env ENV [--problem ID] [--submission PATH] [--dry-run] [--out DIR]` | 実行して記録を出す |
-| `pj repro --problem ID --submission PATH [--case NAME]` | 1 提出を手元で走らせて差分を見る |
+| `pj repro --problem ID --submission PATH [--case NAME \| --cases N]` | 1 提出を手元で走らせて差分を見る。`--cases N` は名前順の先頭 N ケースだけ |
+| `pj try FILE [--input F \| --problem ID --case NAME]` | 1 ファイルを提出と同じ探索パスで組み、判定せずに走らせる (printf デバッグ用) |
+| `pj try --problem ID --submission PATH [--input F \| --case NAME]` | 提出をハーネスごと組み、判定せずに走らせる |
 | `pj records list` | 記録の一覧 |
 | `pj records append DIR...` | ほかの jsonl を記録に取り込む |
 | `pj site build [--out DIR] [--store DIR]` | 記録からサイトを作る |
