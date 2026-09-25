@@ -207,6 +207,37 @@ def test_rows_carry_the_commit_that_was_measured(tmp_path, no_problem_dirs):
     assert data["rows"][0]["judge_sha"] == "abc123"
 
 
+MOVED_FLAGS = "-O2 -Ilib -Iproblems/old/p -Iharness -Iproblems -Ithird_party/simde"
+
+
+def test_the_measured_directory_comes_from_the_problem_include():
+    assert site_build.measured_dir(MOVED_FLAGS) == "problems/old/p"
+    assert site_build.measured_dir("-O2 -Ilib -Iproblems") == ""
+    assert site_build.measured_dir("") == ""
+
+
+def test_links_of_a_moved_problem_use_the_directory_at_that_commit(
+    tmp_path, no_problem_dirs, monkeypatch
+):
+    """問題を動かしても測り直しは起きない。前に測った記録のリンクは前の場所を指す。"""
+    monkeypatch.setenv("GITHUB_REPOSITORY", "owner/repo")
+    monkeypatch.delenv("GITHUB_SERVER_URL", raising=False)
+    out = tmp_path / "site"
+    records = [
+        rec(judge_sha="abc123", cxxflags=MOVED_FLAGS),
+        rec(key="k2", env="arm-gcc", judge_sha="def456",
+            cxxflags="-O2 -Ilib -Iproblems/p -Iharness -Iproblems"),
+    ]
+    site_build.build(store_with(tmp_path, records), out)
+    data = json.loads((out / "data" / "problems" / "p.json").read_text())
+    dirs = {row["env"]: row["dir"] for row in data["rows"]}
+    # 今の場所 (problems/p) と同じなら入れない。
+    assert dirs == {"x64-gcc": "problems/old/p", "arm-gcc": None}
+    page = (out / "submissions" / "p" / "a.html").read_text()
+    assert "/blob/abc123/problems/old/p/submissions/a.hpp" in page
+    assert "/blob/def456/problems/p/submissions/a.hpp" in page
+
+
 def test_repo_url_comes_from_the_ci_environment(monkeypatch):
     monkeypatch.setenv("GITHUB_REPOSITORY", "owner/repo")
     monkeypatch.delenv("GITHUB_SERVER_URL", raising=False)
@@ -636,6 +667,7 @@ def test_origin_is_the_known_prefix_or_own():
     assert site_build.origin_of("joisc-2019-examination") == "joisc"
     assert site_build.origin_of("gf2-64") == "自作"
     assert site_build.origin_of("warshall-floyd") == "自作"
+    assert site_build.origin_of("self-gf2-64-pow") == "自作"
 
 
 def test_index_counts_problems_per_origin(tmp_path, no_problem_dirs):

@@ -119,7 +119,9 @@ function statusCell(row) {
 function sourceHref(row) {
   if (!DATA.repo || !row.judge_sha) return null;
   // 問題のディレクトリは problems/ の下で何段でも掘れるので、id から組まずに dir を使う。
-  return DATA.repo + "/blob/" + row.judge_sha + "/" + DATA.dir + "/" + row.submission;
+  // 問題を動かす前に測った記録は、そのコミットでの場所 (row.dir) を持っている。
+  const dir = row.dir || DATA.dir;
+  return DATA.repo + "/blob/" + row.judge_sha + "/" + dir + "/" + row.submission;
 }
 
 const COLUMNS = [

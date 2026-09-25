@@ -35,6 +35,9 @@ JUDGE_PREFIXES = (
     "ojuz", "codechef", "kattis", "luogu",
 )
 
+# 自作の問題の id の接頭辞。自作の問題は problems/self/ の下に族ごとに置く。
+SELF_PREFIX = "self"
+
 
 class ProblemError(Exception):
     """problem.toml が壊れているときに投げる。"""
@@ -234,9 +237,9 @@ def problem_id_of(problem_dir: Path) -> str:
     """ディレクトリの置き場所から決まる id。
 
     problems/ の下は何段でも掘れて、problems/ からの各段を `-` で繋いだものが id になる。
-    problems/atcoder/abc172-d/ なら atcoder-abc172-d、problems/gf2-64/pow/ なら gf2-64-pow。
-    平らに置いた 1 段のものは今までどおりディレクトリ名がそのまま id。problems という
-    名前の祖先が無い (テストの一時ディレクトリなど) ときもディレクトリ名。
+    problems/atcoder/abc172-d/ なら atcoder-abc172-d、problems/self/gf2-64/pow/ なら
+    self-gf2-64-pow。平らに置いた 1 段のものは今までどおりディレクトリ名がそのまま id。
+    problems という名前の祖先が無い (テストの一時ディレクトリなど) ときもディレクトリ名。
     """
     resolved = problem_dir.resolve()
     parts: list[str] = []
@@ -250,10 +253,11 @@ def problem_id_of(problem_dir: Path) -> str:
 def dir_for_new(problem_id: str, root: Path = PROBLEMS_DIR) -> Path:
     """新しい問題を書き出す場所。判定サイトの接頭辞を持つ id は接頭辞のディレクトリの下。
 
-    自作の問題は族ごとの置き場所を人が決めるので、ここでは平らに置く。
+    自作 (self-) の問題も problems/self/ の下に置く。族のディレクトリは人が決めるので、
+    self/ の中では平らに置く。
     """
     prefix, sep, rest = problem_id.partition("-")
-    if sep and rest and prefix in JUDGE_PREFIXES:
+    if sep and rest and (prefix in JUDGE_PREFIXES or prefix == SELF_PREFIX):
         return root / prefix / rest
     return root / problem_id
 

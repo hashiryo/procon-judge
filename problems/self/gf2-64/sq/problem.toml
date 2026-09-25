@@ -1,0 +1,18 @@
+id = "self-gf2-64-sq"
+title = "GF(2^64) の二乗"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 7
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"

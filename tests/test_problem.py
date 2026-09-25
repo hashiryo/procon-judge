@@ -183,7 +183,7 @@ def make_nested(tmp_path, *parts, body=None):
 
 def test_the_id_is_the_path_below_problems_joined_with_dashes(tmp_path):
     assert problem_mod.problem_id_of(make_nested(tmp_path, "atcoder", "abc172-d")) == "atcoder-abc172-d"
-    assert problem_mod.problem_id_of(make_nested(tmp_path, "gf2-64", "pow")) == "gf2-64-pow"
+    assert problem_mod.problem_id_of(make_nested(tmp_path, "self", "gf2-64", "pow")) == "self-gf2-64-pow"
     assert problem_mod.problem_id_of(make_nested(tmp_path, "warshall-floyd")) == "warshall-floyd"
 
 
@@ -233,4 +233,6 @@ def test_new_problems_go_under_the_judge_prefix(tmp_path):
     root = tmp_path / "problems"
     assert problem_mod.dir_for_new("yosupo-unionfind", root) == root / "yosupo" / "unionfind"
     assert problem_mod.dir_for_new("atcoder-abc172-d", root) == root / "atcoder" / "abc172-d"
+    # 自作の問題も self/ の下。族のディレクトリは人が決めるので、self/ の中では平らに置く。
+    assert problem_mod.dir_for_new("self-mat-unit-test", root) == root / "self" / "mat-unit-test"
     assert problem_mod.dir_for_new("gf2-64-pow", root) == root / "gf2-64-pow"

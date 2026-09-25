@@ -179,8 +179,8 @@ def test_standalone_is_exit_code_and_atcoder_is_compile_only(tmp_path, lc_repo):
     alone = write_test(tmp_path, "constexpr_modint.test.cpp", extra="// competitive-verifier: STANDALONE\n")
     at = write_test(tmp_path, "abc123_d.test.cpp", "https://atcoder.jp/contests/abc123/tasks/abc123_d")
     items = {i.id: i for i in migrate.plan([alone, at], existing=set(), library_checker_dir=lc_repo)}
-    assert items["constexpr-modint"].compare == "exit_code"
-    assert items["constexpr-modint"].source == "none"
+    assert items["self-constexpr-modint"].compare == "exit_code"
+    assert items["self-constexpr-modint"].source == "none"
     assert items["atcoder-abc123-d"].compare == "compile_only"
     assert items["atcoder-abc123-d"].source == "none"
 
@@ -341,10 +341,10 @@ def test_standalone_takes_its_id_from_the_url_in_a_comment(tmp_path):
     assert migrate.plan([src2], existing=set())[0].id == "yuki-1420"
 
 
-def test_standalone_without_a_url_uses_the_whole_file_name(tmp_path):
+def test_standalone_without_a_url_is_self_and_the_whole_file_name(tmp_path):
     src = write_test(tmp_path, "mat.unit_test.cpp", extra="// competitive-verifier: STANDALONE\n")
     item = migrate.plan([src], existing=set())[0]
-    assert item.id == "mat-unit-test"
+    assert item.id == "self-mat-unit-test"
     assert item.submissions == (("lib.cpp", src),)
     assert item.url == ""
     assert "url =" not in migrate.problem_toml(item)

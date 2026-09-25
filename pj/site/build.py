@@ -18,6 +18,7 @@ import html
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import urllib.parse
@@ -33,7 +34,7 @@ from .. import include as include_mod
 from .. import libraries as lib_mod
 from .. import problem as problem_mod
 from ..freshness import Diff, Freshness
-from ..paths import ROOT
+from ..paths import PROBLEMS_DIR, ROOT
 from ..record import judge_sha, library_sha
 from ..store import Store
 from .highlight import highlight
@@ -87,6 +88,8 @@ class Cell:
     # (環境, モデル) に束があるのに、この提出はその束に無い。別のジョブ (別の VM) で
     # 測った記録なので、同じ表の他の行とは比べられない。
     outside: bool = False
+    # 測ったときの問題のディレクトリ (measured_dir)。空なら今の場所と同じとみなす。
+    dir: str = ""
 
 
 @dataclass(frozen=True)
@@ -216,6 +219,7 @@ def _cell(
         ),
         batch=batch,
         outside=outside,
+        dir=measured_dir(newest.get("cxxflags", "")),
     )
 
 def describe_diff(diff: Diff | None) -> str | None:
@@ -498,6 +502,8 @@ def problem_payload(
                 "samples": c.samples,
                 "timestamp": c.timestamp,
                 "judge_sha": c.judge_sha,
+                # 測ったときの問題のディレクトリ。今の dir と違うときだけ入る。
+                "dir": c.dir if c.dir and c.dir != dir_rel else None,
                 "failed": c.failed,
                 "failed_cases": list(c.failed_cases),
                 "current": c.current,
@@ -577,6 +583,25 @@ def problem_dir_rel(problem: problem_mod.Problem | None, problem_id: str) -> str
         return f"problems/{problem_id}"
 
 
+def measured_dir(cxxflags: str) -> str:
+    """記録を測ったときの問題のディレクトリ。記録の cxxflags の -I から拾う。
+
+    ソースへのリンクは記録を測ったコミットを指すので、ディレクトリもそのコミットでの
+    場所でないと 404 になる。キーの材料では問題の -I を印に置き換えるので、問題を
+    動かしても測り直しは起きず、動かす前に測った記録が現行のまま残る。記録の cxxflags
+    には実際のパスが入っているので、そちらから前の場所が分かる。拾えなければ空。
+    """
+    try:
+        flags = shlex.split(cxxflags)
+    except ValueError:
+        return ""
+    prefix = f"-I{PROBLEMS_DIR.relative_to(ROOT).as_posix()}/"
+    for flag in flags:
+        if flag.startswith(prefix) and len(flag) > len(prefix):
+            return flag[len("-I"):]
+    return ""
+
+
 def _submission_rel(dir_rel: str, submission: str) -> str:
     return f"{dir_rel}/{submission}"
 
@@ -600,7 +625,7 @@ def _cell_row(page: SubmissionPage, c: Cell) -> str:
         fresh = '<td class="dim" title="今のソースと比べられませんでした">-</td>'
 
     commit = "-"
-    href = _blob(page.repo, c.judge_sha, _submission_rel(page.dir, page.submission))
+    href = _blob(page.repo, c.judge_sha, _submission_rel(c.dir or page.dir, page.submission))
     if c.judge_sha:
         short = esc(c.judge_sha[:7])
         commit = f'<a class="mono" href="{esc(href)}">{short}</a>' if href else short

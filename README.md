@@ -53,7 +53,7 @@ git archive origin/results | tar -x -C .results
 
 ### 1. ディレクトリと problem.toml
 
-問題のディレクトリを作り、`problem.toml` を置きます。`problems/` の下は何段でも掘れて、そこからの各段を `-` で繋いだものが id です。`problems/atcoder/abc172-d/` なら `atcoder-abc172-d`、`problems/gf2-64/pow/` なら `gf2-64-pow` で、`problem.toml` の `id` はこれと一致させます。判定サイトの問題は接頭辞のディレクトリ (`atcoder/`、`aoj/`、`yosupo/`、`yuki/`、`loj/` など) に置きます。自作の問題は族のディレクトリ (`gf2-64/`、`modulo-test/` など) に置き、族の無いものは `problems/warshall-floyd/` のように 1 段で置きます。id は `<出どころ>-<問題>` の形で、出どころはテストデータの取得元ではなく、問題そのものがどこの問題かです。
+問題のディレクトリを作り、`problem.toml` を置きます。`problems/` の下は何段でも掘れて、そこからの各段を `-` で繋いだものが id です。`problems/atcoder/abc172-d/` なら `atcoder-abc172-d`、`problems/self/gf2-64/pow/` なら `self-gf2-64-pow` です。`problem.toml` の `id` はこれと一致させます。判定サイトの問題は接頭辞のディレクトリ (`atcoder/`、`aoj/`、`yosupo/`、`yuki/`、`loj/` など) に置きます。自作の問題は `self/` の下で族ごとに分け (`self/gf2-64/`、`self/modulo-test/` など)、族の無いものは `problems/self/warshall-floyd/` のように `self/` の直下に置きます。id は `<出どころ>-<問題>` の形で、出どころはテストデータの取得元ではなく、問題そのものがどこの問題かです。
 
 | 出どころ | 接頭辞 | 例 |
 | --- | --- | --- |
@@ -63,9 +63,9 @@ git archive origin/results | tar -x -C .results
 | AtCoder | `atcoder-` | `atcoder-abc172-d` |
 | LOJ | `loj-` | `loj-6620` |
 | HackerRank、CSES、Codeforces など | `hackerrank-`、`cses-`、`cf-` | `cses-2132` |
-| 自作 | 付けない | `gf2-64-pow` |
+| 自作 | `self-` | `self-gf2-64-pow` |
 
-id は記録のキーと保管庫のアセット名に入るので、あとから変えると記録が全部測り直しになり、保管庫のアセットも孤児になります。付けるときに決めます。
+id は `results` ブランチの記録のファイル名と保管庫のアセット名になるので、あとから変えるときは記録を新しい id へ移さないと全部測り直しになり、保管庫のアセットも孤児になります (移し方は「問題を消す」の節)。付けるときに決めます。
 
 Library Checker の問題を、自分のライブラリと手書きの実装で比べる形の例です。置き場所は `problems/yosupo/unionfind/` です。
 
@@ -88,10 +88,10 @@ name = "data_structure/unionfind"
 kind = "checker"
 ```
 
-自作のテストデータで速さを比べる形の例です。置き場所は `problems/gf2-64/pow/` です。
+自作のテストデータで速さを比べる形の例です。置き場所は `problems/self/gf2-64/pow/` です。
 
 ```toml
-id = "gf2-64-pow"
+id = "self-gf2-64-pow"
 title = "GF(2^64) の冪"
 
 [limits]
@@ -316,7 +316,7 @@ git commit -m "<id> の記録を消す"
 git push origin results
 ```
 
-サイトに反映されるのは、次に collect が走ったとき (main への push か schedule) です。collect の push と重なって弾かれたら、pull し直してから押します。問題の id を変えたときも、古い id の記録は同じように残ります。提出を消すだけなら、サイトは消えた提出の記録を隠すので、`results` に触る必要はありません。
+サイトに反映されるのは、次に collect が走ったとき (main への push か schedule) です。collect の push と重なって弾かれたら、pull し直してから押します。問題の id を変えたときも、古い id の記録は同じように残ります。記録のキーに id は入りません。jsonl の名前を `problems/<新しい id>.jsonl` へ変え、各行の `"problem"` を新しい id へ書き換えれば、測り直しは起きず、記録がそのまま引き継がれます。results への push は main の push より前にします。main の push で立つ run の plan は results を読むので、逆の順だと新しい id の記録が見つからず、全部を測り直します。提出を消すだけなら、サイトは消えた提出の記録を隠すので、`results` に触る必要はありません。
 
 ## コマンド一覧
 

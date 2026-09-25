@@ -1,0 +1,18 @@
+id = "self-modpow-test-runtime-30"
+title = "べき乗 a^b mod p (p は入力、30 bit の素数)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 256
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 13
+reference = "submissions/naive32.hpp"
+
+[compare]
+kind = "tokens"

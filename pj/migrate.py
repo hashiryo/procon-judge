@@ -261,9 +261,14 @@ def plan(
                 skipped.append(_skipped(path, "IGNORE が付いています"))
                 continue
             # 自己検証。元の問題の URL がコメントにあれば id はそこから、無ければ
-            # ファイル名の全部 (mat.unit_test -> mat-unit-test)。
+            # 自作の問題として self- にファイル名の全部を続ける (mat.unit_test ->
+            # self-mat-unit-test)。
             origin = _standalone_origin(text)
-            key = origin.id if origin else re.sub(r"[._]", "-", _stem_of(path))
+            key = (
+                origin.id
+                if origin
+                else f"{problem_mod.SELF_PREFIX}-" + re.sub(r"[._]", "-", _stem_of(path))
+            )
             groups.setdefault(key, []).append((path, notes, _Standalone(origin)))
             continue
         try:

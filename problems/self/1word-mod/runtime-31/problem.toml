@@ -1,0 +1,18 @@
+id = "self-1word-mod-runtime-31"
+title = "1 語の剰余 a % b (b は入力、2 <= b < 2^31)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 14
+reference = "submissions/naive.hpp"
+
+[compare]
+kind = "tokens"
