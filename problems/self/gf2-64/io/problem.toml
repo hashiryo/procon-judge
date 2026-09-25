@@ -1,0 +1,15 @@
+id = "self-gf2-64-io"
+title = "GF(2^64) の入出力"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "exit_code"
