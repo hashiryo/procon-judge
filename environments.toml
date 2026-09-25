@@ -5,7 +5,9 @@
 # x64 の 2 環境は、土台の命令 (x86-64-v3 に pclmul と vpclmulqdq を足したもの) をオプションで
 # 渡す。土台に無い命令 (AVX-512、GFNI) は、使う提出がソースで宣言する。2026-09-25 に -march を
 # 一度外し、同じ日に土台だけを戻した (DESIGN.md の「-march を外してソースで宣言する記録」)。
-# arm の -march は別に決める。
+# arm の 2 環境は、GitHub の arm のランナー (Neoverse-N2) に合わせて -mcpu=neoverse-n2+aes にする。
+# +aes は PMULL のためで、SIMDe は __ARM_FEATURE_AES があるときだけ _mm_clmulepi64_si128 を
+# PMULL で組む (clang は 22 から)。
 
 [[env]]
 name = "x64-gcc"
@@ -23,13 +25,13 @@ cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=x86-64-v3 -mpclmul -mvpclmulqd
 name = "arm-gcc"
 runs_on = "ubuntu-24.04-arm"
 cxx = "g++-15"
-cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=armv8.2-a -flto=auto -pthread -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES"
+cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -mcpu=neoverse-n2+aes -flto=auto -pthread -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES"
 
 [[env]]
 name = "arm-clang"
 runs_on = "ubuntu-24.04-arm"
 cxx = "clang++-21"
-cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=armv8.2-a -flto=auto -pthread -fuse-ld=lld -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES"
+cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -mcpu=neoverse-n2+aes -flto=auto -pthread -fuse-ld=lld -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES"
 
 [[env]]
 name = "local"

@@ -653,13 +653,13 @@ cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=x86-64-v3 -mpclmul -mvpclmulqd
 name = "arm-gcc"
 runs_on = "ubuntu-24.04-arm"
 cxx = "g++-15"
-cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=armv8.2-a -flto=auto -pthread -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES"
+cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -mcpu=neoverse-n2+aes -flto=auto -pthread -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES"
 
 [[env]]
 name = "arm-clang"
 runs_on = "ubuntu-24.04-arm"
 cxx = "clang++-21"
-cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=armv8.2-a -flto=auto -pthread -fuse-ld=lld -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES"
+cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -mcpu=neoverse-n2+aes -flto=auto -pthread -fuse-ld=lld -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES"
 
 [[env]]
 name = "local"
@@ -677,6 +677,8 @@ x64 の 2 環境は、土台の命令を `-march=x86-64-v3 -mpclmul -mvpclmulqdq
 `pj` は `environments.toml` の `cxxflags` に `-Ilib`、問題のディレクトリ、`-Ithird_party/simde` の 3 つを足してからコンパイルします。記録の `cxxflags` には足したあとの文字列をそのまま入れてください。キーの一部なので、記録と実際のコンパイルがずれてはいけません。`-I` を `environments.toml` の側にも書くと二度出るので、書かないでください。
 
 arm では SIMDe を使います。手元の Mac が arm で提出先が x86 なので、x86 の intrinsics をそのまま書いて arm で動かすために必要です。SIMDe は `third_party/simde` に submodule で入れます。
+
+arm の 2 環境は `-mcpu=neoverse-n2+aes` で組みます。GitHub の arm のランナーで観測されているのは Neoverse-N2 だけで、SVE2 や AES と PMULL を持っています。`+aes` を足すのは、SIMDe が `__ARM_FEATURE_AES` のあるときだけ `_mm_clmulepi64_si128` を PMULL で組むからです。ただし clang で PMULL を使うのは 22 からで、clang 21 は今までどおり SIMDe の汎用の実装を通ります (「-march を外してソースで宣言する記録」)。
 
 ## CLI
 
@@ -1960,6 +1962,12 @@ include したあとで足す形にしなかったのは、clang に効かない
 速さは、同じ CPU モデルの記録どうしで、合計時間の比の中央値を取って比べました。`-march` なしで v3 のころより 1.5 倍以上遅くなっていたのは 34 件 (提出で 27 本) で、そのうち 33 件が v3 のころの 0.42 倍から 1.14 倍に戻りました。fast-math の 9 本は v3 のころの 0.79 倍から 1.02 倍で、`-march` なしのときと比べられる 7 本は、そのときの 0.20 倍から 0.65 倍の時間です。
 
 残る 1 件は yuki-1303 の x64-clang で、6973P-C で v3 のころの 4 倍でした。同じ回に 6973P-C で測った raw の問題は、プロセスの時間が全体に伸びています (中央値 1.17 倍)。yuki-1303 の x64-gcc も 3.6 倍でしたが、GCC 15 で組むと v3 と今回のフラグで機械語が同じでした。ハーネスが測る計算の時間は同じ 6973P-C で中央値 1.02 倍なので、マシンの揺れと見ています。9V74 のジョブ 2 本 (x64/20 と x64/23) でも、束の全提出がそろって 1.25 倍から 1.5 倍遅く出ました。gf2-64-frob16 の sq_chain.hpp が v3 のころより遅いのは、そのあいだに sq.hpp が変わったためで、フラグの影響とは切り分けていません。
+
+### arm は -mcpu=neoverse-n2+aes にしました
+
+2026-09-25 に、arm の 2 環境を `-march=armv8.2-a` から `-mcpu=neoverse-n2+aes` にしました。arm は動けばよく、速いほど CI が早く終わるので、ランナーの CPU に合わせる方を選びました。run のジョブの最初で /proc/cpuinfo の命令の行を出すようにして、arm のランナー (Neoverse-N2) が aes、pmull、sha3、sve2、i8mm、bf16 などを持つことを確かめています。mte と rng は見えませんが、コンパイラが自分から使う命令ではありません。
+
+`+aes` が効くのは SIMDe の `_mm_clmulepi64_si128` です。`__ARM_FEATURE_AES` があれば、PMULL の 1 命令になります。SIMDe は clang 22 より前ではこの経路を使わないので、速くなるのは arm-gcc で pclmul を使う提出です。SIMDe の x86 の経路は SVE を使わないので、SVE2 が増えても SIMDe の中身は変わりません。キーのフラグが変わるので、arm の記録は全部測り直しになりました。
 
 ## 既存リポジトリから移すもの
 
