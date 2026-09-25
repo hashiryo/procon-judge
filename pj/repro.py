@@ -55,9 +55,17 @@ def repro(
     env: env_mod.Environment,
     *,
     case: str | None = None,
+    cases: int | None = None,
     out: TextIO = sys.stdout,
 ) -> int:
-    """走らせて結果を out に書く。全部 AC なら 0、そうでなければ 1。"""
+    """走らせて結果を out に書く。全部 AC なら 0、そうでなければ 1。
+
+    case はそのケースだけ、cases は名前順の先頭からその数だけを走らせる。cases は
+    CI を待つ前に、組めていくつかのケースが通るかを手早く見るための口。テストデータは
+    問題ごとにまとめて取るので、取る量は変わらない。
+    """
+    if cases is not None and cases < 1:
+        raise ReproError(f"--cases は 1 以上にしてください ({cases})")
     print(f"{env.cxx} でコンパイルします", file=out)
     built = build_mod.build(problem, submission, env)
     if not built.ok:
@@ -74,19 +82,21 @@ def repro(
         return 0
 
     testcases = fetch.ensure(problem, env=env)
-    cases = list(testcases.cases)
+    selected = list(testcases.cases)
     if case is not None:
-        cases = [c for c in cases if c.name == case]
-        if not cases:
+        selected = [c for c in selected if c.name == case]
+        if not selected:
             names = ", ".join(c.name for c in testcases.cases[:SUGGEST_CASES])
             raise ReproError(f"ケース {case!r} がありません (例: {names})")
+    elif cases is not None:
+        selected = selected[:cases]
 
     checker = run_mod.prepare_checker(problem, testcases, env, env_mod.cpu_arch())
     work = work_dir(problem, submission, env.name)
     execute.warmup(built.binary, tle_sec=problem.limits.tle_sec)
 
     failures: list[CaseReport] = []
-    for c in cases:
+    for c in selected:
         actual = work / f"{c.name}.out"
         stderr = work / f"{c.name}.err"
         result = execute.run(
@@ -110,8 +120,12 @@ def repro(
 
     for report in failures:
         _report(report, out)
+    total = len(testcases.cases)
+    part = ""
+    if cases is not None and len(selected) < total:
+        part = f" (全 {total} ケースのうち先頭 {len(selected)} ケース)"
     print(
-        f"\n{len(cases)} ケース中 {len(cases) - len(failures)} 件 AC / {len(failures)} 件 失敗",
+        f"\n{len(selected)} ケース中 {len(selected) - len(failures)} 件 AC / {len(failures)} 件 失敗{part}",
         file=out,
     )
     return 1 if failures else 0

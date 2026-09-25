@@ -702,7 +702,7 @@ def cmd_repro(args: argparse.Namespace) -> int:
     if not (problem.dir / submission).is_file():
         return _die(f"{problem.id} に提出 {submission} がありません")
     try:
-        return repro_mod.repro(problem, submission, env, case=args.case)
+        return repro_mod.repro(problem, submission, env, case=args.case, cases=args.cases)
     except (repro_mod.ReproError, fetch.FetchError) as e:
         return _die(str(e))
 
@@ -865,7 +865,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_repro.add_argument("--problem", required=True)
     p_repro.add_argument("--submission", required=True, help="submissions/xxx.hpp の形")
-    p_repro.add_argument("--case", help="このケースだけ走らせる。省略すると全部")
+    which = p_repro.add_mutually_exclusive_group()
+    which.add_argument("--case", help="このケースだけ走らせる。省略すると全部")
+    which.add_argument(
+        "--cases", type=int, metavar="N",
+        help="名前順の先頭から N ケースだけ走らせる。CI を待つ前の手早い確認用",
+    )
     p_repro.add_argument("--env", default="local")
     p_repro.set_defaults(func=cmd_repro)
 

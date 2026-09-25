@@ -705,8 +705,8 @@ pj run  --problem ID --submission PATH --env NAME   1 件だけ走らせる
 pj records append <dir>...                   まとめて results の jsonl へ追記する
 pj records squash                            results ブランチの履歴を畳む
 pj bundle --problem ID --submission PATH     1 ファイルに展開する
-pj repro --problem ID --submission PATH [--case NAME] [--env NAME]
-                                             手元で走らせて、落ちたケースの差分とファイルの場所を見る
+pj repro --problem ID --submission PATH [--case NAME | --cases N] [--env NAME]
+                                             手元で走らせて、落ちたケースの差分とファイルの場所を見る。--cases N は名前順の先頭 N ケースだけ
 pj site build [--out DIR] [--store DIR]   記録から静的なサイトを作る
 ```
 

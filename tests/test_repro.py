@@ -17,9 +17,11 @@ def local_env():
     return env_mod.load("local")
 
 
-def run_repro(problem, env, case=None):
+def run_repro(problem, env, case=None, cases=None):
     out = io.StringIO()
-    code = repro_mod.repro(problem, Path("submissions/sol.cpp"), env, case=case, out=out)
+    code = repro_mod.repro(
+        problem, Path("submissions/sol.cpp"), env, case=case, cases=cases, out=out
+    )
     return code, out.getvalue()
 
 
@@ -49,6 +51,36 @@ def test_repro_runs_only_the_named_case(tmp_path, local_env, monkeypatch):
     assert "AC  a" in text
     assert "WA  b" not in text
     assert "1 ケース中 1 件 AC / 0 件 失敗" in text
+
+
+def test_repro_runs_only_the_first_cases_by_name(tmp_path, local_env, monkeypatch):
+    # CI を待つ前の手早い確認。名前順の先頭から N ケースだけ走らせる。
+    problem, testcases = make_case_problem(
+        tmp_path, PICKY, {"a": ("1\n", "1\n"), "b": ("2\n", "2\n"), "c": ("3\n", "3\n")}
+    )
+    monkeypatch.setattr(repro_mod.fetch, "ensure", lambda p, **kw: testcases)
+    code, text = run_repro(problem, local_env, cases=1)
+    assert code == 0
+    assert "AC  a" in text
+    assert "WA  b" not in text and "WA  c" not in text
+    assert "1 ケース中 1 件 AC / 0 件 失敗 (全 3 ケースのうち先頭 1 ケース)" in text
+
+
+def test_repro_runs_every_case_when_n_is_larger(tmp_path, local_env, monkeypatch):
+    problem, testcases = make_case_problem(
+        tmp_path, PICKY, {"a": ("1\n", "1\n"), "b": ("2\n", "2\n")}
+    )
+    monkeypatch.setattr(repro_mod.fetch, "ensure", lambda p, **kw: testcases)
+    code, text = run_repro(problem, local_env, cases=5)
+    assert code == 1
+    assert "AC  a" in text and "WA  b" in text
+    assert "2 ケース中 1 件 AC / 1 件 失敗\n" in text
+
+
+def test_repro_rejects_a_case_count_below_one(tmp_path, local_env):
+    problem, _ = make_case_problem(tmp_path, PICKY, {"a": ("1\n", "1\n")})
+    with pytest.raises(repro_mod.ReproError, match="1 以上"):
+        run_repro(problem, local_env, cases=0)
 
 
 def test_repro_rejects_an_unknown_case(tmp_path, local_env, monkeypatch):

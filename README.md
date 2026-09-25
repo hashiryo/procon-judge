@@ -224,11 +224,12 @@ uv run pj problems check --problem <id>
 uv run pj run --env local --problem <id> --dry-run
 uv run pj run --env local --problem <id>
 uv run pj repro --problem <id> --submission submissions/<name>.hpp --case <ケース名>
+uv run pj repro --problem <id> --submission submissions/<name>.hpp --cases 3
 ```
 
-`--dry-run` は走らせる対象を出すだけです。`pj run` は記録を `.results/` に書くので、別の場所に書きたければ `--out` を渡します。`pj repro` はテストデータを取って手元のコンパイラで組み、そのケースだけ走らせて、完全な差分と入力、期待出力、実際の出力のファイルの場所を出します。記録は書きません。
+`--dry-run` は走らせる対象を出すだけです。`pj run` は記録を `.results/` に書くので、別の場所に書きたければ `--out` を渡します。`pj repro` はテストデータを取って手元のコンパイラで組み、そのケースだけ走らせて、完全な差分と入力、期待出力、実際の出力のファイルの場所を出します。記録は書きません。`--case` の代わりに `--cases N` を付けると、ケースを名前順に並べた先頭から N ケースだけを走らせます。CI を待つ前に、組めていくつかのケースが通るかを手早く見るときに使います。テストデータは問題ごとにまとめて取るので、取る量は変わりません。
 
-macOS の `local` は Apple clang と libc++ なので、CI の 4 環境 (どれも libstdc++) と結果が同じとは限りません。ライブラリの一部 (`std::__lg` を使うヘッダ) は手元では CE になります。
+macOS の `local` は Apple clang と libc++ なので、CI の 4 環境 (どれも libstdc++) と結果が同じとは限りません。`std::__lg` を使う提出 (Library Checker の写しなど) は、手元では CE になります。
 
 サイトを手元で見るなら `uv run pj site build --out /tmp/pj-site` で作り、そのディレクトリを `python3 -m http.server` などで開きます。
 
