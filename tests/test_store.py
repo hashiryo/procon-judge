@@ -140,6 +140,25 @@ def test_absorb_looks_deeper_than_one_level(tmp_path):
     assert store.keys() == {"k1", "k2"}
 
 
+def test_absorb_keeps_the_same_key_in_another_problem(tmp_path):
+    # キーに問題の id は入らないので、中身の同じ問題が 2 つあると同じキーになる。
+    # 後から来た方を既にある記録として捨てない。
+    artifacts = tmp_path / "artifacts"
+    write_jsonl(
+        artifacts / "records-arm-1" / "problems" / "a.jsonl",
+        [make_record(key="k1", problem="a")],
+    )
+    write_jsonl(
+        artifacts / "records-arm-2" / "problems" / "b.jsonl",
+        [make_record(key="k1", problem="b")],
+    )
+    store = Store(tmp_path / "store")
+
+    assert store.absorb([artifacts]) == (2, 0)
+    assert store.problem_ids() == ["a", "b"]
+    assert store.absorb([artifacts]) == (0, 2)
+
+
 def test_absorb_splits_by_problem(tmp_path):
     artifacts = tmp_path / "artifacts"
     write_jsonl(
@@ -173,7 +192,7 @@ def test_absorb_of_nothing(tmp_path):
 
 
 def test_absorb_keeps_the_same_key_from_another_batch(tmp_path):
-    """束は同じキーを束ごとに 1 件ずつ作る。重複排除は (キー, 束) で見る。"""
+    """束は同じキーを束ごとに 1 件ずつ作る。重複排除は (問題, キー, 束) で見る。"""
     artifacts = tmp_path / "artifacts"
     write_jsonl(
         artifacts / "problems" / "p.jsonl",
@@ -185,7 +204,7 @@ def test_absorb_keeps_the_same_key_from_another_batch(tmp_path):
     )
     store = Store(tmp_path / "store")
     assert store.absorb([artifacts]) == (2, 1)
-    assert store.identities() == {("k1", "r1/x64/0"), ("k1", "r2/x64/0")}
+    assert store.identities() == {("p", "k1", "r1/x64/0"), ("p", "k1", "r2/x64/0")}
 
 
 def test_a_record_without_a_batch_still_dedups_by_key(tmp_path):

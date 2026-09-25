@@ -57,18 +57,20 @@ class Store:
                     found.add(key)
         return found
 
-    def identities(self) -> set[tuple[str, str]]:
-        """記録の (キー, 束)。取り込みの重複排除に使う。
+    def identities(self) -> set[tuple[str, str, str]]:
+        """記録の (問題, キー, 束)。取り込みの重複排除に使う。
 
         束を入れる前はキーが 1 回しか測られなかったのでキーだけで見ていた。束は
         同じキーを束ごとに 1 件ずつ作るので、束も見る。束の無い記録は空文字。
+        キーには問題の id が入らないので、中身の同じ問題が 2 つあると同じキーになる。
+        片方の記録を捨てないよう、問題も見る。
         """
-        found: set[tuple[str, str]] = set()
+        found: set[tuple[str, str, str]] = set()
         for problem_id in self.problem_ids():
             for record in self.read(problem_id):
                 key = record.get("key")
                 if key:
-                    found.add((key, record.get("batch") or ""))
+                    found.add((problem_id, key, record.get("batch") or ""))
         return found
 
     def batches(self) -> dict[tuple[str, str, str], batch_mod.Batch]:
@@ -125,7 +127,7 @@ class Store:
 
         CI では run のジョブがアーティファクトへ記録を置いて、collect が
         ここへまとめる。ワークフローを回し直しても重ならないよう、
-        既にある (キー, 束) は飛ばす。同じキーでも束が違えば別の測定なので入れる。
+        既にある (問題, キー, 束) は飛ばす。同じキーでも束が違えば別の測定なので入れる。
         """
         known = self.identities()
         added = skipped = 0
@@ -144,7 +146,7 @@ class Store:
                     print(f"warning: {path}:{number} に key か problem がありません",
                           file=sys.stderr)
                     continue
-                identity = (key, record.get("batch") or "")
+                identity = (problem, key, record.get("batch") or "")
                 if identity in known:
                     skipped += 1
                     continue
