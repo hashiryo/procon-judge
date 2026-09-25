@@ -108,6 +108,11 @@ jobs:
     permissions:
       contents: write
     steps:
+      # 引いたマシンの CPU が持つ命令をログに残す。環境の -march を決めるときの材料にする。
+      # x86 は flags、arm は Features の行に並ぶ。
+      - name: CPU の命令
+        run: grep -m1 -E '^(flags|Features)' /proc/cpuinfo || true
+
       # arm では x86 の intrinsics を SIMDe で動かすので submodule が要る。
       - uses: actions/checkout@v7
         with:
