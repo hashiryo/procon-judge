@@ -1,5 +1,4 @@
 #pragma once
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "../common.hpp"
 // cantor_sym_v2 派生: twiddle テーブルを **下半分のみ** 持つ (上半分は g[i]^1 で導出
 // 可能なので保存不要)。

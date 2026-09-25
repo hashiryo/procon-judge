@@ -13,7 +13,6 @@
 //   a^r = frob36(a^{r_3}) · frob24(a^{r_2}) · frob12(a^{r_1}) · a^{r_0}
 //   (12 bit × 4 lane, 各 lane 3 nibble, init + 2 反復, b は lane0 最下位に織り込み)
 #pragma GCC optimize("O3,unroll-loops")
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/mul2.hpp"

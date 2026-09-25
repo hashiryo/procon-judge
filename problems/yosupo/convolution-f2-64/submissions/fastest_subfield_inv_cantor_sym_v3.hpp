@@ -1,5 +1,4 @@
 #pragma once
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "../common.hpp"
 // cantor_sym_v2 派生: 余り 1 個を tail (i = half-1) ではなく **先頭 i = 1** に置く。
 //

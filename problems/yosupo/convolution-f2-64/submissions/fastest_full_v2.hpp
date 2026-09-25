@@ -1,5 +1,4 @@
 #pragma once
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "../common.hpp"
 // F_{2^64} 上の additive (nim) FFT に対する全部入り最適化版。
 // アルゴリズム: Lin-Chung-Han / Cantor 系の characteristic-2 FFT (Phase A: 線形

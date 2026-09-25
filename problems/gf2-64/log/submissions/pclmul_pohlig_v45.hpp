@@ -11,7 +11,6 @@
 //
 // 必要な拡張: VPCLMULQDQ + AVX2 (Intel Ice Lake / AMD Zen3 以降).
 #pragma GCC optimize("O3,unroll-loops")
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/mul2.hpp"

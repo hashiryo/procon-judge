@@ -17,7 +17,6 @@
 //   mul を mul2s (VPCLMUL, GPR in/out) で 2 lane 同時実行。frob4 は GPR byte table のまま
 //   両 lane 並列 (load 独立なので latency はスカラ 1 回分)。b = N^q は最下位 nibble に織り込み。
 #pragma GCC optimize("O3,unroll-loops")
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/mul2.hpp"

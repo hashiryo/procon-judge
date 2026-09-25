@@ -1,5 +1,4 @@
 #pragma once
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "../common.hpp"
 // cantor_sym + **g0[0] = 0 の明示的スキップ** バージョン (v2):
 //

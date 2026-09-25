@@ -1,5 +1,4 @@
 #pragma once
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "../common.hpp"
 // fastest_full_dif_v3.hpp の **per-level local-table 版**。
 // (v3 = v2 + 4-way unroll、 さらに SUBMASK_TBL → stack の subs[16] build。)

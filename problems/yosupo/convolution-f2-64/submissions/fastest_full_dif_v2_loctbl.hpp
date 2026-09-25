@@ -1,5 +1,4 @@
 #pragma once
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "../common.hpp"
 // fastest_full_dif_v2.hpp の **per-level local-table 版**。
 // SUBMASK_TBL constexpr 撤去、 outer level 冒頭で stack 上 subs[16] build。

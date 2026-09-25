@@ -1,5 +1,4 @@
 #pragma once
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "../common.hpp"
 // fastest_full_dif_v3.hpp の **submask table 不要版**。
 // (v3 = v2 + 4-way unroll、 ここでは加えて SUBMASK_TBL を撤去。)

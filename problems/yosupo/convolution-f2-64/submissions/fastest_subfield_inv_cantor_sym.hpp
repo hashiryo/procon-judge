@@ -1,5 +1,4 @@
 #pragma once
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "../common.hpp"
 // raw_u64 + **Cantor 基底の対称性** + **VPCLMULQDQ 2 並列**:
 //

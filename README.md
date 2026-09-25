@@ -215,7 +215,7 @@ vpclmulqdq を使うコードは、`__builtin_cpu_supports("vpclmulqdq")` で実
 
 ハーネスは提出より先に標準ライブラリを読むので、提出で宣言した命令は標準ライブラリの関数には付きません。std::sort に渡したラムダがソートの中へ展開されないなど、判定サイトで先頭に宣言した場合より遅く測られることがあります。
 
-gf2-64 の家族の提出は、`_shared/gf2-64/_common.hpp` を読むと、x86-64-v3 の命令と pclmul を宣言する領域が開きます。procon-judge では土台と重なるので、組んだ中身は変わりません。一覧に無い命令 (gfni など) を使う提出は、共通ヘッダを初めて include するより前で `#define GF2_64_EXTRA_TARGETS "gfni"` のように書き、宣言の一覧に足します。include したあとで `#pragma clang attribute push` を重ねても、clang は一番外側の target だけを使うので効きません。
+gf2-64 の家族の提出は、土台の命令を宣言しません。土台に無い命令 (gfni など) を使う提出だけ、共通ヘッダ `_shared/gf2-64/_common.hpp` を初めて include するより前で `#define GF2_64_EXTRA_TARGETS "gfni"` のように書きます。共通ヘッダがその命令の領域を開き、各問題の base.cpp の最後で閉じます。include したあとで `#pragma clang attribute push` を重ねても、clang は一番外側の target だけを使うので効きません。
 
 ### 5. 手元で確かめる
 

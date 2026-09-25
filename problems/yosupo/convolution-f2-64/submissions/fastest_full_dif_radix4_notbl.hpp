@@ -1,5 +1,4 @@
 #pragma once
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "../common.hpp"
 // fastest_full_dif_radix4.hpp の **submask table 不要版**。
 // (radix-4 + SUBMASK_TBL 撤去 + popcount==1 specialization 撤去。)

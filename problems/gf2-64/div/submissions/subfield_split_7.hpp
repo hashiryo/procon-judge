@@ -18,7 +18,6 @@
 //   prod XOR red1_shifted で各 lane low に lo_k^red1_k が入る
 //   最後に RED[h_k>>60] を scalar 加算
 #pragma GCC optimize("O3,unroll-loops")
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/mul2.hpp"

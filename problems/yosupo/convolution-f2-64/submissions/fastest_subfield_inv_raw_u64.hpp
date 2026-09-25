@@ -1,5 +1,4 @@
 #pragma once
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "../common.hpp"
 // fastest_subfield_inv_constchain と同一アルゴリズム / 同一最適化、 ただし
 // gf2 struct を撤廃して **u64 に対する生 operator** で書き直したバージョン。

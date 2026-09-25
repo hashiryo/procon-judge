@@ -1,5 +1,4 @@
 #pragma once
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "../common.hpp"
 // full + **butterfly pair を完全 SIMD 化** (mul2 + 前後 XOR + load/store を 1 関数に):
 //

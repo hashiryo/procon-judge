@@ -1,5 +1,4 @@
 #pragma once
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "../common.hpp"
 // fastest_full_dif_radix4.hpp の **v2** 版。
 // 違い: q=1 (level pair (2, 1)) の scalar fallback も VPCLMULQDQ 化。

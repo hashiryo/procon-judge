@@ -12,7 +12,6 @@
 //
 // 必要な拡張: VPCLMULQDQ + AVX2 (Intel Ice Lake / AMD Zen3 以降)。
 #pragma GCC optimize("O3,unroll-loops")
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "_subfield32_ratio.hpp"
 #include "_win32.hpp"
 namespace gf2_64_pow_subfield32_ratio_4bit {

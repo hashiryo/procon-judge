@@ -1,5 +1,4 @@
 #pragma once
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "../common.hpp"
 // F_{2^64} 上 additive (nim) FFT、 DIF (decimation-in-frequency) 形 全部入り。
 // fastest_full_v2.hpp (DIT 全部入り) の DIF 版。 並列比較用。

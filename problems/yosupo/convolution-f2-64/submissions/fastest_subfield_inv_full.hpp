@@ -1,5 +1,4 @@
 #pragma once
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "../common.hpp"
 // halftable + **Phase A の最終 2 段 + shuffle 融合** (FFT / IFFT 両方):
 //

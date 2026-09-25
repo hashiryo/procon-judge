@@ -4,7 +4,6 @@
 // operand は set_epi64x で 2 本ずつ組み、答えは extract で 2 本に戻す。T が奇数のときの端数だけ
 // スカラの mul (_shared/gf2-64/mul.hpp) に落とす。
 #pragma GCC optimize("O3,unroll-loops")
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 namespace gf2_64_mul2_2lane {

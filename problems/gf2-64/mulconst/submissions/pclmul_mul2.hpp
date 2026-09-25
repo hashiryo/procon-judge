@@ -1,7 +1,6 @@
 #pragma once
 // 定数倍を共有の mul2 (VPCLMULQDQ) で入力 2 つずつ計算する版。
 #pragma GCC optimize("O3,unroll-loops")
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/mul2.hpp"

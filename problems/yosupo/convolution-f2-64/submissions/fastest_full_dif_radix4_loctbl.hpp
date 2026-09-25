@@ -1,5 +1,4 @@
 #pragma once
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "../common.hpp"
 // fastest_full_dif_radix4.hpp の **per-level local-table 版**。
 // (radix-4 + SUBMASK_TBL → stack の subs[16] build。)

@@ -1,5 +1,4 @@
 #pragma once
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "../common.hpp"
 // F_{2^64} 上 additive (nim) FFT、 DIF + radix-4 全部入り。
 // fastest_full_dif_v2.hpp (= radix-2) の radix-4 版。 並列比較用。

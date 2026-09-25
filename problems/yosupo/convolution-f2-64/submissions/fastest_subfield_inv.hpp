@@ -1,5 +1,4 @@
 #pragma once
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "../common.hpp"
 // fastest_vpclmul ベース + 自作 inv (gf2-64-div/subfield_split_constexpr_7) 移植版。
 //

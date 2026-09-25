@@ -1,5 +1,4 @@
 #pragma once
-#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "../common.hpp"
 // fastest_full_dif_v2.hpp の **submask table 不要版**。
 // SUBMASK_TBL constexpr 撤去、 bc inner で while-loop 直接 submask 列挙。
