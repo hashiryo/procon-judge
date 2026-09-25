@@ -215,7 +215,7 @@ vpclmulqdq を使うコードは、`__builtin_cpu_supports("vpclmulqdq")` で実
 
 ハーネスは提出より先に標準ライブラリを読むので、提出で宣言した命令は標準ライブラリの関数には付きません。std::sort に渡したラムダがソートの中へ展開されないなど、判定サイトで先頭に宣言した場合より遅く測られることがあります。
 
-gf2-64 の家族の提出は、土台の命令を宣言しません。土台に無い命令 (gfni など) を使う提出だけ、共通ヘッダ `_shared/gf2-64/_common.hpp` を初めて include するより前で `#define GF2_64_EXTRA_TARGETS "gfni"` のように書きます。共通ヘッダがその命令の領域を開き、各問題の base.cpp の最後で閉じます。include したあとで `#pragma clang attribute push` を重ねても、clang は一番外側の target だけを使うので効きません。
+gf2-64 の家族の提出は、土台の命令を宣言しません。土台に無い命令 (gfni など) を使う提出だけが、`#define GF2_64_EXTRA_TARGETS "gfni"` のように書きます。書く場所は、共通ヘッダ `_shared/gf2-64/_common.hpp` を初めて include するより前です。共通ヘッダがその命令の領域を開き、各問題の base.cpp の最後で閉じます。include したあとで `#pragma clang attribute push` を重ねても、clang は一番外側の target だけを使うので効きません。
 
 ### 5. 手元で確かめる
 
@@ -247,6 +247,20 @@ run にはモードが 2 つあります。push と Library の dispatch は網�
 ## 既存の問題に提出を足す
 
 問題のディレクトリの `submissions/` にファイルを置いて push するだけです。`base` の問題なら、`base.cpp` が呼ぶ型と関数を実装します。手元で `uv run pj run --env local --problem <id> --submission submissions/<name>.hpp` と 1 本だけ走らせて確かめられます。1 本だけ指定したときは束を作らないので、手元の記録が順位表を乱すことはありません。
+
+## 問題を消す
+
+問題のディレクトリを消しても、`results` ブランチの記録は残ります。サイトは記録のある問題も一覧に出すので、ディレクトリを消しただけでは、その問題が判定の無いまま残ります。サイトから消すときは、`results` ブランチの `problems/<id>.jsonl` も手で消して push します。
+
+```
+git clone --depth 1 --branch results "$(git remote get-url origin)" /tmp/results
+cd /tmp/results
+git rm problems/<id>.jsonl
+git commit -m "<id> の記録を消す"
+git push origin results
+```
+
+サイトに反映されるのは、次に collect が走ったとき (main への push か schedule) です。collect の push と重なって弾かれたら、pull し直してから押します。問題の id を変えたときも、古い id の記録は同じように残ります。提出を消すだけなら、サイトは消えた提出の記録を隠すので、`results` に触る必要はありません。
 
 ## コマンド一覧
 
