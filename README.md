@@ -316,7 +316,7 @@ git commit -m "<id> の記録を消す"
 git push origin results
 ```
 
-サイトに反映されるのは、次に collect が走ったとき (main への push か schedule) です。collect の push と重なって弾かれたら、pull し直してから押します。問題の id を変えたときも、古い id の記録は同じように残ります。記録のキーに id は入りません。jsonl の名前を `problems/<新しい id>.jsonl` へ変え、各行の `"problem"` を新しい id へ書き換えれば、測り直しは起きず、記録がそのまま引き継がれます。results への push は main の push より前にします。main の push で立つ run の plan は results を読むので、逆の順だと新しい id の記録が見つからず、全部を測り直します。提出を消すだけなら、サイトは消えた提出の記録を隠すので、`results` に触る必要はありません。
+サイトに反映されるのは、次に collect が走ったとき (main への push か schedule) です。collect の push と重なって弾かれたら、pull し直してから押します。問題の id を変えたときも、古い id の記録は同じように残ります。記録のキーに id は入りません。jsonl の名前を `problems/<新しい id>.jsonl` へ変え、各行の `"problem"` を新しい id へ書き換えれば、測り直しは起きず、記録がそのまま引き継がれます。results への push は main の push より前にします。main の push で立つ run の plan は results を読むので、逆の順だと新しい id の記録が見つからず、全部を測り直します。移す前に始まった run が残っていると、その run は終わったときに古い id のまま記録を書き戻します。全モデルモードの run は数時間かかるので、`gh run list --status in_progress` で走っている run が無いことを確かめてから移します。書き戻されたときは、その行の `"problem"` を新しい id に書き換えて新しい id のファイルの末尾へ足し、古いファイルを消せば、測った分は失われません。提出を消すだけなら、サイトは消えた提出の記録を隠すので、`results` に触る必要はありません。
 
 ## コマンド一覧
 
