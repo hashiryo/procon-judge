@@ -2,7 +2,7 @@
 // pclmul_subfield_split_v4_2 の preprocessing 完全 constexpr 化版:
 //
 // LN_SIGMA / PW_SIGMA_IDX (各 ~128 KiB) を natural 表現での σ chain で compile-time 構築。
-// GNU_TARGET("pclmul") の constexpr mul は不要 — chain は 16-bit polynomial の (cur<<1) ^ (Q_LOW & -hi)
+// pclmul の constexpr mul は不要 — chain は 16-bit polynomial の (cur<<1) ^ (Q_LOW & -hi)
 // で済むので 65535 周しても constexpr step 上限に余裕で収まる。
 //
 // 利点: init_tables 不要 → 初回 query の cold start 無し、コンパイラの定数畳み込みも狙える。
@@ -17,6 +17,7 @@
 //   mul を mul2s (VPCLMUL, GPR in/out) で 2 lane 同時実行。frob4 は GPR byte table のまま
 //   両 lane 並列 (load 独立なので latency はスカラ 1 回分)。b = N^q は最下位 nibble に織り込み。
 #pragma GCC optimize("O3,unroll-loops")
+#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/mul2.hpp"
@@ -79,7 +80,7 @@ constexpr auto TABLES= []() {
  t.LN_SIGMA[0]= 0;
  return t;
 }();
-GNU_TARGET("vpclmulqdq") u64 pow(u64 a, u64 e) {
+u64 pow(u64 a, u64 e) {
  if(!e) return 1;
  if(!a) return 0;
  constexpr u64 M_VAL= (~u64(0)) / 65535u;

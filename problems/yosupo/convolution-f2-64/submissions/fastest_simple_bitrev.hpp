@@ -13,7 +13,7 @@
 // この上で、 真の DIF nim FFT (= bit-reverse intermediate を Phase A 内に
 // 自然に埋め込み、 master 表 contiguous access を実現する) を実装するのが次の段階。
 //
-// 必要拡張: GNU_TARGET("pclmul") のみ。
+// 必要拡張: pclmul のみ。
 
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"

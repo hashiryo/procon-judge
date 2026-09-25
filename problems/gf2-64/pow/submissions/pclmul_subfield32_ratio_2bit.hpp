@@ -12,12 +12,13 @@
 //
 // 必要な拡張: VPCLMULQDQ + AVX2 (Intel Ice Lake / AMD Zen3 以降)。
 #pragma GCC optimize("O3,unroll-loops")
+#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "_subfield32_ratio.hpp"
 #include "_win32.hpp"
 namespace gf2_64_pow_subfield32_ratio_2bit {
 using namespace gf2_64_pow_subfield32;
 using gf2_64_pclmul::frob32;
-GNU_TARGET("pclmul,vpclmulqdq") u64 pow(u64 a, u64 e) {
+u64 pow(u64 a, u64 e) {
  if(!e) return 1;
  if(!a) return 0;
  const u32 q= u32(e / SPLIT);

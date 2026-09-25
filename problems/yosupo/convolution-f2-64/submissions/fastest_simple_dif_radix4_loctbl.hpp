@@ -31,7 +31,7 @@
 // twiddle: master M[j] = Σ_{L: j_L=1} β_{L+1} は level 非依存なので
 //   v = M[j_k]、 u_lo = M[2 j_k]、 u_hi = M[2 j_k + 1] で全部賄える。
 //
-// 必要拡張: GNU_TARGET("pclmul") のみ。
+// 必要拡張: pclmul のみ。
 
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"

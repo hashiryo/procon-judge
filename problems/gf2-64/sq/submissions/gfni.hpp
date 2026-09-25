@@ -20,9 +20,7 @@
 //   gfni:   1 gf2p8affine ≈ 1 cycle TPT, ~5 cycle latency
 //   spread phase で ~3x throughput、reduction 込みで ~25% 改善見込み。
 #pragma GCC optimize("O3,unroll-loops")
-#if (defined(__x86_64__) || defined(__i386__)) && !defined(USE_SIMDE)
-#pragma GCC target("gfni,avx,avx2")
-#endif
+#define GF2_64_EXTRA_TARGETS "gfni"
 #include "_shared/gf2-64/_common.hpp"
 #ifdef USE_SIMDE
 #include <simde/x86/gfni.h>
@@ -34,7 +32,7 @@ constexpr u8 RED[]= {0, 27, 45, 54, 90, 65, 119, 108};
 //   A_HI: 入力 bit j (j∈[4,8)) → 出力 bit 2(j-4)
 constexpr u64 A_LO= 0x0100020004000800ull;
 constexpr u64 A_HI= 0x1000200040008000ull;
-GNU_TARGET("gfni") inline u64 sq(u64 a) {
+inline u64 sq(u64 a) {
  __m256i v= _mm256_set_epi64x(0, 0, (i64)a, (i64)a);
  __m256i M= _mm256_set_epi64x(0, 0, (i64)A_HI, (i64)A_LO);
  __m256i res= _mm256_gf2p8affine_epi64_epi8(v, M, 0);
@@ -49,7 +47,7 @@ GNU_TARGET("gfni") inline u64 sq(u64 a) {
 }
 }  // namespace gf2_64_sq_gfni
 struct GF2_64Op {
- GNU_TARGET("gfni") static vector<u64> run(const vector<u64>& as) {
+ static vector<u64> run(const vector<u64>& as) {
   using gf2_64_sq_gfni::sq;
   vector<u64> ans(as.size());
   for(size_t i= 0; i < as.size(); ++i) ans[i]= sq(as[i]);

@@ -59,7 +59,7 @@ constexpr MuCls MU_CLS= []() {
 }();
 // b = a^(2^32+1) ∈ F_2^32 と q から、b^q = h_P^mp · h_N^mn となる (mp, mn) を返す。
 // そこから元を作るのは pow_pair (_subfield32.hpp) か pow_pair_full (_subfield32_pwfull.hpp)。
-GNU_TARGET("pclmul,vpclmulqdq") inline pair<u32, u32> subfield_exp2(u64 b, u32 q) {
+inline pair<u32, u32> subfield_exp2(u64 b, u32 q) {
  const u64 fb= frob16(b);
  const u64 t= mul(b, fb);  // b^(2^16+1) = b^P
  const u16 b1= u16(b ^ fb), b0= u16(u16(b) ^ LC.t[0][u8(b1)] ^ LC.t[1][b1 >> 8]);

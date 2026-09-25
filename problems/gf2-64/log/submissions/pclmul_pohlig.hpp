@@ -13,16 +13,13 @@
 //   - flat hash map (open addressing, linear probing) で std::unordered_map より高速
 //   - byte_window pow で x^{N/p} 計算を高速化
 #pragma GCC optimize("O3,unroll-loops")
-#if (defined(__x86_64__) || defined(__i386__)) && !defined(USE_SIMDE)
-#pragma GCC target("pclmul,bmi2")
-#endif
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/sq.hpp"
 
 #if (defined(__x86_64__) || defined(__i386__)) && !defined(USE_SIMDE)
 #include <immintrin.h>
-#define PCLMUL_RUN GNU_TARGET("pclmul,bmi2")
+#define PCLMUL_RUN 
 #else
 #define PCLMUL_RUN
 #endif
@@ -31,9 +28,9 @@ using gf2_64_pclmul::mul;
 using gf2_64_pclmul::sq;
 inline u64 FROB4_BYTE[8][256];
 inline bool inited= false;
-GNU_TARGET("pclmul") u64 frob4(u64 a) { return FROB4_BYTE[0][u8(a)] ^ FROB4_BYTE[1][u8(a >> 8)] ^ FROB4_BYTE[2][u8(a >> 16)] ^ FROB4_BYTE[3][u8(a >> 24)] ^ FROB4_BYTE[4][u8(a >> 32)] ^ FROB4_BYTE[5][u8(a >> 40)] ^ FROB4_BYTE[6][u8(a >> 48)] ^ FROB4_BYTE[7][u8(a >> 56)]; }
+u64 frob4(u64 a) { return FROB4_BYTE[0][u8(a)] ^ FROB4_BYTE[1][u8(a >> 8)] ^ FROB4_BYTE[2][u8(a >> 16)] ^ FROB4_BYTE[3][u8(a >> 24)] ^ FROB4_BYTE[4][u8(a >> 32)] ^ FROB4_BYTE[5][u8(a >> 40)] ^ FROB4_BYTE[6][u8(a >> 48)] ^ FROB4_BYTE[7][u8(a >> 56)]; }
 // byte_window pow (= pclmul_byte_window.hpp と同じ)
-GNU_TARGET("pclmul") u64 pow_bw(u64 a, u64 e) {
+u64 pow_bw(u64 a, u64 e) {
  if(e == 0) return 1;
  u64 T[16];
  T[0]= 1;
@@ -91,7 +88,7 @@ struct BSGSCtx {
  BSGSTable table;
 };
 inline BSGSCtx ctxs[7];
-GNU_TARGET("pclmul") void init_tables() {
+void init_tables() {
  if(inited) return;
  inited= true;
  // frob4 byte table for pow_bw
@@ -126,7 +123,7 @@ GNU_TARGET("pclmul") void init_tables() {
  }
 }
 // Solve g_sub^k = target in subgroup of order q. k ∈ [0, q).
-GNU_TARGET("pclmul") u64 bsgs_solve(int prime_idx, u64 target) {
+u64 bsgs_solve(int prime_idx, u64 target) {
  const auto& ctx= ctxs[prime_idx];
  u64 t= target;
  for(u64 i= 0; i < ctx.m; ++i) {
@@ -155,7 +152,7 @@ constexpr u64 modinv(u64 a, u64 m) {
  if(s0 < 0) s0+= (long long)m;
  return (u64)s0;
 }
-GNU_TARGET("pclmul") u64 log_g(u64 x) {
+u64 log_g(u64 x) {
  // Pohlig-Hellman: r ≡ r_i (mod p_i) で再構成
  // CRT: r = sum (r_i * M_i * y_i)  where M_i = ∏_{j≠i} p_j, y_i = M_i^{-1} mod p_i
  // 簡便な漸進 CRT: r mod (p_1 ... p_k) を更新

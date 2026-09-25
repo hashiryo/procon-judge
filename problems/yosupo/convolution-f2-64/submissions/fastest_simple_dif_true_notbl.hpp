@@ -25,7 +25,7 @@
 //   → master M[j] = Σ_{L: j_L=1} β_{L+1} (size 2^(d-1)) で全 level の ska を提供。
 //   → contiguous master access が DIF の自然な benefit。
 //
-// 必要拡張: GNU_TARGET("pclmul") のみ。
+// 必要拡張: pclmul のみ。
 
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"

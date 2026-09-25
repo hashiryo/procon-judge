@@ -18,9 +18,6 @@
 //   PSHUFB は arch 共通で 1-1.5 cyc
 //   → AMD で有利、Intel/ARM でも互角
 #pragma GCC optimize("O3,unroll-loops")
-#if (defined(__x86_64__) || defined(__i386__)) && !defined(USE_SIMDE)
-#pragma GCC target("ssse3")
-#endif
 #include "_shared/gf2-64/_common.hpp"
 namespace gf2_64_sq_pshufb {
 constexpr u8 RED[]= {0, 27, 45, 54, 90, 65, 119, 108};

@@ -10,14 +10,20 @@
 #endif
 // このベンチの家族が前提にする x86 の命令。-march に頼らず、ソースで宣言する。
 // x86-64-v3 の命令と pclmul で、GitHub のランナーの 6 モデルはどれも持っている。
-// ファイルの最後で、以降に定義する関数 (提出と base.cpp) にまとめて付ける領域を開く。
-// 関数ごとの GNU_TARGET(x) は、この一覧に x を足したものになる。clang は関数に target を
-// 書くとその関数には領域の宣言を付けないので、一覧を含めておかないと GCC と中身が変わる。
+// ファイルの最後で、以降に定義する関数 (共通ヘッダ、提出、base.cpp) にまとめて付ける領域を開く。
+// 関数ごとには宣言しない。この一覧に無い命令 (vpclmulqdq や gfni) を使う提出は、このヘッダを
+// 最初に include する前に GF2_64_EXTRA_TARGETS を定義して、領域の一覧に足す。
+//   #define GF2_64_EXTRA_TARGETS "vpclmulqdq"
+//   #include "_shared/gf2-64/_common.hpp"
+// include したあとで pragma や関数の target を足しても、clang には効かない。clang は attribute push を
+// 入れ子にすると一番外側の target だけを使い、関数に target を書くとその関数には領域の宣言を付けない。
 #if defined(__x86_64__) && !defined(USE_SIMDE)
 #define GF2_64_TARGETS "sse3,ssse3,sse4.1,sse4.2,popcnt,cx16,sahf,avx,avx2,bmi,bmi2,fma,f16c,lzcnt,movbe,pclmul"
-#define GNU_TARGET(x) [[gnu::target(GF2_64_TARGETS "," x)]]
+#ifdef GF2_64_EXTRA_TARGETS
+#define GF2_64_REGION_TARGETS GF2_64_TARGETS "," GF2_64_EXTRA_TARGETS
 #else
-#define GNU_TARGET(x)
+#define GF2_64_REGION_TARGETS GF2_64_TARGETS
+#endif
 #endif
 
 // 名前空間に置く 256 bit の定数を初期化するためのもの。_mm256_setr_epi8 で初期化すると、その
@@ -122,10 +128,10 @@ constexpr uint64_t IRRED_LOW= 0x1Bu;
 #define GF2_64_PRAGMA(x) GF2_64_PRAGMA_(x)
 #if defined(__x86_64__) && !defined(USE_SIMDE)
 #if defined(__clang__)
-GF2_64_PRAGMA(clang attribute push(__attribute__((target(GF2_64_TARGETS))), apply_to = function))
+GF2_64_PRAGMA(clang attribute push(__attribute__((target(GF2_64_REGION_TARGETS))), apply_to = function))
 #define GF2_64_TARGET_END _Pragma("clang attribute pop")
 #else
-GF2_64_PRAGMA(GCC target(GF2_64_TARGETS))
+GF2_64_PRAGMA(GCC target(GF2_64_REGION_TARGETS))
 #define GF2_64_TARGET_END
 #endif
 #else

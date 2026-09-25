@@ -8,6 +8,7 @@
 //
 // 必要な拡張: VPCLMULQDQ + AVX2 (Intel Ice Lake / AMD Zen3 以降).
 #pragma GCC optimize("O3,unroll-loops")
+#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/mul2.hpp"
@@ -30,7 +31,7 @@ using gf2_64_pclmul::sq;
 using gf2_64_pclmul::unpack;
 // =============================================================================
 // constexpr GF(2^64) 乗算 (PerfectHash641 の build 用).
-// GNU_TARGET("pclmul") intrinsic は constexpr 化できないため、4-bit windowed CLMUL で実装。
+// pclmul intrinsic は constexpr 化できないため、4-bit windowed CLMUL で実装。
 // reduction polynomial は runtime 版と同一: x^64 + x^4 + x^3 + x + 1 (R = 0x1B).
 // =============================================================================
 constexpr void clmul128_ce(u64 a, u64 b, u64& lo_out, u64& hi_out) {
@@ -284,7 +285,7 @@ struct BSGSTable6700417 {
  static inline const __m256i V_S01= GF2_64_M256_SET_EPI64X(0, inv_base_m, 0, 1);
  static inline const __m256i V_S23= GF2_64_M256_SET_EPI64X(0, inv3_base_m, 0, inv2_base_m);
  static inline const __m256i V_S4= GF2_64_M256_SET1_EPI64X(inv4_base_m);
- GNU_TARGET("pclmul,vpclmulqdq") static inline u32 solve(u64 target) {
+ static inline u32 solve(u64 target) {
   const __m256i tv= _mm256_set1_epi64x(target);
   __m256i A= mul2(tv, V_S01), B= mul2(tv, V_S23);  // (t0, t1), (t2, t3)
   u64 t[4];
@@ -336,7 +337,7 @@ inline __m256i frob3_frob4(u64 a) {
  __m128i y= _mm_xor_si128(_mm_xor_si128(_mm_xor_si128(v0, v1), _mm_xor_si128(v2, v3)), _mm_xor_si128(_mm_xor_si128(v4, v5), _mm_xor_si128(v6, v7)));
  return _mm256_permute4x64_epi64(_mm256_castsi128_si256(y), _MM_SHUFFLE(1, 1, 0, 0));
 }
-GNU_TARGET("pclmul,vpclmulqdq") u64 log_g(u64 x) {
+u64 log_g(u64 x) {
  assert(x);
  const u64 x32= frob32(x);
  const u64 N= mul(x, x32);  // x^(2^32+1) ∈ F_2^32

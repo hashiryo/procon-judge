@@ -136,7 +136,7 @@ constexpr SigTables SIG= []() {
 // u ∈ μ_P の log (mp) と v ∈ μ_N の log (mn) から b^q の 2 因子を作る (2 段の表を使う版)。
 // 呼ぶ側が窓の結果と一緒に mul2 へ渡せるよう、掛け合わせる前の形で返している。
 // 表を 65537 要素そのまま持つ版は _subfield32_pwfull.hpp にある。
-GNU_TARGET("vpclmulqdq") inline pair<u64, u64> pow_pair(u32 mp, u32 mn) { return unpack(mul2(_mm256_set_epi64x(0, SIG.HI[mn >> 8], 0, MU_PW.HI[mp >> 8]), _mm256_set_epi64x(0, SIG.LO[mn & 255], 0, MU_PW.LO[mp & 255]))); }
+inline pair<u64, u64> pow_pair(u32 mp, u32 mn) { return unpack(mul2(_mm256_set_epi64x(0, SIG.HI[mn >> 8], 0, MU_PW.HI[mp >> 8]), _mm256_set_epi64x(0, SIG.LO[mn & 255], 0, MU_PW.LO[mp & 255]))); }
 // 窓の畳み込みで使う frobK の 2 lane 版 (byte_window 系と同じ形)。結果は q0, q2 に入るので
 // そのまま mul2 の operand にできる。呼ぶ側で使うものだけが実体化される。
 inline __m256i frob2_2lane(u64 a0, u64 a1) {

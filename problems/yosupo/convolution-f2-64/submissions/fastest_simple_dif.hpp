@@ -26,7 +26,7 @@
 //     ここでの DIF 化の主眼は butterfly 側 (DIT の per-i twiddle → DIF の
 //     per-block single ska) + master 表 contiguous 化。
 //
-// 必要拡張: GNU_TARGET("pclmul") のみ。
+// 必要拡張: pclmul のみ。
 
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"

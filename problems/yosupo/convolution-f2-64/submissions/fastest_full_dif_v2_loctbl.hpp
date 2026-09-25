@@ -1,4 +1,5 @@
 #pragma once
+#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "../common.hpp"
 // fastest_full_dif_v2.hpp の **per-level local-table 版**。
 // SUBMASK_TBL constexpr 撤去、 outer level 冒頭で stack 上 subs[16] build。
@@ -22,7 +23,7 @@
 //    で 1 本だけ。 DIT 全部入りの per-level halftable よりさらにコンパクト。
 //
 // 3. ska=0 ブロック完全 skip + mul2 ペアリング:
-//    block j=0 は ska=0 → ブロック全体が butterfly_0 (GNU_TARGET("pclmul") 無し) で済む。
+//    block j=0 は ska=0 → ブロック全体が butterfly_0 (pclmul 無し) で済む。
 //    j>0 のみ btf_fft_block_dif で SIMD 処理。
 //
 // 4. butterfly pair の SIMD pipeline (btf_fft_block_dif):
@@ -41,7 +42,7 @@
 // 7. submask 表 (SUBMASK_TBL) を constexpr で .rodata に焼く。 bc_to_lch /
 //    bc_to_mono の per-level submask 列挙を runtime build から table lookup に。
 //
-// 必要拡張: GNU_TARGET("pclmul") + VPCLMULQDQ + AVX2 + BMI2 (Ice Lake / Zen3 以降)。
+// 必要拡張: pclmul + VPCLMULQDQ + AVX2 + BMI2 (Ice Lake / Zen3 以降)。
 
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"
@@ -119,13 +120,13 @@ inline nim_fft_data nim_data;
 // =============================================================================
 // SIMD primitives (fastest_full_v2 から借用、 ska broadcast 化)
 // =============================================================================
-GNU_TARGET("vpclmulqdq") inline __m256i expand_pair(const u64* p) {
+inline __m256i expand_pair(const u64* p) {
  __m128i v= _mm_loadu_si128((const __m128i*)p);
  return _mm256_permute4x64_epi64(_mm256_castsi128_si256(v), _MM_SHUFFLE(3, 1, 2, 0));
 }
-GNU_TARGET("vpclmulqdq") inline __m128i pack_pair(__m256i v) { return _mm256_castsi256_si128(_mm256_permute4x64_epi64(v, _MM_SHUFFLE(3, 2, 2, 0))); }
+inline __m128i pack_pair(__m256i v) { return _mm256_castsi256_si128(_mm256_permute4x64_epi64(v, _MM_SHUFFLE(3, 2, 2, 0))); }
 inline const __m256i RED256_DIF= GF2_64_M256_SETR_EPI8(0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0);
-GNU_TARGET("vpclmulqdq") inline __m256i clmul_reduce_pair(__m256i a_vec, __m256i b_vec) {
+inline __m256i clmul_reduce_pair(__m256i a_vec, __m256i b_vec) {
  __m256i prod= _mm256_clmulepi64_epi128(a_vec, b_vec, 0);
  __m256i d_full= _mm256_xor_si256(prod, _mm256_slli_epi64(prod, 1));
  __m256i red1_full= _mm256_xor_si256(d_full, _mm256_slli_epi64(d_full, 3));
@@ -138,7 +139,7 @@ GNU_TARGET("vpclmulqdq") inline __m256i clmul_reduce_pair(__m256i a_vec, __m256i
 // DIF FFT butterfly (block 内 ska 一定): pair (i, i+1) を SIMD で。
 //   r = mul(hi, ska); lo' = lo ^ r; hi' = lo' ^ hi
 // ska_vec は呼び出し側で 1 度だけ broadcast されたもの。
-GNU_TARGET("vpclmulqdq") inline void btf_fft_pair_dif(u64* f0_ptr, u64* f1_ptr, __m256i ska_vec) {
+inline void btf_fft_pair_dif(u64* f0_ptr, u64* f1_ptr, __m256i ska_vec) {
  __m256i hi_vec= expand_pair(f1_ptr);
  __m256i p_vec= clmul_reduce_pair(hi_vec, ska_vec);
  __m256i lo_vec= expand_pair(f0_ptr);
@@ -149,7 +150,7 @@ GNU_TARGET("vpclmulqdq") inline void btf_fft_pair_dif(u64* f0_ptr, u64* f1_ptr, 
 }
 // DIF IFFT butterfly: 順序逆。
 //   hi_new = lo ^ hi (= s); lo_new = lo ^ s*ska
-GNU_TARGET("vpclmulqdq") inline void btf_ifft_pair_dif(u64* f0_ptr, u64* f1_ptr, __m256i ska_vec) {
+inline void btf_ifft_pair_dif(u64* f0_ptr, u64* f1_ptr, __m256i ska_vec) {
  __m256i lo_vec= expand_pair(f0_ptr);
  __m256i hi_vec= expand_pair(f1_ptr);
  __m256i s_vec= _mm256_xor_si256(lo_vec, hi_vec);
@@ -160,7 +161,7 @@ GNU_TARGET("vpclmulqdq") inline void btf_ifft_pair_dif(u64* f0_ptr, u64* f1_ptr,
 }
 // ska scalar → __m256i 形式 (lane 0, 2 のみ valid、 pair clmul の入力レイアウト)
 // 構造: (ska, 0, ska, 0)
-GNU_TARGET("vpclmulqdq") inline __m256i broadcast_ska(u64 ska) {
+inline __m256i broadcast_ska(u64 ska) {
  __m128i lo= _mm_set_epi64x(0, ska);
  __m256i v= _mm256_castsi128_si256(lo);
  return _mm256_inserti128_si256(v, lo, 1);
@@ -242,7 +243,7 @@ inline void bc_to_mono(u64* poly, int n) {
 // =============================================================================
 // Phase B: DIF top-down butterflies、 j=0 完全 skip + i pair SIMD
 // =============================================================================
-GNU_TARGET("vpclmulqdq") inline void nim_fft(std::vector<u64>& f) {
+inline void nim_fft(std::vector<u64>& f) {
  int n= (int)f.size();
  if(n <= 1) return;
  int d= msb(n);
@@ -252,7 +253,7 @@ GNU_TARGET("vpclmulqdq") inline void nim_fft(std::vector<u64>& f) {
   int unit= 1 << k;
   int half= unit >> 1;
   int num_blocks= n / unit;
-  // j=0: ska=0 で butterfly_0 (GNU_TARGET("pclmul") 不要)
+  // j=0: ska=0 で butterfly_0 (pclmul 不要)
   {
    u64* base= f.data();
    for(int i= 0; i < half; ++i) base[half + i]^= base[i];
@@ -281,7 +282,7 @@ GNU_TARGET("vpclmulqdq") inline void nim_fft(std::vector<u64>& f) {
   }
  }
 }
-GNU_TARGET("vpclmulqdq") inline void nim_ifft(std::vector<u64>& f) {
+inline void nim_ifft(std::vector<u64>& f) {
  int n= (int)f.size();
  if(n <= 1) return;
  int d= msb(n);
@@ -316,7 +317,7 @@ GNU_TARGET("vpclmulqdq") inline void nim_ifft(std::vector<u64>& f) {
  }
  bc_to_mono(f.data(), n);
 }
-GNU_TARGET("vpclmulqdq") inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<u64> g) {
+inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<u64> g) {
  int n= (int)f.size(), m= (int)g.size();
  int s= (int)ceil_pow2(u32(n + m - 1));
  f.resize(s);
@@ -331,7 +332,7 @@ GNU_TARGET("vpclmulqdq") inline std::vector<u64> nim_convolution(std::vector<u64
 }
 }  // namespace conv_f2_64_full_dif_v2_loctbl
 struct Solver {
- GNU_TARGET("vpclmulqdq") static std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
+ static std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
   using namespace conv_f2_64_full_dif_v2_loctbl;
   auto c= nim_convolution(a_in, b_in);
   return c;

@@ -13,6 +13,7 @@
 //   a^r = frob36(a^{r_3}) · frob24(a^{r_2}) · frob12(a^{r_1}) · a^{r_0}
 //   (12 bit × 4 lane, 各 lane 3 nibble, init + 2 反復, b は lane0 最下位に織り込み)
 #pragma GCC optimize("O3,unroll-loops")
+#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/mul2.hpp"
@@ -92,7 +93,7 @@ inline __m256i frob12_frob36(u64 a0, u64 a1) {
  __m256i y= _mm256_xor_si256(_mm256_xor_si256(vA, vB), _mm256_xor_si256(vC, vD));
  return _mm256_xor_si256(y, _mm256_srli_si256(y, 8));
 }
-GNU_TARGET("pclmul,vpclmulqdq") u64 pow(u64 a, u64 e) {
+u64 pow(u64 a, u64 e) {
  if(!e) return 1;
  if(!a) return 0;
  constexpr u64 M_VAL= (~u64(0)) / 65535u;

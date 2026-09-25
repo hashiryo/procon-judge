@@ -1,23 +1,20 @@
 #pragma once
-// GNU_TARGET("pclmul") ベース版 + Pohlig-Hellman + BSGS。
-// reference.hpp と同じ構造だが mul/pow に GNU_TARGET("pclmul") を使う。
+// pclmul ベース版 + Pohlig-Hellman + BSGS。
+// reference.hpp と同じ構造だが mul/pow に pclmul を使う。
 #pragma GCC optimize("O3,unroll-loops")
-#if (defined(__x86_64__) || defined(__i386__)) && !defined(USE_SIMDE)
-#pragma GCC target("pclmul")
-#endif
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/sq.hpp"
 
 #if (defined(__x86_64__) || defined(__i386__)) && !defined(USE_SIMDE)
-#define PCLMUL_TARGET GNU_TARGET("pclmul")
+#define PCLMUL_TARGET 
 #else
 #define PCLMUL_TARGET
 #endif
 namespace gf2_64_pcl_log {
 using gf2_64_pclmul::mul;
 using gf2_64_pclmul::sq;
-GNU_TARGET("pclmul") inline u64 pow(u64 a, u64 e) {
+inline u64 pow(u64 a, u64 e) {
  u64 res= 1;
  while(e) {
   if(e & 1) res= mul(res, a);

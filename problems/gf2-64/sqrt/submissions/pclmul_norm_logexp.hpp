@@ -19,7 +19,7 @@ using u16= unsigned short;
 
 inline u16 PW16[65536], LN16[65536];
 inline bool inited= false;
-GNU_TARGET("pclmul") void init_tables() {
+void init_tables() {
  if(inited) return;
  inited= true;
  // F_{2^16} log/exp (Nimber.hpp 互換)

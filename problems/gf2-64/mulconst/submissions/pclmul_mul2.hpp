@@ -1,11 +1,12 @@
 #pragma once
 // 定数倍を共有の mul2 (VPCLMULQDQ) で入力 2 つずつ計算する版。
 #pragma GCC optimize("O3,unroll-loops")
+#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/mul2.hpp"
 struct GF2_64Op {
- GNU_TARGET("pclmul,vpclmulqdq") static vector<u64> run(const vector<u64>& as) {
+ static vector<u64> run(const vector<u64>& as) {
   using gf2_64_pclmul::mul;
   using gf2_64_pclmul::mul2;
   using gf2_64_pclmul::unpack;

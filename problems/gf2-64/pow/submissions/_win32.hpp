@@ -18,7 +18,7 @@
 #include "_subfield32.hpp"
 namespace gf2_64_pow_subfield32 {
 // 4 bit × 8 桁。T[0..15] の組み方は byte_window_6_5 と同じ。
-GNU_TARGET("pclmul,vpclmulqdq") inline pair<u64, u64> win32_4bit(u64 a, u32 r0) {
+inline pair<u64, u64> win32_4bit(u64 a, u32 r0) {
  u64 T[16]= {1, a, sq(a)};
  __m256i T12= _mm256_set_epi64x(0, T[2], 0, a);
  __m256i T34= mul2(T12, _mm256_set1_epi64x(T[2]));
@@ -43,7 +43,7 @@ GNU_TARGET("pclmul,vpclmulqdq") inline pair<u64, u64> win32_4bit(u64 a, u32 r0) 
  return {B0, gf2_64_pclmul::frob4(B1)};
 }
 // 4 bit × 8 桁。T[0..15] を偶数は sq、奇数は a 倍で作る版 (mul2 7 本 → 3 本 + sq 7 回)。
-GNU_TARGET("pclmul,vpclmulqdq") inline pair<u64, u64> win32_4bit_sq(u64 a, u32 r0) {
+inline pair<u64, u64> win32_4bit_sq(u64 a, u32 r0) {
  __m256i av= _mm256_set1_epi64x(a);
  u64 T[16]= {1, a, sq(a)};
  T[4]= sq(T[2]);
@@ -63,7 +63,7 @@ GNU_TARGET("pclmul,vpclmulqdq") inline pair<u64, u64> win32_4bit_sq(u64 a, u32 r
 }
 // 3 bit × 11 桁 (33 bit ぶんだが上の桁は 2 bit しか立たない)。位置 j, j+4, j+8 を
 // frob12 / frob24 で 1 つにまとめてから、frob6 と frob3 で 4 つを畳む。
-GNU_TARGET("pclmul,vpclmulqdq") inline pair<u64, u64> win32_3bit(u64 a, u32 r0) {
+inline pair<u64, u64> win32_3bit(u64 a, u32 r0) {
  u64 T[8]= {1, a, sq(a)};
  __m256i T12= _mm256_set_epi64x(0, T[2], 0, a);
  tie(T[3], T[4])= unpack(mul2(T12, _mm256_set1_epi64x(T[2])));
@@ -80,7 +80,7 @@ GNU_TARGET("pclmul,vpclmulqdq") inline pair<u64, u64> win32_3bit(u64 a, u32 r0) 
  return {Y0, gf2_64_pclmul::frob3(Y1)};
 }
 // 2 bit × 16 桁。T は a^2, a^3 だけ。木は 4 段。
-GNU_TARGET("pclmul,vpclmulqdq") inline pair<u64, u64> win32_2bit(u64 a, u32 r0) {
+inline pair<u64, u64> win32_2bit(u64 a, u32 r0) {
  const u64 T2= sq(a), T[4]= {1, a, T2, mul(a, T2)};
  __m256i A01= mul2(frob16_2lane(T[(r0 >> 16) & 3], T[(r0 >> 18) & 3]), _mm256_set_epi64x(0, T[(r0 >> 2) & 3], 0, T[r0 & 3]));
  __m256i A23= mul2(frob16_2lane(T[(r0 >> 20) & 3], T[(r0 >> 22) & 3]), _mm256_set_epi64x(0, T[(r0 >> 6) & 3], 0, T[(r0 >> 4) & 3]));
@@ -94,7 +94,7 @@ GNU_TARGET("pclmul,vpclmulqdq") inline pair<u64, u64> win32_2bit(u64 a, u32 r0) 
 }
 // 2 bit × 16 桁、基底 2 本。葉に掛かる frob16 は「frob16(a) の冪表」に押し込めるので
 // (frob16(T[d]) = frob16(a)^d)、木の 1 段目の frob 4 本が表 1 本の用意に化ける。
-GNU_TARGET("pclmul,vpclmulqdq") inline pair<u64, u64> win32_2bit_dual(u64 a, u32 r0) {
+inline pair<u64, u64> win32_2bit_dual(u64 a, u32 r0) {
  const u64 b= frob16(a), a2= sq(a), b2= sq(b);
  u64 T[4]= {1, a, a2, 0}, U[4]= {1, b, b2, 0};
  tie(T[3], U[3])= unpack(mul2(_mm256_set_epi64x(0, b2, 0, a2), _mm256_set_epi64x(0, b, 0, a)));
@@ -110,7 +110,7 @@ GNU_TARGET("pclmul,vpclmulqdq") inline pair<u64, u64> win32_2bit_dual(u64 a, u32
 }
 // 2 bit × 16 桁、基底 4 本 (a, frob8(a), frob16(a), frob24(a))。木の 2 段目の frob も
 // 基底に押し込む。frob の表引きは frob8 が 3 回と最後の 2 本だけになる。
-GNU_TARGET("pclmul,vpclmulqdq") inline pair<u64, u64> win32_2bit_quad(u64 a, u32 r0) {
+inline pair<u64, u64> win32_2bit_quad(u64 a, u32 r0) {
  using gf2_64_pclmul::frob8;
  const u64 a1= frob8(a), a2= frob8(a1), a3= frob8(a2);
  u64 T0[4]= {1, a, sq(a), 0}, T1[4]= {1, a1, sq(a1), 0}, T2[4]= {1, a2, sq(a2), 0}, T3[4]= {1, a3, sq(a3), 0};

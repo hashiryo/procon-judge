@@ -9,6 +9,7 @@
 //
 // 必要な拡張: VPCLMULQDQ + AVX2 (Intel Ice Lake / AMD Zen3 以降).
 #pragma GCC optimize("O3,unroll-loops")
+#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/sq.hpp"
@@ -27,7 +28,7 @@ using gf2_64_pclmul::mul;
 using gf2_64_pclmul::sq;
 const __m256i RED256= GF2_64_M256_SETR_EPI8(0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0);
 // VPCLMUL 2 並列 mul + 並列 reduction (vmul_3_2 と同じ idiom)
-GNU_TARGET("vpclmulqdq") inline __m256i mul2(__m256i a_vec, __m256i b_vec, u64& r0, u64& r1) {
+inline __m256i mul2(__m256i a_vec, __m256i b_vec, u64& r0, u64& r1) {
  __m256i prod= _mm256_clmulepi64_epi128(a_vec, b_vec, 0);
  __m256i d_full= _mm256_xor_si256(prod, _mm256_slli_epi64(prod, 1));
  __m256i red1_full= _mm256_xor_si256(d_full, _mm256_slli_epi64(d_full, 3));
@@ -40,7 +41,7 @@ GNU_TARGET("vpclmulqdq") inline __m256i mul2(__m256i a_vec, __m256i b_vec, u64& 
  r1= _mm256_extract_epi64(result, 2);
  return result;
 }
-GNU_TARGET("vpclmulqdq") inline __m256i mul2_2(__m256i a_vec, __m256i b_vec, __m256i c_vec, u64& r0, u64& r1) {
+inline __m256i mul2_2(__m256i a_vec, __m256i b_vec, __m256i c_vec, u64& r0, u64& r1) {
  __m256i prod= _mm256_clmulepi64_epi128(a_vec, b_vec, 0);
  __m256i d_full= _mm256_xor_si256(prod, _mm256_slli_epi64(prod, 1));
  __m256i red1_full= _mm256_xor_si256(d_full, _mm256_slli_epi64(d_full, 3));
@@ -63,7 +64,7 @@ GNU_TARGET("vpclmulqdq") inline __m256i mul2_2(__m256i a_vec, __m256i b_vec, __m
 }
 // =============================================================================
 // constexpr GF(2^64) 乗算 (PerfectHash641 の build 用).
-// GNU_TARGET("pclmul") intrinsic は constexpr 化できないため、4-bit windowed CLMUL で実装。
+// pclmul intrinsic は constexpr 化できないため、4-bit windowed CLMUL で実装。
 // reduction polynomial は runtime 版と同一: x^64 + x^4 + x^3 + x + 1 (R = 0x1B).
 // =============================================================================
 constexpr void clmul128_ce(u64 a, u64 b, u64& lo_out, u64& hi_out) {

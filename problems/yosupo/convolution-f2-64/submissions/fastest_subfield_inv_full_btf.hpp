@@ -1,4 +1,5 @@
 #pragma once
+#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "../common.hpp"
 // full + **butterfly pair を完全 SIMD 化** (mul2 + 前後 XOR + load/store を 1 関数に):
 //
@@ -19,7 +20,7 @@
 //
 // halftable + Phase A 融合 + Cantor 対称性 + g0[0]=0 skip は引き続き継承。
 //
-// Phase A は GNU_TARGET("pclmul") を使わない pure XOR butterfly + bit-reverse 風 shuffle で、
+// Phase A は pclmul を使わない pure XOR butterfly + bit-reverse 風 shuffle で、
 // 既に SIMD-vectorize 済みでも **メモリ帯域律速**。 連続する 3 パス (m=2 stage,
 // m=1 stage, shuffle) は全部 F_2 線形変換なので、 8-tuple に対する 1 つの線形
 // 変換に圧縮できる。 メモリトラフィックが ~3x 減る (8-tuple あたり 36 ops → 16 ops)。
@@ -50,34 +51,34 @@
 // よって fft の butterfly で必要な 2 つの mul は次のように共有可能:
 //     hi * g0[k]              (= p)
 //     hi * g1[k] = hi * g0[k] ^ hi (∵ GF(2) 上の分配律)
-// すなわち 1 GNU_TARGET("pclmul") + 1 XOR で 2 butterfly 出力が両方計算できる。
-// (元: 1 butterfly あたり 2 GNU_TARGET("pclmul") → 新: 1 butterfly あたり 1 GNU_TARGET("pclmul"))
+// すなわち 1 pclmul + 1 XOR で 2 butterfly 出力が両方計算できる。
+// (元: 1 butterfly あたり 2 pclmul → 新: 1 butterfly あたり 1 pclmul)
 //
-// さらにこの「1 GNU_TARGET("pclmul") / butterfly」を 2 個まとめて VPCLMULQDQ (mul2) 1 命令で発行
+// さらにこの「1 pclmul / butterfly」を 2 個まとめて VPCLMULQDQ (mul2) 1 命令で発行
 // すれば、 **ピーク 2 butterfly / cycle** (元の 4 倍スループット) が狙える。
 //
 // IFFT 側の butterfly:
 //     f0_new = lo*g1 + hi*g0 = lo*(g0+1) + hi*g0 = (lo+hi)*g0 + lo
 //     f1_new = lo + hi
-// → s = lo+hi をまず計算、 1 GNU_TARGET("pclmul") (s*g0) で済む。 同様に mul2 で 2 並列化。
+// → s = lo+hi をまず計算、 1 pclmul (s*g0) で済む。 同様に mul2 で 2 並列化。
 //
 // 各ブロック先頭の i=0 では g0[0]=0 (= 正規化済み twiddle 表の先頭は常に 0) なので
-// GNU_TARGET("pclmul") も load も不要、 単に f0[0]=lo, f1[0]=lo^hi だけで済む。 これを
+// pclmul も load も不要、 単に f0[0]=lo, f1[0]=lo^hi だけで済む。 これを
 // cantor_sym のメインループから切り出し、 i=0 は単独処理 → 残り (i=1..half-1) を
 // pair で潰す構造に変更。
 //
-//   half=1 (len=2):                 i=0 単独 (GNU_TARGET("pclmul") なし)
+//   half=1 (len=2):                 i=0 単独 (pclmul なし)
 //   half=2 (len=4):                 i=0 単独 + i=1 単独 (1 scalar mul)
 //   half=N≥4:                       i=0 単独 + pair(1,2)..pair(N-3,N-2) + i=N-1 単独
 //
-// ペアの mul2 は 2 lane 両方が「有効な GNU_TARGET("pclmul")」 になり (cantor_sym v1 では i=0 ペア
+// ペアの mul2 は 2 lane 両方が「有効な pclmul」 になり (cantor_sym v1 では i=0 ペア
 // で lane 0 が hi*0 = 0 の無駄演算だった) 命令効率が上がる。 ただし Ice Lake では
-// VPCLMULQDQ も GNU_TARGET("pclmul") もスループット 1 / cycle (port 5 占有) なので命令数の差は
+// VPCLMULQDQ も pclmul もスループット 1 / cycle (port 5 占有) なので命令数の差は
 // 出ないが、 g0[0] の load 削減と分岐レス化でわずかに前段 IPC が改善する見込み。
 //
 // その他は raw_u64 と同一: subfield-split inv, constexpr CHAIN, Gray code init。
 //
-// 必要拡張: GNU_TARGET("pclmul") + VPCLMULQDQ + AVX2 + BMI2 (Ice Lake / Zen3 以降)。
+// 必要拡張: pclmul + VPCLMULQDQ + AVX2 + BMI2 (Ice Lake / Zen3 以降)。
 
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"
@@ -183,7 +184,7 @@ constexpr inline u64 embed_idx(u16 idx) {
  return EMBED[0][u8(idx)] ^ EMBED[1][idx >> 8];
 }
 inline const __m256i RED256= GF2_64_M256_SETR_EPI8(0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0);
-GNU_TARGET("vpclmulqdq") inline void mul2(const __m256i& a_vec, const __m256i& b_vec, u64& r0, u64& r1) {
+inline void mul2(const __m256i& a_vec, const __m256i& b_vec, u64& r0, u64& r1) {
  __m256i prod= _mm256_clmulepi64_epi128(a_vec, b_vec, 0);
  __m256i d_full= _mm256_xor_si256(prod, _mm256_slli_epi64(prod, 1));
  __m256i red1_full= _mm256_xor_si256(d_full, _mm256_slli_epi64(d_full, 3));
@@ -203,15 +204,15 @@ GNU_TARGET("vpclmulqdq") inline void mul2(const __m256i& a_vec, const __m256i& b
 // __m128i (a0, a1) → __m256i (a0, _, a1, _) への展開 (vpermq 1 命令)
 // _MM_SHUFFLE(d, c, b, a) は output[k] = src[k番目引数] を意味し、 ここでは
 // output = (src[0], src[2]=0, src[1], src[3]=0) が欲しいので imm = _MM_SHUFFLE(3, 1, 2, 0)。
-GNU_TARGET("vpclmulqdq") inline __m256i expand_pair(const u64* p) {
+inline __m256i expand_pair(const u64* p) {
  __m128i v= _mm_loadu_si128((const __m128i*)p);
  return _mm256_permute4x64_epi64(_mm256_castsi128_si256(v), _MM_SHUFFLE(3, 1, 2, 0));
 }
 // __m256i (x0, _, x1, _) → __m128i (x0, x1) (lane 0, 2 を low 128 へ集約)
 // imm = _MM_SHUFFLE(3, 2, 2, 0): output = (src[0], src[2], src[2], src[3])。 low128 = (src[0], src[2])。
-GNU_TARGET("vpclmulqdq") inline __m128i pack_pair(__m256i v) { return _mm256_castsi256_si128(_mm256_permute4x64_epi64(v, _MM_SHUFFLE(3, 2, 2, 0))); }
+inline __m128i pack_pair(__m256i v) { return _mm256_castsi256_si128(_mm256_permute4x64_epi64(v, _MM_SHUFFLE(3, 2, 2, 0))); }
 // VPCLMULQDQ + 並列 reduction を __m256i で完結 (mul2 と同 idiom、 結果は (p0, _, p1, _))
-GNU_TARGET("vpclmulqdq") inline __m256i clmul_reduce_pair(__m256i a_vec, __m256i b_vec) {
+inline __m256i clmul_reduce_pair(__m256i a_vec, __m256i b_vec) {
  __m256i prod= _mm256_clmulepi64_epi128(a_vec, b_vec, 0);
  __m256i d_full= _mm256_xor_si256(prod, _mm256_slli_epi64(prod, 1));
  __m256i red1_full= _mm256_xor_si256(d_full, _mm256_slli_epi64(d_full, 3));
@@ -223,7 +224,7 @@ GNU_TARGET("vpclmulqdq") inline __m256i clmul_reduce_pair(__m256i a_vec, __m256i
 }
 // FFT 用 butterfly pair: (i, i+1) を一括処理。
 // 計算: t = lo ^ hi*g0; f0' = t; f1' = t ^ hi
-GNU_TARGET("vpclmulqdq") inline void btf_fft_pair(u64* f0_ptr, u64* f1_ptr, const u64* g0_ptr) {
+inline void btf_fft_pair(u64* f0_ptr, u64* f1_ptr, const u64* g0_ptr) {
  __m256i hi_vec= expand_pair(f1_ptr);
  __m256i g_vec= expand_pair(g0_ptr);
  __m256i p_vec= clmul_reduce_pair(hi_vec, g_vec);
@@ -235,7 +236,7 @@ GNU_TARGET("vpclmulqdq") inline void btf_fft_pair(u64* f0_ptr, u64* f1_ptr, cons
 }
 // IFFT 用 butterfly pair:
 // 計算: s = lo ^ hi; f0' = lo ^ s*g0; f1' = s
-GNU_TARGET("vpclmulqdq") inline void btf_ifft_pair(u64* f0_ptr, u64* f1_ptr, const u64* g0_ptr) {
+inline void btf_ifft_pair(u64* f0_ptr, u64* f1_ptr, const u64* g0_ptr) {
  __m256i lo_vec= expand_pair(f0_ptr);
  __m256i hi_vec= expand_pair(f1_ptr);
  __m256i s_vec= _mm256_xor_si256(lo_vec, hi_vec);
@@ -245,7 +246,7 @@ GNU_TARGET("vpclmulqdq") inline void btf_ifft_pair(u64* f0_ptr, u64* f1_ptr, con
  _mm_storeu_si128((__m128i*)f0_ptr, pack_pair(f0_new));
  _mm_storeu_si128((__m128i*)f1_ptr, pack_pair(s_vec));
 }
-GNU_TARGET("vpclmulqdq") inline u64 inv(u64 a) {
+inline u64 inv(u64 a) {
  assert(a != 0);
  u64 a32= frob32(a);
  u64 N= mul(a, a32);
@@ -262,7 +263,7 @@ template <class T> T ceil_pow2(T n) { return n <= 1 ? T(1) : T(1) << (msb(n - 1)
 // =============================================================================
 struct nim_fft_data {
  std::vector<std::vector<u64>> a;
- GNU_TARGET("vpclmulqdq") void init(int n) {
+ void init(int n) {
   if((int)a.size() > n) return;
   a.resize(n + 1);
   std::vector<u64> b(n);
@@ -292,7 +293,7 @@ inline nim_fft_data nim_data;
 // =============================================================================
 // nim FFT (u64 そのまま、 + は ^、 * は mul / mul2)
 // =============================================================================
-GNU_TARGET("vpclmulqdq") inline void nim_fft(std::vector<u64>& f) {
+inline void nim_fft(std::vector<u64>& f) {
  int n= (int)f.size();
  std::vector<u64> f2(n);
  int len= n;
@@ -363,7 +364,7 @@ GNU_TARGET("vpclmulqdq") inline void nim_fft(std::vector<u64>& f) {
    const u64* g0= g.data();
    u64* f0= f.data() + l;
    u64* f1= f.data() + l + half;
-   // i = 0: g0[0] = 0 → GNU_TARGET("pclmul") も g0 ロードも不要
+   // i = 0: g0[0] = 0 → pclmul も g0 ロードも不要
    {
     u64 lo= f0[0], hi= f1[0];
     f0[0]= lo;
@@ -385,7 +386,7 @@ GNU_TARGET("vpclmulqdq") inline void nim_fft(std::vector<u64>& f) {
   }
  }
 }
-GNU_TARGET("vpclmulqdq") inline void nim_ifft(std::vector<u64>& f) {
+inline void nim_ifft(std::vector<u64>& f) {
  int n= (int)f.size();
  std::vector<u64> f2(n);
  int len= n;
@@ -474,7 +475,7 @@ GNU_TARGET("vpclmulqdq") inline void nim_ifft(std::vector<u64>& f) {
   }
  }
 }
-GNU_TARGET("vpclmulqdq") inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<u64> g) {
+inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<u64> g) {
  int n= (int)f.size(), m= (int)g.size();
  int s= (int)ceil_pow2(u32(n + m - 1));
  f.resize(s);
@@ -489,7 +490,7 @@ GNU_TARGET("vpclmulqdq") inline std::vector<u64> nim_convolution(std::vector<u64
 }
 }  // namespace conv_f2_64_full_btf
 struct Solver {
- GNU_TARGET("vpclmulqdq") static std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
+ static std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
   using namespace conv_f2_64_full_btf;
   auto c= nim_convolution(a_in, b_in);
   return c;

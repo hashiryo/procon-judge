@@ -2,7 +2,7 @@
 // sqrt(a) = a^{2^63} は GF(2)-線型写像 (Frobenius の冪)。
 // 64×64 GF(2) 行列 → 8 byte tables で 1 inv あたり 8 byte lookups + XOR。
 //
-// 既存の pclmul.hpp は pow(a, 2^63) で 64 回二乗を回す = 64 GNU_TARGET("pclmul")+reduce ≈ 200 cycles。
+// 既存の pclmul.hpp は pow(a, 2^63) で 64 回二乗を回す = 64 pclmul+reduce ≈ 200 cycles。
 // 本バリアントは ~10 cycles で完結 → 20× 速い見込み。
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"

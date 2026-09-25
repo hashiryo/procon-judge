@@ -20,7 +20,7 @@
 //   g_hi[i] = master[i * stride + 2^(n-1)]   (level に無関係に一定オフセット 2^(n-1))
 // なので g_lo / g_hi の base ポインタは固定で良い。
 //
-// 必要拡張: GNU_TARGET("pclmul") のみ。
+// 必要拡張: pclmul のみ。
 
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"

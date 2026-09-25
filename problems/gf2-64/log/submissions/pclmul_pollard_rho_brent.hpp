@@ -21,16 +21,13 @@
 // 我々の p = 6700417 では BSGS が一方的に強い、というのが実証された。
 // =============================================================================
 #pragma GCC optimize("O3,unroll-loops")
-#if (defined(__x86_64__) || defined(__i386__)) && !defined(USE_SIMDE)
-#pragma GCC target("pclmul,bmi2")
-#endif
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/sq.hpp"
 
 #if (defined(__x86_64__) || defined(__i386__)) && !defined(USE_SIMDE)
 #include <immintrin.h>
-#define PCLMUL_RUN GNU_TARGET("pclmul,bmi2")
+#define PCLMUL_RUN 
 #define HAVE_PEXT 1
 #else
 #define PCLMUL_RUN
@@ -40,8 +37,8 @@ namespace gf2_64_log_pollard_rho_brent {
 using gf2_64_pclmul::mul;
 using gf2_64_pclmul::sq;
 inline u64 FROB4_BYTE[8][256];
-GNU_TARGET("pclmul") u64 frob4(u64 a) { return FROB4_BYTE[0][u8(a)] ^ FROB4_BYTE[1][u8(a >> 8)] ^ FROB4_BYTE[2][u8(a >> 16)] ^ FROB4_BYTE[3][u8(a >> 24)] ^ FROB4_BYTE[4][u8(a >> 32)] ^ FROB4_BYTE[5][u8(a >> 40)] ^ FROB4_BYTE[6][u8(a >> 48)] ^ FROB4_BYTE[7][u8(a >> 56)]; }
-GNU_TARGET("pclmul") u64 pow_bw(u64 a, u64 e) {
+u64 frob4(u64 a) { return FROB4_BYTE[0][u8(a)] ^ FROB4_BYTE[1][u8(a >> 8)] ^ FROB4_BYTE[2][u8(a >> 16)] ^ FROB4_BYTE[3][u8(a >> 24)] ^ FROB4_BYTE[4][u8(a >> 32)] ^ FROB4_BYTE[5][u8(a >> 40)] ^ FROB4_BYTE[6][u8(a >> 48)] ^ FROB4_BYTE[7][u8(a >> 56)]; }
+u64 pow_bw(u64 a, u64 e) {
  if(e == 0) return 1;
  u64 T[16];
  T[0]= 1;
@@ -64,7 +61,7 @@ inline u16 LN_SIGMA_PEXT[65536];
 #if !HAVE_PEXT
 inline int PEXT_POS[16];
 #endif
-GNU_TARGET("pclmul") void build_sigma_pext_table() {
+void build_sigma_pext_table() {
  u64 sigma_pow[16];
  sigma_pow[0]= 1;
  for(int i= 1; i < 16; ++i) sigma_pow[i]= mul(sigma_pow[i - 1], SIGMA);
@@ -192,7 +189,7 @@ struct WalkState {
  return s;
 }
 // Pollard rho + Brent's cycle detection
-GNU_TARGET("pclmul") u32 pollard_rho_log(u64 base, u64 target) {
+u32 pollard_rho_log(u64 base, u64 target) {
  if(target == 1) return 0;
  // 初期状態を (target, 0, 1) にすることで b > 0 を保証 (collision で b 差が出やすい)
  WalkState slow= {target, 0, 1};
@@ -221,7 +218,7 @@ GNU_TARGET("pclmul") u32 pollard_rho_log(u64 base, u64 target) {
  return u64(da) * inv_db % P_BIG;
 }
 inline u32 H_LOG_INV;
-GNU_TARGET("pclmul") u32 solve_f16(u64 x_proj_poly) {
+u32 solve_f16(u64 x_proj_poly) {
  const u32 idx= extract_idx(x_proj_poly);
  if(idx == 0) return 0;
  const u32 log_x= LN_SIGMA_PEXT[idx];
@@ -262,7 +259,7 @@ constexpr u64 EXP_F17= 0x0000ffff0000ffffull;
 constexpr u64 EXP_BIG= 0x00000280fffffd7full;
 
 inline bool inited= false;
-GNU_TARGET("pclmul") void init_tables() {
+void init_tables() {
  if(inited) return;
  inited= true;
  {
@@ -291,7 +288,7 @@ GNU_TARGET("pclmul") void init_tables() {
  direct_641.build(pow_bw(G_2, EXP_641), u32(P_641));
  direct_65537.build(pow_bw(G_2, EXP_F17), u32(P_F17));
 }
-GNU_TARGET("pclmul") u64 log_g(u64 x) {
+u64 log_g(u64 x) {
  const u64 x_f16= pow_bw(x, EXP_F16);
  const u64 x_641= pow_bw(x, EXP_641);
  const u64 x_65537= pow_bw(x, EXP_F17);

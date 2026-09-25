@@ -209,7 +209,7 @@ x64 の環境は `-march` を付けずにコンパイルします。AVX2 や BMI
 
 ファイルごとに宣言するなら、`#pragma GCC target("avx2")` を書きます。ただしこれは GCC にしか効きません。clang 向けには `#pragma clang attribute push(__attribute__((target("avx2"))), apply_to = function)` を並べます。push は同じ翻訳単位の中で pop します。Library Checker の写しの先頭と末尾に例があります。clang の push は `__AVX2__` などのマクロを立てないので、マクロで経路を分けるコードは、x86 かどうかを `__x86_64__` で見る形にします。
 
-gf2-64 の家族の提出は、`_shared/gf2-64/_common.hpp` を読むだけで x86-64-v3 の命令と pclmul が宣言されます。それ以外の命令は `GNU_TARGET("vpclmulqdq")` のように足します。
+gf2-64 の家族の提出は、`_shared/gf2-64/_common.hpp` を読むだけで x86-64-v3 の命令と pclmul が宣言されます。関数ごとには宣言しません。それ以外の命令を使う提出は、共通ヘッダを初めて include するより前で `#define GF2_64_EXTRA_TARGETS "vpclmulqdq"` のように書き、宣言の一覧に足します。include したあとで pragma や関数の target を足しても、clang には効きません。clang は attribute push を入れ子にすると一番外側の target だけを使い、関数に target を書くとその関数には領域の宣言を付けないからです。
 
 ### 5. 手元で確かめる
 

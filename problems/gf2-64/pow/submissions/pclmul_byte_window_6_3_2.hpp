@@ -17,6 +17,7 @@
 //
 // 必要な拡張: VPCLMULQDQ + AVX2 (Intel Ice Lake / AMD Zen3 以降, dashboard EPYC 7763 で動作)。
 #pragma GCC optimize("O3,unroll-loops")
+#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/mul2.hpp"
@@ -42,7 +43,7 @@ inline __m256i frob16_frob48(u64 a0, u64 a1) {
  for(int i= 1; i < 8; ++i)vA= _mm256_xor_si256(vA, _mm256_set_epi64x(0, FROB48_BYTE[i][u8(a1 >> (8 * i))], 0, FROB16_BYTE[i][u8(a0 >> (8 * i))]));
  return vA;
 }
-GNU_TARGET("pclmul,vpclmulqdq") u64 pow(u64 a, u64 e) {
+u64 pow(u64 a, u64 e) {
  if(e == 0) return 1;
  // T[i] = a^i for i = 0..15、 binary-tree で 4 層に分けて VPCLMUL 並列化 (6 と同一)
  u64 T[16]= {1, a, sq(a)};

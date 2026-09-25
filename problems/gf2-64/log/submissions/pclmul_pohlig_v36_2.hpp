@@ -6,6 +6,7 @@
 //
 // 必要な拡張: VPCLMULQDQ + AVX2 (Intel Ice Lake / AMD Zen3 以降).
 #pragma GCC optimize("O3,unroll-loops")
+#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/mul2.hpp"
@@ -27,7 +28,7 @@ using gf2_64_pclmul::sq;
 using gf2_64_pclmul::unpack;
 // =============================================================================
 // constexpr GF(2^64) 乗算 (PerfectHash641 の build 用).
-// GNU_TARGET("pclmul") intrinsic は constexpr 化できないため、4-bit windowed CLMUL で実装。
+// pclmul intrinsic は constexpr 化できないため、4-bit windowed CLMUL で実装。
 // reduction polynomial は runtime 版と同一: x^64 + x^4 + x^3 + x + 1 (R = 0x1B).
 // =============================================================================
 constexpr void clmul128_ce(u64 a, u64 b, u64& lo_out, u64& hi_out) {

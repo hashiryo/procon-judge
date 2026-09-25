@@ -1,4 +1,5 @@
 #pragma once
+#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "../common.hpp"
 // fastest_subfield_inv_constchain と同一アルゴリズム / 同一最適化、 ただし
 // gf2 struct を撤廃して **u64 に対する生 operator** で書き直したバージョン。
@@ -9,13 +10,13 @@
 //   - GF(2^64) の "加算" は実体としては XOR なので、 + より ^ の方がコードを読む
 //     人が「これは bit XOR」と即座に分かる。
 //   - 乗算は mul(a, b)、 平方は sq(a)、 逆元は inv(a) と関数呼びで統一すると、
-//     GNU_TARGET("pclmul") / VPCLMULQDQ / 部分体 inv のどれが走るかが一目で分かる。
+//     pclmul / VPCLMULQDQ / 部分体 inv のどれが走るかが一目で分かる。
 //   - struct のコンストラクタ / dtor / メンバ参照のノイズが消えてループが素直。
 //
 // 機能差はないが、 init() の inverse() は assert(a != 0) があるので i=0 で skip
 // するガードは引き続き必要。
 //
-// 必要拡張: GNU_TARGET("pclmul") + VPCLMULQDQ + AVX2 + BMI2 (Ice Lake / Zen3 以降)。
+// 必要拡張: pclmul + VPCLMULQDQ + AVX2 + BMI2 (Ice Lake / Zen3 以降)。
 
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"
@@ -121,7 +122,7 @@ constexpr inline u64 embed_idx(u16 idx) {
  return EMBED[0][u8(idx)] ^ EMBED[1][idx >> 8];
 }
 inline const __m256i RED256= GF2_64_M256_SETR_EPI8(0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 45, 54, 90, 65, 119, 108, 0, 0, 0, 0, 0, 0, 0, 0);
-GNU_TARGET("vpclmulqdq") inline void mul2(const __m256i& a_vec, const __m256i& b_vec, u64& r0, u64& r1) {
+inline void mul2(const __m256i& a_vec, const __m256i& b_vec, u64& r0, u64& r1) {
  __m256i prod= _mm256_clmulepi64_epi128(a_vec, b_vec, 0);
  __m256i d_full= _mm256_xor_si256(prod, _mm256_slli_epi64(prod, 1));
  __m256i red1_full= _mm256_xor_si256(d_full, _mm256_slli_epi64(d_full, 3));
@@ -133,7 +134,7 @@ GNU_TARGET("vpclmulqdq") inline void mul2(const __m256i& a_vec, const __m256i& b
  r0= _mm256_extract_epi64(result, 0);
  r1= _mm256_extract_epi64(result, 2);
 }
-GNU_TARGET("vpclmulqdq") inline u64 inv(u64 a) {
+inline u64 inv(u64 a) {
  assert(a != 0);
  u64 a32= frob32(a);
  u64 N= mul(a, a32);
@@ -148,7 +149,7 @@ template <class T> T ceil_pow2(T n) { return n <= 1 ? T(1) : T(1) << (msb(n - 1)
 // =============================================================================
 struct nim_fft_data {
  std::vector<std::vector<u64>> a;
- GNU_TARGET("vpclmulqdq") void init(int n) {
+ void init(int n) {
   if((int)a.size() > n) return;
   a.resize(n + 1);
   std::vector<u64> b(n);
@@ -175,7 +176,7 @@ inline nim_fft_data nim_data;
 // =============================================================================
 // nim FFT (u64 そのまま、 + は ^、 * は mul / mul2)
 // =============================================================================
-GNU_TARGET("vpclmulqdq") inline void nim_fft(std::vector<u64>& f) {
+inline void nim_fft(std::vector<u64>& f) {
  int n= (int)f.size();
  std::vector<u64> f2(n);
  int len= n;
@@ -219,7 +220,7 @@ GNU_TARGET("vpclmulqdq") inline void nim_fft(std::vector<u64>& f) {
   }
  }
 }
-GNU_TARGET("vpclmulqdq") inline void nim_ifft(std::vector<u64>& f) {
+inline void nim_ifft(std::vector<u64>& f) {
  int n= (int)f.size();
  std::vector<u64> f2(n);
  int len= n;
@@ -263,7 +264,7 @@ GNU_TARGET("vpclmulqdq") inline void nim_ifft(std::vector<u64>& f) {
   }
  }
 }
-GNU_TARGET("vpclmulqdq") inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<u64> g) {
+inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<u64> g) {
  int n= (int)f.size(), m= (int)g.size();
  int s= (int)ceil_pow2(u32(n + m - 1));
  f.resize(s);
@@ -278,7 +279,7 @@ GNU_TARGET("vpclmulqdq") inline std::vector<u64> nim_convolution(std::vector<u64
 }
 }  // namespace conv_f2_64_raw_u64
 struct Solver {
- GNU_TARGET("vpclmulqdq") static std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
+ static std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
   using namespace conv_f2_64_raw_u64;
   auto c= nim_convolution(a_in, b_in);
   return c;

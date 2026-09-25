@@ -18,9 +18,7 @@
 //   prod XOR red1_shifted で各 lane low に lo_k^red1_k が入る
 //   最後に RED[h_k>>60] を scalar 加算
 #pragma GCC optimize("O3,unroll-loops")
-#if (defined(__x86_64__) || defined(__i386__)) && !defined(USE_SIMDE)
-#pragma GCC target("pclmul,vpclmulqdq,avx,avx2")
-#endif
+#define GF2_64_EXTRA_TARGETS "vpclmulqdq"
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
 #include "_shared/gf2-64/mul2.hpp"
@@ -78,7 +76,7 @@ constexpr inline u64 embed_idx(u16 idx) {
  }();
  return EMBED[0][u8(idx)] ^ EMBED[1][idx >> 8];
 }
-GNU_TARGET("pclmul,vpclmulqdq") inline u64 inv(u64 a) {
+inline u64 inv(u64 a) {
  assert(a != 0);
  u64 a32= frob32(a);
  u64 N= mul(a, a32);
