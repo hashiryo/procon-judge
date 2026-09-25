@@ -203,13 +203,19 @@ uv run pj mirror push --problem <id>
 
 提出のパスはそのまま識別子です。順位表と提出ページとライブラリ側のサイトからのリンクがこのパスを指すので、リネームすると別の提出として測り直しになります。
 
-x64 の環境は `-march` を付けずにコンパイルします。AVX2 や BMI2、pclmul などを使う提出は、使う命令をソースで宣言してください。宣言しないと CE になるか、遅い経路で測られます。
+x64 の環境は、土台の命令をコンパイラのオプションで渡します。x86-64-v3 の命令 (AVX2、BMI2、FMA、popcnt など) に pclmul と vpclmulqdq を足したもので、フラグは `-march=x86-64-v3 -mpclmul -mvpclmulqdq` です。土台の命令は、提出で宣言しなくても使えます。判定サイトへ出すときは、同じ一覧の `#pragma GCC target` を提出の先頭に置きます。これは algo-workspace のバンドラで入れる予定です。一覧は DESIGN.md の「土台の命令をオプションに戻しました」にあります。
 
-関数ごとに宣言するなら、`[[gnu::target("avx2")]]` を関数に付けます。GCC でも clang でも効きます。小さい関数に付けるときは、呼び出す側のループにも同じものを付けてください。付けないとインライン展開されず、1 回ずつの呼び出しになります。
+vpclmulqdq を使うコードは、`__builtin_cpu_supports("vpclmulqdq")` で実行時に分け、持たない CPU 向けの経路も書いてください。Codeforces の判定機が vpclmulqdq を持たないためです。vpclmulqdq の intrinsics はすべて分岐の内側に置き、分岐はループの外に置いて判定を 1 回で済ませます。GitHub の x64 ランナーはどれも vpclmulqdq を持つので、持たない側の経路は procon-judge では測られません。
 
-ファイルごとに宣言するなら、`#pragma GCC target("avx2")` を書きます。ただしこれは GCC にしか効きません。clang 向けには `#pragma clang attribute push(__attribute__((target("avx2"))), apply_to = function)` を並べます。push は同じ翻訳単位の中で pop します。Library Checker の写しの先頭と末尾に例があります。clang の push は `__AVX2__` などのマクロを立てないので、マクロで経路を分けるコードは、x86 かどうかを `__x86_64__` で見る形にします。
+土台に無い命令 (AVX-512 や GFNI) を使う提出は、使う命令をソースで宣言してください。宣言しないと CE になるか、遅い経路で測られます。宣言した命令は土台に足されます。これらの提出は、その命令を持つ CPU でだけ走ります。x64 のランナーの EPYC 7763 はどちらも持たないので、そこに当たると RE になります。
 
-gf2-64 の家族の提出は、`_shared/gf2-64/_common.hpp` を読むだけで x86-64-v3 の命令と pclmul が宣言されます。関数ごとには宣言しません。それ以外の命令を使う提出は、共通ヘッダを初めて include するより前で `#define GF2_64_EXTRA_TARGETS "vpclmulqdq"` のように書き、宣言の一覧に足します。include したあとで pragma や関数の target を足しても、clang には効きません。clang は attribute push を入れ子にすると一番外側の target だけを使い、関数に target を書くとその関数には領域の宣言を付けないからです。
+関数ごとに宣言するなら、`[[gnu::target("avx512f")]]` を関数に付けます。GCC でも clang でも効きます。小さい関数に付けるときは、呼び出す側のループにも同じものを付けてください。付けないとインライン展開されず、1 回ずつの呼び出しになります。
+
+ファイルごとに宣言するなら、`#pragma GCC target("avx512f")` を書きます。ただしこれは GCC にしか効きません。clang 向けには `#pragma clang attribute push(__attribute__((target("avx512f"))), apply_to = function)` を並べます。push は同じ翻訳単位の中で pop します。Library Checker の写しの先頭と末尾に例があります。clang の push は `__AVX512F__` などのマクロを立てないので、マクロで経路を分けるコードは、x86 かどうかを `__x86_64__` で見る形にします。
+
+ハーネスは提出より先に標準ライブラリを読むので、提出で宣言した命令は標準ライブラリの関数には付きません。std::sort に渡したラムダがソートの中へ展開されないなど、判定サイトで先頭に宣言した場合より遅く測られることがあります。
+
+gf2-64 の家族の提出は、`_shared/gf2-64/_common.hpp` を読むと、x86-64-v3 の命令と pclmul を宣言する領域が開きます。procon-judge では土台と重なるので、組んだ中身は変わりません。一覧に無い命令 (gfni など) を使う提出は、共通ヘッダを初めて include するより前で `#define GF2_64_EXTRA_TARGETS "gfni"` のように書き、宣言の一覧に足します。include したあとで `#pragma clang attribute push` を重ねても、clang は一番外側の target だけを使うので効きません。
 
 ### 5. 手元で確かめる
 

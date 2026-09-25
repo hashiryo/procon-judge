@@ -641,13 +641,13 @@ CPU モデルはジョブが始まるまで分かりません。したがって�
 name = "x64-gcc"
 runs_on = "ubuntu-24.04"
 cxx = "g++-15"
-cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -flto=auto -pthread"
+cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=x86-64-v3 -mpclmul -mvpclmulqdq -flto=auto -pthread"
 
 [[env]]
 name = "x64-clang"
 runs_on = "ubuntu-24.04"
 cxx = "clang++-21"
-cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -flto=auto -pthread -fuse-ld=lld"
+cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=x86-64-v3 -mpclmul -mvpclmulqdq -flto=auto -pthread -fuse-ld=lld"
 
 [[env]]
 name = "arm-gcc"
@@ -670,7 +670,7 @@ cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALI
 
 `runs_on = "self"` は手元専用で、CI のマトリクスには出しません。Mac の Apple clang を使うので `-march` は付けません。
 
-x64 の 2 環境にも `-march` は付けません。使う命令は、提出のソースで `#pragma GCC target` や関数の target の属性として宣言します。`-march=x86-64-v3` は宣言を書き忘れたコードも黙って通すので、2026-09-25 に外しました (「-march を外してソースで宣言する記録」)。
+x64 の 2 環境は、土台の命令を `-march=x86-64-v3 -mpclmul -mvpclmulqdq` で渡します。x86-64-v3 の命令に pclmul と vpclmulqdq を足したもので、GitHub の x64 ランナーの 6 モデルはどれも持っています。土台に無い AVX-512 と GFNI は、使う提出がソースで `#pragma GCC target` や関数の target の属性として宣言します。2026-09-25 に `-march` を一度外し、同じ日に土台だけをオプションに戻しました (「-march を外してソースで宣言する記録」)。
 
 引き金ごとに走らせる環境を絞る仕組みは入れません。4 環境を並列で回しても 1 分半なので、変更ごとの費用を削る意味がありません。
 
@@ -1883,6 +1883,8 @@ run の記録は collect が最後に results へ push するまで results に�
 
 切り替えは 3 段に分けました。1 段目と 2 段目はソースの書き換えで、`-march=x86-64-v3` のままでも同じ経路を通ります。3 段目で、2026-09-25 に x64 の 2 環境から `-march` を外しました。arm の `-march=armv8.2-a` は別に決めます。SIMDe が PMULL を使うかどうかは全体のフラグで決まり、関数ごとの宣言では変えられないからです。
 
+同じ 2026-09-25 のうちに、土台の命令はオプションに戻しました。ソースの宣言には置き場所の制約があり、ハーネスの形では判定サイトより遅く測られると分かったためです。経緯は、この節の最後の「土台の命令をオプションに戻しました」にあります。
+
 ### 機能のマクロで分けた経路を先に直しました
 
 `__BMI2__` や `__AVX2__` で分けた経路は、`-march` を外すと CE にならずに遅い側へ落ちます。gf2-64-sq の pdep 系 9 本は、分岐を x86 かどうかの判定に替えて bmi2 を宣言しました。Library Checker の最速解の写し 12 本は、`#pragma GCC target` の隣に clang 向けの `#pragma clang attribute push` を置き、ファイルの末尾で pop します。
@@ -1928,6 +1930,30 @@ include したあとで足す形にしなかったのは、clang に効かない
 ### 宣言の push は GitHub の 500 を受けてもジョブを止めません
 
 2026-09-24 の run で、宣言の ref の push に GitHub が 500 を返し、2 秒おき 3 回のやり直しが全部外れて、2 本のジョブが止まりました。間隔を倍々に延ばして 5 回までやり直し、それでも通らなければその問題だけを飛ばして次へ進むようにしました。飛ばした問題は次の run が拾います。宣言の一覧が取れないときは、手元の一覧のまま進みます。
+
+### 土台の命令をオプションに戻しました
+
+2026-09-25 に、x64 の 2 環境へ土台の命令を `-march=x86-64-v3 -mpclmul -mvpclmulqdq` で渡す形に戻しました。x86-64-v3 の命令に pclmul と vpclmulqdq を足したもので、GitHub の x64 ランナーの 6 モデルはどれも持っています。設計は my-docs の「procon-judge の x64 の土台の命令をオプションで渡す設計」にあります。
+
+ソースの宣言には置き場所の制約があります。GCC の `#pragma GCC target` は、pragma より後ろに定義された関数にだけ効きます。clang の `#pragma clang attribute push` は、push より後ろに書かれた関数にだけ宣言を付けます。コンパイラが作る関数 (暗黙のデストラクタなど) と、push より前に書かれたテンプレートの中身には付けません。base.cpp は提出より先に pj.hpp を読むので、提出が先頭に宣言を書いても、標準ライブラリは宣言の外に残ります。宣言の多い関数は宣言の少ない関数の中へ展開されないので、std::sort に渡したラムダがソートの中へ展開されません。試したソートでは、ラムダを関数として呼ぶ箇所が 2 から 18 に増えました。上に書いた fast-math の 9 本が x64-gcc で遅かったのも、同じ置き場所の制約から来ています。clang の push を標準ライブラリより前へ置くと、libstdc++ の暗黙のデストラクタで CE になるので、前へ置くこともできません。
+
+毎回同じ一覧を全部宣言するのであれば、オプションで渡すのと変わりません。オプションなら、標準ライブラリもコンパイラが作る関数も同じ命令を持つので、ここまでの制約はどれも起きません。characteristic-polynomial の写しを x86 の GCC 15 で組むと、target の食い違いで展開を断った数は、`-march` なしで 882、土台を渡すと 0 でした。9 本の pragma が挙げる命令 (avx2、bmi、bmi2) はどれも土台にあるので、GCC は pragma で target を組み直しません。
+
+土台に vpclmulqdq を入れたのは、コンパイラが自分の判断では使わず、intrinsics を書いた場所にしか出てこないからです。Codeforces の判定機は vpclmulqdq を持たないので、vpclmulqdq を使うコードは `__builtin_cpu_supports("vpclmulqdq")` で実行時に分けます。AVX-512 はコンパイラが自動ベクトル化で自分から使い、GFNI も clang がバイト単位の処理に使うことがあるので、土台に入れません。使う提出が今までどおりソースで宣言し、その命令を持つ CPU でだけ走ります。宣言した命令は土台に足されます。clang でも、関数の target は土台に足す形で効くので、gf2-64 の家族の領域の中の関数に `target("gfni")` を書いても組めます。push の入れ子は、土台があっても一番外側の target だけが使われます。
+
+1 段目から 3 段目でソースに足した宣言は残しました。土台と重なる宣言は、組んだ中身も展開のされ方も変えません。判定サイトへ出すコードにとっては、直した意味が残ります。gf2-64 の家族の仕組み (`_common.hpp` の領域と `GF2_64_EXTRA_TARGETS`) を整理するかは、あとで決めます。
+
+諦めたのは、土台の命令の宣言を書き忘れたコードを procon-judge で見つけることです。判定サイトへ出すときは、algo-workspace のバンドラが同じ一覧の GCC の pragma を提出の先頭に入れて補います。一覧は gf2-64 の家族の `GF2_64_TARGETS` に vpclmulqdq を足したものです。
+
+```cpp
+#if defined(__x86_64__) && defined(__GNUC__) && !defined(__clang__)
+#pragma GCC target("sse3,ssse3,sse4.1,sse4.2,popcnt,cx16,sahf,avx,avx2,bmi,bmi2,fma,f16c,lzcnt,movbe,pclmul,vpclmulqdq")
+#endif
+```
+
+`__x86_64__` を条件に入れるのは、x86 以外の CPU では GCC が x86 の命令名を CE にするからです。clang 向けには何も入れません。AtCoder は `-march=native` で組むと理解しているので、宣言が要らないはずです。
+
+キーのフラグが変わるので、戻した回で x64 の記録は全部測り直しになりました。Library の PR の検査も同じオプションで組むようにしました。
 
 ## 既存リポジトリから移すもの
 
