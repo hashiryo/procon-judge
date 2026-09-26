@@ -1,26 +1,35 @@
 """実行と計測。
 
-プロセスは posix_spawn で起こして wait4 で回収する。子が異常終了したあとでも
-ピーク RSS が返るので、MLE や RE のときにもメモリが分かる。
+プロセスは posix_spawn で起こして wait4 で回収する。ピーク RSS は、Linux では
+差し込んだ共有ライブラリ (rss_preload.c) が報告する VmHWM を採る。
 """
 
 from __future__ import annotations
 
+import functools
+import hashlib
 import json
 import os
 import platform
 import resource
 import signal
+import subprocess
+import sys
 import tempfile
 import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .paths import BUILD_CACHE_DIR
+
 METRICS_PREFIX = "PJ_METRICS "
 
 # 空打ちに与える時間。exec さえ済めばよいので短くてよい。
 WARMUP_TIMEOUT_SEC = 2.0
+
+# 子に LD_PRELOAD で差し込む共有ライブラリのソース。終了時に VmHWM を報告する。
+RSS_PRELOAD_SOURCE = Path(__file__).with_name("rss_preload.c")
 
 
 @dataclass(frozen=True)
@@ -53,18 +62,68 @@ def _rss_to_kb(ru_maxrss: int) -> int:
     return ru_maxrss
 
 
-def peak_rss_kb(metrics: dict, ru_maxrss: int) -> int:
-    """ピーク RSS。ハーネスが報告していればそちらを採る。
+def peak_rss_kb(metrics: dict, ru_maxrss: int, parent_peak_kb: int | None = None) -> int:
+    """ピーク RSS。子が報告していればそちらを採る。分からなければ 0。
 
     posix_spawn した子の ru_maxrss は当てにならない。カーネルが exec のときに
-    古い mm の high-water を引き継ぐので、Linux では pj 自身のピーク RSS が
-    そのまま下駄になる。ハーネスは /proc/self/status の VmHWM を読んで返す。
-    打ち切られた実行では報告が出ないので、そのときだけ ru_maxrss に落ちる。
+    古い mm の high-water を引き継ぐので、Linux では max(pj 自身のピーク, 子のピーク)
+    になる。ハーネスを持たない raw の提出も含めて、Linux では差し込んだ共有ライブラリ
+    (rss_preload.c) が /proc/self/status の VmHWM を報告する。ハーネスも同じ値を報告する。
+
+    異常終了した実行では報告が出ないので ru_maxrss に落ちる。parent_peak_kb (spawn する
+    直前の pj 自身のピーク) 以下なら子の値ではないので、分からないとして 0 を返す。
+    0 は MLE の判定に引っかからず、サイトでは - になる。macOS の posix_spawn は
+    アドレス空間を共有しないので ru_maxrss がそのまま使え、parent_peak_kb は渡さない。
     """
     reported = metrics.get("max_rss_kb")
     if isinstance(reported, int) and not isinstance(reported, bool) and reported > 0:
         return reported
-    return _rss_to_kb(ru_maxrss)
+    kb = _rss_to_kb(ru_maxrss)
+    if parent_peak_kb is not None and kb <= parent_peak_kb:
+        return 0
+    return kb
+
+
+@functools.cache
+def rss_preload() -> str | None:
+    """子に LD_PRELOAD で差し込む共有ライブラリのパス。Linux 以外と、組めないときは None。
+
+    初回にソースを cc で組んで、ビルドのキャッシュに置く。名前にソースのハッシュと
+    CPU の種類を入れるので、ソースを書き換えれば組み直す。並んで走る pj どうしが
+    同じファイルを書かないよう、一時ファイルに組んでから置き換える。
+    """
+    if platform.system() != "Linux":
+        return None
+    digest = hashlib.sha256(RSS_PRELOAD_SOURCE.read_bytes()).hexdigest()[:16]
+    out = BUILD_CACHE_DIR / f"rss_preload-{digest}-{platform.machine()}.so"
+    if out.is_file():
+        return str(out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    tmp = out.with_name(f"{out.name}.{os.getpid()}.tmp")
+    cmd = ["cc", "-shared", "-fPIC", "-O2", "-o", str(tmp), str(RSS_PRELOAD_SOURCE)]
+    try:
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
+    except (OSError, subprocess.CalledProcessError) as e:
+        detail = getattr(e, "stderr", "") or str(e)
+        print(
+            f"warning: {RSS_PRELOAD_SOURCE.name} を組めませんでした。"
+            f"ハーネスを持たない提出のメモリは分からなくなります: {detail.strip()}",
+            file=sys.stderr,
+        )
+        return None
+    os.replace(tmp, out)
+    return str(out)
+
+
+def _child_env() -> dict[str, str] | os._Environ:
+    """子の環境変数。Linux では LD_PRELOAD の先頭に rss_preload を足す。"""
+    preload = rss_preload()
+    if preload is None:
+        return os.environ
+    env = dict(os.environ)
+    rest = env.get("LD_PRELOAD")
+    env["LD_PRELOAD"] = f"{preload}:{rest}" if rest else preload
+    return env
 
 
 def parse_metrics(stderr_path: Path) -> dict:
@@ -133,8 +192,15 @@ def run(
 
     # posix_spawn は PATH を見ないので絶対パスで渡す。
     exe = str(binary.resolve())
+    env = _child_env()
+    # 子の ru_maxrss に乗る pj 自身のピーク。報告が無いときの見分けに使う (peak_rss_kb)。
+    parent_peak_kb = (
+        _rss_to_kb(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+        if platform.system() == "Linux"
+        else None
+    )
     t0 = time.monotonic_ns()
-    pid = os.posix_spawn(exe, [exe], os.environ, file_actions=file_actions)
+    pid = os.posix_spawn(exe, [exe], env, file_actions=file_actions)
 
     lock = threading.Lock()
     state = {"reaped": False, "timed_out": False}
@@ -174,7 +240,7 @@ def run(
         term_signal=term_signal,
         timed_out=state["timed_out"],
         wall_ns=wall_ns,
-        max_rss_kb=peak_rss_kb(metrics, rusage.ru_maxrss),
+        max_rss_kb=peak_rss_kb(metrics, rusage.ru_maxrss, parent_peak_kb),
         metrics=metrics,
     )
 

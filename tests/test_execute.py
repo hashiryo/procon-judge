@@ -62,6 +62,66 @@ def test_a_broken_report_falls_back():
         ), value
 
 
+def test_a_fallback_at_or_below_the_parent_peak_is_unknown():
+    """Linux の ru_maxrss は max(pj のピーク, 子のピーク)。pj のピーク以下なら子の値は分からない。"""
+    kb = execute._rss_to_kb(2048)
+    assert execute.peak_rss_kb({}, 2048, parent_peak_kb=kb) == 0
+    assert execute.peak_rss_kb({}, 2048, parent_peak_kb=kb - 1) == kb
+    assert execute.peak_rss_kb({"max_rss_kb": 7}, 2048, parent_peak_kb=kb) == 7
+
+
+def test_the_preload_line_after_the_harness_keeps_the_algo_time(tmp_path):
+    """base の提出はハーネスと preload の両方が報告する。時間は残り、メモリは後の行が勝つ。"""
+    path = tmp_path / "stderr"
+    path.write_text(
+        'PJ_METRICS {"algo_time_ns":5,"max_rss_kb":100}\nPJ_METRICS {"max_rss_kb":101}\n'
+    )
+    assert parse_metrics(path) == {"algo_time_ns": 5, "max_rss_kb": 101}
+
+
+def test_the_child_env_puts_the_preload_first(monkeypatch):
+    monkeypatch.setattr(execute, "rss_preload", lambda: "/x/rss.so")
+    monkeypatch.setenv("LD_PRELOAD", "/y/other.so")
+    assert execute._child_env()["LD_PRELOAD"] == "/x/rss.so:/y/other.so"
+    monkeypatch.delenv("LD_PRELOAD")
+    assert execute._child_env()["LD_PRELOAD"] == "/x/rss.so"
+    monkeypatch.setattr(execute, "rss_preload", lambda: None)
+    assert "LD_PRELOAD" not in execute._child_env()
+
+
+def test_the_parent_rss_does_not_leak_into_the_child(tmp_path):
+    """pj が大きなメモリを握っていても、ハーネスを持たない提出のメモリにその分が乗らない。
+
+    Linux では rss_preload が報告する VmHWM で、macOS では ru_maxrss がそのまま正しい。
+    """
+    import shutil
+    import subprocess
+
+    import pytest
+
+    if shutil.which("cc") is None:
+        pytest.skip("cc がありません")
+    source = tmp_path / "noop.c"
+    source.write_text("int main(void) { return 0; }\n")
+    binary = tmp_path / "noop"
+    subprocess.run(["cc", "-O2", "-o", str(binary), str(source)], check=True)
+
+    blob = bytearray(256 << 20)
+    blob[::4096] = b"\x01" * len(range(0, len(blob), 4096))  # 全ページに触って RSS に載せる
+    result = execute.run(
+        binary,
+        stdin_path=None,
+        stdout_path=tmp_path / "stdout",
+        stderr_path=tmp_path / "stderr",
+        tle_sec=10.0,
+    )
+    assert result.exit_code == 0
+    assert 0 < result.max_rss_kb < 64 * 1024, result.max_rss_kb
+    if execute.rss_preload() is not None:
+        assert result.metrics.get("max_rss_kb") == result.max_rss_kb
+    del blob
+
+
 def test_raise_stack_limit_soft_reaches_hard():
     """スタックの上限を硬い方まで上げる。既定の 8 MB だと深い再帰が落ちる。"""
     import resource
