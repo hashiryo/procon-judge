@@ -6,10 +6,9 @@
 #include <simde/x86/clmul.h>
 #include <simde/x86/bmi.h>
 #endif
+#include <tuple>
 #include <utility>
-#include <iostream>
 #include <cassert>
-#include "include/debug.hpp"
 namespace gf2p64_internal {
 using u64= unsigned long long;
 using u32= unsigned;
