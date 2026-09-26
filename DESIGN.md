@@ -231,11 +231,11 @@ signed main() {
 
 メモリは子のプロセスが自分で報告します。実行側の `ru_maxrss` は使えません。`posix_spawn` した子のそれには親のピーク RSS が混ざるからです。カーネルが exec のときに古い mm の high-water を引き継ぐ仕組みで、Linux では `pj` 自身の RSS がそのまま下駄になります。`pj` が直前に何をしたかで下駄の高さが変わるので、記録どうしを比べられません。
 
-Linux では、`pj` が小さな共有ライブラリ (`pj/rss_preload.c`) を `LD_PRELOAD` で差し込みます。このライブラリは、プロセスが正常に終わるとき `/proc/self/status` の VmHWM を読んで、`PJ_METRICS` の行で出します。VmHWM は exec 後の mm だけを見るので汚れません。ハーネスを持たない raw の提出も、同じ仕組みで測れます。macOS の `posix_spawn` はアドレス空間を共有しないので、`ru_maxrss` がそのまま使えます。ハーネスの `report_metrics` も `harness/pj.hpp` の `peak_rss_kb()` で同じ VmHWM を出していますが、preload の行があとに出るので、そちらが採られます。ハーネスの分はいずれ消します (「raw の提出のメモリに pj のピーク RSS が乗っていた記録」)。
+Linux では、`pj` が小さな共有ライブラリ (`pj/rss_preload.c`) を `LD_PRELOAD` で差し込みます。このライブラリは、プロセスが正常に終わるとき `/proc/self/status` の VmHWM を読んで、`PJ_METRICS` の行で出します。VmHWM は exec 後の mm だけを見るので汚れません。ハーネスを持たない raw の提出も、同じ仕組みで測れます。macOS の `posix_spawn` はアドレス空間を共有しないので、`ru_maxrss` がそのまま使えます。ハーネスの `report_metrics` は時間 (`algo_time_ns`) だけを報告し、メモリは測りません (「raw の提出のメモリに pj のピーク RSS が乗っていた記録」)。
 
 異常終了した実行 (TLE や RE) では報告が出ないので、`ru_maxrss` に落ちます。その値が spawn する直前の `pj` 自身のピーク以下なら、子の値ではないので、分からないとして 0 にします。0 は MLE の判定に引っかからず、サイトでは - になります。
 
-問題をまたいで同じものは `harness/pj.hpp` に置きます。include 一式、`i64` などの型別名、`must_scan`、`peak_rss_kb`、`report_metrics` です。`-Iharness` が入っているので `#include "pj.hpp"` で引けます。問題ごとの `common.hpp` は、その問題だけが共通で使うものを置く場所として残してあります。今の 3 問には該当するものが無いので、どれも持っていません。
+問題をまたいで同じものは `harness/pj.hpp` に置きます。include 一式、`i64` などの型別名、`must_scan`、`report_metrics` です。`-Iharness` が入っているので `#include "pj.hpp"` で引けます。問題ごとの `common.hpp` は、その問題だけが共通で使うものを置く場所として残してあります。今の 3 問には該当するものが無いので、どれも持っていません。
 
 探索の順は `lib`、問題のディレクトリ、`harness`、`problems`、`third_party/simde` です。問題のディレクトリが `harness` より先なので、問題ごとに同じ名前のヘッダを置けばそちらが勝ちます。`problems` は問題をまたぐヘッダ (`problems/_shared/`) を `#include "_shared/gf2-64/_common.hpp"` の形で引くためのもので、問題を何段掘って置いても同じ書き方で通ります。
 
@@ -2042,7 +2042,7 @@ stern-brocot-tree の `fastest.hpp` は、入口の `run` から、あとで定�
 
 raw の記録のメモリは中央値 286 MB で、base の 15 MB と桁が違いました。09-25 以降の raw の記録の下限は 421 MB から 534 MB へ上がっていました。上限が 512 MB の raw の問題は、`self-gf2-64-io` のほかに 25 問が MLE になっていて、多くは 09-25 の 21 時台 (UTC) の schedule の run の記録です。base の問題でも、ハーネスが報告せずに落ちた実行 (AVX-512 の無いマシンで SIGILL になった self-gf2-64-sq の提出) が、`ru_maxrss` の値で RE ではなく MLE になっていました。`judge_limits` は異常終了より先に MLE を見るからです。
 
-直し方は「ハーネスの種別」に書いたとおりで、Linux では子に `pj/rss_preload.c` を `LD_PRELOAD` で差し込み、終了時の VmHWM を報告させます。報告が無いときの `ru_maxrss` は、`pj` 自身のピーク以下なら 0 (分からない) にします。docker の Linux で、279 MB を握った Python から何もしないプログラムを走らせると、今までの `ru_maxrss` は 280,228 KB、preload の報告は 1,100 KB でした。ハーネスの `report_metrics` が出す `max_rss_kb` は preload と同じ値で、あとの行に負けるので使われません。`pj.hpp` から消すと base の全問題のキーが変わって全部測り直しになるので、ほかの理由で `pj.hpp` を触るときに合わせて消します。
+直し方は「ハーネスの種別」に書いたとおりで、Linux では子に `pj/rss_preload.c` を `LD_PRELOAD` で差し込み、終了時の VmHWM を報告させます。報告が無いときの `ru_maxrss` は、`pj` 自身のピーク以下なら 0 (分からない) にします。docker の Linux で、279 MB を握った Python から何もしないプログラムを走らせると、今までの `ru_maxrss` は 280,228 KB、preload の報告は 1,100 KB でした。ハーネスの `report_metrics` が出していた `max_rss_kb` は preload と同じ値で、あとの行に負けて使われなくなったので、同じ日に `pj.hpp` の `peak_rss_kb()` ごと消しました。`pj.hpp` はすべての base.cpp の閉包に入るので、base の全問題のキーが変わり、全部測り直しになりました。
 
 キーは変わらないので、誤った MLE の記録 (メモリが 560 MB 以下の MLE、27 問の 70 行) を results から消して測り直させました (7136a44)。AC の raw の記録のメモリの欄は `pj` の分で膨らんだままで、測り直されたものから直ります。
 

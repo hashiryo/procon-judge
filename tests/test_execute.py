@@ -45,13 +45,13 @@ def test_missing_file(tmp_path):
 # --- ピーク RSS ------------------------------------------------------------
 
 
-def test_the_harness_report_wins_over_ru_maxrss():
-    """posix_spawn した子の ru_maxrss には親のピークが混ざるので信じない。"""
+def test_the_report_wins_over_ru_maxrss():
+    """posix_spawn した子の ru_maxrss には親のピークが混ざるので信じない。報告を採る。"""
     assert execute.peak_rss_kb({"max_rss_kb": 4096}, 999999) == 4096
 
 
 def test_without_a_report_it_falls_back_to_the_kernel():
-    """打ち切られた実行はハーネスが報告できない。そこだけ ru_maxrss を使う。"""
+    """異常終了した実行は報告が出ない。そこだけ ru_maxrss を使う。"""
     assert execute.peak_rss_kb({}, 2048) == execute._rss_to_kb(2048)
 
 
@@ -70,12 +70,10 @@ def test_a_fallback_at_or_below_the_parent_peak_is_unknown():
     assert execute.peak_rss_kb({"max_rss_kb": 7}, 2048, parent_peak_kb=kb) == 7
 
 
-def test_the_preload_line_after_the_harness_keeps_the_algo_time(tmp_path):
-    """base の提出はハーネスと preload の両方が報告する。時間は残り、メモリは後の行が勝つ。"""
+def test_the_harness_time_and_the_preload_memory_are_merged(tmp_path):
+    """base の提出は、ハーネスが時間を、preload がメモリを別々の行で報告する。"""
     path = tmp_path / "stderr"
-    path.write_text(
-        'PJ_METRICS {"algo_time_ns":5,"max_rss_kb":100}\nPJ_METRICS {"max_rss_kb":101}\n'
-    )
+    path.write_text('PJ_METRICS {"algo_time_ns":5}\nPJ_METRICS {"max_rss_kb":101}\n')
     assert parse_metrics(path) == {"algo_time_ns": 5, "max_rss_kb": 101}
 
 

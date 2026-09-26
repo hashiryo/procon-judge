@@ -67,8 +67,8 @@ def peak_rss_kb(metrics: dict, ru_maxrss: int, parent_peak_kb: int | None = None
 
     posix_spawn した子の ru_maxrss は当てにならない。カーネルが exec のときに
     古い mm の high-water を引き継ぐので、Linux では max(pj 自身のピーク, 子のピーク)
-    になる。ハーネスを持たない raw の提出も含めて、Linux では差し込んだ共有ライブラリ
-    (rss_preload.c) が /proc/self/status の VmHWM を報告する。ハーネスも同じ値を報告する。
+    になる。Linux では、raw も base も差し込んだ共有ライブラリ (rss_preload.c) が
+    /proc/self/status の VmHWM を報告する。ハーネスはメモリを報告しない。
 
     異常終了した実行では報告が出ないので ru_maxrss に落ちる。parent_peak_kb (spawn する
     直前の pj 自身のピーク) 以下なら子の値ではないので、分からないとして 0 を返す。
@@ -107,7 +107,7 @@ def rss_preload() -> str | None:
         detail = getattr(e, "stderr", "") or str(e)
         print(
             f"warning: {RSS_PRELOAD_SOURCE.name} を組めませんでした。"
-            f"ハーネスを持たない提出のメモリは分からなくなります: {detail.strip()}",
+            f"提出のメモリは分からなくなります: {detail.strip()}",
             file=sys.stderr,
         )
         return None
