@@ -241,15 +241,13 @@ GF2_TARGET inline std::vector<gf2> nim_convolution(std::vector<gf2> f, std::vect
  return f;
 }
 }  // namespace
-struct Solver {
- GF2_TARGET static std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
-  using namespace conv_f2_64_fastest_v2;
-  std::vector<gf2> a(n), b(m);
-  for(int i= 0; i < n; ++i) a[i]= gf2(a_in[i]);
-  for(int i= 0; i < m; ++i) b[i]= gf2(b_in[i]);
-  auto c= nim_convolution(std::move(a), std::move(b));
-  std::vector<u64> out(c.size());
-  for(size_t k= 0; k < c.size(); ++k) out[k]= c[k].v;
-  return out;
- }
-};
+GF2_TARGET inline std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
+ using namespace conv_f2_64_fastest_v2;
+ std::vector<gf2> a(n), b(m);
+ for(int i= 0; i < n; ++i) a[i]= gf2(a_in[i]);
+ for(int i= 0; i < m; ++i) b[i]= gf2(b_in[i]);
+ auto c= nim_convolution(std::move(a), std::move(b));
+ std::vector<u64> out(c.size());
+ for(size_t k= 0; k < c.size(); ++k) out[k]= c[k].v;
+ return out;
+}

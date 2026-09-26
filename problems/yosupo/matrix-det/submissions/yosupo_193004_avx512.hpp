@@ -27,12 +27,10 @@
 #include "../common.hpp"
 
 #ifndef YOSUPO_193004_DET_ENABLE
-struct Det {
- static u32 run(int, const vector<vector<u32>>&) {
-  fprintf(stderr, "yosupo_193004 (AVX-512): x86_64 + AVX-512 required\n");
-  std::abort();
- }
-};
+inline u32 run(int, const vector<vector<u32>>&) {
+ fprintf(stderr, "yosupo_193004 (AVX-512): x86_64 + AVX-512 required\n");
+ std::abort();
+}
 #else
 
 namespace yosupo_193004_for_det {
@@ -97,12 +95,10 @@ inline uint32_t det_impl(vector<vector<u32>> A, const fmd_32 fm) {
 }
 } // namespace yosupo_193004_for_det
 
-struct Det {
- static u32 run(int n, const vector<vector<u32>>& a) {
-  yosupo_193004_for_det::fmd_32 fm(MOD);
-  return yosupo_193004_for_det::det_impl(a, fm);
- }
-};
+inline u32 run(int n, const vector<vector<u32>>& a) {
+ yosupo_193004_for_det::fmd_32 fm(MOD);
+ return yosupo_193004_for_det::det_impl(a, fm);
+}
 
 #endif // YOSUPO_193004_DET_ENABLE
 

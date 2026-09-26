@@ -833,22 +833,20 @@ namespace cp_algo::math {
 // ---------------------------------------------------------------------------
 // Wrapper
 // ---------------------------------------------------------------------------
-struct SubsetExp {
- static vector<u32> run(int N, const vector<u32>& b_in) {
-  using base = cp_algo::math::modint<(int64_t) MOD>;
-  size_t sz = (size_t) 1 << N;
-  cp_algo::big_vector<base> a(sz);
-  for (size_t i = 0; i < sz; ++i) a[i].setr((typename base::UInt) b_in[i]);
-  auto c = cp_algo::math::subset_exp<base>(std::span<base>(a));
-  vector<u32> result(sz);
-  for (size_t i = 0; i < sz; ++i) {
-   u32 v = (u32) c[i].getr();
-   if (v >= MOD) v -= MOD;
-   result[i] = v;
-  }
-  return result;
+inline vector<u32> run(int N, const vector<u32>& b_in) {
+ using base = cp_algo::math::modint<(int64_t) MOD>;
+ size_t sz = (size_t) 1 << N;
+ cp_algo::big_vector<base> a(sz);
+ for (size_t i = 0; i < sz; ++i) a[i].setr((typename base::UInt) b_in[i]);
+ auto c = cp_algo::math::subset_exp<base>(std::span<base>(a));
+ vector<u32> result(sz);
+ for (size_t i = 0; i < sz; ++i) {
+  u32 v = (u32) c[i].getr();
+  if (v >= MOD) v -= MOD;
+  result[i] = v;
  }
-};
+ return result;
+}
 
 #ifdef PJ_CLANG_TARGET_PUSHED
 #undef PJ_CLANG_TARGET_PUSHED

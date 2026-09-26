@@ -228,15 +228,13 @@ template <typename Tp> struct Radix3Schoenhage {
  }
 };
 }  // namespace conv_f2_64_schoenhage
-struct Solver {
- static std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
-  using namespace conv_f2_64_schoenhage;
-  std::vector<F_2_64> a(n), b(m);
-  for(int i= 0; i < n; ++i) a[i]= F_2_64(a_in[i]);
-  for(int i= 0; i < m; ++i) b[i]= F_2_64(b_in[i]);
-  auto [ab, cnt]= Radix3Schoenhage<F_2_64>::Product(std::move(a), std::move(b));
-  std::vector<u64> out(n + m - 1);
-  for(size_t i= 0; i < out.size(); ++i) out[i]= ab[i].value();
-  return out;
- }
-};
+inline std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
+ using namespace conv_f2_64_schoenhage;
+ std::vector<F_2_64> a(n), b(m);
+ for(int i= 0; i < n; ++i) a[i]= F_2_64(a_in[i]);
+ for(int i= 0; i < m; ++i) b[i]= F_2_64(b_in[i]);
+ auto [ab, cnt]= Radix3Schoenhage<F_2_64>::Product(std::move(a), std::move(b));
+ std::vector<u64> out(n + m - 1);
+ for(size_t i= 0; i < out.size(); ++i) out[i]= ab[i].value();
+ return out;
+}

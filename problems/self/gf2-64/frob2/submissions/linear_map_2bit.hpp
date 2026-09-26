@@ -45,11 +45,9 @@ inline u64 frob2(u64 a) {
         T[28][(a >> 56) & 3] ^ T[29][(a >> 58) & 3] ^ T[30][(a >> 60) & 3] ^ T[31][(a >> 62) & 3];
 }
 }  // namespace gf2_64_frob2_2bit
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as) {
-  using gf2_64_frob2_2bit::frob2;
-  vector<u64> ans(as.size());
-  for(size_t i= 0; i < as.size(); ++i) ans[i]= frob2(as[i]);
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& as) {
+ using gf2_64_frob2_2bit::frob2;
+ vector<u64> ans(as.size());
+ for(size_t i= 0; i < as.size(); ++i) ans[i]= frob2(as[i]);
+ return ans;
+}

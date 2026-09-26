@@ -12,7 +12,7 @@ signed main() {
   for (int i = 0; i < t; ++i) must_scan(scanf("%llu %llu", &as[i], &bs[i]), 2);
 
   auto t0 = chrono::steady_clock::now();
-  auto r = GF2_64Op::run(as, bs);
+  auto r = run(as, bs);
   auto t1 = chrono::steady_clock::now();
 
   print_all(r);

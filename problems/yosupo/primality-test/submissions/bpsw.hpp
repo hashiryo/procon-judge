@@ -228,11 +228,9 @@ inline bool is_prime(uint64_t n) {
 }
 } // namespace yosupo_bpsw
 
-struct Primality {
- static vector<bool> run(const vector<u64>& qs) {
-  vector<bool> ans(qs.size());
-  for (size_t i = 0; i < qs.size(); ++i)
-   ans[i] = yosupo_bpsw::is_prime(qs[i]);
-  return ans;
- }
-};
+inline vector<bool> run(const vector<u64>& qs) {
+ vector<bool> ans(qs.size());
+ for (size_t i = 0; i < qs.size(); ++i)
+  ans[i] = yosupo_bpsw::is_prime(qs[i]);
+ return ans;
+}

@@ -465,66 +465,64 @@ inline std::pair<bool, bool> fast_decide(uint64_t n) {
 //   pass 1 後: true = MR-2 走らせる必要あり
 //   pass 2 後: true = Lucas 走らせる必要あり (= MR-2 で probable prime)
 //   pass 3 後: 全 slot 確定、ans に書き込み
-struct Primality {
- static vector<bool> run(const vector<u64>& qs) {
-  using namespace yosupo_bpsw_batch4_stream;
-  const size_t Q = qs.size();
-  vector<bool> ans(Q, false);
+inline vector<bool> run(const vector<u64>& qs) {
+ using namespace yosupo_bpsw_batch4_stream;
+ const size_t Q = qs.size();
+ vector<bool> ans(Q, false);
 
-  // inactive slot 用 dummy Mont (Mont(3) を毎 chunk 作らないで済むよう
-  // static で 1 度だけ計算)。
-  static const Mont DUMMY{3};
+ // inactive slot 用 dummy Mont (Mont(3) を毎 chunk 作らないで済むよう
+ // static で 1 度だけ計算)。
+ static const Mont DUMMY{3};
 
-  size_t i = 0;
-  for (; i + B <= Q; i += B) {
-   Mont mos[B] = {DUMMY, DUMMY, DUMMY, DUMMY};
-   bool active[B];
-   bool out[B];
+ size_t i = 0;
+ for (; i + B <= Q; i += B) {
+  Mont mos[B] = {DUMMY, DUMMY, DUMMY, DUMMY};
+  bool active[B];
+  bool out[B];
 
-   // pass 1: trial division (per-slot inline)
+  // pass 1: trial division (per-slot inline)
+  for (int j = 0; j < B; ++j) {
+   auto [decided, v] = fast_decide(qs[i + j]);
+   if (decided) {
+    out[j] = v;
+    active[j] = false;
+   } else {
+    mos[j] = Mont(qs[i + j]);
+    active[j] = true;
+    out[j] = false; // 暫定値、後で pass 2/3 が上書き
+   }
+  }
+
+  // 全 slot が pass 1 で決着なら pass 2/3 を skip (random ワークロード対策)。
+  // 86% の slot が fast_decide で抜けるので、まるごと空の chunk が頻発する。
+  bool any_active = active[0] | active[1] | active[2] | active[3];
+  if (any_active) {
+   // pass 2: MR-2 batch (out[j]: true=probable prime, false=composite)
+   mr_base2_batch(mos, active, out);
+   // active[j] && !out[j] の slot は MR-2 で composite 確定 → pass 3 skip
    for (int j = 0; j < B; ++j) {
-    auto [decided, v] = fast_decide(qs[i + j]);
-    if (decided) {
-     out[j] = v;
-     active[j] = false;
-    } else {
-     mos[j] = Mont(qs[i + j]);
-     active[j] = true;
-     out[j] = false; // 暫定値、後で pass 2/3 が上書き
-    }
+    if (active[j] && !out[j]) active[j] = false;
    }
-
-   // 全 slot が pass 1 で決着なら pass 2/3 を skip (random ワークロード対策)。
-   // 86% の slot が fast_decide で抜けるので、まるごと空の chunk が頻発する。
-   bool any_active = active[0] | active[1] | active[2] | active[3];
-   if (any_active) {
-    // pass 2: MR-2 batch (out[j]: true=probable prime, false=composite)
-    mr_base2_batch(mos, active, out);
-    // active[j] && !out[j] の slot は MR-2 で composite 確定 → pass 3 skip
-    for (int j = 0; j < B; ++j) {
-     if (active[j] && !out[j]) active[j] = false;
-    }
-    // pass 3: Lucas batch (active slot のみ out[j] を確定値で上書き)
-    bool any_lucas = active[0] | active[1] | active[2] | active[3];
-    if (any_lucas) lucas_batch(mos, active, out);
-   }
-
-   for (int j = 0; j < B; ++j) ans[i + j] = out[j];
+   // pass 3: Lucas batch (active slot のみ out[j] を確定値で上書き)
+   bool any_lucas = active[0] | active[1] | active[2] | active[3];
+   if (any_lucas) lucas_batch(mos, active, out);
   }
 
-  // tail: 残り (< B 個) は scalar で
-  for (; i < Q; ++i) {
-   auto [decided, v] = fast_decide(qs[i]);
-   if (decided) { ans[i] = v; continue; }
-   Mont mo(qs[i]);
-   if (!mr_base2(mo)) { ans[i] = false; continue; }
-   // 1 入力でも Lucas batch を呼ぶ (slot 0 のみ active)
-   Mont mos[B] = {mo, DUMMY, DUMMY, DUMMY};
-   bool active[B] = {true, false, false, false};
-   bool out[B] = {false, false, false, false};
-   lucas_batch(mos, active, out);
-   ans[i] = out[0];
-  }
-  return ans;
+  for (int j = 0; j < B; ++j) ans[i + j] = out[j];
  }
-};
+
+ // tail: 残り (< B 個) は scalar で
+ for (; i < Q; ++i) {
+  auto [decided, v] = fast_decide(qs[i]);
+  if (decided) { ans[i] = v; continue; }
+  Mont mo(qs[i]);
+  if (!mr_base2(mo)) { ans[i] = false; continue; }
+  // 1 入力でも Lucas batch を呼ぶ (slot 0 のみ active)
+  Mont mos[B] = {mo, DUMMY, DUMMY, DUMMY};
+  bool active[B] = {true, false, false, false};
+  bool out[B] = {false, false, false, false};
+  lucas_batch(mos, active, out);
+  ans[i] = out[0];
+ }
+ return ans;
+}

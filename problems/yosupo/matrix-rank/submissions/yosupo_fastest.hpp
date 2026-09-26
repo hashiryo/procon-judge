@@ -851,24 +851,22 @@ namespace cp_algo::linalg {
 // ---------------------------------------------------------------------------
 // Wrapper
 // ---------------------------------------------------------------------------
-struct Rank {
- static int run(int n, int m, const vector<vector<u32>>& a) {
-  using base = cp_algo::math::modint<(int64_t) MOD>;
-  // 元提出は N<M ならそのまま、N>=M なら入力時に転置。
-  // ここでは大きい次元側を行に置く (.rank() 内でも転置するが、入力詰めの
-  // コストを小さくするため、行=長い軸 にしておく)。
-  cp_algo::linalg::matrix<base> A(std::max(n, m), std::min(n, m));
-  if (n <= m) {
-   // 行=m (max), 列=n (min) → 転置入力
-   for (int i = 0; i < n; ++i)
-    for (int j = 0; j < m; ++j) A[j][i].setr((uint64_t) a[i][j]);
-  } else {
-   for (int i = 0; i < n; ++i)
-    for (int j = 0; j < m; ++j) A[i][j].setr((uint64_t) a[i][j]);
-  }
-  return (int) A.rank();
+inline int run(int n, int m, const vector<vector<u32>>& a) {
+ using base = cp_algo::math::modint<(int64_t) MOD>;
+ // 元提出は N<M ならそのまま、N>=M なら入力時に転置。
+ // ここでは大きい次元側を行に置く (.rank() 内でも転置するが、入力詰めの
+ // コストを小さくするため、行=長い軸 にしておく)。
+ cp_algo::linalg::matrix<base> A(std::max(n, m), std::min(n, m));
+ if (n <= m) {
+  // 行=m (max), 列=n (min) → 転置入力
+  for (int i = 0; i < n; ++i)
+   for (int j = 0; j < m; ++j) A[j][i].setr((uint64_t) a[i][j]);
+ } else {
+  for (int i = 0; i < n; ++i)
+   for (int j = 0; j < m; ++j) A[i][j].setr((uint64_t) a[i][j]);
  }
-};
+ return (int) A.rank();
+}
 
 #ifdef PJ_CLANG_TARGET_PUSHED
 #undef PJ_CLANG_TARGET_PUSHED

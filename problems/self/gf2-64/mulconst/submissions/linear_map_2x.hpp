@@ -25,22 +25,20 @@ inline __m128i mulc2(u64 a0, u64 a1) {
  return x;
 }
 }  // namespace gf2_64_mulconst_linear_map_2x
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as) {
-  using gf2_64_mulconst_linear_map_2x::MUL_BYTE;
-  using gf2_64_mulconst_linear_map_2x::mulc2;
-  const size_t n= as.size();
-  vector<u64> ans(n);
-  size_t i= 0;
-  for(; i + 1 < n; i+= 2) {
-   const __m128i y= mulc2(as[i], as[i + 1]);
-   ans[i]= u64(_mm_cvtsi128_si64(y));
-   ans[i + 1]= u64(_mm_extract_epi64(y, 1));
-  }
-  if(i < n) {
-   const u64 a= as[i];
-   ans[i]= MUL_BYTE[0][u8(a)] ^ MUL_BYTE[1][u8(a >> 8)] ^ MUL_BYTE[2][u8(a >> 16)] ^ MUL_BYTE[3][u8(a >> 24)] ^ MUL_BYTE[4][u8(a >> 32)] ^ MUL_BYTE[5][u8(a >> 40)] ^ MUL_BYTE[6][u8(a >> 48)] ^ MUL_BYTE[7][u8(a >> 56)];
-  }
-  return ans;
+inline vector<u64> run(const vector<u64>& as) {
+ using gf2_64_mulconst_linear_map_2x::MUL_BYTE;
+ using gf2_64_mulconst_linear_map_2x::mulc2;
+ const size_t n= as.size();
+ vector<u64> ans(n);
+ size_t i= 0;
+ for(; i + 1 < n; i+= 2) {
+  const __m128i y= mulc2(as[i], as[i + 1]);
+  ans[i]= u64(_mm_cvtsi128_si64(y));
+  ans[i + 1]= u64(_mm_extract_epi64(y, 1));
  }
-};
+ if(i < n) {
+  const u64 a= as[i];
+  ans[i]= MUL_BYTE[0][u8(a)] ^ MUL_BYTE[1][u8(a >> 8)] ^ MUL_BYTE[2][u8(a >> 16)] ^ MUL_BYTE[3][u8(a >> 24)] ^ MUL_BYTE[4][u8(a >> 32)] ^ MUL_BYTE[5][u8(a >> 40)] ^ MUL_BYTE[6][u8(a >> 48)] ^ MUL_BYTE[7][u8(a >> 56)];
+ }
+ return ans;
+}

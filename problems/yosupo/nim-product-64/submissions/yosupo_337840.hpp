@@ -101,18 +101,16 @@ inline uint64_t poly_to_nim(uint64_t c) {
  return poly_to_nim(red);
 }
 }  // namespace yosupo_337840
-struct NimProduct {
- PCLMUL_TARGET static vector<u64> run(const vector<u64>& as, const vector<u64>& bs) {
-  using namespace yosupo_337840;
-  const size_t T= as.size();
-  vector<u64> ans(T);
-  // 元提出は 4-pass (nim→poly, clmul+reduce, poly→nim, write) で
-  // OoO 並列化を狙う構造。同じ形に保つ。
-  vector<u64> A(T), B(T);
-  for(size_t i= 0; i < T; ++i) A[i]= nim_to_poly(as[i]);
-  for(size_t i= 0; i < T; ++i) B[i]= nim_to_poly(bs[i]);
-  for(size_t i= 0; i < T; ++i) A[i]= reduce_mod(clmul(A[i], B[i]));
-  for(size_t i= 0; i < T; ++i) ans[i]= poly_to_nim(A[i]);
-  return ans;
- }
-};
+PCLMUL_TARGET inline vector<u64> run(const vector<u64>& as, const vector<u64>& bs) {
+ using namespace yosupo_337840;
+ const size_t T= as.size();
+ vector<u64> ans(T);
+ // 元提出は 4-pass (nim→poly, clmul+reduce, poly→nim, write) で
+ // OoO 並列化を狙う構造。同じ形に保つ。
+ vector<u64> A(T), B(T);
+ for(size_t i= 0; i < T; ++i) A[i]= nim_to_poly(as[i]);
+ for(size_t i= 0; i < T; ++i) B[i]= nim_to_poly(bs[i]);
+ for(size_t i= 0; i < T; ++i) A[i]= reduce_mod(clmul(A[i], B[i]));
+ for(size_t i= 0; i < T; ++i) ans[i]= poly_to_nim(A[i]);
+ return ans;
+}

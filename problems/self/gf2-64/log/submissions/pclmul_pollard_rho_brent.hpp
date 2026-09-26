@@ -310,13 +310,11 @@ u64 log_g(u64 x) {
  return u64(r1) + MOD_F16 * t0 + MOD_F16_641 * t2 + MOD_F16_641_F17 * t3;
 }
 }  // namespace gf2_64_log_pollard_rho_brent
-struct GF2_64Op {
- PCLMUL_RUN static vector<u64> run(const vector<u64>& xs) {
-  using gf2_64_log_pollard_rho_brent::init_tables;
-  using gf2_64_log_pollard_rho_brent::log_g;
-  init_tables();
-  vector<u64> ans(xs.size());
-  for(size_t i= 0; i < xs.size(); ++i) ans[i]= log_g(xs[i]);
-  return ans;
- }
-};
+PCLMUL_RUN inline vector<u64> run(const vector<u64>& xs) {
+ using gf2_64_log_pollard_rho_brent::init_tables;
+ using gf2_64_log_pollard_rho_brent::log_g;
+ init_tables();
+ vector<u64> ans(xs.size());
+ for(size_t i= 0; i < xs.size(); ++i) ans[i]= log_g(xs[i]);
+ return ans;
+}

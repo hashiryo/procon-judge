@@ -397,29 +397,27 @@ struct NTT32_info {
 
 } // namespace yosupo_fastest_ntt
 
-struct Conv {
- static vector<u32> run(const vector<u32>& a, const vector<u32>& b) {
-  using namespace yosupo_fastest_ntt;
-  using namespace yosupo_fastest_ntt::NTT_interal;
-  static constexpr NTT32_info fntt(998244353);
-  idt n = a.size(), m = b.size();
-  if (!n || !m) return {};
-  idt lm = bcl(std::max<idt>(64, n + m - 1));
-  auto f = lalloc<nu32>(lm), g = lalloc<nu32>(lm);
-  ntt_copy(f, a.data(), n);
-  ntt_clear(f + n, lm - n);
-  ntt_copy(g, b.data(), m);
-  ntt_clear(g + m, lm - m);
-  fntt._vec_dif((I256*) f, lm >> 3);
-  fntt._vec_dif((I256*) g, lm >> 3);
-  fntt._vec_cvdt8((I256*) f, (I256*) g, lm >> 3);
-  fntt._vec_dit((I256*) f, lm >> 3);
-  vector<u32> r(f, f + n + m - 1);
-  lfree(f, lm);
-  lfree(g, lm);
-  return r;
- }
-};
+inline vector<u32> run(const vector<u32>& a, const vector<u32>& b) {
+ using namespace yosupo_fastest_ntt;
+ using namespace yosupo_fastest_ntt::NTT_interal;
+ static constexpr NTT32_info fntt(998244353);
+ idt n = a.size(), m = b.size();
+ if (!n || !m) return {};
+ idt lm = bcl(std::max<idt>(64, n + m - 1));
+ auto f = lalloc<nu32>(lm), g = lalloc<nu32>(lm);
+ ntt_copy(f, a.data(), n);
+ ntt_clear(f + n, lm - n);
+ ntt_copy(g, b.data(), m);
+ ntt_clear(g + m, lm - m);
+ fntt._vec_dif((I256*) f, lm >> 3);
+ fntt._vec_dif((I256*) g, lm >> 3);
+ fntt._vec_cvdt8((I256*) f, (I256*) g, lm >> 3);
+ fntt._vec_dit((I256*) f, lm >> 3);
+ vector<u32> r(f, f + n + m - 1);
+ lfree(f, lm);
+ lfree(g, lm);
+ return r;
+}
 
 #ifdef PJ_CLANG_TARGET_PUSHED
 #undef PJ_CLANG_TARGET_PUSHED

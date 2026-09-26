@@ -126,11 +126,9 @@ u64 pow(u64 a, u64 e) {
  return mul(frob24(gh), gl);
 }
 }  // namespace gf2_64_pow_subfield_split_v4_7
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as, const vector<u64>& es) {
-  using gf2_64_pow_subfield_split_v4_7::pow;
-  vector<u64> ans(as.size());
-  for(size_t i= 0; i < as.size(); ++i) ans[i]= pow(as[i], es[i]);
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& as, const vector<u64>& es) {
+ using gf2_64_pow_subfield_split_v4_7::pow;
+ vector<u64> ans(as.size());
+ for(size_t i= 0; i < as.size(); ++i) ans[i]= pow(as[i], es[i]);
+ return ans;
+}

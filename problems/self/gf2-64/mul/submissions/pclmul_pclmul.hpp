@@ -9,11 +9,9 @@ inline u64 mul(u64 a, u64 b) {
  return a ^ b;
 }
 }
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as, const vector<u64>& bs) {
-  using gf2_64_mul_pclmul_baseline::mul;
-  vector<u64> ans(as.size());
-  for(size_t i= 0; i < as.size(); ++i) ans[i]= mul(as[i], bs[i]);
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& as, const vector<u64>& bs) {
+ using gf2_64_mul_pclmul_baseline::mul;
+ vector<u64> ans(as.size());
+ for(size_t i= 0; i < as.size(); ++i) ans[i]= mul(as[i], bs[i]);
+ return ans;
+}

@@ -41,11 +41,9 @@ inline u64 primitive_root(u64 p) {
 }
 } // namespace
 
-struct PrimitiveRoot {
- static vector<u64> run(const vector<u64>& qs) {
-  vector<u64> ans;
-  ans.reserve(qs.size());
-  for (auto p : qs) ans.push_back(primitive_root_naive::primitive_root(p));
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& qs) {
+ vector<u64> ans;
+ ans.reserve(qs.size());
+ for (auto p : qs) ans.push_back(primitive_root_naive::primitive_root(p));
+ return ans;
+}

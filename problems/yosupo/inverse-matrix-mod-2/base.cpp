@@ -1,4 +1,4 @@
-// harness: 各 algos/*.hpp が定義する struct Inv::run(N, A) を計測する。
+// harness: 各提出が定義する run(N, A) を計測する。
 // yosupo の "Inverse Matrix (mod 2)" 形式の I/O。
 // 逆行列が無ければ run() は空 vector を返し、ここで "-1" を出力する。
 #include "pj.hpp"
@@ -23,7 +23,7 @@ signed main() {
 
     for (int rep = 0; rep < REPEAT; ++rep) {
         auto t0 = chrono::steady_clock::now();
-        auto r = Inv::run(N, a);
+        auto r = run(N, a);
         auto t1 = chrono::steady_clock::now();
         result = std::move(r);
         auto ns = (uint64_t)chrono::duration_cast<chrono::nanoseconds>(t1 - t0).count();

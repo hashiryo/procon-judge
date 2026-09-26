@@ -855,32 +855,30 @@ namespace cp_algo::linalg {
 // ---------------------------------------------------------------------------
 // Wrapper
 // ---------------------------------------------------------------------------
-struct Adjugate {
- static vector<vector<u32>> run(int n, const vector<vector<u32>>& a_in) {
-  using base = cp_algo::math::modint<(int64_t) MOD>;
-  // (n+1)×(n+1) に乱数で拡張
-  cp_algo::linalg::matrix<base> A(n + 1, n + 1);
-  for (int i = 0; i < n; ++i)
-   for (int j = 0; j < n; ++j) A[i][j].setr((uint64_t) a_in[i][j]);
-  for (int i = 0; i < n; ++i) {
-   A[i][n].setr(cp_algo::random::rng() % (uint64_t) MOD);
-   A[n][i].setr(cp_algo::random::rng() % (uint64_t) MOD);
-  }
-  A[n][n].setr(cp_algo::random::rng() % (uint64_t) MOD);
-  auto [D, Ai] = A.inv();
-  vector<vector<u32>> ans(n, vector<u32>(n, 0));
-  if (D == base(0)) return ans; // ほぼ起きない
-  for (int i = 0; i < n; ++i) {
-   for (int j = 0; j < n; ++j) {
-    base v = (Ai[n][n] * Ai[i][j] - Ai[i][n] * Ai[n][j]) * D;
-    u32 r = (u32) v.getr();
-    if (r >= MOD) r -= MOD;
-    ans[i][j] = r;
-   }
-  }
-  return ans;
+inline vector<vector<u32>> run(int n, const vector<vector<u32>>& a_in) {
+ using base = cp_algo::math::modint<(int64_t) MOD>;
+ // (n+1)×(n+1) に乱数で拡張
+ cp_algo::linalg::matrix<base> A(n + 1, n + 1);
+ for (int i = 0; i < n; ++i)
+  for (int j = 0; j < n; ++j) A[i][j].setr((uint64_t) a_in[i][j]);
+ for (int i = 0; i < n; ++i) {
+  A[i][n].setr(cp_algo::random::rng() % (uint64_t) MOD);
+  A[n][i].setr(cp_algo::random::rng() % (uint64_t) MOD);
  }
-};
+ A[n][n].setr(cp_algo::random::rng() % (uint64_t) MOD);
+ auto [D, Ai] = A.inv();
+ vector<vector<u32>> ans(n, vector<u32>(n, 0));
+ if (D == base(0)) return ans; // ほぼ起きない
+ for (int i = 0; i < n; ++i) {
+  for (int j = 0; j < n; ++j) {
+   base v = (Ai[n][n] * Ai[i][j] - Ai[i][n] * Ai[n][j]) * D;
+   u32 r = (u32) v.getr();
+   if (r >= MOD) r -= MOD;
+   ans[i][j] = r;
+  }
+ }
+ return ans;
+}
 
 #ifdef PJ_CLANG_TARGET_PUSHED
 #undef PJ_CLANG_TARGET_PUSHED

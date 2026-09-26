@@ -453,80 +453,78 @@ inline std::pair<bool, bool> fast_decide(uint64_t n) {
 // pass 3 で「常に 4 slot が active」な状態を作ることで、Lucas batch の
 // 並列利得を fully amortize できる。雑にチャンクすると 86% の fast-path
 // 入力で batch slot が無駄になり、scalar より遅くなる。
-struct Primality {
- static vector<bool> run(const vector<u64>& qs) {
-  using namespace yosupo_bpsw_batch4_mr2;
-  const size_t Q = qs.size();
-  vector<bool> ans(Q, false);
+inline vector<bool> run(const vector<u64>& qs) {
+ using namespace yosupo_bpsw_batch4_mr2;
+ const size_t Q = qs.size();
+ vector<bool> ans(Q, false);
 
-  // pass 1: trial division。生き残った入力は MR-2 batch 用に集約。
-  std::vector<uint32_t> mr2_idx;
-  std::vector<Mont> mr2_mos;
-  mr2_idx.reserve(Q / 4);
-  mr2_mos.reserve(Q / 4);
-  for (size_t i = 0; i < Q; ++i) {
-   auto [decided, v] = fast_decide(qs[i]);
-   if (decided) {
-    ans[i] = v;
-   } else {
-    mr2_idx.push_back((uint32_t) i);
-    mr2_mos.push_back(Mont(qs[i]));
-   }
+ // pass 1: trial division。生き残った入力は MR-2 batch 用に集約。
+ std::vector<uint32_t> mr2_idx;
+ std::vector<Mont> mr2_mos;
+ mr2_idx.reserve(Q / 4);
+ mr2_mos.reserve(Q / 4);
+ for (size_t i = 0; i < Q; ++i) {
+  auto [decided, v] = fast_decide(qs[i]);
+  if (decided) {
+   ans[i] = v;
+  } else {
+   mr2_idx.push_back((uint32_t) i);
+   mr2_mos.push_back(Mont(qs[i]));
   }
+ }
 
-  // pass 2: MR-2 を 4 並列で。生き残ったものを Lucas batch 用に集約。
-  std::vector<uint32_t> need_lucas_idx;
-  std::vector<Mont> need_lucas_mos;
-  need_lucas_idx.reserve(mr2_idx.size() / 4);
-  need_lucas_mos.reserve(mr2_idx.size() / 4);
-  {
-   const size_t M = mr2_idx.size();
-   size_t k = 0;
-   for (; k + B <= M; k += B) {
-    Mont mos[B] = {mr2_mos[k], mr2_mos[k+1], mr2_mos[k+2], mr2_mos[k+3]};
-    bool active[B] = {true, true, true, true};
-    bool out[B] = {false, false, false, false};
-    mr_base2_batch(mos, active, out);
-    for (int j = 0; j < B; ++j) {
-     if (out[j]) {
-      need_lucas_idx.push_back(mr2_idx[k + j]);
-      need_lucas_mos.push_back(mos[j]);
-     } else {
-      ans[mr2_idx[k + j]] = false;
-     }
-    }
-   }
-   // tail: scalar mr_base2 で
-   for (; k < M; ++k) {
-    if (mr_base2(mr2_mos[k])) {
-     need_lucas_idx.push_back(mr2_idx[k]);
-     need_lucas_mos.push_back(mr2_mos[k]);
-    } else {
-     ans[mr2_idx[k]] = false;
-    }
-   }
-  }
-
-  // pass 3: Lucas batch 4 並列
-  const size_t L = need_lucas_idx.size();
+ // pass 2: MR-2 を 4 並列で。生き残ったものを Lucas batch 用に集約。
+ std::vector<uint32_t> need_lucas_idx;
+ std::vector<Mont> need_lucas_mos;
+ need_lucas_idx.reserve(mr2_idx.size() / 4);
+ need_lucas_mos.reserve(mr2_idx.size() / 4);
+ {
+  const size_t M = mr2_idx.size();
   size_t k = 0;
-  for (; k + B <= L; k += B) {
-   Mont mos[B] = {need_lucas_mos[k], need_lucas_mos[k+1],
-                  need_lucas_mos[k+2], need_lucas_mos[k+3]};
+  for (; k + B <= M; k += B) {
+   Mont mos[B] = {mr2_mos[k], mr2_mos[k+1], mr2_mos[k+2], mr2_mos[k+3]};
    bool active[B] = {true, true, true, true};
    bool out[B] = {false, false, false, false};
-   lucas_batch(mos, active, out);
-   for (int j = 0; j < B; ++j) ans[need_lucas_idx[k + j]] = out[j];
+   mr_base2_batch(mos, active, out);
+   for (int j = 0; j < B; ++j) {
+    if (out[j]) {
+     need_lucas_idx.push_back(mr2_idx[k + j]);
+     need_lucas_mos.push_back(mos[j]);
+    } else {
+     ans[mr2_idx[k + j]] = false;
+    }
+   }
   }
-  // 末尾 (< B 個): scalar batch (slot 0 のみ active)
-  for (; k < L; ++k) {
-   Mont mos[B] = {need_lucas_mos[k], need_lucas_mos[k],
-                  need_lucas_mos[k], need_lucas_mos[k]};
-   bool active[B] = {true, false, false, false};
-   bool out[B] = {false, false, false, false};
-   lucas_batch(mos, active, out);
-   ans[need_lucas_idx[k]] = out[0];
+  // tail: scalar mr_base2 で
+  for (; k < M; ++k) {
+   if (mr_base2(mr2_mos[k])) {
+    need_lucas_idx.push_back(mr2_idx[k]);
+    need_lucas_mos.push_back(mr2_mos[k]);
+   } else {
+    ans[mr2_idx[k]] = false;
+   }
   }
-  return ans;
  }
-};
+
+ // pass 3: Lucas batch 4 並列
+ const size_t L = need_lucas_idx.size();
+ size_t k = 0;
+ for (; k + B <= L; k += B) {
+  Mont mos[B] = {need_lucas_mos[k], need_lucas_mos[k+1],
+                 need_lucas_mos[k+2], need_lucas_mos[k+3]};
+  bool active[B] = {true, true, true, true};
+  bool out[B] = {false, false, false, false};
+  lucas_batch(mos, active, out);
+  for (int j = 0; j < B; ++j) ans[need_lucas_idx[k + j]] = out[j];
+ }
+ // 末尾 (< B 個): scalar batch (slot 0 のみ active)
+ for (; k < L; ++k) {
+  Mont mos[B] = {need_lucas_mos[k], need_lucas_mos[k],
+                 need_lucas_mos[k], need_lucas_mos[k]};
+  bool active[B] = {true, false, false, false};
+  bool out[B] = {false, false, false, false};
+  lucas_batch(mos, active, out);
+  ans[need_lucas_idx[k]] = out[0];
+ }
+ return ans;
+}

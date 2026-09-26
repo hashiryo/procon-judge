@@ -1,4 +1,4 @@
-// harness: 各 algos/*.hpp が定義する struct CharPoly::run(N, M) を計測する。
+// harness: 各提出が定義する run(N, M) を計測する。
 // yosupo "Characteristic Polynomial" 形式の I/O。
 #include "pj.hpp"
 #include "common.hpp"
@@ -22,7 +22,7 @@ signed main() {
 
     for (int rep = 0; rep < REPEAT; ++rep) {
         auto t0 = chrono::steady_clock::now();
-        auto r = CharPoly::run(N, M);
+        auto r = run(N, M);
         auto t1 = chrono::steady_clock::now();
         result = std::move(r);
         auto ns = (uint64_t)chrono::duration_cast<chrono::nanoseconds>(t1 - t0).count();

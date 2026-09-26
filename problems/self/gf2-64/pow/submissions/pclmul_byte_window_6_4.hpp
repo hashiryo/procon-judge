@@ -78,11 +78,9 @@ u64 pow(u64 a, u64 e) {
  return mul(A0, A2);
 }
 }  // namespace gf2_64_pow_byte_window_6_2
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as, const vector<u64>& es) {
-  using gf2_64_pow_byte_window_6_2::pow;
-  vector<u64> ans(as.size());
-  for(size_t i= 0; i < as.size(); ++i) ans[i]= pow(as[i], es[i]);
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& as, const vector<u64>& es) {
+ using gf2_64_pow_byte_window_6_2::pow;
+ vector<u64> ans(as.size());
+ for(size_t i= 0; i < as.size(); ++i) ans[i]= pow(as[i], es[i]);
+ return ans;
+}

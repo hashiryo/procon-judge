@@ -39,12 +39,10 @@
 
 #ifndef YOSUPO_193004_ENABLE
 // 非 x86_64 native 環境: runtime abort
-struct Det {
- static u32 run(int, u32, const vector<vector<u32>>&) {
-  fprintf(stderr, "yosupo_193004 (AVX-512): x86_64 + AVX-512 required\n");
-  std::abort();
- }
-};
+inline u32 run(int, u32, const vector<vector<u32>>&) {
+ fprintf(stderr, "yosupo_193004 (AVX-512): x86_64 + AVX-512 required\n");
+ std::abort();
+}
 #else
 
 namespace yosupo_193004 {
@@ -114,12 +112,10 @@ inline uint32_t det_impl(vector<vector<uint32_t>> A, const fmd_32 fm) {
 }
 } // namespace yosupo_193004
 
-struct Det {
- static u32 run(int n, u32 mod, const vector<vector<u32>>& a) {
-  yosupo_193004::fmd_32 fm(mod);
-  return yosupo_193004::det_impl(a, fm);
- }
-};
+inline u32 run(int n, u32 mod, const vector<vector<u32>>& a) {
+ yosupo_193004::fmd_32 fm(mod);
+ return yosupo_193004::det_impl(a, fm);
+}
 
 #endif // YOSUPO_193004_ENABLE
 

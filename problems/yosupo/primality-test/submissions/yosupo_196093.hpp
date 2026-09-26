@@ -279,10 +279,8 @@ inline bool isPrime64(uint64_t x) {
  return cur == minus_one_m;
 }
 }  // namespace yosupo_196093
-struct Primality {
- static vector<bool> run(const vector<u64>& qs) {
-  vector<bool> ans(qs.size());
-  for(size_t i= 0; i < qs.size(); ++i) ans[i]= yosupo_196093::isPrime64(qs[i]);
-  return ans;
- }
-};
+inline vector<bool> run(const vector<u64>& qs) {
+ vector<bool> ans(qs.size());
+ for(size_t i= 0; i < qs.size(); ++i) ans[i]= yosupo_196093::isPrime64(qs[i]);
+ return ans;
+}

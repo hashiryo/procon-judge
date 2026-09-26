@@ -1,5 +1,5 @@
 // harness: T 個の (a, b) を読み、a ⊗ b ∈ GF(2^64) = GF(2)[x]/(x^64+x^4+x^3+x+1) を出力する。
-// 入出力は計測区間の外。GF2_64Op::run(as, bs) だけを測る。
+// 入出力は計測区間の外。run(as, bs) だけを測る。
 //
 // gf2-64-mul と問題そのものは同じで、こちらは VPCLMULQDQ の 2 並列 mul とその変種を比べるための
 // 場所。ループは提出が持つので、1 反復 2 積 (imm 0x00 だけ) と 1 反復 4 積 (0x00 と 0x11) の
@@ -19,7 +19,7 @@ signed main() {
   for (int i = 0; i < t; ++i) must_scan(scanf("%llu %llu", &as[i], &bs[i]), 2);
 
   auto t0 = chrono::steady_clock::now();
-  auto r = GF2_64Op::run(as, bs);
+  auto r = run(as, bs);
   auto t1 = chrono::steady_clock::now();
 
   print_all(r);

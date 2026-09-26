@@ -1,4 +1,4 @@
-// harness: 各 algos/*.hpp が定義する struct Solver::run(input, output) を計測する。
+// harness: 各提出が定義する run(input, output) を計測する。
 // I/O フォーマットが複雑なので harness は I/O 処理ごと algos に委譲。
 //
 // 計測: stdin 全部読んで in_buf へ、algo がそれを処理して out_buf に書き出すまで。
@@ -27,7 +27,7 @@ signed main() {
  uint64_t best_ns = ~uint64_t(0);
  for (int rep = 0; rep < 1; ++rep) {
   auto t0 = chrono::steady_clock::now();
-  output = Solver::run(input);
+  output = run(input);
   auto t1 = chrono::steady_clock::now();
   auto ns = (uint64_t) chrono::duration_cast<chrono::nanoseconds>(t1 - t0).count();
   if (ns < best_ns) best_ns = ns;

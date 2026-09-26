@@ -20,11 +20,9 @@ inline u64 sqrt_via_sq(u64 a) {
  return a;
 }
 }
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as) {
-  using gf2_64_sqrt_pclmul_pow::sqrt_via_sq;
-  vector<u64> ans(as.size());
-  for(size_t i= 0; i < as.size(); ++i) ans[i]= sqrt_via_sq(as[i]);
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& as) {
+ using gf2_64_sqrt_pclmul_pow::sqrt_via_sq;
+ vector<u64> ans(as.size());
+ for(size_t i= 0; i < as.size(); ++i) ans[i]= sqrt_via_sq(as[i]);
+ return ans;
+}

@@ -34,11 +34,9 @@ inline u64 frob16(u64 a) {
  return FROB_BYTE[0][u8(a)] ^ FROB_BYTE[1][u8(a >> 8)] ^ FROB_BYTE[2][u8(a >> 16)] ^ FROB_BYTE[3][u8(a >> 24)] ^ FROB_BYTE[4][u8(a >> 32)] ^ FROB_BYTE[5][u8(a >> 40)] ^ FROB_BYTE[6][u8(a >> 48)] ^ FROB_BYTE[7][u8(a >> 56)];
 }
 }
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as) {
-  using gf2_64_frob16_linear_map::frob16;
-  vector<u64> ans(as.size());
-  for(size_t i= 0; i < as.size(); ++i) ans[i]= frob16(as[i]);
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& as) {
+ using gf2_64_frob16_linear_map::frob16;
+ vector<u64> ans(as.size());
+ for(size_t i= 0; i < as.size(); ++i) ans[i]= frob16(as[i]);
+ return ans;
+}

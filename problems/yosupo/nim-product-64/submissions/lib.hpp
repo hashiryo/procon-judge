@@ -5,14 +5,12 @@
 #include "../common.hpp"
 #include "mylib/algebra/Nimber.hpp"
 
-struct NimProduct {
- static vector<u64> run(const vector<u64>& as, const vector<u64>& bs) {
-  Nimber::init(); // log/exp テーブル初期化 (1 度だけ)
-  const size_t T = as.size();
-  vector<u64> ans(T);
-  for (size_t i = 0; i < T; ++i) {
-   ans[i] = (Nimber(as[i]) * Nimber(bs[i])).val();
-  }
-  return ans;
+inline vector<u64> run(const vector<u64>& as, const vector<u64>& bs) {
+ Nimber::init(); // log/exp テーブル初期化 (1 度だけ)
+ const size_t T = as.size();
+ vector<u64> ans(T);
+ for (size_t i = 0; i < T; ++i) {
+  ans[i] = (Nimber(as[i]) * Nimber(bs[i])).val();
  }
-};
+ return ans;
+}

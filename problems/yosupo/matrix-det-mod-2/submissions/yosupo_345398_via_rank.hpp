@@ -86,17 +86,15 @@ struct Matrix {
 };
 } // namespace yosupo_345398_det_via_rank
 
-struct Det {
- static int run(int n, const vector<string>& a) {
-  using namespace yosupo_345398_det_via_rank;
-  Matrix mat(n, n);
-  for (int i = 0; i < n; ++i)
-   for (int j = 0; j < n; ++j)
-    if (a[i][j] == '1') mat.set(i, j);
-  // rank == n ⟺ det = 1
-  return mat.gaussian_elimination() == n ? 1 : 0;
- }
-};
+inline int run(int n, const vector<string>& a) {
+ using namespace yosupo_345398_det_via_rank;
+ Matrix mat(n, n);
+ for (int i = 0; i < n; ++i)
+  for (int j = 0; j < n; ++j)
+   if (a[i][j] == '1') mat.set(i, j);
+ // rank == n ⟺ det = 1
+ return mat.gaussian_elimination() == n ? 1 : 0;
+}
 
 #ifdef PJ_CLANG_TARGET_PUSHED
 #undef PJ_CLANG_TARGET_PUSHED

@@ -366,42 +366,40 @@ inline dynamic_bit_array sieve_wheel(u32 N) {
 
 }  // namespace
 
-struct Solver {
- static std::pair<u32, std::vector<u32>> run(u32 N, u32 A, u32 B) {
-  using namespace yosupo_ep_fastest;
+inline std::pair<u32, std::vector<u32>> run(u32 N, u32 A, u32 B) {
+ using namespace yosupo_ep_fastest;
 
-  auto primes_bits = sieve_wheel(N);
-  size_t cnt = count_bits(primes_bits);
-  size_t extra = 0;
-  for (u32 p : wheel_primes) if (p <= N) ++extra;
-  cnt += extra;
-  size_t X = (cnt < B) ? 0 : (cnt - B + A - 1) / A;
-  std::vector<u32> selected;
-  selected.reserve(X);
+ auto primes_bits = sieve_wheel(N);
+ size_t cnt = count_bits(primes_bits);
+ size_t extra = 0;
+ for (u32 p : wheel_primes) if (p <= N) ++extra;
+ cnt += extra;
+ size_t X = (cnt < B) ? 0 : (cnt - B + A - 1) / A;
+ std::vector<u32> selected;
+ selected.reserve(X);
 
-  size_t b_remaining = B;
-  size_t x_remaining = X;
-  for (u32 p : wheel_primes) {
-   if (b_remaining == 0 && x_remaining > 0 && p <= N) {
-    selected.push_back(p);
-    --x_remaining;
-   }
-   if (p <= N) {
-    if (b_remaining > 0) --b_remaining;
-    else b_remaining = A - 1;
-   }
-  }
-  size_t pos = skip_bits(primes_bits, 0, b_remaining);
-  while (pos < primes_bits.n && x_remaining > 0) {
-   u32 v = to_val((u32) pos);
-   if (v > N) break;
-   selected.push_back(v);
+ size_t b_remaining = B;
+ size_t x_remaining = X;
+ for (u32 p : wheel_primes) {
+  if (b_remaining == 0 && x_remaining > 0 && p <= N) {
+   selected.push_back(p);
    --x_remaining;
-   if (x_remaining > 0) pos = skip_bits(primes_bits, pos + 1, A - 1);
   }
-  return {(u32) cnt, std::move(selected)};
+  if (p <= N) {
+   if (b_remaining > 0) --b_remaining;
+   else b_remaining = A - 1;
+  }
  }
-};
+ size_t pos = skip_bits(primes_bits, 0, b_remaining);
+ while (pos < primes_bits.n && x_remaining > 0) {
+  u32 v = to_val((u32) pos);
+  if (v > N) break;
+  selected.push_back(v);
+  --x_remaining;
+  if (x_remaining > 0) pos = skip_bits(primes_bits, pos + 1, A - 1);
+ }
+ return {(u32) cnt, std::move(selected)};
+}
 
 #ifdef PJ_CLANG_TARGET_PUSHED
 #undef PJ_CLANG_TARGET_PUSHED

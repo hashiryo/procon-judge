@@ -86,14 +86,12 @@ inline u32 det_inplace(vector<vector<u64>>& mat, u32 n) {
 }
 } // namespace yosupo_361510
 
-struct Det {
- static u32 run(int n, const vector<vector<u32>>& a) {
-  vector<vector<u64>> mat(n, vector<u64>(n));
-  for (int i = 0; i < n; ++i)
-   for (int j = 0; j < n; ++j) mat[i][j] = a[i][j];
-  return yosupo_361510::det_inplace(mat, (u32) n);
- }
-};
+inline u32 run(int n, const vector<vector<u32>>& a) {
+ vector<vector<u64>> mat(n, vector<u64>(n));
+ for (int i = 0; i < n; ++i)
+  for (int j = 0; j < n; ++j) mat[i][j] = a[i][j];
+ return yosupo_361510::det_inplace(mat, (u32) n);
+}
 
 #ifdef PJ_CLANG_TARGET_PUSHED
 #undef PJ_CLANG_TARGET_PUSHED

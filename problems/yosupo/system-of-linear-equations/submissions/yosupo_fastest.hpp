@@ -856,32 +856,30 @@ namespace cp_algo::linalg {
 // ---------------------------------------------------------------------------
 // Wrapper
 // ---------------------------------------------------------------------------
-struct Solver {
- static SolveResult run(int n, int m, const vector<vector<u32>>& a, const vector<u32>& b) {
-  using base = cp_algo::math::modint<(int64_t) MOD>;
-  cp_algo::linalg::matrix<base> A(n, m), B(n, 1);
-  for (int i = 0; i < n; ++i) {
-   for (int j = 0; j < m; ++j) A[i][j].setr((uint64_t) a[i][j]);
-   B[i][0].setr((uint64_t) b[i]);
-  }
-  auto x = A.solve(B);
-  if (!x) return {false, {}, {}};
-  auto& [sol_mat, basis_mat] = *x;
-  // sol_mat は 1 行 m 列、basis_mat は R 行 m 列
-  vector<u32> sol(m, 0);
-  for (int j = 0; j < m; ++j) sol[j] = (u32) sol_mat[0][j].getr();
-  // getr() は最大 2*MOD-ish の場合があるので念のため reduce
-  for (auto& v : sol) if (v >= MOD) v -= MOD;
-  vector<vector<u32>> basis(basis_mat.n(), vector<u32>(m, 0));
-  for (size_t i = 0; i < basis_mat.n(); ++i)
-   for (int j = 0; j < m; ++j) {
-    u32 v = (u32) basis_mat[i][j].getr();
-    if (v >= MOD) v -= MOD;
-    basis[i][j] = v;
-   }
-  return {true, std::move(sol), std::move(basis)};
+inline SolveResult run(int n, int m, const vector<vector<u32>>& a, const vector<u32>& b) {
+ using base = cp_algo::math::modint<(int64_t) MOD>;
+ cp_algo::linalg::matrix<base> A(n, m), B(n, 1);
+ for (int i = 0; i < n; ++i) {
+  for (int j = 0; j < m; ++j) A[i][j].setr((uint64_t) a[i][j]);
+  B[i][0].setr((uint64_t) b[i]);
  }
-};
+ auto x = A.solve(B);
+ if (!x) return {false, {}, {}};
+ auto& [sol_mat, basis_mat] = *x;
+ // sol_mat は 1 行 m 列、basis_mat は R 行 m 列
+ vector<u32> sol(m, 0);
+ for (int j = 0; j < m; ++j) sol[j] = (u32) sol_mat[0][j].getr();
+ // getr() は最大 2*MOD-ish の場合があるので念のため reduce
+ for (auto& v : sol) if (v >= MOD) v -= MOD;
+ vector<vector<u32>> basis(basis_mat.n(), vector<u32>(m, 0));
+ for (size_t i = 0; i < basis_mat.n(); ++i)
+  for (int j = 0; j < m; ++j) {
+   u32 v = (u32) basis_mat[i][j].getr();
+   if (v >= MOD) v -= MOD;
+   basis[i][j] = v;
+  }
+ return {true, std::move(sol), std::move(basis)};
+}
 
 #ifdef PJ_CLANG_TARGET_PUSHED
 #undef PJ_CLANG_TARGET_PUSHED

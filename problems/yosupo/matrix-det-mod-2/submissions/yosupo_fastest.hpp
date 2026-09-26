@@ -63,46 +63,44 @@ inline void set_ith(__m256i* vec, size_t idx) {
 }
 } // namespace yosupo_241296
 
-struct Det {
- static int run(int n_in, const vector<string>& a) {
-  using namespace yosupo_241296;
-  // 毎呼び出しで初期化。
-  std::memset(firsts, 0, sizeof(firsts));
-  std::memset(zeroes, 0, sizeof(zeroes));
-  std::memset(vecs, 0, sizeof(vecs));
-  // a[i][j] (char '0'/'1') を vecs[i] のビットにパック。
-  for (int i = 0; i < n_in; ++i) {
-   const char* row = a[i].data();
-   uint32_t* d32 = (uint32_t*) vecs[i];
-   for (int j = 0; j < n_in; ++j)
-    if (row[j] == '1') d32[j / 32] |= uint32_t(1) << (j % 32);
-  }
-  size_t n = (size_t) n_in;
-  // n を BLOCKSIZE の倍数に揃える (恒等行を追加するだけなので det は変わらない)。
-  for (; n % BLOCKSIZE != 0; ++n) set_ith(vecs[n], n);
+inline int run(int n_in, const vector<string>& a) {
+ using namespace yosupo_241296;
+ // 毎呼び出しで初期化。
+ std::memset(firsts, 0, sizeof(firsts));
+ std::memset(zeroes, 0, sizeof(zeroes));
+ std::memset(vecs, 0, sizeof(vecs));
+ // a[i][j] (char '0'/'1') を vecs[i] のビットにパック。
+ for (int i = 0; i < n_in; ++i) {
+  const char* row = a[i].data();
+  uint32_t* d32 = (uint32_t*) vecs[i];
+  for (int j = 0; j < n_in; ++j)
+   if (row[j] == '1') d32[j / 32] |= uint32_t(1) << (j % 32);
+ }
+ size_t n = (size_t) n_in;
+ // n を BLOCKSIZE の倍数に揃える (恒等行を追加するだけなので det は変わらない)。
+ for (; n % BLOCKSIZE != 0; ++n) set_ith(vecs[n], n);
 
-  for (size_t il = 0; il < n; il += BLOCKSIZE) {
-   for (size_t jl = 0; jl < il; jl += BLOCKSIZE) {
-    for (size_t j = jl; j < jl + BLOCKSIZE; ++j) {
-     for (size_t i = il; i < il + BLOCKSIZE; ++i) {
-      __m256i* src = get_ith(vecs[i], firsts[j]) ? vecs[j] : zeroes;
-      xor_from(vecs[i], src, firsts[j]);
-     }
-    }
-   }
-   for (size_t i = il; i < il + BLOCKSIZE; ++i) {
-    for (size_t j = il; j < i; ++j) {
+ for (size_t il = 0; il < n; il += BLOCKSIZE) {
+  for (size_t jl = 0; jl < il; jl += BLOCKSIZE) {
+   for (size_t j = jl; j < jl + BLOCKSIZE; ++j) {
+    for (size_t i = il; i < il + BLOCKSIZE; ++i) {
      __m256i* src = get_ith(vecs[i], firsts[j]) ? vecs[j] : zeroes;
      xor_from(vecs[i], src, firsts[j]);
     }
-    size_t first_bit = find_first(vecs[i]);
-    if (first_bit == ~(size_t) 0) return 0;
-    firsts[i] = (uint16_t) first_bit;
    }
   }
-  return 1;
+  for (size_t i = il; i < il + BLOCKSIZE; ++i) {
+   for (size_t j = il; j < i; ++j) {
+    __m256i* src = get_ith(vecs[i], firsts[j]) ? vecs[j] : zeroes;
+    xor_from(vecs[i], src, firsts[j]);
+   }
+   size_t first_bit = find_first(vecs[i]);
+   if (first_bit == ~(size_t) 0) return 0;
+   firsts[i] = (uint16_t) first_bit;
+  }
  }
-};
+ return 1;
+}
 
 #ifdef PJ_CLANG_TARGET_PUSHED
 #undef PJ_CLANG_TARGET_PUSHED

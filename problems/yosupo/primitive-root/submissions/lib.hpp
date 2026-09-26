@@ -8,11 +8,9 @@ namespace { template <class T> constexpr int __lg(T x) { return std::bit_width<s
 #endif
 #include "mylib/number_theory/OrderFp.hpp"
 
-struct PrimitiveRoot {
- static vector<u64> run(const vector<u64>& qs) {
-  vector<u64> ans;
-  ans.reserve(qs.size());
-  for (auto p : qs) ans.push_back(OrderFp(p).primitive_root());
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& qs) {
+ vector<u64> ans;
+ ans.reserve(qs.size());
+ for (auto p : qs) ans.push_back(OrderFp(p).primitive_root());
+ return ans;
+}

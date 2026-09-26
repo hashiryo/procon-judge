@@ -1,4 +1,4 @@
-// harness: 各 algos/*.hpp が定義する struct DLog::run(p, g, queries) を計測する。
+// harness: 各提出が定義する run(p, g, queries) を計測する。
 // yosupo "Discrete Logarithm Fixed Mod" 形式の I/O。
 #include "pj.hpp"
 #include "common.hpp"
@@ -21,7 +21,7 @@ signed main() {
  vector<u32> result;
  for (int rep = 0; rep < 1; ++rep) {
   auto t0 = chrono::steady_clock::now();
-  auto r = DLog::run(p, g, qs);
+  auto r = run(p, g, qs);
   auto t1 = chrono::steady_clock::now();
   result = std::move(r);
   auto ns = (uint64_t) chrono::duration_cast<chrono::nanoseconds>(t1 - t0).count();

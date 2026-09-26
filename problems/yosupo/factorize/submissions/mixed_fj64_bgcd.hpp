@@ -32,11 +32,12 @@ inline int low(uint64_t x) { return x == 0 ? -1 : __builtin_ctzll(x); }
 
 // FJ64_262K table + prime_test を取り込む (primality-test の fastest を再利用)。
 // algos/ 内の相対 include はテストハーネスでも -I が通るので問題なし。
+// primality-test の提出は入口の run も定義するので、読み込むあいだだけ別名にして、この hpp の run とぶつけない。
+#define run primality_test_run
 #include "../../primality-test/submissions/yosupo_fastest.hpp"
+#undef run
 // 上で algos/_common.hpp が再 include されるが #pragma once で防がれる。
-// `Primality` struct も定義されてしまうのでこの hpp 単体ではコンパイル不能。
-// → algos/yosupo_fastest.hpp 内で Primality を匿名化したいが侵襲的なので、
-//   ここでは prime_test を別 namespace から呼ぶだけにする。
+// ここでは prime_test を別 namespace から呼ぶだけにする。
 
 namespace yosupo_factorize_mixed {
 using std::uint32_t;
@@ -140,20 +141,18 @@ inline std::vector<std::pair<uint64_t, uint32_t>> Factorize(uint64_t n) {
 // primality-test/algos/yosupo_fastest.hpp が定義した Primality を捨てて、
 // この hpp 用の Factorize を定義する。
 #undef ALGO_HPP
-struct Factorize {
- static vector<vector<u64>> run(const vector<u64>& qs) {
-  vector<vector<u64>> ans;
-  ans.reserve(qs.size());
-  for (auto x : qs) {
-   vector<u64> fs;
-   if (x > 1) {
-    auto f = yosupo_factorize_mixed::Factorize<true>(x);
-    for (auto [p, c] : f) {
-     for (uint32_t k = 0; k < c; ++k) fs.push_back(p);
-    }
+inline vector<vector<u64>> run(const vector<u64>& qs) {
+ vector<vector<u64>> ans;
+ ans.reserve(qs.size());
+ for (auto x : qs) {
+  vector<u64> fs;
+  if (x > 1) {
+   auto f = yosupo_factorize_mixed::Factorize<true>(x);
+   for (auto [p, c] : f) {
+    for (uint32_t k = 0; k < c; ++k) fs.push_back(p);
    }
-   ans.push_back(std::move(fs));
   }
-  return ans;
+  ans.push_back(std::move(fs));
  }
-};
+ return ans;
+}

@@ -33,11 +33,9 @@ inline u64 spread_bits(u32 a) {
 #endif
 inline u64 sq(u64 a) { return spread_bits(u32(a)) ^ ((u8[]){0, 27, 90, 65})[a >> 62] ^ (u64)_mm_clmulepi64_si128(_mm_cvtsi64_si128(spread_bits(u32(a >> 32))), _mm_cvtsi64_si128(0b11011), 0)[0]; }
 }
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as) {
-  using gf2_64_sq_pdep::sq;
-  vector<u64> ans(as.size());
-  for(size_t i= 0; i < as.size(); ++i) ans[i]= sq(as[i]);
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& as) {
+ using gf2_64_sq_pdep::sq;
+ vector<u64> ans(as.size());
+ for(size_t i= 0; i < as.size(); ++i) ans[i]= sq(as[i]);
+ return ans;
+}

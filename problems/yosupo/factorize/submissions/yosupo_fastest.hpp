@@ -177,20 +177,18 @@ inline std::vector<std::pair<uint64_t, uint32_t>> Factorize(uint64_t n) {
 }
 } // namespace yosupo_factorize_317402
 
-struct Factorize {
- static vector<vector<u64>> run(const vector<u64>& qs) {
-  vector<vector<u64>> ans;
-  ans.reserve(qs.size());
-  for (auto x : qs) {
-   vector<u64> fs;
-   if (x > 1) {
-    auto f = yosupo_factorize_317402::Factorize<true>(x);
-    for (auto [p, c] : f) {
-     for (uint32_t k = 0; k < c; ++k) fs.push_back(p);
-    }
+inline vector<vector<u64>> run(const vector<u64>& qs) {
+ vector<vector<u64>> ans;
+ ans.reserve(qs.size());
+ for (auto x : qs) {
+  vector<u64> fs;
+  if (x > 1) {
+   auto f = yosupo_factorize_317402::Factorize<true>(x);
+   for (auto [p, c] : f) {
+    for (uint32_t k = 0; k < c; ++k) fs.push_back(p);
    }
-   ans.push_back(std::move(fs));
   }
-  return ans;
+  ans.push_back(std::move(fs));
  }
-};
+ return ans;
+}

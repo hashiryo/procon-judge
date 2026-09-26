@@ -664,19 +664,17 @@ inline void mul(auto& a, auto const& b) {
 }
 } // namespace cp_algo::math::fft
 
-struct Conv {
- using base = cp_algo::math::modint<(int64_t)998'244'353>;
- static vector<u32> run(const vector<u32>& a, const vector<u32>& b) {
-  if (a.empty() || b.empty()) return {};
-  std::vector<base, cp_algo::big_alloc<base>> aa(a.size()), bb(b.size());
-  for (size_t i = 0; i < a.size(); ++i) aa[i].setr(a[i]);
-  for (size_t i = 0; i < b.size(); ++i) bb[i].setr(b[i]);
-  cp_algo::math::fft::mul(aa, bb);
-  vector<u32> r(aa.size());
-  for (size_t i = 0; i < aa.size(); ++i) r[i] = (u32) aa[i].getr();
-  return r;
- }
-};
+using base = cp_algo::math::modint<(int64_t)998'244'353>;
+inline vector<u32> run(const vector<u32>& a, const vector<u32>& b) {
+ if (a.empty() || b.empty()) return {};
+ std::vector<base, cp_algo::big_alloc<base>> aa(a.size()), bb(b.size());
+ for (size_t i = 0; i < a.size(); ++i) aa[i].setr(a[i]);
+ for (size_t i = 0; i < b.size(); ++i) bb[i].setr(b[i]);
+ cp_algo::math::fft::mul(aa, bb);
+ vector<u32> r(aa.size());
+ for (size_t i = 0; i < aa.size(); ++i) r[i] = (u32) aa[i].getr();
+ return r;
+}
 
 #ifdef PJ_CLANG_TARGET_PUSHED
 #undef PJ_CLANG_TARGET_PUSHED

@@ -6,15 +6,13 @@
 #include "mylib/algebra/ModInt.hpp"
 #include "mylib/algebra/set_power_series.hpp"
 
-struct SubsetExp {
- static vector<u32> run(int N, const vector<u32>& b_in) {
-  using Mint = ModInt<998244353>;
-  int sz = 1 << N;
-  vector<Mint> f(sz);
-  for (int i = 0; i < sz; ++i) f[i] = Mint(b_in[i]);
-  auto c = sps::exp(f);
-  vector<u32> result(sz);
-  for (int i = 0; i < sz; ++i) result[i] = (u32) c[i].val();
-  return result;
- }
-};
+inline vector<u32> run(int N, const vector<u32>& b_in) {
+ using Mint = ModInt<998244353>;
+ int sz = 1 << N;
+ vector<Mint> f(sz);
+ for (int i = 0; i < sz; ++i) f[i] = Mint(b_in[i]);
+ auto c = sps::exp(f);
+ vector<u32> result(sz);
+ for (int i = 0; i < sz; ++i) result[i] = (u32) c[i].val();
+ return result;
+}

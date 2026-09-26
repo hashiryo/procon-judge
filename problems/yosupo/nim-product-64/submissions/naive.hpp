@@ -69,11 +69,9 @@ inline uint64_t nim_mul(uint64_t a, uint64_t b) {
  return poly_to_nim(reduce_mod_pair(lo, hi));
 }
 }  // namespace nim_naive
-struct NimProduct {
- static vector<u64> run(const vector<u64>& as, const vector<u64>& bs) {
-  const size_t T= as.size();
-  vector<u64> ans(T);
-  for(size_t i= 0; i < T; ++i) ans[i]= nim_naive::nim_mul(as[i], bs[i]);
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& as, const vector<u64>& bs) {
+ const size_t T= as.size();
+ vector<u64> ans(T);
+ for(size_t i= 0; i < T; ++i) ans[i]= nim_naive::nim_mul(as[i], bs[i]);
+ return ans;
+}

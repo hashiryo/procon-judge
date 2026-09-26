@@ -26,11 +26,9 @@ inline u64 pow_binary(u64 a, u64 e) {
  return res;
 }
 }
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as, const vector<u64>& es) {
-  using gf2_64_pow_pclmul_binary::pow_binary;
-  vector<u64> ans(as.size());
-  for(size_t i= 0; i < as.size(); ++i) ans[i]= pow_binary(as[i], es[i]);
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& as, const vector<u64>& es) {
+ using gf2_64_pow_pclmul_binary::pow_binary;
+ vector<u64> ans(as.size());
+ for(size_t i= 0; i < as.size(); ++i) ans[i]= pow_binary(as[i], es[i]);
+ return ans;
+}

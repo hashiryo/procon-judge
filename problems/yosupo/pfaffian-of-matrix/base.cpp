@@ -1,4 +1,4 @@
-// harness: 各 algos/*.hpp が定義する struct Pfaffian::run(N, M) を計測する。
+// harness: 各提出が定義する run(N, M) を計測する。
 // yosupo "Pfaffian of Matrix" 形式の I/O。N は半分のサイズで、行列は 2N×2N。
 #include "pj.hpp"
 #include "common.hpp"
@@ -23,7 +23,7 @@ signed main() {
 
     for (int rep = 0; rep < REPEAT; ++rep) {
         auto t0 = chrono::steady_clock::now();
-        u32 r = Pfaffian::run(N, M);
+        u32 r = run(N, M);
         auto t1 = chrono::steady_clock::now();
         result = r;
         auto ns = (uint64_t)chrono::duration_cast<chrono::nanoseconds>(t1 - t0).count();

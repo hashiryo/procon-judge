@@ -377,11 +377,9 @@ u64 log_g(u64 x) {
  return u64(r1) + MOD_F16 * t0 + MOD_F16_641 * t2 + MOD_F16_641_F17 * t3;
 }
 }  // namespace gf2_64_log_pohlig_v53
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& xs) {
-  using gf2_64_log_pohlig_v53::log_g;
-  vector<u64> ans(xs.size());
-  for(size_t i= 0; i < xs.size(); ++i) ans[i]= log_g(xs[i]);
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& xs) {
+ using gf2_64_log_pohlig_v53::log_g;
+ vector<u64> ans(xs.size());
+ for(size_t i= 0; i < xs.size(); ++i) ans[i]= log_g(xs[i]);
+ return ans;
+}

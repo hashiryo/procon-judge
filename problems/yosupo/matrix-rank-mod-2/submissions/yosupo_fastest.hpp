@@ -82,25 +82,23 @@ struct Matrix {
 };
 } // namespace yosupo_345398
 
-struct Rank {
- static int run(int n, int m, const vector<string>& a) {
-  using namespace yosupo_345398;
-  // N < M なら転置すると cols が小さくなり高速化。rank は不変。
-  if (n < m) {
-   Matrix mat(n, m);
-   for (int i = 0; i < n; ++i)
-    for (int j = 0; j < m; ++j)
-     if (a[i][j] == '1') mat.set(i, j);
-   return mat.gaussian_elimination();
-  } else {
-   Matrix mat(m, n);
-   for (int i = 0; i < n; ++i)
-    for (int j = 0; j < m; ++j)
-     if (a[i][j] == '1') mat.set(j, i);
-   return mat.gaussian_elimination();
-  }
+inline int run(int n, int m, const vector<string>& a) {
+ using namespace yosupo_345398;
+ // N < M なら転置すると cols が小さくなり高速化。rank は不変。
+ if (n < m) {
+  Matrix mat(n, m);
+  for (int i = 0; i < n; ++i)
+   for (int j = 0; j < m; ++j)
+    if (a[i][j] == '1') mat.set(i, j);
+  return mat.gaussian_elimination();
+ } else {
+  Matrix mat(m, n);
+  for (int i = 0; i < n; ++i)
+   for (int j = 0; j < m; ++j)
+    if (a[i][j] == '1') mat.set(j, i);
+  return mat.gaussian_elimination();
  }
-};
+}
 
 #ifdef PJ_CLANG_TARGET_PUSHED
 #undef PJ_CLANG_TARGET_PUSHED

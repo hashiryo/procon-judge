@@ -46,11 +46,9 @@ inline u64 sq(u64 a) {
  return lo ^ RED[h >> 60] ^ d ^ (d << 3);
 }
 }  // namespace gf2_64_sq_gfni
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as) {
-  using gf2_64_sq_gfni::sq;
-  vector<u64> ans(as.size());
-  for(size_t i= 0; i < as.size(); ++i) ans[i]= sq(as[i]);
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& as) {
+ using gf2_64_sq_gfni::sq;
+ vector<u64> ans(as.size());
+ for(size_t i= 0; i < as.size(); ++i) ans[i]= sq(as[i]);
+ return ans;
+}

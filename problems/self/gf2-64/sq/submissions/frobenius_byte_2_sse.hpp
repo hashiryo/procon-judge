@@ -44,11 +44,9 @@ inline u64 sq(u64 a) {
  return u64(_mm_cvtsi128_si64(y)) ^ u64(_mm_extract_epi64(y, 1));
 }
 }
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as) {
-  using namespace gf2_64_sq_frobenius_byte;
-  vector<u64> ans(as.size());
-  for(size_t i= 0; i < as.size(); ++i) ans[i]= sq(as[i]);
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& as) {
+ using namespace gf2_64_sq_frobenius_byte;
+ vector<u64> ans(as.size());
+ for(size_t i= 0; i < as.size(); ++i) ans[i]= sq(as[i]);
+ return ans;
+}

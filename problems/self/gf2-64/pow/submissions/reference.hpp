@@ -36,10 +36,8 @@ inline u64 pow(u64 a, u64 e) {
  return r;
 }
 }  // namespace gf2_64_ref
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as, const vector<u64>& es) {
-  vector<u64> ans(as.size());
-  for(size_t i= 0; i < as.size(); ++i) ans[i]= gf2_64_ref::pow(as[i], es[i]);
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& as, const vector<u64>& es) {
+ vector<u64> ans(as.size());
+ for(size_t i= 0; i < as.size(); ++i) ans[i]= gf2_64_ref::pow(as[i], es[i]);
+ return ans;
+}

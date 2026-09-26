@@ -37,12 +37,10 @@ inline u64 pow(u64 a, u64 e) {
 }
 inline u64 inv(u64 a) { return pow(a, ~(u64)1); }  // a^(2^64 - 2)
 }  // namespace gf2_64_ref
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as, const vector<u64>& bs) {
-  vector<u64> ans(as.size());
-  for(size_t i= 0; i < as.size(); ++i) {
-   ans[i]= gf2_64_ref::mul(as[i], gf2_64_ref::inv(bs[i]));
-  }
-  return ans;
+inline vector<u64> run(const vector<u64>& as, const vector<u64>& bs) {
+ vector<u64> ans(as.size());
+ for(size_t i= 0; i < as.size(); ++i) {
+  ans[i]= gf2_64_ref::mul(as[i], gf2_64_ref::inv(bs[i]));
  }
-};
+ return ans;
+}

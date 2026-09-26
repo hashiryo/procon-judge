@@ -125,11 +125,9 @@ inline uint64_t primitive_root(uint64_t p) {
 }
 } // namespace yosupo_336163
 
-struct PrimitiveRoot {
- static vector<u64> run(const vector<u64>& qs) {
-  vector<u64> ans;
-  ans.reserve(qs.size());
-  for (auto p : qs) ans.push_back(yosupo_336163::primitive_root(p));
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& qs) {
+ vector<u64> ans;
+ ans.reserve(qs.size());
+ for (auto p : qs) ans.push_back(yosupo_336163::primitive_root(p));
+ return ans;
+}

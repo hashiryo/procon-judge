@@ -194,25 +194,23 @@ inline void mul_Strassen(const u32_* __restrict__ a, const u32_* __restrict__ b,
 
 } // namespace yosupo_193471
 
-struct Mul {
- static vector<u32> run(int n, int m, int p, const vector<u32>& a, const vector<u32>& b) {
-  using namespace yosupo_193471;
-  idt N = std::max(BLK, bcl((idt) std::max({n, m, p})));
-  // padded square N×N に詰める。未使用領域は 0。
-  std::memset(a_buf, 0, sizeof(a_buf));
-  std::memset(b_buf, 0, sizeof(b_buf));
-  std::memset(c_buf, 0, sizeof(c_buf));
-  for (int i = 0; i < n; ++i)
-   for (int j = 0; j < m; ++j) a_buf[i * N + j] = a[(size_t) i * m + j];
-  for (int i = 0; i < m; ++i)
-   for (int j = 0; j < p; ++j) b_buf[i * N + j] = b[(size_t) i * p + j];
-  mul_Strassen(a_buf, b_buf, c_buf, N);
-  vector<u32> result((size_t) n * p);
-  for (int i = 0; i < n; ++i)
-   for (int j = 0; j < p; ++j) result[(size_t) i * p + j] = c_buf[i * N + j];
-  return result;
- }
-};
+inline vector<u32> run(int n, int m, int p, const vector<u32>& a, const vector<u32>& b) {
+ using namespace yosupo_193471;
+ idt N = std::max(BLK, bcl((idt) std::max({n, m, p})));
+ // padded square N×N に詰める。未使用領域は 0。
+ std::memset(a_buf, 0, sizeof(a_buf));
+ std::memset(b_buf, 0, sizeof(b_buf));
+ std::memset(c_buf, 0, sizeof(c_buf));
+ for (int i = 0; i < n; ++i)
+  for (int j = 0; j < m; ++j) a_buf[i * N + j] = a[(size_t) i * m + j];
+ for (int i = 0; i < m; ++i)
+  for (int j = 0; j < p; ++j) b_buf[i * N + j] = b[(size_t) i * p + j];
+ mul_Strassen(a_buf, b_buf, c_buf, N);
+ vector<u32> result((size_t) n * p);
+ for (int i = 0; i < n; ++i)
+  for (int j = 0; j < p; ++j) result[(size_t) i * p + j] = c_buf[i * N + j];
+ return result;
+}
 
 #ifdef PJ_CLANG_TARGET_PUSHED
 #undef PJ_CLANG_TARGET_PUSHED

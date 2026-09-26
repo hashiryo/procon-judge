@@ -9,21 +9,19 @@ namespace { template <class T> constexpr int __lg(T x) { return std::bit_width<s
 #endif
 #include "mylib/number_theory/Factors.hpp"
 
-struct Factorize {
- static vector<vector<u64>> run(const vector<u64>& qs) {
-  vector<vector<u64>> ans;
-  ans.reserve(qs.size());
-  for (auto x : qs) {
-   vector<u64> fs;
-   if (x > 1) {
-    Factors f(x);
-    for (auto [p, c] : f) {
-     for (uint16_t k = 0; k < c; ++k) fs.push_back(p);
-    }
-    std::sort(fs.begin(), fs.end());
+inline vector<vector<u64>> run(const vector<u64>& qs) {
+ vector<vector<u64>> ans;
+ ans.reserve(qs.size());
+ for (auto x : qs) {
+  vector<u64> fs;
+  if (x > 1) {
+   Factors f(x);
+   for (auto [p, c] : f) {
+    for (uint16_t k = 0; k < c; ++k) fs.push_back(p);
    }
-   ans.push_back(std::move(fs));
+   std::sort(fs.begin(), fs.end());
   }
-  return ans;
+  ans.push_back(std::move(fs));
  }
-};
+ return ans;
+}

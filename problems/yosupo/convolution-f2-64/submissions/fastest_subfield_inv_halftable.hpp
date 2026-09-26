@@ -352,10 +352,8 @@ inline std::vector<u64> nim_convolution(std::vector<u64> f, std::vector<u64> g) 
  return f;
 }
 }  // namespace conv_f2_64_halftable
-struct Solver {
- static std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
-  using namespace conv_f2_64_halftable;
-  auto c= nim_convolution(a_in, b_in);
-  return c;
- }
-};
+inline std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
+ using namespace conv_f2_64_halftable;
+ auto c= nim_convolution(a_in, b_in);
+ return c;
+}

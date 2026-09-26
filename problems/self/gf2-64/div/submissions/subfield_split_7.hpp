@@ -83,11 +83,9 @@ inline u64 inv(u64 a) {
  u64 b= embed_idx(INV_LOW[u16(NN16)]);
  return mul(b, g);
 }
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as, const vector<u64>& bs) {
-  using gf2_64_pclmul::mul;
-  vector<u64> ans(as.size());
-  for(size_t i= 0; i < as.size(); ++i) ans[i]= mul(as[i], inv(bs[i]));
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& as, const vector<u64>& bs) {
+ using gf2_64_pclmul::mul;
+ vector<u64> ans(as.size());
+ for(size_t i= 0; i < as.size(); ++i) ans[i]= mul(as[i], inv(bs[i]));
+ return ans;
+}

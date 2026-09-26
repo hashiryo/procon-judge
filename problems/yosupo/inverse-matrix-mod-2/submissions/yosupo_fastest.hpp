@@ -66,78 +66,76 @@ inline void set_ith(__m256i* vec, size_t idx) {
 }
 } // namespace yosupo_241305
 
-struct Inv {
- static vector<string> run(int n_in, const vector<string>& a) {
-  using namespace yosupo_241305;
-  std::memset(firsts, 0, sizeof(firsts));
-  std::memset(invfirsts, 0, sizeof(invfirsts));
-  std::memset(zeroes, 0, sizeof(zeroes));
-  std::memset(vecs, 0, sizeof(vecs));
-  // a を vecs[i] の左半分にパック。
-  for (int i = 0; i < n_in; ++i) {
-   const char* row = a[i].data();
-   uint32_t* d32 = (uint32_t*) vecs[i];
-   for (int j = 0; j < n_in; ++j)
-    if (row[j] == '1') d32[j / 32] |= uint32_t(1) << (j % 32);
-  }
-  size_t orig_n = (size_t) n_in;
-  size_t n = orig_n;
-  // n を BLOCKSIZE の倍数に揃える (恒等行を追加するだけで det 不変)。
-  for (; n % BLOCKSIZE != 0; ++n) set_ith(vecs[n], n);
-  // 右半分に単位行列をセット (列 n..n+n-1)。
-  for (size_t i = 0; i < n; ++i) set_ith(vecs[i], i + n);
+inline vector<string> run(int n_in, const vector<string>& a) {
+ using namespace yosupo_241305;
+ std::memset(firsts, 0, sizeof(firsts));
+ std::memset(invfirsts, 0, sizeof(invfirsts));
+ std::memset(zeroes, 0, sizeof(zeroes));
+ std::memset(vecs, 0, sizeof(vecs));
+ // a を vecs[i] の左半分にパック。
+ for (int i = 0; i < n_in; ++i) {
+  const char* row = a[i].data();
+  uint32_t* d32 = (uint32_t*) vecs[i];
+  for (int j = 0; j < n_in; ++j)
+   if (row[j] == '1') d32[j / 32] |= uint32_t(1) << (j % 32);
+ }
+ size_t orig_n = (size_t) n_in;
+ size_t n = orig_n;
+ // n を BLOCKSIZE の倍数に揃える (恒等行を追加するだけで det 不変)。
+ for (; n % BLOCKSIZE != 0; ++n) set_ith(vecs[n], n);
+ // 右半分に単位行列をセット (列 n..n+n-1)。
+ for (size_t i = 0; i < n; ++i) set_ith(vecs[i], i + n);
 
-  // 前進消去
-  for (size_t il = 0; il < n; il += BLOCKSIZE) {
-   for (size_t jl = 0; jl < il; jl += BLOCKSIZE) {
-    for (size_t j = jl; j < jl + BLOCKSIZE; ++j)
-     for (size_t i = il; i < il + BLOCKSIZE; ++i) {
-      __m256i* src = get_ith(vecs[i], firsts[j]) ? vecs[j] : zeroes;
-      xor_from(vecs[i], src, firsts[j]);
-     }
-   }
-   for (size_t i = il; i < il + BLOCKSIZE; ++i) {
-    for (size_t j = il; j < i; ++j) {
+ // 前進消去
+ for (size_t il = 0; il < n; il += BLOCKSIZE) {
+  for (size_t jl = 0; jl < il; jl += BLOCKSIZE) {
+   for (size_t j = jl; j < jl + BLOCKSIZE; ++j)
+    for (size_t i = il; i < il + BLOCKSIZE; ++i) {
      __m256i* src = get_ith(vecs[i], firsts[j]) ? vecs[j] : zeroes;
      xor_from(vecs[i], src, firsts[j]);
     }
-    size_t first_bit = find_first_before(vecs[i], n);
-    if (first_bit == ~(size_t) 0) return {};  // 可逆でない
-    firsts[i] = (uint16_t) first_bit;
-   }
   }
-
-  // 後退消去
-  for (size_t jl = 0; jl < n; jl += BLOCKSIZE) {
-   for (size_t il = jl + BLOCKSIZE; il < n; il += BLOCKSIZE) {
-    for (size_t i = il; i < il + BLOCKSIZE; ++i)
-     for (size_t j = jl; j < jl + BLOCKSIZE; ++j) {
-      __m256i* src = get_ith(vecs[j], firsts[i]) ? vecs[i] : zeroes;
-      xor_from(vecs[j], src, firsts[i]);
-     }
+  for (size_t i = il; i < il + BLOCKSIZE; ++i) {
+   for (size_t j = il; j < i; ++j) {
+    __m256i* src = get_ith(vecs[i], firsts[j]) ? vecs[j] : zeroes;
+    xor_from(vecs[i], src, firsts[j]);
    }
-   for (size_t j = jl; j < jl + BLOCKSIZE; ++j) {
-    for (size_t i = j + 1; i < jl + BLOCKSIZE; ++i) {
+   size_t first_bit = find_first_before(vecs[i], n);
+   if (first_bit == ~(size_t) 0) return {};  // 可逆でない
+   firsts[i] = (uint16_t) first_bit;
+  }
+ }
+
+ // 後退消去
+ for (size_t jl = 0; jl < n; jl += BLOCKSIZE) {
+  for (size_t il = jl + BLOCKSIZE; il < n; il += BLOCKSIZE) {
+   for (size_t i = il; i < il + BLOCKSIZE; ++i)
+    for (size_t j = jl; j < jl + BLOCKSIZE; ++j) {
      __m256i* src = get_ith(vecs[j], firsts[i]) ? vecs[i] : zeroes;
      xor_from(vecs[j], src, firsts[i]);
     }
+  }
+  for (size_t j = jl; j < jl + BLOCKSIZE; ++j) {
+   for (size_t i = j + 1; i < jl + BLOCKSIZE; ++i) {
+    __m256i* src = get_ith(vecs[j], firsts[i]) ? vecs[i] : zeroes;
+    xor_from(vecs[j], src, firsts[i]);
    }
   }
-
-  // 行順を invfirsts で復元しつつ、右半分 [n, n + orig_n) を出力に変換。
-  for (size_t i = 0; i < n; ++i) invfirsts[firsts[i]] = (uint16_t) i;
-  vector<string> out(orig_n, string(orig_n, '0'));
-  for (size_t i = 0; i < orig_n; ++i) {
-   const __m256i* row = vecs[invfirsts[i]];
-   const uint64_t* r64 = (const uint64_t*) row;
-   for (size_t j = 0; j < orig_n; ++j) {
-    size_t bit = j + n;
-    if ((r64[bit / 64] >> (bit % 64)) & 1) out[i][j] = '1';
-   }
-  }
-  return out;
  }
-};
+
+ // 行順を invfirsts で復元しつつ、右半分 [n, n + orig_n) を出力に変換。
+ for (size_t i = 0; i < n; ++i) invfirsts[firsts[i]] = (uint16_t) i;
+ vector<string> out(orig_n, string(orig_n, '0'));
+ for (size_t i = 0; i < orig_n; ++i) {
+  const __m256i* row = vecs[invfirsts[i]];
+  const uint64_t* r64 = (const uint64_t*) row;
+  for (size_t j = 0; j < orig_n; ++j) {
+   size_t bit = j + n;
+   if ((r64[bit / 64] >> (bit % 64)) & 1) out[i][j] = '1';
+  }
+ }
+ return out;
+}
 
 #ifdef PJ_CLANG_TARGET_PUSHED
 #undef PJ_CLANG_TARGET_PUSHED

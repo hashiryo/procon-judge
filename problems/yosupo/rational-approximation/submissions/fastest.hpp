@@ -12,33 +12,31 @@
 //
 //   各クエリ: O(log min(n, max(x,y))) 程度。
 // =============================================================================
-struct Solver {
- template<class T>
- struct SBT {
-  // n 以下の denominator/numerator で条件 f を満たす最良 fraction の範囲を返す
-  // f(a, b) は単調 (true → false の境界を探す)
-  template<class F>
-  static std::tuple<T, T, T, T> binary_search(T n, F f) {
-   auto dfs = [&](auto& self, bool side, T& a, T& b, T c, T d) -> bool {
-    auto ok = [&]() { return a + c <= n && b + d <= n && f(a + c, b + d) == side; };
-    if (!ok()) return false;
-    if (!self(self, side, a, b, c + c, d + d) || ok()) { a += c; b += d; }
-    return true;
-   };
-   T a = 0, b = 1, c = 1, d = 0;
-   while (dfs(dfs, true, a, b, c, d) || dfs(dfs, false, c, d, a, b)) {}
-   return {a, b, c, d};
-  }
- };
-
- static std::vector<std::tuple<i64, i64, i64, i64>> run(const std::vector<std::tuple<i64, i64, i64>>& queries) {
-  std::vector<std::tuple<i64, i64, i64, i64>> ans;
-  ans.reserve(queries.size());
-  for (auto& [n, x, y] : queries) {
-   auto [a, b, c, d] = SBT<i64>::binary_search(n, [&](i64 a_, i64 b_) { return a_ * y <= b_ * x; });
-   if (a * y == b * x) { c = a; d = b; }
-   ans.emplace_back(a, b, c, d);
-  }
-  return ans;
+template<class T>
+struct SBT {
+ // n 以下の denominator/numerator で条件 f を満たす最良 fraction の範囲を返す
+ // f(a, b) は単調 (true → false の境界を探す)
+ template<class F>
+ static std::tuple<T, T, T, T> binary_search(T n, F f) {
+  auto dfs = [&](auto& self, bool side, T& a, T& b, T c, T d) -> bool {
+   auto ok = [&]() { return a + c <= n && b + d <= n && f(a + c, b + d) == side; };
+   if (!ok()) return false;
+   if (!self(self, side, a, b, c + c, d + d) || ok()) { a += c; b += d; }
+   return true;
+  };
+  T a = 0, b = 1, c = 1, d = 0;
+  while (dfs(dfs, true, a, b, c, d) || dfs(dfs, false, c, d, a, b)) {}
+  return {a, b, c, d};
  }
 };
+
+inline std::vector<std::tuple<i64, i64, i64, i64>> run(const std::vector<std::tuple<i64, i64, i64>>& queries) {
+ std::vector<std::tuple<i64, i64, i64, i64>> ans;
+ ans.reserve(queries.size());
+ for (auto& [n, x, y] : queries) {
+  auto [a, b, c, d] = SBT<i64>::binary_search(n, [&](i64 a_, i64 b_) { return a_ * y <= b_ * x; });
+  if (a * y == b * x) { c = a; d = b; }
+  ans.emplace_back(a, b, c, d);
+ }
+ return ans;
+}

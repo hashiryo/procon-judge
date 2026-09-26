@@ -39,10 +39,8 @@ inline u64 inv(u64 a) {
  return s;
 }
 }  // namespace gf2_64_extgcd
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as, const vector<u64>& bs) {
-  vector<u64> ans(as.size());
-  for(size_t i= 0; i < as.size(); ++i) ans[i]= mul(as[i], gf2_64_extgcd::inv(bs[i]));
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& as, const vector<u64>& bs) {
+ vector<u64> ans(as.size());
+ for(size_t i= 0; i < as.size(); ++i) ans[i]= mul(as[i], gf2_64_extgcd::inv(bs[i]));
+ return ans;
+}

@@ -38,10 +38,8 @@ inline u64 pow(u64 a, u64 e) {
 // sqrt(a) = a^(2^63)。標数 2 では Frobenius (^2) が自己同型なのでこれで一意。
 inline u64 sqrt(u64 a) { return pow(a, (u64)1 << 63); }
 }  // namespace gf2_64_ref
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as) {
-  vector<u64> ans(as.size());
-  for(size_t i= 0; i < as.size(); ++i) ans[i]= gf2_64_ref::sqrt(as[i]);
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& as) {
+ vector<u64> ans(as.size());
+ for(size_t i= 0; i < as.size(); ++i) ans[i]= gf2_64_ref::sqrt(as[i]);
+ return ans;
+}

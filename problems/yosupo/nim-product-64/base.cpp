@@ -1,4 +1,4 @@
-// harness: 各 algos/*.hpp が定義する struct NimProduct::run(as, bs) を計測する。
+// harness: 各提出が定義する run(as, bs) を計測する。
 // yosupo "Nim Product (F_{2^64})" 形式の I/O。
 #include "pj.hpp"
 #include "common.hpp"
@@ -22,7 +22,7 @@ signed main() {
 
  for (int rep = 0; rep < REPEAT; ++rep) {
   auto t0 = chrono::steady_clock::now();
-  auto r = NimProduct::run(as, bs);
+  auto r = run(as, bs);
   auto t1 = chrono::steady_clock::now();
   result = std::move(r);
   auto ns = (uint64_t)chrono::duration_cast<chrono::nanoseconds>(t1 - t0).count();

@@ -930,25 +930,23 @@ namespace cp_algo::math {
 // ---------------------------------------------------------------------------
 // Wrapper
 // ---------------------------------------------------------------------------
-struct PowerProj {
- static vector<u32> run(int N, int M, const vector<u32>& a, const vector<u32>& w) {
-  using base = cp_algo::math::modint<(int64_t) MOD>;
-  size_t sz = (size_t) 1 << N;
-  cp_algo::big_vector<base> g(sz), wv(sz);
-  for (size_t i = 0; i < sz; ++i) {
-   g[i].setr((typename base::UInt) a[i]);
-   wv[i].setr((typename base::UInt) w[i]);
-  }
-  auto c = cp_algo::math::subset_power_projection<base>(std::span<base>(g), std::span<base>(wv), (size_t) M);
-  vector<u32> result(M);
-  for (int i = 0; i < M; ++i) {
-   u32 v = (u32) c[i].getr();
-   if (v >= MOD) v -= MOD;
-   result[i] = v;
-  }
-  return result;
+inline vector<u32> run(int N, int M, const vector<u32>& a, const vector<u32>& w) {
+ using base = cp_algo::math::modint<(int64_t) MOD>;
+ size_t sz = (size_t) 1 << N;
+ cp_algo::big_vector<base> g(sz), wv(sz);
+ for (size_t i = 0; i < sz; ++i) {
+  g[i].setr((typename base::UInt) a[i]);
+  wv[i].setr((typename base::UInt) w[i]);
  }
-};
+ auto c = cp_algo::math::subset_power_projection<base>(std::span<base>(g), std::span<base>(wv), (size_t) M);
+ vector<u32> result(M);
+ for (int i = 0; i < M; ++i) {
+  u32 v = (u32) c[i].getr();
+  if (v >= MOD) v -= MOD;
+  result[i] = v;
+ }
+ return result;
+}
 
 #ifdef PJ_CLANG_TARGET_PUSHED
 #undef PJ_CLANG_TARGET_PUSHED

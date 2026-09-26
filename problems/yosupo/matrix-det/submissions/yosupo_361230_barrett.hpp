@@ -60,9 +60,7 @@ inline uint32_t det_inplace(vector<vector<u32>>& mat, uint32_t n, uint32_t P) {
 }
 } // namespace yosupo_361230_for_det
 
-struct Det {
- static u32 run(int n, const vector<vector<u32>>& a) {
-  vector<vector<u32>> mat = a;
-  return yosupo_361230_for_det::det_inplace(mat, (u32) n, MOD);
- }
-};
+inline u32 run(int n, const vector<vector<u32>>& a) {
+ vector<vector<u32>> mat = a;
+ return yosupo_361230_for_det::det_inplace(mat, (u32) n, MOD);
+}

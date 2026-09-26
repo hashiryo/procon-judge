@@ -10,11 +10,9 @@ inline u64 frob4(u64 a) {
  return a;
 }
 }
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as) {
-  using gf2_64_frob4_sq_chain::frob4;
-  vector<u64> ans(as.size());
-  for(size_t i= 0; i < as.size(); ++i) ans[i]= frob4(as[i]);
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& as) {
+ using gf2_64_frob4_sq_chain::frob4;
+ vector<u64> ans(as.size());
+ for(size_t i= 0; i < as.size(); ++i) ans[i]= frob4(as[i]);
+ return ans;
+}

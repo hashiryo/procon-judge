@@ -4,15 +4,13 @@
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/tower_custom.hpp"
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as, const vector<u64>& bs) {
-  gf2_64_tower_custom::init_f16_tables();
+inline vector<u64> run(const vector<u64>& as, const vector<u64>& bs) {
+ gf2_64_tower_custom::init_f16_tables();
 
-  const size_t T= as.size();
-  vector<u64> ans(T);
-  for(size_t i= 0; i < T; ++i) {
-   ans[i]= gf2_64_tower_custom::mul_via_tower_karatsuba(as[i], bs[i]);
-  }
-  return ans;
+ const size_t T= as.size();
+ vector<u64> ans(T);
+ for(size_t i= 0; i < T; ++i) {
+  ans[i]= gf2_64_tower_custom::mul_via_tower_karatsuba(as[i], bs[i]);
  }
-};
+ return ans;
+}

@@ -4,11 +4,9 @@
 #pragma GCC optimize("O3,unroll-loops")
 #include "_shared/gf2-64/_common.hpp"
 #include "_shared/gf2-64/mul.hpp"
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as, const vector<u64>& bs) {
-  const size_t n= as.size();
-  vector<u64> ans(n);
-  for(size_t i= 0; i < n; ++i) ans[i]= gf2_64_pclmul::mul(as[i], bs[i]);
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& as, const vector<u64>& bs) {
+ const size_t n= as.size();
+ vector<u64> ans(n);
+ for(size_t i= 0; i < n; ++i) ans[i]= gf2_64_pclmul::mul(as[i], bs[i]);
+ return ans;
+}

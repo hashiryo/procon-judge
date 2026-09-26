@@ -1,4 +1,4 @@
-// harness: 各 algos/*.hpp が定義する struct SubsetLog::run(N, b) を計測する。
+// harness: 各提出が定義する run(N, b) を計測する。
 // yosupo "Log of Set Power Series" 形式の I/O。
 #include "pj.hpp"
 #include "common.hpp"
@@ -23,7 +23,7 @@ signed main() {
 
     for (int rep = 0; rep < REPEAT; ++rep) {
         auto t0 = chrono::steady_clock::now();
-        auto r = SubsetLog::run(N, b);
+        auto r = run(N, b);
         auto t1 = chrono::steady_clock::now();
         result = std::move(r);
         auto ns = (uint64_t)chrono::duration_cast<chrono::nanoseconds>(t1 - t0).count();

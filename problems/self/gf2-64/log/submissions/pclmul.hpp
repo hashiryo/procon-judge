@@ -70,10 +70,8 @@ PCLMUL_TARGET inline u64 log_g(u64 x) {
  return result;
 }
 }
-struct GF2_64Op {
- PCLMUL_TARGET static vector<u64> run(const vector<u64>& xs) {
-  vector<u64> ans(xs.size());
-  for(size_t i= 0; i < xs.size(); ++i) ans[i]= gf2_64_pcl_log::log_g(xs[i]);
-  return ans;
- }
-};
+PCLMUL_TARGET inline vector<u64> run(const vector<u64>& xs) {
+ vector<u64> ans(xs.size());
+ for(size_t i= 0; i < xs.size(); ++i) ans[i]= gf2_64_pcl_log::log_g(xs[i]);
+ return ans;
+}

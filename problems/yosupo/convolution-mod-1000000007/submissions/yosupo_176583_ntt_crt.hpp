@@ -1359,64 +1359,62 @@ struct NTT
 
 } // namespace yosupo_176583
 
-struct Conv {
- static vector<u32> run(const vector<u32>& a, const vector<u32>& b) {
-  using namespace yosupo_176583;
-  using u128 = __uint128_t;
-  if (a.empty() || b.empty()) return {};
-  int n = (int)a.size(), m = (int)b.size();
-  int sz = n + m - 1;
-  int lg = std::__lg(std::max(1, sz - 1)) + 1;
-  size_t N = (size_t) 1 << lg;
+inline vector<u32> run(const vector<u32>& a, const vector<u32>& b) {
+ using namespace yosupo_176583;
+ using u128 = __uint128_t;
+ if (a.empty() || b.empty()) return {};
+ int n = (int)a.size(), m = (int)b.size();
+ int sz = n + m - 1;
+ int lg = std::__lg(std::max(1, sz - 1)) + 1;
+ size_t N = (size_t) 1 << lg;
 
-  // 3 NTT-friendly 素数 + Garner CRT で 10^9+7 を復元
-  constexpr ::u32 final_mod = 1'000'000'007;
-  static const std::array<::u32, 3> mods = {998'244'353, 897581057, 754974721};
-  static std::array<NTT, 3> ntt;
-  static std::array<::u32, 3> mod_inv;
-  static std::array<::u64, 3> crt_pair;
-  static bool init_done = false;
-  if (!init_done) {
-   for (int i = 0; i < 3; i++) {
-    ntt[i] = NTT(mods[i]);
-    ::u32 m1 = mods[(i + 1) % 3];
-    ::u32 m2 = mods[(i + 2) % 3];
-    mod_inv[i] = ntt[i].mt.power(((::u64) m1 * m2) % mods[i], mods[i] - 2);
-    crt_pair[i] = (::u64) m1 * m2;
-    mod_inv[i] = ntt[i].mt.mul<true>(mod_inv[i], ntt[i].mt.r2);
-   }
-   init_done = true;
+ // 3 NTT-friendly 素数 + Garner CRT で 10^9+7 を復元
+ constexpr ::u32 final_mod = 1'000'000'007;
+ static const std::array<::u32, 3> mods = {998'244'353, 897581057, 754974721};
+ static std::array<NTT, 3> ntt;
+ static std::array<::u32, 3> mod_inv;
+ static std::array<::u64, 3> crt_pair;
+ static bool init_done = false;
+ if (!init_done) {
+  for (int i = 0; i < 3; i++) {
+   ntt[i] = NTT(mods[i]);
+   ::u32 m1 = mods[(i + 1) % 3];
+   ::u32 m2 = mods[(i + 2) % 3];
+   mod_inv[i] = ntt[i].mt.power(((::u64) m1 * m2) % mods[i], mods[i] - 2);
+   crt_pair[i] = (::u64) m1 * m2;
+   mod_inv[i] = ntt[i].mt.mul<true>(mod_inv[i], ntt[i].mt.r2);
   }
-
-  ::u32* bufs[3][2];
-  for (int k = 0; k < 3; ++k) {
-   for (int s = 0; s < 2; ++s) {
-    bufs[k][s] = (::u32*) _mm_malloc(std::max((size_t) 32, N * 4), 32);
-    std::memset(bufs[k][s], 0, 4 * N);
-   }
-   std::copy(a.begin(), a.end(), bufs[k][0]);
-   std::copy(b.begin(), b.end(), bufs[k][1]);
-   ntt[k].convolve2(lg, bufs[k][0], bufs[k][1]);
-  }
-
-  u128 m012 = (u128) mods[0] * mods[1] * mods[2];
-  vector<::u32> res(sz);
-  for (int i = 0; i < sz; ++i) {
-   u128 x = (u128) ntt[0].mt.mul<true>(bufs[0][0][i], mod_inv[0]) * crt_pair[0];
-   u128 y = (u128) ntt[1].mt.mul<true>(bufs[1][0][i], mod_inv[1]) * crt_pair[1];
-   u128 z = (u128) ntt[2].mt.mul<true>(bufs[2][0][i], mod_inv[2]) * crt_pair[2];
-   u128 s = x + y + z;
-   if (s >= m012) s -= m012;
-   if (s >= m012) s -= m012;
-   res[i] = (::u32)(s % final_mod);
-  }
-  for (int k = 0; k < 3; ++k) {
-   _mm_free(bufs[k][0]);
-   _mm_free(bufs[k][1]);
-  }
-  return res;
+  init_done = true;
  }
-};
+
+ ::u32* bufs[3][2];
+ for (int k = 0; k < 3; ++k) {
+  for (int s = 0; s < 2; ++s) {
+   bufs[k][s] = (::u32*) _mm_malloc(std::max((size_t) 32, N * 4), 32);
+   std::memset(bufs[k][s], 0, 4 * N);
+  }
+  std::copy(a.begin(), a.end(), bufs[k][0]);
+  std::copy(b.begin(), b.end(), bufs[k][1]);
+  ntt[k].convolve2(lg, bufs[k][0], bufs[k][1]);
+ }
+
+ u128 m012 = (u128) mods[0] * mods[1] * mods[2];
+ vector<::u32> res(sz);
+ for (int i = 0; i < sz; ++i) {
+  u128 x = (u128) ntt[0].mt.mul<true>(bufs[0][0][i], mod_inv[0]) * crt_pair[0];
+  u128 y = (u128) ntt[1].mt.mul<true>(bufs[1][0][i], mod_inv[1]) * crt_pair[1];
+  u128 z = (u128) ntt[2].mt.mul<true>(bufs[2][0][i], mod_inv[2]) * crt_pair[2];
+  u128 s = x + y + z;
+  if (s >= m012) s -= m012;
+  if (s >= m012) s -= m012;
+  res[i] = (::u32)(s % final_mod);
+ }
+ for (int k = 0; k < 3; ++k) {
+  _mm_free(bufs[k][0]);
+  _mm_free(bufs[k][1]);
+ }
+ return res;
+}
 
 #ifdef PJ_CLANG_TARGET_PUSHED
 #undef PJ_CLANG_TARGET_PUSHED

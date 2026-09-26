@@ -44,12 +44,10 @@ u64 inv(u64 a) {
  return sq(acc);                  // a^{2^64 - 2} = a^{-1}
 }
 }  // namespace gf2_64_pclmul_itoh_tsujii
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as, const vector<u64>& bs) {
-  using gf2_64_pclmul::mul;
-  using gf2_64_pclmul_itoh_tsujii::inv;
-  vector<u64> ans(as.size());
-  for(size_t i= 0; i < as.size(); ++i) ans[i]= mul(as[i], inv(bs[i]));
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& as, const vector<u64>& bs) {
+ using gf2_64_pclmul::mul;
+ using gf2_64_pclmul_itoh_tsujii::inv;
+ vector<u64> ans(as.size());
+ for(size_t i= 0; i < as.size(); ++i) ans[i]= mul(as[i], inv(bs[i]));
+ return ans;
+}

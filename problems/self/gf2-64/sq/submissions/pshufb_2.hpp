@@ -35,11 +35,9 @@ inline u64 sq(u64 a) {
  return squared[0] ^ ((u8[]){0, 27, 90, 65})[a >> 62] ^ d ^ (d << 3);
 }
 }  // namespace gf2_64_sq_pshufb
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as) {
-  using gf2_64_sq_pshufb::sq;
-  vector<u64> ans(as.size());
-  for(size_t i= 0; i < as.size(); ++i) ans[i]= sq(as[i]);
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& as) {
+ using gf2_64_sq_pshufb::sq;
+ vector<u64> ans(as.size());
+ for(size_t i= 0; i < as.size(); ++i) ans[i]= sq(as[i]);
+ return ans;
+}

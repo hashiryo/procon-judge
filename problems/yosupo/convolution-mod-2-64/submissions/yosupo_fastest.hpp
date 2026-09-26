@@ -497,14 +497,12 @@ template <bool simple = false> void conv64(auto& a, auto const& b) {
 }
 } // namespace cp_algo::math::fft
 
-struct Conv {
- static vector<u64> run(const vector<u64>& a, const vector<u64>& b) {
-  if (a.empty() || b.empty()) return {};
-  std::vector<uint64_t, cp_algo::big_alloc<uint64_t>> aa(a.begin(), a.end()), bb(b.begin(), b.end());
-  cp_algo::math::fft::conv64(aa, bb);
-  return vector<u64>(aa.begin(), aa.end());
- }
-};
+inline vector<u64> run(const vector<u64>& a, const vector<u64>& b) {
+ if (a.empty() || b.empty()) return {};
+ std::vector<uint64_t, cp_algo::big_alloc<uint64_t>> aa(a.begin(), a.end()), bb(b.begin(), b.end());
+ cp_algo::math::fft::conv64(aa, bb);
+ return vector<u64>(aa.begin(), aa.end());
+}
 
 #ifdef PJ_CLANG_TARGET_PUSHED
 #undef PJ_CLANG_TARGET_PUSHED

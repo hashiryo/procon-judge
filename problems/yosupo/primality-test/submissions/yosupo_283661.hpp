@@ -174,11 +174,9 @@ using isprime_impl::isprime;
 
 } // namespace yosupo_283661
 
-struct Primality {
- static vector<bool> run(const vector<u64>& qs) {
-  vector<bool> ans(qs.size());
-  for (size_t i = 0; i < qs.size(); ++i)
-   ans[i] = yosupo_283661::isprime(qs[i]);
-  return ans;
- }
-};
+inline vector<bool> run(const vector<u64>& qs) {
+ vector<bool> ans(qs.size());
+ for (size_t i = 0; i < qs.size(); ++i)
+  ans[i] = yosupo_283661::isprime(qs[i]);
+ return ans;
+}

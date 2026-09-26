@@ -1445,121 +1445,119 @@ struct NTT
 
 } // namespace yosupo_190648
 
-struct Conv {
- static vector<u64> run(const vector<u64>& a, const vector<u64>& b) {
-  using namespace yosupo_190648;
-  using namespace yosupo_190648::simd;
-  if (a.empty() || b.empty()) return {};
-  int n = (int)a.size(), m = (int)b.size();
-  int sz = n + m - 1;
-  int lg = std::__lg(std::max(1, sz - 1)) + 1;
-  lg = std::max(lg, 3);
-  size_t N = (size_t) 1 << lg;
+inline vector<u64> run(const vector<u64>& a, const vector<u64>& b) {
+ using namespace yosupo_190648;
+ using namespace yosupo_190648::simd;
+ if (a.empty() || b.empty()) return {};
+ int n = (int)a.size(), m = (int)b.size();
+ int sz = n + m - 1;
+ int lg = std::__lg(std::max(1, sz - 1)) + 1;
+ lg = std::max(lg, 3);
+ size_t N = (size_t) 1 << lg;
 
-  // 5 つの NTT-friendly 素数 (~2^30、非減順)
-  static const std::array<::yosupo_190648::u32, 5> mods = {1007681537u, 1012924417u, 1045430273u, 1051721729u, 1053818881u};
-  constexpr int K = 5;
-  static std::array<NTT, K> ntt;
-  static std::array<Montgomery, K> mt_ar;
-  static std::array<Montgomery_simd, K> mts_ar;
-  static bool init_done = false;
-  if (!init_done) {
-   for (int i = 0; i < K; ++i) {
-    ntt[i] = NTT(mods[i]);
-    mt_ar[i] = Montgomery(mods[i]);
-    mts_ar[i] = Montgomery_simd(mods[i]);
-   }
-   init_done = true;
-  }
-
-  // 入力 u64 配列を確保 (N 個分、aligned)。
-  ::yosupo_190648::u64* input_a = (::yosupo_190648::u64*) _mm_malloc(std::max((size_t) 64, 8 * N), 64);
-  ::yosupo_190648::u64* input_b = (::yosupo_190648::u64*) _mm_malloc(std::max((size_t) 64, 8 * N), 64);
-  std::memset(input_a, 0, 8 * N);
-  std::memset(input_b, 0, 8 * N);
-  for (int i = 0; i < n; ++i) input_a[i] = a[i];
-  for (int i = 0; i < m; ++i) input_b[i] = b[i];
-
-  // K+1 本の u32 バッファ確保
-  std::array<::yosupo_190648::u32*, K + 1> data;
-  for (int i = 0; i <= K; ++i) data[i] = (::yosupo_190648::u32*) _mm_malloc(std::max((size_t) 64, 4 * N), 64);
-
-  // u64 を Montgomery 領域の u32 に変換 (low + high * R^2)。
-  auto trans = [&](int len, const ::yosupo_190648::u64* src, ::yosupo_190648::u32* dest, const Montgomery& mt, const Montgomery_simd& mts) {
-   while (len % 8) len++;
-   u32x8 mul_vec = set1_u32x8(mt.r2);
-   u32x8 hint = mul64_u32x8(mul_vec, mts.n_inv);
-   for (int i = 0; i < len; i += 8) {
-    u32x8 dt1 = load_u32x8((::yosupo_190648::u32*) (src + i));
-    u32x8 dt2 = load_u32x8((::yosupo_190648::u32*) (src + i + 4));
-    u32x8 p1 = blend_u32x8<0b10'10'10'10>(dt1, shift_left_u32x8_epi128<4>(dt2));
-    p1 = mts.shrink2(p1);
-    u32x8 p2 = blend_u32x8<0b10'10'10'10>(shift_right_u32x8_epi128<4>(dt1), dt2);
-    u32x8 res = mts.shrink2(p1 + mts.template mul_hint<true>(p2, mul_vec, hint));
-    res = permute_u32x8(res, setr_u32x8(0, 2, 4, 6, 1, 3, 5, 7));
-    store_u32x8(dest + i, res);
-   }
-   std::memset(dest + len, 0, (4 * N) - 4 * len);
-  };
+ // 5 つの NTT-friendly 素数 (~2^30、非減順)
+ static const std::array<::yosupo_190648::u32, 5> mods = {1007681537u, 1012924417u, 1045430273u, 1051721729u, 1053818881u};
+ constexpr int K = 5;
+ static std::array<NTT, K> ntt;
+ static std::array<Montgomery, K> mt_ar;
+ static std::array<Montgomery_simd, K> mts_ar;
+ static bool init_done = false;
+ if (!init_done) {
   for (int i = 0; i < K; ++i) {
-   trans(n, input_a, data[i], mt_ar[i], mts_ar[i]);
-   trans(m, input_b, data[i + 1], mt_ar[i], mts_ar[i]);
-   ntt[i].convolve2(lg, data[i], data[i + 1]);
+   ntt[i] = NTT(mods[i]);
+   mt_ar[i] = Montgomery(mods[i]);
+   mts_ar[i] = Montgomery_simd(mods[i]);
   }
-
-  // Garner CRT (5 段) で u64 復元
-  std::array<std::array<u32x8, K - 1>, K - 1> inv;
-  for (int i = 0; i < K - 1; ++i) {
-   std::array<::yosupo_190648::u32, K> pr;
-   auto mt = mt_ar[i + 1];
-   pr[0] = 1;
-   for (int j = 0; j <= i; ++j) pr[j + 1] = mt._mul(pr[j], mods[j]);
-   for (int j = 0; j <= i; ++j) inv[i][j] = set1_u32x8(mt._mul(mt.r, mt._mul(pr[j], mt.inv(pr[i + 1]))));
-  }
-  std::array<u64x4, K> mul_m;
-  {
-   std::array<::yosupo_190648::u64, K> pr;
-   pr[0] = 1;
-   for (int j = 0; j + 1 < K; ++j) pr[j + 1] = pr[j] * (::yosupo_190648::u64) mods[j];
-   for (int j = 1; j < K; ++j) mul_m[j] = set1_u64x4(pr[j]);
-  }
-  for (size_t i = 0; i < N; i += 8) {
-   u32x8 av[K];
-   for (int j = 0; j < K; ++j) av[j] = load_u32x8(data[j] + i);
-   u32x8 bv[K];
-   bv[0] = av[0];
-   auto get_cum = [&](u32x8 vec) {
-    struct Cum { u64x4 a, b; } cum;
-    cum.a = (u64x4) permute_u32x8(vec, setr_u32x8(0, -1, 1, -1, 2, -1, 3, -1));
-    cum.b = (u64x4) permute_u32x8(vec, setr_u32x8(4, -1, 5, -1, 6, -1, 7, -1));
-    return cum;
-   };
-   auto get_cum2 = [&](u32x8 vec) {
-    auto cum = get_cum(vec);
-    cum.a = (u64x4) (blend_u32x8<0b01'01'01'01>(set1_u32x8(0), (u32x8) cum.a));
-    cum.b = (u64x4) (blend_u32x8<0b01'01'01'01>(set1_u32x8(0), (u32x8) cum.b));
-    return cum;
-   };
-   auto [sum1, sum2] = get_cum2(bv[0]);
-   for (int j = 1; j < K; ++j) {
-    u32x8 bi = mts_ar[j].mul(mts_ar[j].mod + av[j] - bv[0], inv[j - 1][0]);
-    for (int t = 1; t < j; ++t) bi = mts_ar[j].shrink2_n(bi - mts_ar[j].mul(bv[t], inv[j - 1][t]));
-    bv[j] = mts_ar[j].shrink(bi);
-    auto [dlt1, dlt2] = get_cum(bv[j]);
-    sum1 += mul64_u64x4_cum(mul_m[j], dlt1);
-    sum2 += mul64_u64x4_cum(mul_m[j], dlt2);
-   }
-   store_u64x4(input_a + i + 0, sum1);
-   store_u64x4(input_a + i + 4, sum2);
-  }
-
-  vector<u64> res(input_a, input_a + sz);
-  _mm_free(input_a);
-  _mm_free(input_b);
-  for (int i = 0; i <= K; ++i) _mm_free(data[i]);
-  return res;
+  init_done = true;
  }
-};
+
+ // 入力 u64 配列を確保 (N 個分、aligned)。
+ ::yosupo_190648::u64* input_a = (::yosupo_190648::u64*) _mm_malloc(std::max((size_t) 64, 8 * N), 64);
+ ::yosupo_190648::u64* input_b = (::yosupo_190648::u64*) _mm_malloc(std::max((size_t) 64, 8 * N), 64);
+ std::memset(input_a, 0, 8 * N);
+ std::memset(input_b, 0, 8 * N);
+ for (int i = 0; i < n; ++i) input_a[i] = a[i];
+ for (int i = 0; i < m; ++i) input_b[i] = b[i];
+
+ // K+1 本の u32 バッファ確保
+ std::array<::yosupo_190648::u32*, K + 1> data;
+ for (int i = 0; i <= K; ++i) data[i] = (::yosupo_190648::u32*) _mm_malloc(std::max((size_t) 64, 4 * N), 64);
+
+ // u64 を Montgomery 領域の u32 に変換 (low + high * R^2)。
+ auto trans = [&](int len, const ::yosupo_190648::u64* src, ::yosupo_190648::u32* dest, const Montgomery& mt, const Montgomery_simd& mts) {
+  while (len % 8) len++;
+  u32x8 mul_vec = set1_u32x8(mt.r2);
+  u32x8 hint = mul64_u32x8(mul_vec, mts.n_inv);
+  for (int i = 0; i < len; i += 8) {
+   u32x8 dt1 = load_u32x8((::yosupo_190648::u32*) (src + i));
+   u32x8 dt2 = load_u32x8((::yosupo_190648::u32*) (src + i + 4));
+   u32x8 p1 = blend_u32x8<0b10'10'10'10>(dt1, shift_left_u32x8_epi128<4>(dt2));
+   p1 = mts.shrink2(p1);
+   u32x8 p2 = blend_u32x8<0b10'10'10'10>(shift_right_u32x8_epi128<4>(dt1), dt2);
+   u32x8 res = mts.shrink2(p1 + mts.template mul_hint<true>(p2, mul_vec, hint));
+   res = permute_u32x8(res, setr_u32x8(0, 2, 4, 6, 1, 3, 5, 7));
+   store_u32x8(dest + i, res);
+  }
+  std::memset(dest + len, 0, (4 * N) - 4 * len);
+ };
+ for (int i = 0; i < K; ++i) {
+  trans(n, input_a, data[i], mt_ar[i], mts_ar[i]);
+  trans(m, input_b, data[i + 1], mt_ar[i], mts_ar[i]);
+  ntt[i].convolve2(lg, data[i], data[i + 1]);
+ }
+
+ // Garner CRT (5 段) で u64 復元
+ std::array<std::array<u32x8, K - 1>, K - 1> inv;
+ for (int i = 0; i < K - 1; ++i) {
+  std::array<::yosupo_190648::u32, K> pr;
+  auto mt = mt_ar[i + 1];
+  pr[0] = 1;
+  for (int j = 0; j <= i; ++j) pr[j + 1] = mt._mul(pr[j], mods[j]);
+  for (int j = 0; j <= i; ++j) inv[i][j] = set1_u32x8(mt._mul(mt.r, mt._mul(pr[j], mt.inv(pr[i + 1]))));
+ }
+ std::array<u64x4, K> mul_m;
+ {
+  std::array<::yosupo_190648::u64, K> pr;
+  pr[0] = 1;
+  for (int j = 0; j + 1 < K; ++j) pr[j + 1] = pr[j] * (::yosupo_190648::u64) mods[j];
+  for (int j = 1; j < K; ++j) mul_m[j] = set1_u64x4(pr[j]);
+ }
+ for (size_t i = 0; i < N; i += 8) {
+  u32x8 av[K];
+  for (int j = 0; j < K; ++j) av[j] = load_u32x8(data[j] + i);
+  u32x8 bv[K];
+  bv[0] = av[0];
+  auto get_cum = [&](u32x8 vec) {
+   struct Cum { u64x4 a, b; } cum;
+   cum.a = (u64x4) permute_u32x8(vec, setr_u32x8(0, -1, 1, -1, 2, -1, 3, -1));
+   cum.b = (u64x4) permute_u32x8(vec, setr_u32x8(4, -1, 5, -1, 6, -1, 7, -1));
+   return cum;
+  };
+  auto get_cum2 = [&](u32x8 vec) {
+   auto cum = get_cum(vec);
+   cum.a = (u64x4) (blend_u32x8<0b01'01'01'01>(set1_u32x8(0), (u32x8) cum.a));
+   cum.b = (u64x4) (blend_u32x8<0b01'01'01'01>(set1_u32x8(0), (u32x8) cum.b));
+   return cum;
+  };
+  auto [sum1, sum2] = get_cum2(bv[0]);
+  for (int j = 1; j < K; ++j) {
+   u32x8 bi = mts_ar[j].mul(mts_ar[j].mod + av[j] - bv[0], inv[j - 1][0]);
+   for (int t = 1; t < j; ++t) bi = mts_ar[j].shrink2_n(bi - mts_ar[j].mul(bv[t], inv[j - 1][t]));
+   bv[j] = mts_ar[j].shrink(bi);
+   auto [dlt1, dlt2] = get_cum(bv[j]);
+   sum1 += mul64_u64x4_cum(mul_m[j], dlt1);
+   sum2 += mul64_u64x4_cum(mul_m[j], dlt2);
+  }
+  store_u64x4(input_a + i + 0, sum1);
+  store_u64x4(input_a + i + 4, sum2);
+ }
+
+ vector<u64> res(input_a, input_a + sz);
+ _mm_free(input_a);
+ _mm_free(input_b);
+ for (int i = 0; i <= K; ++i) _mm_free(data[i]);
+ return res;
+}
 
 #ifdef PJ_CLANG_TARGET_PUSHED
 #undef PJ_CLANG_TARGET_PUSHED

@@ -1,4 +1,4 @@
-// harness: 各 algos/*.hpp が定義する struct Solve::run(N, M, A, b) を計測する。
+// harness: 各提出が定義する run(N, M, A, b) を計測する。
 // yosupo の "System of Linear Equations (mod 2)" 形式の I/O。
 // run() が空 vector を返したら解なし → "-1" を出力。
 // それ以外は最初に R (= 解空間次元 = 戻り vector のサイズ-1) を出力、続いて R+1 行。
@@ -29,7 +29,7 @@ signed main() {
 
     for (int rep = 0; rep < REPEAT; ++rep) {
         auto t0 = chrono::steady_clock::now();
-        auto r = Solve::run(N, M, a, b);
+        auto r = run(N, M, a, b);
         auto t1 = chrono::steady_clock::now();
         result = std::move(r);
         auto ns = (uint64_t)chrono::duration_cast<chrono::nanoseconds>(t1 - t0).count();

@@ -37,11 +37,9 @@ inline u64 sq(u64 a) {
  return spread_bits(u32(a)) ^ RED_SQ[a >> 62] ^ d ^ (d << 3);
 }
 }
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as) {
-  using gf2_64_sq_pdep::sq;
-  vector<u64> ans(as.size());
-  for(size_t i= 0; i < as.size(); ++i) ans[i]= sq(as[i]);
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& as) {
+ using gf2_64_sq_pdep::sq;
+ vector<u64> ans(as.size());
+ for(size_t i= 0; i < as.size(); ++i) ans[i]= sq(as[i]);
+ return ans;
+}

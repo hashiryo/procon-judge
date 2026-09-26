@@ -15,18 +15,16 @@ inline __m256i mul2(const __m256i& a_vec, const __m256i& b_vec) {
  return _mm256_xor_si256(_mm256_xor_si256(prod, _mm256_shuffle_epi8(RED256, _mm256_srli_epi64(h, 60))), _mm256_xor_si256(d, _mm256_slli_epi64(d, 3)));
 }
 }
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as, const vector<u64>& bs) {
-  using gf2_64_mul2_2lane::mul2;
-  const size_t n= as.size();
-  vector<u64> ans(n);
-  size_t i= 0;
-  for(; i + 2 <= n; i+= 2) {
-   __m256i r= mul2(_mm256_set_epi64x(0, as[i + 1], 0, as[i]), _mm256_set_epi64x(0, bs[i + 1], 0, bs[i]));
-   ans[i]= u64(_mm256_extract_epi64(r, 0));
-   ans[i + 1]= u64(_mm256_extract_epi64(r, 2));
-  }
-  if(i < n) ans[i]= gf2_64_pclmul::mul(as[i], bs[i]);
-  return ans;
+inline vector<u64> run(const vector<u64>& as, const vector<u64>& bs) {
+ using gf2_64_mul2_2lane::mul2;
+ const size_t n= as.size();
+ vector<u64> ans(n);
+ size_t i= 0;
+ for(; i + 2 <= n; i+= 2) {
+  __m256i r= mul2(_mm256_set_epi64x(0, as[i + 1], 0, as[i]), _mm256_set_epi64x(0, bs[i + 1], 0, bs[i]));
+  ans[i]= u64(_mm256_extract_epi64(r, 0));
+  ans[i + 1]= u64(_mm256_extract_epi64(r, 2));
  }
-};
+ if(i < n) ans[i]= gf2_64_pclmul::mul(as[i], bs[i]);
+ return ans;
+}

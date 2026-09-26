@@ -136,11 +136,9 @@ inline InverseResult solve(int n, const vector<vector<u32>>& a_in) {
 }
 } // namespace yosupo_314161
 
-struct Inverse {
- static InverseResult run(int n, const vector<vector<u32>>& a) {
-  return yosupo_314161::solve(n, a);
- }
-};
+inline InverseResult run(int n, const vector<vector<u32>>& a) {
+ return yosupo_314161::solve(n, a);
+}
 
 #ifdef PJ_CLANG_TARGET_PUSHED
 #undef PJ_CLANG_TARGET_PUSHED

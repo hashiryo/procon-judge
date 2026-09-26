@@ -1,4 +1,4 @@
-// harness: 各 algos/*.hpp が定義する Solver::run(n, m, a, b) を計測する。
+// harness: 各提出が定義する run(n, m, a, b) を計測する。
 // 入出力フォーマット変換 (string ↔ vector<u64>) は計測外で行い、
 // 純粋なアルゴリズム時間のみを ALGO_TIME_NS に含める。
 #include "pj.hpp"
@@ -24,7 +24,7 @@ signed main() {
  uint64_t best_ns = ~uint64_t(0);
  for (int rep = 0; rep < 1; ++rep) {
   auto t0 = chrono::steady_clock::now();
-  result = Solver::run(n, m, a, b);
+  result = run(n, m, a, b);
   auto t1 = chrono::steady_clock::now();
   auto ns = (uint64_t) chrono::duration_cast<chrono::nanoseconds>(t1 - t0).count();
   if (ns < best_ns) best_ns = ns;

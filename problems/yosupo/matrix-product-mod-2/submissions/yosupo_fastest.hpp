@@ -20,12 +20,10 @@
 
 #ifndef __x86_64__
 // 非 x86_64 環境では JIT/inline asm が使えないので runtime stub。
-struct Mul {
- static vector<string> run(int, int, int, const vector<string>&, const vector<string>&) {
-  fprintf(stderr, "yosupo_246187 (JIT): x86_64 required\n");
-  std::abort();
- }
-};
+inline vector<string> run(int, int, int, const vector<string>&, const vector<string>&) {
+ fprintf(stderr, "yosupo_246187 (JIT): x86_64 required\n");
+ std::abort();
+}
 #else
 
 #pragma GCC optimize("O3,unroll-loops,rename-registers")
@@ -174,44 +172,42 @@ inline void jit_compile_kernel(code_ptr code, size_t r, size_t c) {
 
 } // namespace yosupo_246187
 
-struct Mul {
- static vector<string> run(int n, int m, int k, const vector<string>& a, const vector<string>& b) {
-  using namespace yosupo_246187;
-  // 入力サイズが N=4096 を超えないことを前提。未使用領域は 0 で埋めるため毎回クリア。
-  std::memset(A, 0, sizeof(A));
-  std::memset(B, 0, sizeof(B));
-  std::memset(C, 0, sizeof(C));
-  // A: 行ごとに M ビットを 32-bit lane に詰める (((u32*)A[i])[j/32] の j%32 ビット目)。
-  for (int i = 0; i < n; ++i) {
-   const char* row = a[i].data();
-   u32* p = (u32*) A[i];
-   for (int j = 0; j < m; ++j)
-    if (row[j] == '1') p[j / 32] |= u32(1) << (j % 32);
-  }
-  // B: 256-col ブロック単位の特殊レイアウト ((u32*)B[j/256])[i*8 + (j%256)/32] の j%32 ビット目。
-  for (int i = 0; i < m; ++i) {
-   const char* row = b[i].data();
-   for (int j = 0; j < k; ++j)
-    if (row[j] == '1')
-     ((u32*) B[j / 256])[i * 8 + (j % 256) / 32] |= u32(1) << (j % 32);
-  }
-  static code_ptr code = nullptr;
-  if (!code) code = jit_init();
-  for (size_t c = 0; c < N; c += BLOCK_AC) {
-   for (size_t r = 0; r < N; r += BLOCK_AR) {
-    jit_compile_kernel(code, r, c);
-    for (size_t i = 0; i < LEN; ++i) code(&C[r][i], &B[i][c]);
-   }
-  }
-  vector<string> res(n, string(k, '0'));
-  for (int i = 0; i < n; ++i) {
-   const u32* src32 = (u32*) C[i];
-   for (int j = 0; j < k; ++j)
-    if ((src32[j / 32] >> (j % 32)) & 1) res[i][j] = '1';
-  }
-  return res;
+inline vector<string> run(int n, int m, int k, const vector<string>& a, const vector<string>& b) {
+ using namespace yosupo_246187;
+ // 入力サイズが N=4096 を超えないことを前提。未使用領域は 0 で埋めるため毎回クリア。
+ std::memset(A, 0, sizeof(A));
+ std::memset(B, 0, sizeof(B));
+ std::memset(C, 0, sizeof(C));
+ // A: 行ごとに M ビットを 32-bit lane に詰める (((u32*)A[i])[j/32] の j%32 ビット目)。
+ for (int i = 0; i < n; ++i) {
+  const char* row = a[i].data();
+  u32* p = (u32*) A[i];
+  for (int j = 0; j < m; ++j)
+   if (row[j] == '1') p[j / 32] |= u32(1) << (j % 32);
  }
-};
+ // B: 256-col ブロック単位の特殊レイアウト ((u32*)B[j/256])[i*8 + (j%256)/32] の j%32 ビット目。
+ for (int i = 0; i < m; ++i) {
+  const char* row = b[i].data();
+  for (int j = 0; j < k; ++j)
+   if (row[j] == '1')
+    ((u32*) B[j / 256])[i * 8 + (j % 256) / 32] |= u32(1) << (j % 32);
+ }
+ static code_ptr code = nullptr;
+ if (!code) code = jit_init();
+ for (size_t c = 0; c < N; c += BLOCK_AC) {
+  for (size_t r = 0; r < N; r += BLOCK_AR) {
+   jit_compile_kernel(code, r, c);
+   for (size_t i = 0; i < LEN; ++i) code(&C[r][i], &B[i][c]);
+  }
+ }
+ vector<string> res(n, string(k, '0'));
+ for (int i = 0; i < n; ++i) {
+  const u32* src32 = (u32*) C[i];
+  for (int j = 0; j < k; ++j)
+   if ((src32[j / 32] >> (j % 32)) & 1) res[i][j] = '1';
+ }
+ return res;
+}
 
 #endif // __x86_64__
 

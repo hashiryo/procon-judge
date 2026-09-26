@@ -180,13 +180,11 @@ u64 log_g(u64 x) {
  return result;
 }
 }  // namespace gf2_64_log_pohlig
-struct GF2_64Op {
- PCLMUL_RUN static vector<u64> run(const vector<u64>& xs) {
-  using gf2_64_log_pohlig::init_tables;
-  using gf2_64_log_pohlig::log_g;
-  init_tables();
-  vector<u64> ans(xs.size());
-  for(size_t i= 0; i < xs.size(); ++i) ans[i]= log_g(xs[i]);
-  return ans;
- }
-};
+PCLMUL_RUN inline vector<u64> run(const vector<u64>& xs) {
+ using gf2_64_log_pohlig::init_tables;
+ using gf2_64_log_pohlig::log_g;
+ init_tables();
+ vector<u64> ans(xs.size());
+ for(size_t i= 0; i < xs.size(); ++i) ans[i]= log_g(xs[i]);
+ return ans;
+}

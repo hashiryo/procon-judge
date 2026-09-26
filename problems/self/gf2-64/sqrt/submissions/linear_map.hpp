@@ -33,13 +33,11 @@ void init_table() {
 }
 inline u64 sqrt_lin(u64 a) { return SQRT_BYTE[0][u8(a)] ^ SQRT_BYTE[1][u8(a >> 8)] ^ SQRT_BYTE[2][u8(a >> 16)] ^ SQRT_BYTE[3][u8(a >> 24)] ^ SQRT_BYTE[4][u8(a >> 32)] ^ SQRT_BYTE[5][u8(a >> 40)] ^ SQRT_BYTE[6][u8(a >> 48)] ^ SQRT_BYTE[7][u8(a >> 56)]; }
 }  // namespace gf2_64_sqrt_linear
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as) {
-  using gf2_64_sqrt_linear::init_table;
-  using gf2_64_sqrt_linear::sqrt_lin;
-  init_table();
-  vector<u64> ans(as.size());
-  for(size_t i= 0; i < as.size(); ++i) ans[i]= sqrt_lin(as[i]);
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& as) {
+ using gf2_64_sqrt_linear::init_table;
+ using gf2_64_sqrt_linear::sqrt_lin;
+ init_table();
+ vector<u64> ans(as.size());
+ for(size_t i= 0; i < as.size(); ++i) ans[i]= sqrt_lin(as[i]);
+ return ans;
+}

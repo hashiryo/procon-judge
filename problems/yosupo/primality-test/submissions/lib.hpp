@@ -6,10 +6,8 @@
 #include "../common.hpp"
 #include "mylib/number_theory/is_prime.hpp"
 
-struct Primality {
- static vector<bool> run(const vector<u64>& qs) {
-  vector<bool> ans(qs.size());
-  for (size_t i = 0; i < qs.size(); ++i) ans[i] = is_prime(qs[i]);
-  return ans;
- }
-};
+inline vector<bool> run(const vector<u64>& qs) {
+ vector<bool> ans(qs.size());
+ for (size_t i = 0; i < qs.size(); ++i) ans[i] = is_prime(qs[i]);
+ return ans;
+}

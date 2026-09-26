@@ -1357,11 +1357,9 @@ namespace nt {
 } // namespace nt
 } // namespace yosupo_fj64
 
-struct Primality {
- static vector<bool> run(const vector<u64>& qs) {
-  vector<bool> ans(qs.size());
-  for (size_t i = 0; i < qs.size(); ++i)
-   ans[i] = yosupo_fj64::nt::prime_test(qs[i]);
-  return ans;
- }
-};
+inline vector<bool> run(const vector<u64>& qs) {
+ vector<bool> ans(qs.size());
+ for (size_t i = 0; i < qs.size(); ++i)
+  ans[i] = yosupo_fj64::nt::prime_test(qs[i]);
+ return ans;
+}

@@ -214,15 +214,13 @@ inline std::vector<RingElem> IsThisSchonhageStrassenConvolution3(std::vector<Rin
  return c;
 }
 }  // namespace conv_f2_64_schoenhage_strassen3
-struct Solver {
- static std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
-  using namespace conv_f2_64_schoenhage_strassen3;
-  std::vector<RingElem> a(n), b(m);
-  for(int i= 0; i < n; ++i) a[i]= RingElem(a_in[i]);
-  for(int i= 0; i < m; ++i) b[i]= RingElem(b_in[i]);
-  auto c= IsThisSchonhageStrassenConvolution3(std::move(a), std::move(b), RingElem(0));
-  std::vector<u64> out(c.size());
-  for(size_t i= 0; i < c.size(); ++i) out[i]= c[i].x;
-  return out;
- }
-};
+inline std::vector<u64> run(int n, int m, const std::vector<u64>& a_in, const std::vector<u64>& b_in) {
+ using namespace conv_f2_64_schoenhage_strassen3;
+ std::vector<RingElem> a(n), b(m);
+ for(int i= 0; i < n; ++i) a[i]= RingElem(a_in[i]);
+ for(int i= 0; i < m; ++i) b[i]= RingElem(b_in[i]);
+ auto c= IsThisSchonhageStrassenConvolution3(std::move(a), std::move(b), RingElem(0));
+ std::vector<u64> out(c.size());
+ for(size_t i= 0; i < c.size(); ++i) out[i]= c[i].x;
+ return out;
+}

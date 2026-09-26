@@ -3263,29 +3263,27 @@ using namespace cp_algo::math;
 // ---------------------------------------------------------------------------
 // Wrapper
 // ---------------------------------------------------------------------------
-struct CharPoly {
- static vector<u32> run(int n, const vector<vector<u32>>& M_in) {
-  using base = cp_algo::math::modint<(int64_t) MOD>;
-  using polyn = cp_algo::math::poly_t<base>;
-  if (n == 0) return {1};
-  cp_algo::linalg::matrix<base> A((size_t) n);
-  for (int i = 0; i < n; ++i)
-   for (int j = 0; j < n; ++j) A[i][j].setr((uint64_t) M_in[i][j]);
-  auto blocks = cp_algo::linalg::frobenius_form(A);
-  polyn p = std::reduce(begin(blocks), end(blocks), polyn(1), std::multiplies<polyn>{});
-  // p の係数列 (0 次から N 次) を u32 で返す。p_N は 1 (monic)。
-  vector<u32> result(n + 1, 0);
-  for (int i = 0; i <= n; ++i) {
-   if (i < (int) p.a.size()) {
-    u32 v = (u32) p.a[i].getr();
-    if (v >= MOD) v -= MOD;
-    result[i] = v;
-   }
+inline vector<u32> run(int n, const vector<vector<u32>>& M_in) {
+ using base = cp_algo::math::modint<(int64_t) MOD>;
+ using polyn = cp_algo::math::poly_t<base>;
+ if (n == 0) return {1};
+ cp_algo::linalg::matrix<base> A((size_t) n);
+ for (int i = 0; i < n; ++i)
+  for (int j = 0; j < n; ++j) A[i][j].setr((uint64_t) M_in[i][j]);
+ auto blocks = cp_algo::linalg::frobenius_form(A);
+ polyn p = std::reduce(begin(blocks), end(blocks), polyn(1), std::multiplies<polyn>{});
+ // p の係数列 (0 次から N 次) を u32 で返す。p_N は 1 (monic)。
+ vector<u32> result(n + 1, 0);
+ for (int i = 0; i <= n; ++i) {
+  if (i < (int) p.a.size()) {
+   u32 v = (u32) p.a[i].getr();
+   if (v >= MOD) v -= MOD;
+   result[i] = v;
   }
-  result[n] = 1;
-  return result;
  }
-};
+ result[n] = 1;
+ return result;
+}
 
 #ifdef PJ_CLANG_TARGET_PUSHED
 #undef PJ_CLANG_TARGET_PUSHED

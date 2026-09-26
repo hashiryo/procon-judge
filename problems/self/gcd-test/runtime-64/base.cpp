@@ -1,4 +1,4 @@
-// harness: 各 submissions/*.hpp が定義する struct G の static G::gcd(u64, u64) を計測する。
+// harness: 各提出が定義する run(u64, u64) を計測する。
 // 旧 judge の gcd-test/runtime/runtime-64 から移した。
 #include "pj.hpp"
 #include "_shared/modulo-test/_common.hpp"
@@ -38,7 +38,7 @@ signed main() {
         u64 acc = 0;
         auto t0 = chrono::steady_clock::now();
         for (u64 i = 0; i < n_; ++i) {
-            acc ^= G::gcd(as[i], bs[i]);
+            acc ^= run(as[i], bs[i]);
         }
         auto t1 = chrono::steady_clock::now();
         result_out = acc;

@@ -1,4 +1,4 @@
-// harness: 各 algos/*.hpp が定義する struct ModInv::run(p, queries) を計測する。
+// harness: 各提出が定義する run(p, queries) を計測する。
 #include "pj.hpp"
 #include "common.hpp"
 
@@ -20,7 +20,7 @@ signed main() {
  vector<u32> result;
  for (int rep = 0; rep < 1; ++rep) {
   auto t0 = chrono::steady_clock::now();
-  auto r = ModInv::run(p, qs);
+  auto r = run(p, qs);
   auto t1 = chrono::steady_clock::now();
   result = std::move(r);
   auto ns = (uint64_t) chrono::duration_cast<chrono::nanoseconds>(t1 - t0).count();

@@ -53,13 +53,11 @@ u64 sqrt_via_tower(u64 a_poly) {
  return gf2_64_basis::nim_to_poly(b_nim);
 }
 }  // namespace gf2_64_sqrt_norm_logexp
-struct GF2_64Op {
- static vector<u64> run(const vector<u64>& as) {
-  using gf2_64_sqrt_norm_logexp::init_tables;
-  using gf2_64_sqrt_norm_logexp::sqrt_via_tower;
-  init_tables();
-  vector<u64> ans(as.size());
-  for(size_t i= 0; i < as.size(); ++i) ans[i]= sqrt_via_tower(as[i]);
-  return ans;
- }
-};
+inline vector<u64> run(const vector<u64>& as) {
+ using gf2_64_sqrt_norm_logexp::init_tables;
+ using gf2_64_sqrt_norm_logexp::sqrt_via_tower;
+ init_tables();
+ vector<u64> ans(as.size());
+ for(size_t i= 0; i < as.size(); ++i) ans[i]= sqrt_via_tower(as[i]);
+ return ans;
+}

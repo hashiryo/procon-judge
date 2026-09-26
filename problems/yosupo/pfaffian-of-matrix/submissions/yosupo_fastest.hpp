@@ -667,33 +667,31 @@ using base = math::modint<mod>;
 // ---------------------------------------------------------------------------
 // Wrapper
 // ---------------------------------------------------------------------------
-struct Pfaffian {
- static u32 run(int N, const vector<vector<u32>>& M_in) {
-  using base = cp_algo::math::modint<(int64_t) MOD>;
-  int n = 2 * N;
-  cp_algo::linalg::matrix<base> A((size_t) n);
-  for (int i = 0; i < n; ++i)
-   for (int j = 0; j < n; ++j) A[i][j].setr((uint64_t) M_in[i][j]);
-  base res = 1;
-  for (int i = 1; i < n; ++i) {
-   for (int j = i + 1; j < n; ++j) {
-    if (A[j].normalize(i - 1) != base(0)) {
-     std::swap(A[i], A[j]);
-     for (int k = i; k < n; ++k) std::swap(A[k][i], A[k][j]);
-     res *= base(-1);
-     break;
-    }
-   }
-   A[i].normalize();
-   if (i % 2 == 1) res *= -A[i][i - 1];
-   if (A[i][i - 1] == base(0)) return 0;
-   base Ai = A[i][i - 1].inv();
-   for (int j = i + 1; j < n; ++j) {
-    A[j].add_scaled(A[i], -A[j].normalize(i - 1) * Ai, i);
+inline u32 run(int N, const vector<vector<u32>>& M_in) {
+ using base = cp_algo::math::modint<(int64_t) MOD>;
+ int n = 2 * N;
+ cp_algo::linalg::matrix<base> A((size_t) n);
+ for (int i = 0; i < n; ++i)
+  for (int j = 0; j < n; ++j) A[i][j].setr((uint64_t) M_in[i][j]);
+ base res = 1;
+ for (int i = 1; i < n; ++i) {
+  for (int j = i + 1; j < n; ++j) {
+   if (A[j].normalize(i - 1) != base(0)) {
+    std::swap(A[i], A[j]);
+    for (int k = i; k < n; ++k) std::swap(A[k][i], A[k][j]);
+    res *= base(-1);
+    break;
    }
   }
-  u32 r = (u32) res.getr();
-  if (r >= MOD) r -= MOD;
-  return r;
+  A[i].normalize();
+  if (i % 2 == 1) res *= -A[i][i - 1];
+  if (A[i][i - 1] == base(0)) return 0;
+  base Ai = A[i][i - 1].inv();
+  for (int j = i + 1; j < n; ++j) {
+   A[j].add_scaled(A[i], -A[j].normalize(i - 1) * Ai, i);
+  }
  }
-};
+ u32 r = (u32) res.getr();
+ if (r >= MOD) r -= MOD;
+ return r;
+}

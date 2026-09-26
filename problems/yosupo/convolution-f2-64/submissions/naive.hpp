@@ -39,11 +39,10 @@ inline u64 mul(u64 a, u64 b) {
 }
 }
 
-struct Solver {
 #if (defined(__x86_64__) || defined(__i386__)) && !defined(USE_SIMDE)
  [[gnu::target("pclmul")]]
 #endif
- static std::vector<u64> run(int n, int m, const std::vector<u64>& a, const std::vector<u64>& b) {
+ inline std::vector<u64> run(int n, int m, const std::vector<u64>& a, const std::vector<u64>& b) {
   std::vector<u64> c(n + m - 1, 0);
   for (int i = 0; i < n; ++i) {
    for (int j = 0; j < m; ++j) {
@@ -52,7 +51,6 @@ struct Solver {
   }
   return c;
  }
-};
 
 #ifdef PJ_CLANG_TARGET_PUSHED
 #undef PJ_CLANG_TARGET_PUSHED
