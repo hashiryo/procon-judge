@@ -186,6 +186,17 @@ signed main() {
 
 `local` は `gen.py` と参照実装を書きます。`gen.py` は seed を 1 つ引数に取り、そのケースの入力を stdout に出します。`count` 個の seed を 0 から順に使うので生成は決定的です。`uv run --script` で動かすので、依存があれば PEP 723 のメタデータで書きます。参照実装は `kind = "base"` なら提出と同じ形の `.hpp` で、`submissions/reference.hpp` に置いて `reference` にそのパスを書けば、期待出力を作るものがそのまま順位表の 1 行になります。ジェネレータかハーネスか参照実装を直せば、期待出力も作り直されます。手元で作って中身を見るなら `uv run pj fetch --problem <id>` で、置き場が表示されます。
 
+判定サイトがテストケースを公開していない問題 (AtCoder) も、`local` でテストデータを自作します。公式のケースは真似ず、1 問ごとに次の 4 種類を `gen.py` に入れます。小さいランダム、角のケース (N = 1、最小と最大の値、全部同じなど)、制約いっぱいのランダム、遅くなりやすい形 (木ならパスやスター、重複、ハッシュ潰しなど) です。seed の 0 から順に、例、角のケース、ランダムの順に並べます。
+
+参照実装は、問題のディレクトリの `reference.cpp` に置きます。中身は、今ある提出 (`submissions/lib.cpp` など) を `pj bundle` で展開して固定したものです。Library を include しないので、Library を直しても期待出力は変わらず、直したあとの提出がこれと比べられます。参照実装が間違っていないかは、別の考え方で書いた遅い愚直解 (`brute.cpp`、提出ではない) と、小さい入力で突き合わせて確かめます。`gen.py` は 1000 以上の seed で、愚直解が解ける小さい入力を出す決まりにします。
+
+```
+uv run pj testdata crosscheck --problem <id> --brute brute.cpp                 # seed 1000 から 1299
+uv run pj testdata crosscheck --problem <id> --brute brute.cpp --seeds 0:5     # 本番のケースのうち小さいもの
+```
+
+食い違ったケースは、入力と両方の出力の場所を出します。記録もテストデータも書きません。
+
 答えが 1 つに決まらない問題は、`compare.kind = "checker"` にして、問題のディレクトリに `checker.cpp` を置きます。引数は入力、提出の出力、期待出力の順で、終了コードが 0 なら AC です。stderr に書いた文言は、WA のときの説明に載ります。チェッカの中身も記録のキーに入るので、直せば測り直しになります。
 
 `manual` は手元で `.in` と `.out` を同じ名前で 1 つのディレクトリに並べ、取り込んで保管庫へ上げます。保管庫に無い `manual` の問題は CI が測らないので、push の前に上げます。ケース名は記録のキーに入るので、あとから変えません。
@@ -195,7 +206,7 @@ uv run pj testdata import --problem <id> --dir <ディレクトリ>
 uv run pj mirror push --problem <id>
 ```
 
-`none` はテストデータを使いません。自己検証の提出 (assert で自分を検証して 0 で終わるもの) は `compare.kind = "exit_code"` にします。入力を読む提出でテストデータが無いもの (AtCoder) は `compare.kind = "compile_only"` にします。
+`none` はテストデータを使いません。自己検証の提出 (assert で自分を検証して 0 で終わるもの) は `compare.kind = "exit_code"` にします。入力を読む提出でテストデータが無いもの (AtCoder で、まだ自作していないもの) は `compare.kind = "compile_only"` にします。
 
 ### 4. 提出を置く
 
@@ -348,6 +359,7 @@ git push origin results
 | `pj submissions list [--problem ID]` | 提出の一覧 |
 | `pj fetch --problem ID [--refresh] [--from-origin]` | テストデータを取る。`--refresh` はキャッシュを無視し、`--from-origin` は保管庫も飛ばして原本から取る |
 | `pj testdata import --problem ID --dir PATH` | 手元で落としたテストデータを取り込む |
+| `pj testdata crosscheck --problem ID --brute FILE [--seeds A:B]` | `local` の参照実装を、愚直解と小さい入力で突き合わせる |
 | `pj mirror status [--problem ID]` | 保管庫の状態 |
 | `pj mirror push --problem ID [--force]` | 保管庫へ上げる。`--force` は取り直したデータに入れ替えるとき用 |
 | `pj run --env ENV [--problem ID] [--submission PATH] [--dry-run] [--out DIR]` | 実行して記録を出す |
