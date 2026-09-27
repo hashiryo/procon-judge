@@ -1,7 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
-#include <mylib/optimization/Knapsack.hpp>
+#include "mylib/optimization/Knapsack.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);
