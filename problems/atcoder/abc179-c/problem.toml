@@ -4,7 +4,7 @@ url = "https://atcoder.jp/contests/abc179/tasks/abc179_c"
 
 [limits]
 tle_sec = 5.0
-mle_mb = 512
+mle_mb = 1024
 
 [harness]
 kind = "raw"

@@ -3,8 +3,8 @@ title = "H - 3人の昼食 (The Lunch)"
 url = "https://atcoder.jp/contests/s8pc-1/tasks/s8pc_1_h"
 
 [limits]
-tle_sec = 5.0
-mle_mb = 512
+tle_sec = 7.0
+mle_mb = 600
 
 [harness]
 kind = "raw"

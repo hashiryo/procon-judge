@@ -4,7 +4,7 @@ url = "https://atcoder.jp/contests/arc107/tasks/arc107_f"
 
 [limits]
 tle_sec = 5.0
-mle_mb = 512
+mle_mb = 1024
 
 [harness]
 kind = "raw"

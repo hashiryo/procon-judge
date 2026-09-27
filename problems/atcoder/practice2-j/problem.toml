@@ -4,7 +4,7 @@ url = "https://atcoder.jp/contests/practice2/tasks/practice2_j"
 
 [limits]
 tle_sec = 5.0
-mle_mb = 512
+mle_mb = 1024
 
 [harness]
 kind = "raw"
