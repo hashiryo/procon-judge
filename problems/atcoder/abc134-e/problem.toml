@@ -4,13 +4,17 @@ url = "https://atcoder.jp/contests/abc134/tasks/abc134_e"
 
 [limits]
 tle_sec = 5.0
-mle_mb = 512
+mle_mb = 1024
 
 [harness]
 kind = "raw"
 
+# AtCoder はテストケースを公開していないので、自作する (gen.py と、lib.cpp を固定した reference.cpp)。
 [testdata]
-source = "none"
+source = "local"
+count = 22
+generator = "gen.py"
+reference = "reference.cpp"
 
 [compare]
-kind = "compile_only"
+kind = "tokens"
