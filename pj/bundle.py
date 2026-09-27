@@ -68,6 +68,15 @@ class Bundle:
     def size(self) -> int:
         return len(self.text.encode())
 
+    @property
+    def crlf_size(self) -> int:
+        """改行を CRLF で数えた大きさ。判定サイトの上限はこれと比べる。
+
+        提出欄に貼ったソースは、ブラウザが改行を CRLF にして送る。AtCoder の Code Size は
+        この大きさだった (2026-09-27、8,770 bytes の 259 行が 9,029 Byte)。
+        """
+        return self.size + self.text.count("\n")
+
 
 def select_submission(base_text: str, submission: Path) -> str:
     """base.cpp の SUBMISSION_HPP の選択を、提出を読む 1 行に置き換える。

@@ -331,6 +331,23 @@ def test_cli_warns_over_the_source_limit(raw_problem, monkeypatch, capsys):
     assert "Codeforces のソースの上限 10 bytes を超えています" in capsys.readouterr().err
 
 
+def test_the_limit_counts_newlines_as_crlf(raw_problem, monkeypatch, capsys):
+    # 貼ったソースはブラウザが CRLF で送る。LF のままでは収まっても、CRLF で超えるなら警告する。
+    bundled = bundle_mod.bundle(raw_problem, Path("submissions/a.cpp"))
+    assert bundled.crlf_size == bundled.size + bundled.text.count("\n")
+    monkeypatch.setattr(bundle_mod, "source_limit", lambda p: ("AtCoder", bundled.size))
+    assert cli.main(["bundle", "--problem", raw_problem.id, "--submission", "a.cpp"]) == 0
+    err = capsys.readouterr().err
+    assert f"改行を CRLF で数えると {bundled.crlf_size} bytes で、AtCoder のソースの上限" in err
+
+
+def test_a_bundle_within_the_limit_does_not_warn(raw_problem, monkeypatch, capsys):
+    bundled = bundle_mod.bundle(raw_problem, Path("submissions/a.cpp"))
+    monkeypatch.setattr(bundle_mod, "source_limit", lambda p: ("AtCoder", bundled.crlf_size))
+    assert cli.main(["bundle", "--problem", raw_problem.id, "--submission", "a.cpp"]) == 0
+    assert "warning" not in capsys.readouterr().err
+
+
 def test_cli_cases_needs_check(raw_problem, capsys):
     assert cli.main([
         "bundle", "--problem", raw_problem.id, "--submission", "a.cpp", "--cases", "2",

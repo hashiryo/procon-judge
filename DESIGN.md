@@ -2083,6 +2083,22 @@ yuki-925 の `lib.cpp` は `ext/pb_ds` を読んでいて、これは libc++ に
 
 問題の id の接頭辞から元の判定サイトを引き、Codeforces (64 KB) と AtCoder (512 KiB) の上限を超えたら警告を出します。この警告は `--check` を付けなくても出します。ほかの判定サイトの上限は確かめていないので持っていません。
 
+大きさは、改行を CRLF で数えて比べます。提出欄に貼ったソースは、ブラウザが改行を CRLF にして送るからです。AtCoder に出した 8,770 bytes (259 行) の提出は、Code Size が 9,029 Byte でした。yukicoder の Code Length は LF のままの大きさでしたが、少ない側に合わせる理由は無いので、どのサイトも CRLF の大きさで比べます。
+
+### 判定サイトに出して確かめました
+
+2026-09-27 に、本人が 3 つの判定サイトへ手で出しました。どれも `pj bundle --copy` で展開したものを提出欄に貼り、手を加えていません。
+
+| 判定サイト | 問題と提出 | 言語 | 結果 |
+| --- | --- | --- | --- |
+| AtCoder | utpc2013-11 の `lib.cpp` ([79579715](https://atcoder.jp/contests/utpc2013/submissions/79579715)) | C++23 (GCC 15.2.0) | AC、28 ms |
+| Codeforces | 622-f の `lib.cpp` ([392288317](https://codeforces.com/contest/622/submission/392288317)) | C++23 (GCC 14-64, msys2) | AC、109 ms |
+| yukicoder | 650 の `lib-hld-segtree.hpp` ([1190624](https://yukicoder.me/submissions/1190624)) | C++23 (gcc 15.3.0) | AC、58 ms |
+
+Codeforces の GCC 14 でも、先頭の宣言で CE になりませんでした。pragma の前に `<bits/allocator.h>` を読む形が、判定サイトの GCC 14 で効いています。yukicoder の提出は base.cpp の形のままで、ハーネスが stderr に出す計測の行も判定に響きませんでした。Library Checker にはまだ出していないので、判定機の命令は分かっていません。
+
+出す前に、同じ 3 本と yosupo-nim-product-64 の `lib-GF2p64.hpp` を docker の gcc:13.5 と gcc:14.4 でも組みました。x86 の Linux で `-std=gnu++23 -O2` だけを付け、先頭 3 ケースが AC になることを確かめています。手元の `--check` と判定サイトの結果が食い違った例はまだ無いので、`--check` に docker で組む口は足していません。食い違う提出が出てきたら足します。
+
 ### 判定サイトごとの違い
 
 判定サイトごとに、命令とコンパイラが違います。2026-09-25 に本人がカスタムテストで確かめた値です。

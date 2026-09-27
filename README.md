@@ -316,7 +316,7 @@ uv run pj bundle --problem <id> --submission submissions/<name>.hpp > a.cpp
 
 入口は、base の問題なら base.cpp の `#ifndef SUBMISSION_HPP` から `#include SUBMISSION_HPP` までを提出を読む 1 行に置き換えたもの、raw の問題なら提出そのものです。そこから引用符の include を辿って、その場に中身を入れます。探す順はコンパイルの `-I` と同じ (読み込む側のディレクトリ、`lib/`、問題のディレクトリ、`harness/`、`problems/`、`third_party/simde/`) で、キーの材料にしている閉包とも同じです。同じファイルは 1 回だけ入れ、`#pragma once` の行は落とします。山括弧の include はそのまま残すので、ライブラリや共通のヘッダは引用符で読んでください。先頭には Library の `include/isa-pragma.hpp` を置きます。
 
-展開したものは `.cache/bundle/<id>/<提出の名前>.cpp` に書き、標準出力にも出します。書き先は `--out FILE` で変えられます。`--copy` を付けると、標準出力へは出さず、クリップボード (pbcopy) に入れます。書いた場所と大きさは stderr に出るので、標準出力はそのまま貼れます。元の問題が Codeforces か AtCoder のときは、ソースの大きさの上限 (64 KB と 512 KiB) を超えると警告を出します。
+展開したものは `.cache/bundle/<id>/<提出の名前>.cpp` に書き、標準出力にも出します。書き先は `--out FILE` で変えられます。`--copy` を付けると、標準出力へは出さず、クリップボード (pbcopy) に入れます。書いた場所と大きさは stderr に出るので、標準出力はそのまま貼れます。元の問題が Codeforces か AtCoder のときは、ソースの大きさの上限 (64 KB と 512 KiB) を超えると警告を出します。提出欄に貼ったソースはブラウザが改行を CRLF にして送るので、大きさは改行を 2 バイトで数えます。
 
 `--check` を付けると、展開したファイルを 1 つで組み、手元のテストケースを名前順の先頭から 3 ケース走らせます。ケースの数は `--cases N` で変えられ、比べ方は `pj repro` と同じです。組むときは `-I` も `-march` も付けず、環境のコンパイラに `-std=gnu++23 -O2` と環境の `-D` だけを渡すので、include の取りこぼしがあれば CE になります。`local` と arm の環境は `-DUSE_SIMDE` で x86 の intrinsics を SIMDe に読み替えているので、そのときだけ SIMDe の `-I` を足します。
 

@@ -808,9 +808,13 @@ def cmd_bundle(args: argparse.Namespace) -> int:
         file=sys.stderr,
     )
     limit = bundle_mod.source_limit(problem)
-    if limit is not None and bundled.size > limit[1]:
+    if limit is not None and bundled.crlf_size > limit[1]:
         site, size = limit
-        print(f"warning: {site} のソースの上限 {size} bytes を超えています", file=sys.stderr)
+        print(
+            f"warning: 改行を CRLF で数えると {bundled.crlf_size} bytes で、"
+            f"{site} のソースの上限 {size} bytes を超えています",
+            file=sys.stderr,
+        )
     if args.copy:
         try:
             bundle_mod.copy_to_clipboard(bundled.text)
