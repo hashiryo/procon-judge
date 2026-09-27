@@ -313,8 +313,12 @@ def _lacks_checker(problem: Problem, directory: Path) -> bool:
 
     Library Checker が同梱するものを使うので、テストデータと一緒に置いてある
     必要がある。無いまま走らせると判定器が組めず、その問題は測れない。
+    問題のディレクトリに自分で書いた checker.cpp があれば、テストデータの側には要らない
+    (local の問題はこちらで、ここを見ないと取得のたびに作り直しになる)。
     """
-    return problem.compare.kind == "checker" and not (directory / "checker.cpp").is_file()
+    if problem.compare.kind != "checker" or problem.checker_cpp.is_file():
+        return False
+    return not (directory / "checker.cpp").is_file()
 
 
 def _read_manifest(directory: Path) -> dict:

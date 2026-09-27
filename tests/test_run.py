@@ -510,11 +510,18 @@ kind = "tokens"
 PICKY = "#include <cstdio>\nint main() { int n; scanf(\"%d\", &n); printf(\"%d\\n\", n == 1 ? 1 : 0); }\n"
 
 
-def make_case_problem(tmp_path, source, cases):
-    """手で置いたテストデータを持つ問題。fetch.ensure を差し替えて使う。"""
+def make_case_problem(tmp_path, source, cases, checker=None):
+    """手で置いたテストデータを持つ問題。fetch.ensure を差し替えて使う。
+
+    checker を渡すと、問題のディレクトリに checker.cpp を置いて compare.kind = "checker" にする。
+    """
     directory = tmp_path / "tmp-manual"
     directory.mkdir()
-    (directory / "problem.toml").write_text(MANUAL_TOML)
+    toml = MANUAL_TOML
+    if checker is not None:
+        toml = toml.replace('kind = "tokens"', 'kind = "checker"')
+        (directory / "checker.cpp").write_text(checker)
+    (directory / "problem.toml").write_text(toml)
     (directory / "submissions").mkdir()
     (directory / "submissions" / "sol.cpp").write_text(source)
     data = tmp_path / "data"
@@ -541,6 +548,51 @@ def test_wa_keeps_running_and_records_every_failed_case(tmp_path, local_env, mac
     # b で止まらず c も走っている。
     assert record.failed_cases == ["b", "c"]
     assert "expected '2'" in record.failed_case.detail
+
+
+# 期待出力は読まずに、出力が入力の 2 倍かどうかだけを見るチェッカ。
+DOUBLE_CHECKER = r"""#include <cstdio>
+int main(int argc, char** argv) {
+  if (argc < 4) return 2;
+  FILE* in = fopen(argv[1], "r");
+  FILE* out = fopen(argv[2], "r");
+  long long n, m;
+  if (!in || !out || fscanf(in, "%lld", &n) != 1 || fscanf(out, "%lld", &m) != 1) return 1;
+  if (m != 2 * n) {
+    fprintf(stderr, "%lld is not twice %lld\n", m, n);
+    return 1;
+  }
+  return 0;
+}
+"""
+
+# 3 のときだけ間違える。
+DOUBLER = "#include <cstdio>\nint main() { int n; scanf(\"%d\", &n); printf(\"%d\\n\", n == 3 ? 7 : 2 * n); }\n"
+
+
+def test_a_written_checker_judges_the_output(tmp_path, local_env, machine, monkeypatch):
+    """問題のディレクトリの checker.cpp で判定する。期待出力はわざと違う値にしてある。"""
+    problem, testcases = make_case_problem(
+        tmp_path, DOUBLER, {"a": ("1\n", "0\n"), "b": ("3\n", "0\n")}, checker=DOUBLE_CHECKER
+    )
+    monkeypatch.setattr(run_mod.fetch, "ensure", lambda p, **kw: testcases)
+    record = run_mod.execute_job(worklist_for(problem, local_env, machine).jobs[0])
+
+    assert record.status == "WA"
+    assert record.failed_cases == ["b"]
+    assert record.failed_case is not None
+    assert "7 is not twice 3" in record.failed_case.detail
+
+
+def test_editing_a_written_checker_rebuilds_it(tmp_path, local_env, machine, monkeypatch):
+    """直したチェッカは組み直す。直す前のバイナリを使い回さない。"""
+    problem, testcases = make_case_problem(
+        tmp_path, DOUBLER, {"a": ("1\n", "0\n")}, checker="int main() { return 1; }\n"
+    )
+    first = run_mod.prepare_checker(problem, testcases, local_env, machine.cpu_arch)
+    problem.checker_cpp.write_text("int main() { return 0; }\n")
+    second = run_mod.prepare_checker(problem, testcases, local_env, machine.cpu_arch)
+    assert first is not None and second is not None and first != second
 
 
 # --- 束 ---------------------------------------------------------------------

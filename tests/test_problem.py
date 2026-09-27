@@ -86,6 +86,29 @@ def test_exit_code_requires_none_source(tmp_path):
         problem_mod.load(make(tmp_path, "x", body))
 
 
+def test_a_checker_outside_library_checker_must_be_written(tmp_path):
+    """チェッカを同梱して配るのは Library Checker だけ。ほかでは checker.cpp を置く。"""
+    body = with_source("x", "manual", "x").replace('kind = "compile_only"', 'kind = "checker"')
+    with pytest.raises(problem_mod.ProblemError, match="checker.cpp"):
+        problem_mod.load(make(tmp_path, "x", body))
+
+
+def test_a_written_checker_sits_in_the_problem_directory(tmp_path):
+    body = with_source("x", "manual", "x").replace('kind = "compile_only"', 'kind = "checker"')
+    directory = make(tmp_path, "x", body)
+    (directory / "checker.cpp").write_text("int main() {}\n")
+    p = problem_mod.load(directory)
+    assert p.checker_cpp == directory / "checker.cpp"
+
+
+def test_library_checker_brings_its_own_checker(tmp_path):
+    body = with_source("x", "library_checker", "data_structure/x")
+    body = body.replace('kind = "compile_only"', 'kind = "checker"')
+    p = problem_mod.load(make(tmp_path, "x", body))
+    assert p.compare.kind == "checker"
+    assert not p.checker_cpp.exists()
+
+
 def test_submissions_skip_underscore_prefix(tmp_path):
     directory = make(tmp_path, "x")
     (directory / "submissions").mkdir()

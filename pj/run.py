@@ -8,6 +8,7 @@ CPU モデルはジョブが始まるまで分からないので、そのモデ�
 
 from __future__ import annotations
 
+import hashlib
 import sys
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -558,19 +559,28 @@ def describe(job: Job) -> dict:
 def prepare_checker(
     problem: Problem, testcases: fetch.Testcases, env: env_mod.Environment, cpu_arch: str
 ) -> Path | None:
-    """compare.kind = "checker" ならチェッカを組んで返す。それ以外は None。"""
+    """compare.kind = "checker" ならチェッカを組んで返す。それ以外は None。
+
+    問題のディレクトリに checker.cpp があればそれを使い、無ければテストデータに
+    同梱されたもの (Library Checker) を使う。
+    """
     if problem.compare.kind != "checker":
         return None
-    source = testcases.checker_source()
+    # テストデータのキャッシュは 4 環境で共有するので、名前にアーキテクチャを
+    # 入れる。x86 で組んだチェッカが arm のジョブに復元されると動かない。
+    name = f"checker-{cpu_arch}"
+    if problem.checker_cpp.is_file():
+        source: Path | None = problem.checker_cpp
+        # 自分で書くチェッカはテストデータの外にあって、直すたびに中身が変わる。
+        # 中身で名前を分けて、直す前に組んだものを使い回さないようにする。
+        name += "-" + hashlib.sha256(problem.checker_cpp.read_bytes()).hexdigest()[:12]
+    else:
+        source = testcases.checker_source()
     if source is None:
         raise fetch.FetchError(
             f"{problem.id}: compare.kind = 'checker' なのに checker.cpp がありません"
         )
-    # テストデータのキャッシュは 4 環境で共有するので、名前にアーキテクチャを
-    # 入れる。x86 で組んだチェッカが arm のジョブに復元されると動かない。
-    checker = build_mod.build_checker(
-        source, testcases.dir / f"checker-{cpu_arch}.bin", env
-    )
+    checker = build_mod.build_checker(source, testcases.dir / f"{name}.bin", env)
     if checker is None:
         raise fetch.FetchError(f"{source} のコンパイルに失敗しました")
     return checker

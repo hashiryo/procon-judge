@@ -85,6 +85,11 @@ class Problem:
         return self.dir / "base.cpp"
 
     @property
+    def checker_cpp(self) -> Path:
+        """自分で書くチェッカの置き場。あれば、テストデータに同梱されたものより優先する。"""
+        return self.dir / "checker.cpp"
+
+    @property
     def submissions_dir(self) -> Path:
         return self.dir / "submissions"
 
@@ -192,6 +197,14 @@ def load(problem_dir: Path) -> Problem:
         _require(
             "abs_tol" not in cmp_raw and "rel_tol" not in cmp_raw,
             f"{toml_path}: abs_tol と rel_tol は compare.kind = 'float' でだけ使います",
+        )
+
+    if kind == "checker" and source != "library_checker":
+        # チェッカを同梱して配るのは Library Checker だけ。ほかの取得元では自分で書いて置く。
+        _require(
+            (problem_dir / "checker.cpp").is_file(),
+            f"{toml_path}: compare.kind = 'checker' には checker.cpp が必要です"
+            f" (testdata.source = {source!r} はチェッカを同梱しません)",
         )
 
     if source == "none":

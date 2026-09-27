@@ -135,7 +135,7 @@ kind = "tokens"
 | --- | --- |
 | `tokens` | 空白と改行を無視してトークン列を比べます。既定です |
 | `float` | トークン比較で数値の誤差を許します。`abs_tol` か `rel_tol` を書きます |
-| `checker` | Library Checker が同梱するチェッカに委ねます |
+| `checker` | チェッカに委ねます。Library Checker の問題は同梱のものを使い、それ以外は問題のディレクトリに `checker.cpp` を置きます |
 | `exit_code` | 期待出力を使わず、終了コードが 0 なら AC です。`source = "none"` の自己検証用です |
 | `compile_only` | 実行せず、コンパイルが通れば AC です。テストデータが公開されていない AtCoder の問題はこれにします |
 
@@ -185,6 +185,8 @@ signed main() {
 判定サイトから取る取得元 (`library_checker`、`aoj`、`yukicoder`、`loj`) は何もしなくてよいです。CI が最初に測るとき原本から取って保管庫へ上げ、以後は保管庫から取ります。手元で先に確かめるなら `uv run pj fetch --problem <id>` です。
 
 `local` は `gen.py` と参照実装を書きます。`gen.py` は seed を 1 つ引数に取り、そのケースの入力を stdout に出します。`count` 個の seed を 0 から順に使うので生成は決定的です。`uv run --script` で動かすので、依存があれば PEP 723 のメタデータで書きます。参照実装は `kind = "base"` なら提出と同じ形の `.hpp` で、`submissions/reference.hpp` に置いて `reference` にそのパスを書けば、期待出力を作るものがそのまま順位表の 1 行になります。ジェネレータかハーネスか参照実装を直せば、期待出力も作り直されます。手元で作って中身を見るなら `uv run pj fetch --problem <id>` で、置き場が表示されます。
+
+答えが 1 つに決まらない問題は、`compare.kind = "checker"` にして、問題のディレクトリに `checker.cpp` を置きます。引数は入力、提出の出力、期待出力の順で、終了コードが 0 なら AC です。stderr に書いた文言は、WA のときの説明に載ります。チェッカの中身も記録のキーに入るので、直せば測り直しになります。
 
 `manual` は手元で `.in` と `.out` を同じ名前で 1 つのディレクトリに並べ、取り込んで保管庫へ上げます。保管庫に無い `manual` の問題は CI が測らないので、push の前に上げます。ケース名は記録のキーに入るので、あとから変えません。
 

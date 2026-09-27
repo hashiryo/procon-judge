@@ -49,12 +49,16 @@ def isolated_cache(tmp_path, monkeypatch):
     return tmp_path / "cache"
 
 
-def make(tmp_path, name="tmp-local", count=3, gen=GEN, reference=REFERENCE):
+def make(tmp_path, name="tmp-local", count=3, gen=GEN, reference=REFERENCE, checker=None):
     from pj import problem as problem_mod
 
     directory = tmp_path / name
     directory.mkdir()
-    (directory / "problem.toml").write_text(TOML.format(id=name, count=count))
+    toml = TOML.format(id=name, count=count)
+    if checker is not None:
+        toml = toml.replace('kind = "tokens"', 'kind = "checker"')
+        (directory / "checker.cpp").write_text(checker)
+    (directory / "problem.toml").write_text(toml)
     (directory / "gen.py").write_text(gen)
     (directory / "reference.cpp").write_text(reference)
     (directory / "submissions").mkdir()
@@ -84,6 +88,18 @@ def test_local_is_deterministic_and_reused(tmp_path, isolated_cache, monkeypatch
     monkeypatch.setattr(local, "fetch", lambda *a, **k: pytest.fail("作り直してはいけない"))
     second = fetch.ensure(problem, env=env)
     assert second.cases_hash == first.cases_hash
+
+
+def test_a_written_checker_does_not_make_it_regenerate(tmp_path, isolated_cache, monkeypatch):
+    """チェッカは問題のディレクトリにあるので、テストデータの側に無くても作り直さない。"""
+    problem = make(tmp_path, checker="int main() { return 0; }\n")
+    env = env_mod.load("local")
+    first = fetch.ensure(problem, env=env)
+    assert first.checker_source() is None
+    from pj.fetch import local
+
+    monkeypatch.setattr(local, "fetch", lambda *a, **k: pytest.fail("作り直してはいけない"))
+    assert fetch.ensure(problem, env=env).cases_hash == first.cases_hash
 
 
 def test_a_failing_reference_is_an_error(tmp_path, isolated_cache):

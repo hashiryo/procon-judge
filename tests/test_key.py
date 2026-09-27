@@ -331,6 +331,52 @@ def test_problem_hash_ignores_an_explicit_default(tmp_path):
     assert key_mod.problem_hash(problem_mod.load(with_default.dir)) == before
 
 
+CHECKER_TOML = """
+id = "x"
+title = "T"
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "manual"
+name = "x"
+
+[compare]
+kind = "checker"
+"""
+
+
+def make_checker_problem(tmp_path, checker):
+    directory = tmp_path / "x"
+    directory.mkdir(exist_ok=True)
+    (directory / "problem.toml").write_text(CHECKER_TOML)
+    (directory / "checker.cpp").write_text(checker)
+    return problem_mod.load(directory)
+
+
+def test_problem_hash_follows_a_written_checker(tmp_path):
+    problem = make_checker_problem(tmp_path, "int main() { return 0; }\n")
+    before = key_mod.problem_hash(problem)
+    problem.checker_cpp.write_text("int main() { return 1; }\n")
+    assert key_mod.problem_hash(problem) != before
+
+
+def test_problem_hash_ignores_formatting_in_the_checker(tmp_path):
+    problem = make_checker_problem(tmp_path, "int main() { return 0; }\n")
+    before = key_mod.problem_hash(problem)
+    problem.checker_cpp.write_text("int main()  {\n  return 0;  // ok\n}\n")
+    assert key_mod.problem_hash(problem) == before
+
+
+def test_a_stray_checker_does_not_move_other_problems(tmp_path):
+    """compare.kind が checker でない問題は、checker.cpp を置いても鍵が動かない。"""
+    problem = make_problem(tmp_path)
+    before = key_mod.problem_hash(problem)
+    problem.checker_cpp.write_text("int main() { return 0; }\n")
+    assert key_mod.problem_hash(problem) == before
+
+
 # --- compute ---------------------------------------------------------------
 
 

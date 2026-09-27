@@ -319,6 +319,11 @@ def problem_hash(problem: Problem) -> str:
         payload["testdata"]["reference_source"] = _sha256(
             normalize_file(problem.dir / problem.testdata.reference)
         )
+    if problem.compare.kind == "checker" and problem.checker_cpp.is_file():
+        # 問題のディレクトリに置いたチェッカもリポジトリの中の原因で、直せば判定が
+        # 変わる。置いた問題のときだけ足す。Library Checker が同梱するものは
+        # テストデータの側にあって、ここには来ない。
+        payload["compare"]["checker_source"] = _sha256(normalize_file(problem.checker_cpp))
     canonical = json.dumps(
         payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
     )
