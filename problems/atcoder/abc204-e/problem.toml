@@ -9,6 +9,9 @@ mle_mb = 512
 [harness]
 kind = "raw"
 
+# テストデータは gen.py (20 ケース) と brute.cpp まで用意してある。submissions/lib.cpp が t + C + double(D)/(t+1) を floor するので、
+# 大きい値で答えが 1 大きくなる (3 2 / 1 2 999999999 0 / 2 3 1000000000 999999999 で 2000000000、正しくは 1999999999)。
+# 直してから reference.cpp を固定して local にする (count = 20、制限は 5 秒と 1024 MiB)。
 [testdata]
 source = "none"
 

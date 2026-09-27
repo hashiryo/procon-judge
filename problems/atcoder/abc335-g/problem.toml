@@ -9,6 +9,9 @@ mle_mb = 512
 [harness]
 kind = "raw"
 
+# テストデータは gen.py (22 ケース) と brute.cpp まで用意してある。Library の mylib/number_theory/OrderFp.hpp が Montgomery の値を
+# 正規化せずに 1 と比べるので、P が 2^30 に近いと位数が大きく出る (2 1073741789 / 278009743 1036660031 で 4、正しくは 3)。
+# Library を直してから reference.cpp を固定して local にする (count = 22、制限は 5 秒と 1024 MiB)。
 [testdata]
 source = "none"
 
