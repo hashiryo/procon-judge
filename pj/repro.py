@@ -74,10 +74,31 @@ def repro(
         return 1
     assert built.binary is not None
     print(f"コンパイル完了 ({built.seconds:.1f}s, {built.binary.stat().st_size} bytes)", file=out)
+    work = work_dir(problem, submission, env.name)
+    return run_binary(problem, built.binary, env, work, case=case, cases=cases, out=out)
 
+
+def run_binary(
+    problem: Problem,
+    binary: Path,
+    env: env_mod.Environment,
+    work: Path,
+    *,
+    case: str | None = None,
+    cases: int | None = None,
+    out: TextIO = sys.stdout,
+) -> int:
+    """組めたものを走らせて判定する。全部 AC なら 0、そうでなければ 1。
+
+    pj bundle --check も、展開したファイルを組んだものをここへ渡す。work には各ケースの
+    出力と stderr を書く。
+    """
+    if cases is not None and cases < 1:
+        raise ReproError(f"--cases は 1 以上にしてください ({cases})")
+    work.mkdir(parents=True, exist_ok=True)
     if not fetch.needs_testdata(problem):
         if problem.compare.kind == "exit_code":
-            return _self_check(problem, submission, env, built.binary, out)
+            return _self_check(problem, binary, work, out)
         print("テストデータを使わない問題です。組めたので終わります。", file=out)
         return 0
 
@@ -92,15 +113,14 @@ def repro(
         selected = selected[:cases]
 
     checker = run_mod.prepare_checker(problem, testcases, env, env_mod.cpu_arch())
-    work = work_dir(problem, submission, env.name)
-    execute.warmup(built.binary, tle_sec=problem.limits.tle_sec)
+    execute.warmup(binary, tle_sec=problem.limits.tle_sec)
 
     failures: list[CaseReport] = []
     for c in selected:
         actual = work / f"{c.name}.out"
         stderr = work / f"{c.name}.err"
         result = execute.run(
-            built.binary,
+            binary,
             stdin_path=c.in_path,
             stdout_path=actual,
             stderr_path=stderr,
@@ -131,12 +151,9 @@ def repro(
     return 1 if failures else 0
 
 
-def _self_check(
-    problem: Problem, submission: Path, env: env_mod.Environment, binary: Path, out: TextIO
-) -> int:
+def _self_check(problem: Problem, binary: Path, work: Path, out: TextIO) -> int:
     """exit_code の問題。空の入力で 1 回走らせて、終了コードを見る。"""
     name = run_mod.SELF_CHECK_CASE
-    work = work_dir(problem, submission, env.name)
     actual, stderr = work / f"{name}.out", work / f"{name}.err"
     execute.warmup(binary, tle_sec=problem.limits.tle_sec)
     result = execute.run(

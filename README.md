@@ -205,7 +205,7 @@ uv run pj mirror push --problem <id>
 
 提出のパスはそのまま識別子です。順位表と提出ページとライブラリ側のサイトからのリンクがこのパスを指すので、リネームすると別の提出として測り直しになります。
 
-x64 の環境は、土台の命令をコンパイラのオプションで渡します。x86-64-v3 の命令 (AVX2、BMI2、FMA、popcnt など) に pclmul と vpclmulqdq を足したもので、フラグは `-march=x86-64-v3 -mpclmul -mvpclmulqdq` です。土台の命令は、提出で宣言しなくても使えます。判定サイトへ出すときは、algo-workspace のバンドラが、同じ一覧の `#pragma GCC target` を提出の先頭に入れます。GCC 13 と 14 のバグを避けるため、その前に `<bits/allocator.h>` だけを読みます。一覧と理由は DESIGN.md の「土台の命令をオプションに戻しました」にあります。
+x64 の環境は、土台の命令をコンパイラのオプションで渡します。x86-64-v3 の命令 (AVX2、BMI2、FMA、popcnt など) に pclmul と vpclmulqdq を足したもので、フラグは `-march=x86-64-v3 -mpclmul -mvpclmulqdq` です。土台の命令は、提出で宣言しなくても使えます。判定サイトへ出すときは、`pj bundle` (「判定サイトへ出す」の節) が、同じ一覧の `#pragma GCC target` を提出の先頭に入れます。宣言は Library の `include/isa-pragma.hpp` にあり、algo-workspace のバンドラも同じものを読みます。GCC 13 と 14 のバグを避けるため、その前に `<bits/allocator.h>` だけを読みます。一覧と理由は DESIGN.md の「土台の命令をオプションに戻しました」にあります。
 
 vpclmulqdq を使うコードは、`__builtin_cpu_supports("vpclmulqdq")` で実行時に分け、持たない CPU 向けの経路も書いてください。Codeforces の判定機が vpclmulqdq を持たないためです。vpclmulqdq の intrinsics はすべて分岐の内側に置き、分岐はループの外に置いて判定を 1 回で済ませます。GitHub の x64 ランナーはどれも vpclmulqdq を持つので、持たない側の経路は procon-judge では測られません。
 
@@ -304,6 +304,24 @@ k, b, v = 10, 59049, [1, 2, 3] in main (L9) .../scratch/a.cpp
 終了コード 0 (560 ms)
 ```
 
+## 判定サイトへ出す
+
+`pj bundle` は、提出とハーネスとライブラリを 1 ファイルに展開します。判定サイトの提出欄にそのまま貼れます。
+
+```
+uv run pj bundle --problem <id> --submission submissions/<name>.hpp --copy
+uv run pj bundle --problem <id> --submission submissions/<name>.hpp --check
+uv run pj bundle --problem <id> --submission submissions/<name>.hpp > a.cpp
+```
+
+入口は、base の問題なら base.cpp の `#ifndef SUBMISSION_HPP` から `#include SUBMISSION_HPP` までを提出を読む 1 行に置き換えたもの、raw の問題なら提出そのものです。そこから引用符の include を辿って、その場に中身を入れます。探す順はコンパイルの `-I` と同じ (読み込む側のディレクトリ、`lib/`、問題のディレクトリ、`harness/`、`problems/`、`third_party/simde/`) で、キーの材料にしている閉包とも同じです。同じファイルは 1 回だけ入れ、`#pragma once` の行は落とします。山括弧の include はそのまま残すので、ライブラリや共通のヘッダは引用符で読んでください。先頭には Library の `include/isa-pragma.hpp` を置きます。
+
+展開したものは `.cache/bundle/<id>/<提出の名前>.cpp` に書き、標準出力にも出します。書き先は `--out FILE` で変えられます。`--copy` を付けると、標準出力へは出さず、クリップボード (pbcopy) に入れます。書いた場所と大きさは stderr に出るので、標準出力はそのまま貼れます。元の問題が Codeforces か AtCoder のときは、ソースの大きさの上限 (64 KB と 512 KiB) を超えると警告を出します。
+
+`--check` を付けると、展開したファイルを 1 つで組み、手元のテストケースを名前順の先頭から 3 ケース走らせます。ケースの数は `--cases N` で変えられ、比べ方は `pj repro` と同じです。組むときは `-I` も `-march` も付けず、環境のコンパイラに `-std=gnu++23 -O2` と環境の `-D` だけを渡すので、include の取りこぼしがあれば CE になります。`local` と arm の環境は `-DUSE_SIMDE` で x86 の intrinsics を SIMDe に読み替えているので、そのときだけ SIMDe の `-I` を足します。
+
+macOS の `local` で組めても、判定サイトで組めるとは限りません。手元は arm の Apple clang と libc++ です。x86 の GCC でだけ通る経路 (先頭の宣言や x86 の intrinsics) は試されず、`ext/pb_ds` のように libstdc++ にしか無いヘッダは組めません。判定サイトごとの命令とコンパイラの違いは DESIGN.md の「判定サイトへ出す bundle の実装の記録」にあります。送信は手で行います。
+
 ## 問題を消す
 
 問題のディレクトリを消しても、`results` ブランチの記録は残ります。サイトは記録のある問題も一覧に出すので、ディレクトリを消しただけでは、その問題が判定の無いまま残ります。サイトから消すときは、`results` ブランチの `problems/<id>.jsonl` も手で消して push します。
@@ -334,6 +352,7 @@ git push origin results
 | `pj repro --problem ID --submission PATH [--case NAME \| --cases N]` | 1 提出を手元で走らせて差分を見る。`--cases N` は名前順の先頭 N ケースだけ |
 | `pj try FILE [--input F \| --problem ID --case NAME]` | 1 ファイルを提出と同じ探索パスで組み、判定せずに走らせる (printf デバッグ用) |
 | `pj try --problem ID --submission PATH [--input F \| --case NAME]` | 提出をハーネスごと組み、判定せずに走らせる |
+| `pj bundle --problem ID --submission PATH [--out FILE] [--copy] [--check [--cases N]]` | 判定サイトへ貼れる 1 ファイルに展開する。`--check` は `-I` も `-march` も付けずに組み、手元のケースを先頭から走らせる |
 | `pj records list` | 記録の一覧 |
 | `pj records append DIR...` | ほかの jsonl を記録に取り込む |
 | `pj site build [--out DIR] [--store DIR]` | 記録からサイトを作る |

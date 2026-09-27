@@ -54,8 +54,12 @@ def label_for(path: Path, search_paths: Sequence[Path]) -> str:
         return resolved.as_posix()
 
 
-def _resolve(target: str, from_dir: Path, search_paths: Sequence[Path]) -> Path | None:
-    """引用符の include を解決する。まず include した側のディレクトリを見る。"""
+def resolve(target: str, from_dir: Path, search_paths: Sequence[Path]) -> Path | None:
+    """引用符の include を解決する。まず include した側のディレクトリを見る。
+
+    pj bundle の展開もこれで探す。閉包と展開で探し方がずれると、測ったものと
+    判定サイトへ出すものが別のファイルを読む。
+    """
     for base in (from_dir, *search_paths):
         candidate = (base / target).resolve()
         if candidate.is_file():
@@ -76,7 +80,7 @@ def direct(entry: Path, search_paths: Sequence[Path]) -> tuple[str, ...]:
         return ()
     labels = []
     for target in scan(text):
-        path = _resolve(target, entry.parent, search_paths)
+        path = resolve(target, entry.parent, search_paths)
         if path is not None and path != entry:
             label = label_for(path, search_paths)
             if label not in labels:
@@ -103,7 +107,7 @@ def closure(entry: Path, search_paths: Sequence[Path]) -> Closure:
         except OSError:
             continue
         for target in scan(text):
-            path = _resolve(target, current.parent, search_paths)
+            path = resolve(target, current.parent, search_paths)
             if path is None:
                 if target not in unresolved:
                     unresolved.append(target)

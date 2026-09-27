@@ -13,6 +13,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from . import batch as batch_mod
+from . import bundle as bundle_mod
 from . import claims as claims_mod
 from . import environment as env_mod
 from . import fetch, tryout
@@ -755,6 +756,59 @@ def cmd_try(args: argparse.Namespace) -> int:
     return tryout.run_built(built, input_path=input_path, expected_path=expected_path)
 
 
+def cmd_bundle(args: argparse.Namespace) -> int:
+    """提出とハーネスとライブラリを、判定サイトへ貼れる 1 ファイルに展開する。
+
+    展開したものはファイルに書き、標準出力にも出す。--copy のときは標準出力の代わりに
+    クリップボードへ入れる。知らせは stderr に出すので、標準出力はそのまま貼れる。
+    """
+    if args.cases is not None and not args.check:
+        return _die("--cases は --check と一緒に渡してください")
+    cases = bundle_mod.CHECK_CASES if args.cases is None else args.cases
+    if cases < 1:
+        return _die(f"--cases は 1 以上にしてください ({cases})")
+    try:
+        problem = problem_mod.load_by_id(args.problem)
+        submission = problem_mod.resolve_submission(problem, args.submission)
+        env = env_mod.load(args.env)
+        bundled = bundle_mod.bundle(problem, submission)
+    except (problem_mod.ProblemError, env_mod.EnvironmentError_, bundle_mod.BundleError) as e:
+        return _die(str(e))
+
+    path = Path(args.out).expanduser() if args.out else bundle_mod.output_path(problem, submission)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(bundled.text)
+    if not args.copy:
+        sys.stdout.write(bundled.text)
+        sys.stdout.flush()
+
+    for target in bundled.unresolved:
+        print(
+            f"warning: include {target!r} を解決できないので、その行をそのまま残しました",
+            file=sys.stderr,
+        )
+    print(
+        f"{path} に書きました ({bundled.size} bytes、中身を入れたファイル {len(bundled.files)} 個)",
+        file=sys.stderr,
+    )
+    limit = bundle_mod.source_limit(problem)
+    if limit is not None and bundled.size > limit[1]:
+        site, size = limit
+        print(f"warning: {site} のソースの上限 {size} bytes を超えています", file=sys.stderr)
+    if args.copy:
+        try:
+            bundle_mod.copy_to_clipboard(bundled.text)
+        except bundle_mod.BundleError as e:
+            return _die(str(e))
+        print("クリップボードに入れました", file=sys.stderr)
+    if not args.check:
+        return 0
+    try:
+        return bundle_mod.check(problem, submission, path, env, cases=cases)
+    except (repro_mod.ReproError, fetch.FetchError) as e:
+        return _die(str(e))
+
+
 def cmd_records_list(args: argparse.Namespace) -> int:
     store = Store(Path(args.store) if args.store else RESULTS_DIR)
     for problem_id in store.problem_ids():
@@ -940,6 +994,29 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_try.add_argument("--env", default="local")
     p_try.set_defaults(func=cmd_try)
+
+    p_bundle = sub.add_parser(
+        "bundle", help="提出とハーネスとライブラリを、判定サイトへ貼れる 1 ファイルに展開する"
+    )
+    p_bundle.add_argument("--problem", required=True)
+    p_bundle.add_argument("--submission", required=True, help="submissions/xxx.hpp の形")
+    p_bundle.add_argument(
+        "--out", metavar="FILE",
+        help="書き先 (既定 .cache/bundle/<問題>/<提出の名前>.cpp)",
+    )
+    p_bundle.add_argument(
+        "--copy", action="store_true", help="標準出力の代わりにクリップボード (pbcopy) へ入れる"
+    )
+    p_bundle.add_argument(
+        "--check", action="store_true",
+        help="展開したものを -I も -march も付けずに組み、手元のケースを先頭から走らせる",
+    )
+    p_bundle.add_argument(
+        "--cases", type=int, metavar="N",
+        help=f"--check で走らせるケースの数 (名前順の先頭から。既定 {bundle_mod.CHECK_CASES})",
+    )
+    p_bundle.add_argument("--env", default="local", help="--check で組む環境 (既定 local)")
+    p_bundle.set_defaults(func=cmd_bundle)
 
     claims_cmd = sub.add_parser("claims", help="CI のジョブが仕事を取るための宣言").add_subparsers(
         dest="subcommand", required=True

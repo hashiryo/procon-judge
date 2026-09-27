@@ -139,6 +139,22 @@ def build_file(
     return _compile(cmd, binary, shlex.join(flags))
 
 
+def build_standalone(
+    source: Path, env: Environment, flags: Sequence[str], *, out_dir: Path
+) -> BuildResult:
+    """1 ファイルを、環境のコンパイラと渡したフラグだけで組む (pj bundle --check 用)。
+
+    environments.toml のフラグも -I も足さない。展開したファイルを判定サイトに近い形で
+    組んで、include の取りこぼしを見るため。
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    binary = out_dir / (source.stem + ".bin")
+    if binary.exists():
+        binary.unlink()
+    cmd = [env.cxx, *flags, "-o", str(binary), str(source)]
+    return _compile(cmd, binary, shlex.join(flags))
+
+
 def _compile(cmd: list[str], binary: Path, cxxflags: str) -> BuildResult:
     t0 = time.monotonic()
     try:

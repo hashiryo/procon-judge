@@ -704,7 +704,8 @@ pj run  --dry-run --env NAME                 走らせる対象を出すだけ
 pj run  --problem ID --submission PATH --env NAME   1 件だけ走らせる
 pj records append <dir>...                   まとめて results の jsonl へ追記する
 pj records squash                            results ブランチの履歴を畳む
-pj bundle --problem ID --submission PATH     1 ファイルに展開する
+pj bundle --problem ID --submission PATH [--out FILE] [--copy] [--check [--cases N]]
+                                             判定サイトへ貼れる 1 ファイルに展開する。--check は -I も -march も付けずに組み、手元のケースを先頭から走らせる
 pj repro --problem ID --submission PATH [--case NAME | --cases N] [--env NAME]
                                              手元で走らせて、落ちたケースの差分とファイルの場所を見る。--cases N は名前順の先頭 N ケースだけ
 pj try FILE [--input F | --problem ID --case NAME] [--env NAME]
@@ -905,7 +906,7 @@ include の一覧は直接と間接に分けます。提出ファイルが直接
 
 問題のページには環境と CPU モデルの切り替えを置きます。組を 1 つ選ぶと、その組の記録だけが並びます。記録の無い提出は「未計測」として並べます。x86 は複数のモデルに散るので、穴を見せる方が正直です。
 
-提出ページのソースは提出ファイルそのままで、`pj bundle` は使いません。貼れる 1 ファイルが欲しくなったら、それは別の用途なので別に作ります。
+提出ページのソースは提出ファイルそのままで、`pj bundle` は使いません。貼れる 1 ファイルは別の用途なので、`pj bundle` が手元で作ります (「判定サイトへ出す bundle の実装の記録」)。
 
 Pages のキャッシュヘッダは細かく制御できないので、データファイルの名前かクエリにビルドのハッシュを混ぜて、古いデータを見せないようにします。
 
@@ -2045,6 +2046,52 @@ raw の記録のメモリは中央値 286 MB で、base の 15 MB と桁が違�
 直し方は「ハーネスの種別」に書いたとおりで、Linux では子に `pj/rss_preload.c` を `LD_PRELOAD` で差し込み、終了時の VmHWM を報告させます。報告が無いときの `ru_maxrss` は、`pj` 自身のピーク以下なら 0 (分からない) にします。docker の Linux で、279 MB を握った Python から何もしないプログラムを走らせると、今までの `ru_maxrss` は 280,228 KB、preload の報告は 1,100 KB でした。ハーネスの `report_metrics` が出していた `max_rss_kb` は preload と同じ値で、あとの行に負けて使われなくなったので、同じ日に `pj.hpp` の `peak_rss_kb()` ごと消しました。`pj.hpp` はすべての base.cpp の閉包に入るので、base の全問題のキーが変わり、全部測り直しになりました。
 
 キーは変わらないので、誤った MLE の記録 (メモリが 560 MB 以下の MLE、27 問の 70 行) を results から消して測り直させました (7136a44)。AC の raw の記録のメモリの欄は `pj` の分で膨らんだままで、測り直されたものから直ります。
+
+## 判定サイトへ出す bundle の実装の記録
+
+2026-09-27 に `pj bundle` を足しました。設計は algo-notes の `notes/procon-judge-bundle.md` にあります。提出とハーネスとライブラリを 1 ファイルに展開し、先頭に Library の `include/isa-pragma.hpp` を置きます。判定サイトの問題も base.cpp の形のまま出せます。ハーネスは判定サイトの入力の形で読んで出力の形で書き、計測は stderr に 1 行出すだけだからです (「ハーネスの種別」)。
+
+### 探し方は閉包と同じ関数です
+
+引用符の include は `include.py` の `resolve` で探します。キーの材料にしている閉包と同じ関数で、探す順は `build.include_dirs` です。閉包と展開で探し方がずれると、測ったものと判定サイトへ出すものが別のファイルを読みます。Library の `scripts/lib/bundle.ts` (algo-workspace の `mise run bundle` が使うもの) は使っていません。procon-judge から Node を呼ぶことになるうえ、探す順が閉包と別の実装になるからです。
+
+### 入口の置き換えは形を決め打ちにしました
+
+base.cpp の `#ifndef SUBMISSION_HPP` から `#endif` までの 3 行を消し、`#include SUBMISSION_HPP` を `#include "submissions/<名前>.hpp"` に替えます。置き換えたあと、コメントの外に `SUBMISSION_HPP` が残っていれば止めます。測ったものと中身が変わるからです。今ある base.cpp 172 本は、どれもこの形でした。
+
+### 判定サイトの問題の提出はすべて展開できました
+
+2026-09-27 の時点で、判定サイトの問題の提出 968 本と、自作の問題の提出 352 本を展開しました。解決できなかった引用符の include は 0 件です。大きさは設計の見積もりどおりで、64 KB を超えるのは Library Checker の問題の 4 本、512 KiB を超えるのはそのうち 2 本でした。最大は factorize の `mixed_fj64_bgcd.hpp` の 1,284,503 bytes です。Codeforces の問題の提出は最大 24,768 bytes、AtCoder の問題の提出は最大 33,854 bytes でした。
+
+展開したものを手元の Apple clang (arm64) で `-std=gnu++23 -O2 -fsyntax-only` だけで組むと、968 本のうち 56 本が組めませんでした。54 本は x86 の intrinsics を使う提出で、arm では `immintrin.h` を読めないためです。local の環境と同じく `-DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES` と SIMDe の `-I` を足すと、組めないものは 2 本になりました。
+
+yuki-925 の `lib.cpp` は `ext/pb_ds` を読んでいて、これは libc++ にありません。aoj-DPL_1_H の `lib.cpp` は、Library を `#include <mylib/optimization/Knapsack.hpp>` と山括弧で読んでいました。山括弧の include は閉包でも辿らないので、この提出のキーに Knapsack.hpp が入っておらず、Knapsack.hpp を直しても測り直されない状態でした。引用符に直しています。
+
+### --check のフラグ
+
+`--check` は `-I` も `-march` も付けずに組みます。環境の cxxflags からは `-D` だけを残し、`-DUSE_SIMDE` があるときだけ SIMDe の `-I` を足します。x64 の環境では `-std=gnu++23 -O2` だけです。SIMDe は山括弧で読むので展開には入らず、判定サイトの x86 ではプリプロセッサが飛ばす分岐にあります。足す `-I` は SIMDe のディレクトリだけなので、引用符の include の取りこぼしは CE で分かります。
+
+手元は macOS の arm なので、x86 の GCC でだけ通る経路は `--check` では試されません。先頭の宣言も x86 の GCC のときだけ効くので、手元の `--check` では効いていません。GCC 13 と 14 で pragma を標準ライブラリより前に置くと CE になる件 (「土台の命令をオプションに戻しました」) のようなものは、docker の gcc:13 や gcc:14 で組むか、判定サイトに出して確かめます。
+
+### 標準出力と --copy
+
+展開したものは `.cache/bundle/<id>/<提出の名前>.cpp` に書き、標準出力にも出します。書いた場所と大きさと警告は stderr に出すので、標準出力はそのまま貼るかリダイレクトできます。`--copy` のときは標準出力に出しません。1 MB を超える提出を端末に流さないためです。
+
+### ソースの大きさの上限は 2 つだけ持ちます
+
+問題の id の接頭辞から元の判定サイトを引き、Codeforces (64 KB) と AtCoder (512 KiB) の上限を超えたら警告を出します。この警告は `--check` を付けなくても出します。ほかの判定サイトの上限は確かめていないので持っていません。
+
+### 判定サイトごとの違い
+
+判定サイトごとに、命令とコンパイラが違います。2026-09-25 に本人がカスタムテストで確かめた値です。
+
+| 判定サイト | コンパイラ | 判定機の命令 |
+| --- | --- | --- |
+| AtCoder | GCC と Clang | AVX-512、GFNI、vpclmulqdq まで |
+| Codeforces | Windows の GCC 13 (G++20) と 14 (G++23) | AVX2、BMI2、pclmul まで。vpclmulqdq、GFNI、AVX-512 は無い |
+| AOJ | GCC 11.4.1 (C++23) | AVX-512、GFNI、vpclmulqdq まで |
+
+AVX-512 を前提に組んだ提出は、持たない判定機では SIGILL になります。GCC 12 以降で入った機能を使う提出は、AOJ で CE になることがあります。GCC 13 以前の C++ は pragma のあとも `__AVX2__` などのマクロを立てません。マクロで経路を分けるコードは、AOJ と Codeforces の G++20 で遅い側に落ちます (「土台の命令をオプションに戻しました」)。Library Checker と yukicoder の判定機の命令とソースの上限は、まだ確かめていません。判定サイトへの送信は手で行います。ログインが要り、サイトごとに作法が違うためです。
 
 ## 既存リポジトリから移すもの
 
