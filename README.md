@@ -199,7 +199,7 @@ uv run pj mirror push --problem <id>
 
 問題のディレクトリの `submissions/` にファイルを置きます。`base` の提出はハーネスから include されるので `.hpp`、`raw` の提出はそれ自体が翻訳単位なので `.cpp` です。先頭が `_` のファイルは提出として扱いません。
 
-自分のライブラリを使う提出は `#include "mylib/data_structure/UnionFind.hpp"` のように `lib/` からの相対パスで書きます。全環境のフラグに `-Ilib` が入っています。慣習として、ライブラリを使う提出は `lib.hpp`、同じ問題に複数あれば `lib-<実装>.hpp`、手書きの素朴な実装は `naive.hpp` と名付けますが、`pj` はこの名前に意味を持たせません。ライブラリとの紐付けは include の一覧から作ります。
+自分のライブラリを使う提出は `#include "mylib/data_structure/UnionFind.hpp"` のように `lib/` からの相対パスで書きます。全環境のフラグに `-Ilib` が入っています。手元のヘッダは必ず引用符で読んでください。山括弧で書いても `-I` があるので組めますが、閉包に入らないので、そのヘッダを直しても測り直されず、`pj bundle` も展開しません。`pj problems check` は、山括弧で読んでいる手元のヘッダを警告します。慣習として、ライブラリを使う提出は `lib.hpp`、同じ問題に複数あれば `lib-<実装>.hpp`、手書きの素朴な実装は `naive.hpp` と名付けますが、`pj` はこの名前に意味を持たせません。ライブラリとの紐付けは include の一覧から作ります。
 
 提出ではない共通のヘッダは 3 つの置き方があり、どれも名前ではなく置き場所で区別します。その問題の提出だけで共有するものは `problems/<グループ>/<名前>/common.hpp` のように `submissions/` の外に置きます。問題のディレクトリが `-I` に入っているので、提出からは `#include "common.hpp"` で引けます。`submissions/` の中に置くなら先頭を `_` にします (`submissions/_impl.hpp`)。問題をまたいで使うものは `problems/_shared/<名前>/` に置き、`-Iproblems` が入っているので `#include "_shared/gf2-64/_common.hpp"` の形でどの問題からも同じ書き方で引けます。`common.hpp` という名前自体に意味はなく、慣習です。
 
@@ -341,7 +341,7 @@ git push origin results
 | コマンド | 何をするか |
 | --- | --- |
 | `pj problems list` | 問題の一覧。`--json` で機械向けの形 |
-| `pj problems check [--problem ID]` | problem.toml の検証 |
+| `pj problems check [--problem ID]` | problem.toml の検証。手元のヘッダを山括弧で読んでいる提出にも警告を出す |
 | `pj problems titles [--problem ID] [--fix]` | 題名を判定サイトの名前と突き合わせる |
 | `pj submissions list [--problem ID]` | 提出の一覧 |
 | `pj fetch --problem ID [--refresh] [--from-origin]` | テストデータを取る。`--refresh` はキャッシュを無視し、`--from-origin` は保管庫も飛ばして原本から取る |

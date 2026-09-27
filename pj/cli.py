@@ -13,10 +13,12 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from . import batch as batch_mod
+from . import build as build_mod
 from . import bundle as bundle_mod
 from . import claims as claims_mod
 from . import environment as env_mod
 from . import fetch, tryout
+from . import include as include_mod
 from . import migrate as migrate_mod
 from . import plan as plan_mod
 from . import problem as problem_mod
@@ -73,6 +75,9 @@ def cmd_problems_check(args: argparse.Namespace) -> int:
             return _die(f"問題 {args.problem!r} がありません")
     failed = 0
     warned = 0
+    # 問題をまたいで読まれるヘッダ (lib/ や _shared/) の指摘は、最初に当たった問題で 1 回だけ出す。
+    angles = include_mod.AngleIncludes()
+    reported: set[tuple[Path, int]] = set()
     for directory in directories:
         try:
             p = problem_mod.load(directory)
@@ -82,6 +87,17 @@ def cmd_problems_check(args: argparse.Namespace) -> int:
             continue
         for message in problem_mod.warnings(p):
             print(f"WARN {p.id}: {message}")
+            warned += 1
+        search = build_mod.include_dirs(p)
+        for found in angles.of(p, search):
+            if (found.path, found.line) in reported:
+                continue
+            reported.add((found.path, found.line))
+            where = include_mod.label_for(found.path, search)
+            print(
+                f"WARN {p.id}: {where}:{found.line} が手元のヘッダ <{found.target}> を山括弧で"
+                "読んでいます。閉包 (キー) にも pj bundle にも入らないので、引用符で読んでください"
+            )
             warned += 1
         if not p.submissions():
             print(f"NG  {p.id}: submissions/ に提出がありません")

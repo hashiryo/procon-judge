@@ -684,7 +684,7 @@ arm の 2 環境は `-mcpu=neoverse-n2+aes` で組みます。GitHub の arm の
 
 ```
 pj problems list [--json]
-pj problems check                            problem.toml の検証
+pj problems check                            problem.toml の検証。手元のヘッダを山括弧で読んでいる提出にも警告を出す
 pj problems titles [--fix]                   題名を判定サイトの名前と突き合わせる
 pj problems import PATH... [--single-only] [--dry-run]
                                              competitive-verifier のテストを raw の問題として取り込む
@@ -2066,6 +2066,8 @@ base.cpp の `#ifndef SUBMISSION_HPP` から `#endif` までの 3 行を消し�
 展開したものを手元の Apple clang (arm64) で `-std=gnu++23 -O2 -fsyntax-only` だけで組むと、968 本のうち 56 本が組めませんでした。54 本は x86 の intrinsics を使う提出で、arm では `immintrin.h` を読めないためです。local の環境と同じく `-DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES` と SIMDe の `-I` を足すと、組めないものは 2 本になりました。
 
 yuki-925 の `lib.cpp` は `ext/pb_ds` を読んでいて、これは libc++ にありません。aoj-DPL_1_H の `lib.cpp` は、Library を `#include <mylib/optimization/Knapsack.hpp>` と山括弧で読んでいました。山括弧の include は閉包でも辿らないので、この提出のキーに Knapsack.hpp が入っておらず、Knapsack.hpp を直しても測り直されない状態でした。引用符に直しています。
+
+同じ見落としを防ぐため、`pj problems check` が警告を出すようにしました。見るのは、ハーネスと提出、その閉包のファイルです。山括弧の include のうち、`-I` の中 (SIMDe を除く) で見つかるものを、ファイルと行で出します。SIMDe は山括弧で読む決まりなので、SIMDe の中で見つかるものと、SIMDe のファイルの中の include は見ません。問題をまたいで読まれるヘッダの指摘は、最初に当たった問題で 1 回だけ出します。ファイルの中身は問題をまたいで使い回します。提出ごとに読み直す形では、全問題の検査が 1 秒から 8 秒に伸びたためで、使い回すと 3 秒です。
 
 ### --check のフラグ
 

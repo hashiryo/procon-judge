@@ -12,12 +12,15 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from .paths import ROOT
+from .paths import ROOT, SIMDE_DIR
+from .problem import Problem
 
 # 行頭から (空白を挟んで) の #include "..." だけを拾う。
 # // でコメントアウトされた行は先頭が # にならないので当たらない。
 # ブロックコメントの中は見分けられないが、字句解析器を書くほどの話ではない。
 INCLUDE_RE = re.compile(r'^[ \t]*#[ \t]*include[ \t]*"([^"]+)"', re.MULTILINE)
+# 山括弧の #include <...>。閉包では辿らない。手元のヘッダをこれで読んでいないかを見るのに使う。
+ANGLE_RE = re.compile(r"^[ \t]*#[ \t]*include[ \t]*<([^>]+)>")
 
 
 @dataclass(frozen=True)
@@ -126,3 +129,75 @@ def closure(entry: Path, search_paths: Sequence[Path]) -> Closure:
         labels=tuple(label for label, _ in labelled),
         unresolved=tuple(sorted(unresolved)),
     )
+
+
+@dataclass(frozen=True)
+class AngleInclude:
+    """山括弧で読んでいる手元のヘッダ。"""
+
+    path: Path
+    line: int
+    target: str
+
+
+class AngleIncludes:
+    """問題のハーネスと提出が、山括弧で読んでいる手元のヘッダを探す。閉包の中も見る。
+
+    コンパイラは山括弧でも -I の中を探すので組めてしまうが、閉包は引用符しか辿らない。
+    そのヘッダはキーに入らず、直しても測り直されない。pj bundle も展開しないので、判定
+    サイトでは CE になる。SIMDe は山括弧で読む決まりなので、SIMDe の中で見つかるものと、
+    SIMDe のファイルの中の include は見ない。
+
+    ファイルの中身は問題をまたいで使い回す。pj problems check が全問題を見るとき、
+    Library のヘッダを提出ごとに読み直すと、それだけで数秒かかる。
+    """
+
+    def __init__(self) -> None:
+        self._lines: dict[Path, tuple[tuple[str, ...], tuple[tuple[int, str], ...]]] = {}
+        self._exists: dict[tuple[Path, str], bool] = {}
+
+    def of(self, problem: Problem, search_paths: Sequence[Path]) -> list[AngleInclude]:
+        simde = SIMDE_DIR.resolve()
+        local = [d for d in search_paths if d.resolve() != simde]
+        entries = [problem.dir / s for s in problem.submissions()]
+        if problem.harness_kind == "base":
+            entries.insert(0, problem.base_cpp)
+        # 閉包と同じ辿り方で、全部の入口から一度に辿る。
+        queue = [e.resolve() for e in entries]
+        seen = set(queue)
+        found: list[AngleInclude] = []
+        while queue:
+            path = queue.pop()
+            if path.is_relative_to(simde):
+                continue
+            quoted, angled = self._scan(path)
+            for target in quoted:
+                child = resolve(target, path.parent, search_paths)
+                if child is not None and child not in seen:
+                    seen.add(child)
+                    queue.append(child)
+            for number, target in angled:
+                if any(self._is_file(d, target) for d in local):
+                    found.append(AngleInclude(path=path, line=number, target=target))
+        return sorted(found, key=lambda a: (str(a.path), a.line))
+
+    def _scan(self, path: Path) -> tuple[tuple[str, ...], tuple[tuple[int, str], ...]]:
+        """引用符の include と、山括弧の include (行番号付き)。"""
+        if path not in self._lines:
+            try:
+                text = path.read_text(errors="replace")
+            except OSError:
+                text = ""
+            angled = tuple(
+                (number, m.group(1))
+                for number, line in enumerate(text.splitlines(), start=1)
+                if (m := ANGLE_RE.match(line))
+            )
+            self._lines[path] = (tuple(scan(text)), angled)
+        return self._lines[path]
+
+    def _is_file(self, directory: Path, target: str) -> bool:
+        key = (directory, target)
+        if key not in self._exists:
+            self._exists[key] = (directory / target).is_file()
+        return self._exists[key]
