@@ -3,14 +3,18 @@ title = "G - GCD cost on the tree"
 url = "https://atcoder.jp/contests/abc248/tasks/abc248_g"
 
 [limits]
-tle_sec = 5.0
+tle_sec = 8.0
 mle_mb = 2048
 
 [harness]
 kind = "raw"
 
+# AtCoder はテストケースを公開していないので、自作する (gen.py と、lib.cpp を固定した reference.cpp)。
 [testdata]
-source = "none"
+source = "local"
+count = 19
+generator = "gen.py"
+reference = "reference.cpp"
 
 [compare]
-kind = "compile_only"
+kind = "tokens"
