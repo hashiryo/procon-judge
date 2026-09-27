@@ -1,0 +1,21 @@
+# 2026-09-27 に atcoder-arc090-d から直した。取り込んだときに、表示の文字 (D) を課題の id と読み違えていた。
+id = "atcoder-arc090-b"
+title = "D - People on a Line"
+url = "https://atcoder.jp/contests/arc090/tasks/arc090_b"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+# AtCoder はテストケースを公開していないので、自作する (gen.py と、lib.cpp を固定した reference.cpp)。
+[testdata]
+source = "local"
+count = 24
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "tokens"
