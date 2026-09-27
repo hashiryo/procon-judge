@@ -10,8 +10,12 @@ mle_mb = 512
 [harness]
 kind = "raw"
 
+# AtCoder はテストケースを公開していないので、自作する (gen.py と、lib.cpp を固定した reference.cpp)。
 [testdata]
-source = "none"
+source = "local"
+count = 26
+generator = "gen.py"
+reference = "reference.cpp"
 
 [compare]
-kind = "compile_only"
+kind = "tokens"
