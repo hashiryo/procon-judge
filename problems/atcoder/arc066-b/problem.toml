@@ -1,0 +1,17 @@
+# 2026-09-27 に atcoder-arc066-d から直した。取り込んだときに、表示の文字 (D) を課題の id と読み違えていた。
+id = "atcoder-arc066-b"
+title = "D - Xor Sum"
+url = "https://atcoder.jp/contests/arc066/tasks/arc066_b"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "none"
+
+[compare]
+kind = "compile_only"
