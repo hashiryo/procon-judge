@@ -54,7 +54,7 @@ def fetch(problem: Problem, dest: Path, env: env_mod.Environment | None = None) 
     for seed in range(td.count):
         name = case_name(seed)
         in_path, out_path = tmp_dir / f"{name}.in", tmp_dir / f"{name}.out"
-        _generate(generator, seed, in_path, problem)
+        generate(generator, seed, in_path, problem)
         result = execute.run(
             built.binary,
             stdin_path=in_path,
@@ -74,8 +74,11 @@ def fetch(problem: Problem, dest: Path, env: env_mod.Environment | None = None) 
     replace_dir(tmp_dir, dest)
 
 
-def _generate(generator: Path, seed: int, out: Path, problem: Problem) -> None:
-    """gen.py を seed 1 つで走らせて入力を書く。依存は PEP 723 の形で書いてあれば uv が用意する。"""
+def generate(generator: Path, seed: int, out: Path, problem: Problem) -> None:
+    """gen.py を seed 1 つで走らせて入力を書く。依存は PEP 723 の形で書いてあれば uv が用意する。
+
+    pj testdata crosscheck も、突き合わせに使う小さい入力をこれで作る。
+    """
     cmd = ["uv", "run", "--quiet", "--script", str(generator), str(seed)]
     try:
         with out.open("wb") as f:

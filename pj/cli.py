@@ -16,6 +16,7 @@ from . import batch as batch_mod
 from . import build as build_mod
 from . import bundle as bundle_mod
 from . import claims as claims_mod
+from . import crosscheck as crosscheck_mod
 from . import environment as env_mod
 from . import fetch, tryout
 from . import include as include_mod
@@ -227,6 +228,17 @@ def cmd_testdata_import(args: argparse.Namespace) -> int:
         f"cases_hash={testcases.cases_hash}  {testcases.dir}"
     )
     return 0
+
+
+def cmd_testdata_crosscheck(args: argparse.Namespace) -> int:
+    """source = "local" の参照実装を、愚直解と小さい入力で突き合わせる。"""
+    try:
+        problem = problem_mod.load_by_id(args.problem)
+        env = env_mod.load(args.env)
+        seeds = crosscheck_mod.parse_seeds(args.seeds) if args.seeds else crosscheck_mod.DEFAULT_SEEDS
+        return crosscheck_mod.crosscheck(problem, Path(args.brute), env, seeds=seeds)
+    except (crosscheck_mod.CrosscheckError, fetch.FetchError) as e:
+        return _die(str(e))
 
 
 def cmd_mirror_push(args: argparse.Namespace) -> int:
@@ -897,6 +909,17 @@ def build_parser() -> argparse.ArgumentParser:
     t_import.add_argument("--problem", required=True)
     t_import.add_argument("--dir", required=True, metavar="PATH")
     t_import.set_defaults(func=cmd_testdata_import)
+    t_cross = testdata.add_parser(
+        "crosscheck", help="source = local の参照実装を、愚直解と小さい入力で突き合わせる"
+    )
+    t_cross.add_argument("--problem", required=True)
+    t_cross.add_argument("--brute", required=True, help="愚直解。問題のディレクトリからのパス (brute.cpp)")
+    t_cross.add_argument(
+        "--seeds", metavar="A:B",
+        help=f"gen.py に渡す seed の範囲 (既定 {crosscheck_mod.DEFAULT_SEEDS.start}:{crosscheck_mod.DEFAULT_SEEDS.stop})",
+    )
+    t_cross.add_argument("--env", default="local", help="組む環境 (既定 local)")
+    t_cross.set_defaults(func=cmd_testdata_crosscheck)
 
     mirror_cmd = sub.add_parser("mirror", help="テストデータの保管庫").add_subparsers(
         dest="subcommand", required=True
