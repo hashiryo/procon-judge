@@ -48,7 +48,7 @@ MAX_JOBS_PER_RUN_ALL = 16
 # モード。cover は網羅モード (push と Library の dispatch) で、(問題, 環境) ごとに今の
 # 全提出が現行になっている CPU モデルが 1 つでもあれば飛ばし、どのモデルにも欠けが
 # あれば 1 モデルぶんだけ測る。all は全モデルモード (schedule と手動) で、モデルごとの
-# 欠けを全部埋める。設計は my-docs の「procon-judge の push の run を網羅モードにする設計」。
+# 欠けを全部埋める。設計は algo-notes の「procon-judge の push の run を網羅モードにする設計」。
 MODES = ("cover", "all")
 DEFAULT_MODE = "all"
 

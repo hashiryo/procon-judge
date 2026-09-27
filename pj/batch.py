@@ -17,7 +17,7 @@ variant 同士の差 (5 から 10 パーセント) より大きいので、別�
 
 記録の正しさ (現行の AC) は記録ごとの判定のままで、束は順位表だけの話。raw の
 問題 (提出が 1 本で順位が無い) は束を作らず、今までどおりキーの有無で測る。
-設計は my-docs の「procon-judge の順位表を束で測る設計」。
+設計は algo-notes の「procon-judge の順位表を束で測る設計」。
 """
 
 from __future__ import annotations
