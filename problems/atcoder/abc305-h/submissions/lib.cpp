@@ -4,6 +4,7 @@
 #include <vector>
 #include <cmath>
 #include "mylib/optimization/fibonacci_search.hpp"
+#include "mylib/algebra/Rational.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);
@@ -43,7 +44,7 @@ signed main() {
    for(int j= 0, e= w[i].size(); j < e; ++j) dp[i + j + 1]= min(dp[i + j + 1], dp[i] + w[i][j] + p);
   return dp[N];
  };
- auto g= [&](long long p) { return (long double)(f(p) - X) / p; };
+ auto g= [&](long long p) { return Rational<__int128, false>(f(p) - X, p); };
  auto [p, DD]= fibonacci_search<MAXIMIZE>(g, 1, X);
  long long D= ceil(DD);
  cout << D << " " << f(p) - p * D + base << '\n';

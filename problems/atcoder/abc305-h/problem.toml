@@ -4,17 +4,17 @@ url = "https://atcoder.jp/contests/abc305/tasks/abc305_h"
 
 [limits]
 tle_sec = 5.0
-mle_mb = 512
+mle_mb = 1024
 
 [harness]
 kind = "raw"
 
-# テストデータは gen.py (31 ケース) と brute.cpp まで用意してある。submissions/lib.cpp は (f(p) - X)/p の最大を long double の
-# フィボナッチ探索で探すので、予算が 1 足りない形で比較が同点になり、M が小さく出る (80 bit の long double でも起きる)。
-# 例: 3 90375697 / 38400 18490 / 99999 2331 / 100000 846808 で、正しくは 3 867629。直してから reference.cpp を固定して
-# local にする (count = 31、制限は 5 秒と 1024 MiB)。
+# AtCoder はテストケースを公開していないので、自作する (gen.py と、lib.cpp を固定した reference.cpp)。
 [testdata]
-source = "none"
+source = "local"
+count = 31
+generator = "gen.py"
+reference = "reference.cpp"
 
 [compare]
-kind = "compile_only"
+kind = "tokens"

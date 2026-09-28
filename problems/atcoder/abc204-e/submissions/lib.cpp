@@ -3,6 +3,7 @@
 #include <queue>
 #include <cmath>
 #include "mylib/optimization/fibonacci_search.hpp"
+#include "mylib/algebra/Rational.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);
@@ -28,9 +29,9 @@ signed main() {
   if(dist[u] != d) continue;
   for(auto e: adj[u]) {
    int v= A[e] ^ B[e] ^ u;
-   auto f= [&](long long t) { return t + C[e] + double(D[e]) / (t + 1); };
+   auto f= [&](long long t) { return Rational<__int128, false>((__int128)(t + C[e]) * (t + 1) + D[e], t + 1); };
    auto [_, nd_f]= fibonacci_search<MINIMIZE>(f, d, max(d, D[e]));
-   long long nd= floor(nd_f) + 0.5;
+   long long nd= floor(nd_f);
    if(dist[v] > nd) dist[v]= nd, pq.emplace(-nd, v);
   }
  }
