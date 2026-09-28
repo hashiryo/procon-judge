@@ -1,5 +1,5 @@
 // 期待出力を作る参照実装。submissions/lib.cpp を pj bundle で 1 ファイルに展開して固定したもの
-// (2026-09-27、Library ee5e64302)。Library を直しても変わらないので、直したあとの提出はこれと比べられる。
+// (2026-09-28、Library 5ec9b3169)。Library を直しても変わらないので、直したあとの提出はこれと比べられる。
 // 小さい入力では brute.cpp と突き合わせてある (pj testdata crosscheck)。
 
 #if defined(__x86_64__) && defined(__GNUC__) && !defined(__clang__)
@@ -246,7 +246,7 @@ template <class T> struct DirichletSeries {
   std::valarray<T> D= (ret.X-= x[1]), E(std::begin(D), K + 1), Y(std::begin(D) + K, L + 1), y= x, z(K + 1), Z(L + 1);
   auto A= [&](uint64_t n) { return n > K ? D[K + (double)N / n] : D[n]; };
   auto B= [&](uint64_t n) { return n > K ? Y[(double)N / n] : E[n]; };
-  for (tmp= pw[n - 2] * M, l= L; l; l--) ret.X[K + l]*= tmp;
+  for (tmp= n > 1 ? pw[n - 2] * M : T(), l= L; l; l--) ret.X[K + l]*= tmp;
   for (i= 2; i <= K; ++i) ret.x[i]*= tmp;
   for (ret.x[1]= pw[n - 1], l= L; l; l--) ret.X[K + l]+= ret.x[1];
   for (m= 1, b= M, l= std::min<uint64_t>(L, uint64_t((double)N / p) / 2); m + 1 < n;) {

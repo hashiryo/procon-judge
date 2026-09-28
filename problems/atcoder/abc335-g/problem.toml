@@ -4,16 +4,17 @@ url = "https://atcoder.jp/contests/abc335/tasks/abc335_g"
 
 [limits]
 tle_sec = 5.0
-mle_mb = 512
+mle_mb = 1024
 
 [harness]
 kind = "raw"
 
-# テストデータは gen.py (22 ケース) と brute.cpp まで用意してある。Library の mylib/number_theory/OrderFp.hpp が Montgomery の値を
-# 正規化せずに 1 と比べるので、P が 2^30 に近いと位数が大きく出る (2 1073741789 / 278009743 1036660031 で 4、正しくは 3)。
-# Library を直してから reference.cpp を固定して local にする (count = 22、制限は 5 秒と 1024 MiB)。
+# AtCoder はテストケースを公開していないので、自作する (gen.py と、lib.cpp を固定した reference.cpp)。
 [testdata]
-source = "none"
+source = "local"
+count = 22
+generator = "gen.py"
+reference = "reference.cpp"
 
 [compare]
-kind = "compile_only"
+kind = "tokens"

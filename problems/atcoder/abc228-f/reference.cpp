@@ -1,5 +1,5 @@
 // 期待出力を作る参照実装。submissions/lib.cpp を pj bundle で 1 ファイルに展開して固定したもの
-// (2026-09-27、Library ee5e64302)。Library を直しても変わらないので、直したあとの提出はこれと比べられる。
+// (2026-09-28、Library 5ec9b3169)。Library を直しても変わらないので、直したあとの提出はこれと比べられる。
 // 小さい入力では brute.cpp と突き合わせてある (pj testdata crosscheck)。
 
 #if defined(__x86_64__) && defined(__GNUC__) && !defined(__clang__)
@@ -69,7 +69,7 @@ template <class pos_t, class M> class SegmentTree_2D {
  template <bool z, class XYW> inline void build(const XYW* xyw, int n, const T& v= M::ti()) {
   xs.resize(n);
   for(int i= n; i--;) xs[i]= get_<z, 0>(xyw[i]);
-  std::sort(xs.begin(), xs.end()), xs.erase(std::unique(xs.begin(), xs.end()), xs.end()), id.resize((sz= 1 << (32 - __builtin_clz(xs.size()))) + xs.size() + 1);
+  std::sort(xs.begin(), xs.end()), xs.erase(std::unique(xs.begin(), xs.end()), xs.end()), id.resize((sz= 1 << (32 - __builtin_clz(xs.size() | 1))) + xs.size() + 1);
   std::vector<int> ord(n);
   for(int j= n; j--;)
    for(int i= x2i(get_<z, 0>(xyw[j])) + sz; i; i>>= 1) ++id[i + 1];

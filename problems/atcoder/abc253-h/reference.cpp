@@ -1,5 +1,5 @@
 // 期待出力を作る参照実装。submissions/lib.cpp を pj bundle で 1 ファイルに展開して固定したもの
-// (2026-09-27、Library ee5e64302)。Library を直しても変わらないので、直したあとの提出はこれと比べられる。
+// (2026-09-28、Library 5ec9b3169)。Library を直しても変わらないので、直したあとの提出はこれと比べられる。
 // 小さい入力では brute.cpp と突き合わせてある (pj testdata crosscheck)。
 
 #if defined(__x86_64__) && defined(__GNUC__) && !defined(__clang__)
@@ -434,7 +434,8 @@ template <class T> vector<T> _egfT(const T* b, T* h, int M, int n) {
   for (int m= M, s, t; m > l; m>>= 1)
    for (a= h + (m - l), d= a + (m - l), s= l; s--;)
     for (a[t= s]+= d[s] * b[0]; t; --t&= s) a[s]+= d[s ^ t] * b[t];
- for (int i= 0; i <= n; ++i) c[i]= h[(1 << (n - i)) - 1];
+ for (int i= 0; i <= n; ++i)
+  if (int j= (1 << (n - i)) - 1; j < 2 * M) c[i]= h[j];
  return c;
 }
 // [X^{[n]}] f^k/k! for k=0,1,...,n , O(n^2 2^n)
