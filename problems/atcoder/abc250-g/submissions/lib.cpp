@@ -6,7 +6,7 @@ signed main() {
  ios::sync_with_stdio(0);
  int N;
  cin >> N;
- PiecewiseLinearConvex<int> f;
+ PiecewiseLinearConvex<long long> f;
  f.add_inf(), f.add_inf(true);
  for(int i= 0; i < N; ++i) {
   int P;
@@ -16,6 +16,6 @@ signed main() {
   f.add_linear(P);
   f.add_inf();
  }
- cout << -f.min().value() << '\n';
+ cout << (long long)-f.min().value() << '\n';
  return 0;
 }

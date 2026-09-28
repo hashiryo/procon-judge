@@ -12,7 +12,7 @@ kind = "raw"
 # AtCoder はテストケースを公開していないので、自作する (gen.py と、lib.cpp を固定した reference.cpp)。
 [testdata]
 source = "local"
-count = 18
+count = 21
 generator = "gen.py"
 reference = "reference.cpp"
 

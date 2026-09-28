@@ -11,6 +11,7 @@ signed main() {
  using Mint= ModInt<998244353>;
  long long n, m;
  cin >> n >> m, --n, --m;
+ if(n == 0) return cout << div_at<Mint>({1}, {1, -1, -1}, m) << '\n', 0;
  auto f= sfps::div<Mint>({1}, {1, -1, -1}, n + 1);
  auto b= sfps::div<Mint>(sfps::pow<Mint>({1, -1}, n, n), {1, -1, -1}, n + 1);
  Mint D= Mint(1) / (b[n] * b[n] - b[n - 1] * b[n + 1]);

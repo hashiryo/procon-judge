@@ -6,13 +6,13 @@ signed main() {
  ios::sync_with_stdio(0);
  int N;
  cin >> N;
- PiecewiseLinearConvex<int> f;
+ PiecewiseLinearConvex<long long> f;
  for(int i= 0; i < N; ++i) {
   int P;
   cin >> P;
   f.add_abs(1, P);
   f.chmin_cum(true);
  }
- cout << f(0).value() << '\n';
+ cout << (long long)f(0).value() << '\n';
  return 0;
 }

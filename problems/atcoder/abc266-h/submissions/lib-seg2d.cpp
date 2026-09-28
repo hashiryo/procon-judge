@@ -18,7 +18,7 @@ signed main() {
  sort(dat.begin(), dat.end(), [&](auto& l, auto& r) { return l[2] == r[2] ? l[0] < r[0] : l[2] < r[2]; });
  set<array<long long, 2>> st1, st2;
  st1.insert({0, 0}), st2.insert({0, 0});
- for(int i= 0; i <= N; ++i) {
+ for(int i= 0; i < N; ++i) {
   auto [t, x, y, a]= dat[i];
   st1.insert({x, x + y - t}), st2.insert({x, x - y + t});
  }

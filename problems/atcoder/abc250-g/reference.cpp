@@ -1,5 +1,5 @@
 // 期待出力を作る参照実装。submissions/lib.cpp を pj bundle で 1 ファイルに展開して固定したもの
-// (2026-09-27、Library ee5e64302)。Library を直しても変わらないので、直したあとの提出はこれと比べられる。
+// (2026-09-28、Library ee5e64302)。Library を直しても変わらないので、直したあとの提出はこれと比べられる。
 // 小さい入力では brute.cpp と突き合わせてある (pj testdata crosscheck)。
 
 #if defined(__x86_64__) && defined(__GNUC__) && !defined(__clang__)
@@ -541,7 +541,7 @@ signed main() {
  ios::sync_with_stdio(0);
  int N;
  cin >> N;
- PiecewiseLinearConvex<int> f;
+ PiecewiseLinearConvex<long long> f;
  f.add_inf(), f.add_inf(true);
  for(int i= 0; i < N; ++i) {
   int P;
@@ -551,6 +551,6 @@ signed main() {
   f.add_linear(P);
   f.add_inf();
  }
- cout << -f.min().value() << '\n';
+ cout << (long long)-f.min().value() << '\n';
  return 0;
 }

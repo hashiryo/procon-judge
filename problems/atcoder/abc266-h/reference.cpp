@@ -1,5 +1,5 @@
 // 期待出力を作る参照実装。submissions/lib-seg2d.cpp を pj bundle で 1 ファイルに展開して固定したもの
-// (2026-09-27、Library ee5e64302)。Library を直しても変わらないので、直したあとの提出はこれと比べられる。
+// (2026-09-28、Library ee5e64302)。Library を直しても変わらないので、直したあとの提出はこれと比べられる。
 // 小さい入力では brute.cpp と突き合わせてある (pj testdata crosscheck)。
 
 #if defined(__x86_64__) && defined(__GNUC__) && !defined(__clang__)
@@ -160,7 +160,7 @@ signed main() {
  sort(dat.begin(), dat.end(), [&](auto& l, auto& r) { return l[2] == r[2] ? l[0] < r[0] : l[2] < r[2]; });
  set<array<long long, 2>> st1, st2;
  st1.insert({0, 0}), st2.insert({0, 0});
- for(int i= 0; i <= N; ++i) {
+ for(int i= 0; i < N; ++i) {
   auto [t, x, y, a]= dat[i];
   st1.insert({x, x + y - t}), st2.insert({x, x - y + t});
  }

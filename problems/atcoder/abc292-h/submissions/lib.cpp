@@ -33,7 +33,7 @@ signed main() {
   seg.apply(c, N, d);
   int s= seg.max_right(0, [&](long long x) { return x < 0; });
   if(s == N) s= N - 1;
-  cout << (double)seg[s] / (s + 1) + B << '\n';
+  cout << (double)(seg[s] + (long long)B * (s + 1)) / (s + 1) << '\n';
  }
  return 0;
 }

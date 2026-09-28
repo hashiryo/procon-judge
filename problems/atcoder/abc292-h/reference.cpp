@@ -1,5 +1,5 @@
 // 期待出力を作る参照実装。submissions/lib.cpp を pj bundle で 1 ファイルに展開して固定したもの
-// (2026-09-27、Library ee5e64302)。Library を直しても変わらないので、直したあとの提出はこれと比べられる。
+// (2026-09-28、Library ee5e64302)。Library を直しても変わらないので、直したあとの提出はこれと比べられる。
 // 小さい入力では brute.cpp と突き合わせてある (pj testdata crosscheck)。
 
 #if defined(__x86_64__) && defined(__GNUC__) && !defined(__clang__)
@@ -202,7 +202,7 @@ signed main() {
   seg.apply(c, N, d);
   int s= seg.max_right(0, [&](long long x) { return x < 0; });
   if(s == N) s= N - 1;
-  cout << (double)seg[s] / (s + 1) + B << '\n';
+  cout << (double)(seg[s] + (long long)B * (s + 1)) / (s + 1) << '\n';
  }
  return 0;
 }

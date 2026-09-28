@@ -1,5 +1,5 @@
 // 期待出力を作る参照実装。submissions/lib.cpp を pj bundle で 1 ファイルに展開して固定したもの
-// (2026-09-27、Library ee5e64302)。Library を直しても変わらないので、直したあとの提出はこれと比べられる。
+// (2026-09-28、Library ee5e64302)。Library を直しても変わらないので、直したあとの提出はこれと比べられる。
 // 小さい入力では brute.cpp と突き合わせてある (pj testdata crosscheck)。
 
 #if defined(__x86_64__) && defined(__GNUC__) && !defined(__clang__)
@@ -457,6 +457,7 @@ signed main() {
  using Mint= ModInt<998244353>;
  long long n, m;
  cin >> n >> m, --n, --m;
+ if(n == 0) return cout << div_at<Mint>({1}, {1, -1, -1}, m) << '\n', 0;
  auto f= sfps::div<Mint>({1}, {1, -1, -1}, n + 1);
  auto b= sfps::div<Mint>(sfps::pow<Mint>({1, -1}, n, n), {1, -1, -1}, n + 1);
  Mint D= Mint(1) / (b[n] * b[n] - b[n - 1] * b[n + 1]);
