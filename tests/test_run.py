@@ -64,6 +64,7 @@ def test_compiling_submission_is_ac(tmp_path, local_env, machine):
     assert record.status == "AC"
     assert record.case_count == 0
     assert record.binary_bytes and record.binary_bytes > 0
+    assert record.compile_ms is not None and record.compile_ms > 0
     assert record.failed_case is None
     assert record.cpu_model
     assert record.key == worklist.jobs[0].key
@@ -99,6 +100,8 @@ def test_broken_submission_is_ce(tmp_path, local_env, machine):
 
     assert record.status == "CE"
     assert record.binary_bytes is None
+    # CE でもコンパイラが走った時間は残る。
+    assert record.compile_ms is not None and record.compile_ms > 0
     assert record.failed_case is not None
     assert record.failed_case.status == "CE"
     assert "nope" in record.failed_case.detail

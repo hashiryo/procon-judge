@@ -41,7 +41,7 @@ body {
   color: var(--c-text);
   line-height: 1.6;
   padding: 20px;
-  max-width: 1200px;
+  max-width: 1300px;
   margin: 0 auto;
 }
 
@@ -140,9 +140,10 @@ table {
    表が動くのを止める。入りきらない中身は省略記号にして title に残す。 */
 table.fixed {
   table-layout: fixed;
-  /* ページの器 (1200px から左右の余白 20px を引いた 1160px) いっぱいまで使う。
-     固定幅の列の合計は 824px で、残りの 336px が提出の列に回る。 */
-  min-width: 1160px;
+  /* ページの器 (1300px から左右の余白 20px を引いた 1260px) いっぱいまで使う。
+     固定幅の列の合計は 957px で、残りの 303px が提出の列に回る。コンパイルの列を
+     足したとき、提出の列を削らずに器を 100px 広げた。 */
+  min-width: 1260px;
 }
 
 table.fixed th,
@@ -319,7 +320,7 @@ h1.mono {
 /* 提出ページの表。幅を決めない列は「現行」で、参考の理由がそこに入る。
    CPU モデルの名前は長いので、こちらは幅を決めて読める分を確保する。 */
 table.submission {
-  min-width: 1160px;
+  min-width: 1260px;
 }
 
 /* 参考の理由。表の下に、同じ理由の行をまとめて出す。 */

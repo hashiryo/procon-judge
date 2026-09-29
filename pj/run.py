@@ -458,6 +458,7 @@ def execute_job(job: Job) -> Record:
         "library_sha": library_sha(),
         "judge_sha": judge_sha(),
         "source_bytes": (problem.dir / submission).stat().st_size,
+        "compile_ms": round(built.seconds * 1000),
     }
 
     if not built.ok:

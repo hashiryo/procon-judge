@@ -45,6 +45,10 @@ class Record:
     memory_max_kb: int
     source_bytes: int
     binary_bytes: int | None
+    # コンパイラを起動してから終わるまでの実時間 (ミリ秒)。LTO のリンクも入る。CE でも
+    # 入り、打ち切ったときは打ち切るまでの時間。キーには入れない (同じソースでも runner の
+    # 混み具合で揺れる)。古い記録には無い。
+    compile_ms: int | None = None
     # キーの残りの成分。参考に落ちたとき、どの成分が動いたかを見分けるために持つ。
     harness_hash: str = ""
     problem_hash: str = ""

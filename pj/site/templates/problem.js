@@ -26,6 +26,10 @@ function bytes(n) {
   return n < 1024 ? n + " B" : (n / 1024).toFixed(1) + " KB";
 }
 
+function sec(ms) {
+  return ms === null || ms === undefined ? "-" : (ms / 1000).toFixed(1) + " s";
+}
+
 // 既定の並びは algo の最大ケース。計測区間の外の I/O と整形を含まないので、
 // 実装どうしを比べるならこちら。algo の無い記録は実時間で代用する。
 function speed(row) {
@@ -178,6 +182,14 @@ const COLUMNS = [
     width: "100px",
     value: (r) => (r.binary_bytes === null ? -1 : r.binary_bytes),
     cell: (r) => el("td", bytes(r.binary_bytes), "n"),
+  },
+  {
+    // コンパイルの実時間。CE の行にも入る。重い constexpr やテンプレートを見るための列。
+    id: "compile",
+    label: "コンパイル",
+    width: "100px",
+    value: (r) => (r.compile_ms === null || r.compile_ms === undefined ? -1 : r.compile_ms),
+    cell: (r) => el("td", sec(r.compile_ms), "n"),
   },
   {
     id: "samples",

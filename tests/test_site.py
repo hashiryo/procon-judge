@@ -99,6 +99,33 @@ def test_algo_may_be_missing():
     assert cells[0].algo_ns is None
 
 
+def test_compile_time_takes_the_minimum_of_the_records_that_have_it():
+    """コンパイル時間も同じキーの最小。欄の無い古い記録は数えない。"""
+    cells = site_build.collapse(
+        [
+            rec(compile_ms=9000),
+            rec(timestamp="2026-01-02T00:00:00Z"),
+            rec(compile_ms=8700, timestamp="2026-01-03T00:00:00Z"),
+        ]
+    )
+    assert cells[0].compile_ms == 8700
+    payload = site_build.problem_payload("p", None, cells, "now")
+    assert payload["rows"][0]["compile_ms"] == 8700
+
+
+def test_compile_time_is_none_for_old_records():
+    cell = site_build.collapse([rec()])[0]
+    assert cell.compile_ms is None
+    page = site_build.submission_html(page_for([cell]), "")
+    assert "<th class=\"n\">コンパイル</th>" in page
+
+
+def test_submission_page_shows_the_compile_time_in_seconds():
+    cell = site_build.collapse([rec(status="CE", compile_ms=64900)])[0]
+    page = site_build.submission_html(page_for([cell]), "")
+    assert '<td class="n">64.9 s</td>' in page
+
+
 def test_the_failed_case_is_trimmed():
     cells = site_build.collapse(
         [
