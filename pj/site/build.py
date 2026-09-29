@@ -78,6 +78,8 @@ class Cell:
     failed: dict | None
     # コンパイルの実時間 (ミリ秒)。同じキーの記録の最小値。古い記録しか無ければ None。
     compile_ms: int | None = None
+    # コンパイル中のメモリの山 (KB)。同じキーの記録の最小値。古い記録しか無ければ None。
+    compile_rss_kb: int | None = None
     # AC でなかったケースの名前。failed はその最初の 1 つの明細。
     failed_cases: tuple[str, ...] = ()
     # 今のソースで測った記録なら True、ソースが変わっていれば False。
@@ -196,6 +198,7 @@ def _cell(
     ]
     # 実行時間と同じく最小を取る。runner の混み具合で遅くなる方にだけ揺れるため。
     compile_ms = [r["compile_ms"] for r in same if r.get("compile_ms") is not None]
+    compile_rss = [r["compile_rss_kb"] for r in same if r.get("compile_rss_kb")]
     current = judge(newest)
     return Cell(
         submission=submission,
@@ -215,6 +218,7 @@ def _cell(
         judge_sha=newest.get("judge_sha"),
         failed=_failed(newest),
         compile_ms=min(compile_ms) if compile_ms else None,
+        compile_rss_kb=min(compile_rss) if compile_rss else None,
         failed_cases=tuple(newest.get("failed_cases") or ()),
         current=current,
         reason=(
@@ -505,6 +509,7 @@ def problem_payload(
                 "source_bytes": c.source_bytes,
                 "binary_bytes": c.binary_bytes,
                 "compile_ms": c.compile_ms,
+                "compile_rss_kb": c.compile_rss_kb,
                 "samples": c.samples,
                 "timestamp": c.timestamp,
                 "judge_sha": c.judge_sha,
@@ -651,6 +656,7 @@ def _cell_row(page: SubmissionPage, c: Cell) -> str:
         f'<td class="n">{c.wall_ms} ms</td>'
         f'<td class="n">{_mb(c.rss_kb)}</td>'
         f'<td class="n">{_sec(c.compile_ms)}</td>'
+        f'<td class="n">{_mb(c.compile_rss_kb or 0)}</td>'
         f'<td class="n">{c.samples}</td>'
         f"{fresh}"
         f'<td class="dim" title="{esc(c.timestamp)}">{esc(_stamp(c.timestamp))}</td>'
@@ -721,7 +727,8 @@ def _missing_row(env: str) -> str:
         '<td class="dim">-</td>'
         '<td class="dim">未計測</td>'
         '<td class="n dim">-</td><td class="n dim">-</td><td class="n dim">-</td>'
-        '<td class="n dim">-</td><td class="n dim">-</td><td class="dim">-</td><td class="dim">-</td>'
+        '<td class="n dim">-</td><td class="n dim">-</td><td class="n dim">-</td>'
+        '<td class="dim">-</td><td class="dim">-</td>'
         '<td class="dim">-</td>'
         "</tr>"
     )
@@ -736,7 +743,7 @@ def _rows_html(page: SubmissionPage) -> str:
     measured = {c.env for c in cells}
     rows += [_missing_row(env) for env in page.env_names if env not in measured]
     if not rows:
-        return '<tr><td colspan="11" class="empty">まだ記録がありません。</td></tr>'
+        return '<tr><td colspan="12" class="empty">まだ記録がありません。</td></tr>'
     return "".join(rows)
 
 

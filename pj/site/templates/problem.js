@@ -134,6 +134,7 @@ const COLUMNS = [
     id: "submission",
     label: "提出",
     text: true,
+    always: true,
     value: (r) => r.submission,
     cell: (r) => nameCell(r.submission, "mono name", mark(r)),
   },
@@ -141,6 +142,7 @@ const COLUMNS = [
     id: "status",
     label: "状態",
     text: true,
+    always: true,
     // 状態と落ちたケース名。長いケース名は省略記号にして、詳細は title に残る。
     width: "110px",
     value: (r) => r.status,
@@ -187,9 +189,18 @@ const COLUMNS = [
     // コンパイルの実時間。CE の行にも入る。重い constexpr やテンプレートを見るための列。
     id: "compile",
     label: "コンパイル",
-    width: "100px",
+    width: "110px",
     value: (r) => (r.compile_ms === null || r.compile_ms === undefined ? -1 : r.compile_ms),
     cell: (r) => el("td", sec(r.compile_ms), "n"),
+  },
+  {
+    // コンパイラとその子 (cc1plus、lto1、リンカ) のうち、いちばん大きいもののピーク RSS。
+    // 判定サイトにはコンパイル中のメモリを 512 MB で切るものがある。
+    id: "compile_rss",
+    label: "コンパイル メモリ",
+    width: "160px",
+    value: (r) => (r.compile_rss_kb ? r.compile_rss_kb : -1),
+    cell: (r) => el("td", mb(r.compile_rss_kb), "n"),
   },
   {
     id: "samples",
@@ -216,6 +227,63 @@ const COLUMNS = [
 let DATA = null;
 let sortBy = "algo";
 let ascending = true;
+
+// 隠した列。選ぶたびに覚えて、次に開いたときも同じ列を出す。提出と状態は隠せない。
+const HIDDEN_MEMORY = "pj.hidden-columns";
+
+function rememberedHidden() {
+  try {
+    const value = JSON.parse(localStorage.getItem(HIDDEN_MEMORY) || "[]");
+    return new Set(Array.isArray(value) ? value : []);
+  } catch (e) {
+    return new Set();
+  }
+}
+
+function rememberHidden() {
+  try {
+    localStorage.setItem(HIDDEN_MEMORY, JSON.stringify([...hidden]));
+  } catch (e) {
+    // 保存できない環境では覚えないだけ。
+  }
+}
+
+let hidden = rememberedHidden();
+
+function shown() {
+  return COLUMNS.filter((c) => c.always || !hidden.has(c.id));
+}
+
+// 提出の列に残す幅。固定幅の列を出すほど表の最小幅を広げ、提出の名前を削らない。
+// 器に収まらなければ表の器 (.wrap) が横に送る。
+const NAME_MIN_PX = 300;
+
+// 列の出し入れ。見たい列だけを出せる。
+function renderPicker() {
+  const box = document.getElementById("columns");
+  box.replaceChildren(el("span", "列"));
+  for (const column of COLUMNS) {
+    if (column.always) continue;
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = !hidden.has(column.id);
+    input.addEventListener("change", () => {
+      if (input.checked) hidden.delete(column.id);
+      else hidden.add(column.id);
+      // 並べ替えの鍵にしていた列を隠したら、既定の並びに戻す。
+      if (hidden.has(sortBy)) {
+        sortBy = "algo";
+        ascending = true;
+      }
+      rememberHidden();
+      renderHead();
+      render();
+    });
+    const label = el("label", null, "check");
+    label.append(input, column.label);
+    box.append(label);
+  }
+}
 
 function envs() {
   return [...new Set(DATA.combos.map((c) => c.env))];
@@ -299,17 +367,20 @@ function sortRows(rows) {
 }
 
 function renderHead() {
+  const columns = shown();
   const cols = document.getElementById("cols");
   cols.replaceChildren();
-  for (const column of COLUMNS) {
+  for (const column of columns) {
     const col = document.createElement("col");
     if (column.width) col.style.width = column.width;
     cols.append(col);
   }
+  const fixed = columns.reduce((sum, c) => sum + (c.width ? parseInt(c.width, 10) : 0), 0);
+  document.getElementById("table").style.minWidth = fixed + NAME_MIN_PX + "px";
 
   const tr = document.getElementById("head");
   tr.replaceChildren();
-  for (const column of COLUMNS) {
+  for (const column of columns) {
     const th = el("th", column.label, column.text ? "sortable" : "n sortable");
     // 印は出ていないときも場所を取る。押すたびに見出しがずれないように。
     th.append(el("span", column.id === sortBy ? (ascending ? "▲" : "▼") : "", "mark"));
@@ -346,7 +417,7 @@ function render() {
   body.replaceChildren();
   for (const row of sortRows(rows)) {
     const tr = el("tr", null, row.outside ? "outside" : row.current === false ? "stale" : null);
-    for (const column of COLUMNS) tr.append(column.cell(row));
+    for (const column of shown()) tr.append(column.cell(row));
     body.append(tr);
   }
   for (const name of missing) body.append(missingLine(name));
@@ -390,7 +461,7 @@ function renderBatch(combo) {
 // 提出が無いのかを見分けられない。行は残して値だけ空にする。
 function missingLine(name) {
   const tr = el("tr", null, "missing");
-  for (const column of COLUMNS) {
+  for (const column of shown()) {
     if (column.id === "submission") {
       tr.append(nameCell(name, "mono dim name"));
     } else if (column.id === "status") {
@@ -457,6 +528,7 @@ async function main() {
       el("p", "まだ記録がありません。", "empty")
     );
     document.getElementById("controls").style.display = "none";
+    document.getElementById("columns").style.display = "none";
     return;
   }
 
@@ -480,6 +552,7 @@ async function main() {
     rememberModel(modelSelect.value);
     render();
   });
+  renderPicker();
   renderHead();
   render();
 }

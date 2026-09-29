@@ -15,11 +15,13 @@
       <label>環境 <select id="env"></select></label>
       <label>CPU <select id="model"></select></label>
     </div>
+    <!-- 出す列の選択。problem.js が COLUMNS から作る。 -->
+    <div class="controls" id="columns"></div>
     <div class="meta" id="counts"></div>
     <div class="meta" id="combo-meta"></div>
     <div class="meta" id="batch-meta"></div>
     <div class="wrap" id="wrap">
-      <table class="fixed">
+      <table class="fixed" id="table">
         <!-- 列幅も見出しも problem.js が作る。並べ替えの鍵と一緒に持たせるため。 -->
         <colgroup id="cols"></colgroup>
         <thead>

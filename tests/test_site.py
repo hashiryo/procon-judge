@@ -126,6 +126,37 @@ def test_submission_page_shows_the_compile_time_in_seconds():
     assert '<td class="n">64.9 s</td>' in page
 
 
+def test_compile_memory_takes_the_minimum_and_shows_in_megabytes():
+    cells = site_build.collapse(
+        [
+            rec(compile_rss_kb=500 * 1024),
+            rec(timestamp="2026-01-02T00:00:00Z"),
+            rec(compile_rss_kb=485 * 1024, timestamp="2026-01-03T00:00:00Z"),
+        ]
+    )
+    assert cells[0].compile_rss_kb == 485 * 1024
+    payload = site_build.problem_payload("p", None, cells, "now")
+    assert payload["rows"][0]["compile_rss_kb"] == 485 * 1024
+    page = site_build.submission_html(page_for(cells), "")
+    assert '<td class="n">485.0 MB</td>' in page
+    assert "<th class=\"n\">コンパイル メモリ</th>" in page
+
+
+def test_submission_page_rows_have_as_many_cells_as_the_header():
+    import re
+
+    cell = site_build.collapse([rec(compile_ms=100, compile_rss_kb=2048)])[0]
+    page = site_build.submission_html(page_for([cell]), "")
+    table = page[page.index('<table class="fixed submission">'):page.index("</table>")]
+    head = len(re.findall(r"<th\b", table))
+    assert len(re.findall(r"<col\b", table)) == head
+    body = table[table.index("<tbody>"):]
+    # 記録のある x64-gcc の行と、記録の無い arm-gcc の行。
+    rows = re.findall(r"<tr[^>]*>(.*?)</tr>", body, re.S)
+    assert len(rows) == 2
+    assert all(len(re.findall(r"<td\b", row)) == head for row in rows)
+
+
 def test_the_failed_case_is_trimmed():
     cells = site_build.collapse(
         [
