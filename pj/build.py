@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import json
 import shlex
 import shutil
 import subprocess
+import sys
+import tempfile
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -17,6 +20,12 @@ from .problem import Problem
 # constexpr を重く回す実装や -flto のリンクで伸びるので上限を置く。超えたら CE。
 COMPILE_TIMEOUT_SEC = 180
 
+# コンパイラを 1 段はさんで起こす親。時間とメモリの山を測り、打ち切りもする。pj が直接
+# 起こすと、Linux では子の ru_maxrss に pj 自身のピーク RSS が乗る (compile_meter.py)。
+METER = Path(__file__).with_name("compile_meter.py")
+# 親が打ち切れなかったとき (親そのものが固まったとき) の保険。
+METER_GRACE_SEC = 30
+
 
 @dataclass(frozen=True)
 class BuildResult:
@@ -26,6 +35,9 @@ class BuildResult:
     command: list[str]
     seconds: float
     log: str
+    # コンパイラとその子 (cc1plus、lto1、リンカ) のうち、いちばん大きいもののピーク RSS。
+    # 測れなかったら None。
+    rss_kb: int | None = None
 
 
 # キーの材料の中で、問題自身のディレクトリの -I を置き換える印。問題をどこに置くかを
@@ -156,35 +168,56 @@ def build_standalone(
 
 
 def _compile(cmd: list[str], binary: Path, cxxflags: str) -> BuildResult:
+    def result(ok: bool, seconds: float, log: str, rss_kb: int | None = None) -> BuildResult:
+        return BuildResult(
+            ok=ok, binary=binary if ok else None, cxxflags=cxxflags, command=cmd,
+            seconds=seconds, log=log, rss_kb=rss_kb,
+        )
+
+    timed_out = f"コンパイルが {COMPILE_TIMEOUT_SEC} 秒を超えました"
     t0 = time.monotonic()
-    try:
-        proc = subprocess.run(
-            cmd, cwd=ROOT, capture_output=True, text=True, check=False,
-            timeout=COMPILE_TIMEOUT_SEC,
-        )
-    except subprocess.TimeoutExpired:
-        return BuildResult(
-            ok=False, binary=None, cxxflags=cxxflags, command=cmd,
-            seconds=time.monotonic() - t0,
-            log=f"コンパイルが {COMPILE_TIMEOUT_SEC} 秒を超えました",
-        )
-    except OSError as e:
-        return BuildResult(
-            ok=False, binary=None, cxxflags=cxxflags, command=cmd,
-            seconds=time.monotonic() - t0, log=str(e),
-        )
-    seconds = time.monotonic() - t0
+    with tempfile.TemporaryDirectory(prefix="pj-meter-") as tmp:
+        report_path = Path(tmp) / "report.json"
+        wrapped = [sys.executable, str(METER), str(report_path), str(COMPILE_TIMEOUT_SEC), *cmd]
+        try:
+            proc = subprocess.run(
+                wrapped, cwd=ROOT, capture_output=True, text=True, check=False,
+                timeout=COMPILE_TIMEOUT_SEC + METER_GRACE_SEC,
+            )
+        except subprocess.TimeoutExpired:
+            return result(False, time.monotonic() - t0, timed_out)
+        except OSError as e:
+            return result(False, time.monotonic() - t0, str(e))
+        report = _read_report(report_path)
+
+    seconds = report.get("seconds", time.monotonic() - t0)
+    rss_kb = report.get("rss_kb")
+    rss_kb = rss_kb if isinstance(rss_kb, int) and rss_kb > 0 else None
+    if report.get("timed_out"):
+        return result(False, seconds, timed_out, rss_kb)
+    if "error" in report:
+        # コンパイラが起こせなかった (見つからないなど)。
+        return result(False, seconds, str(report["error"]))
 
     log = (proc.stdout + proc.stderr).strip()
-    if proc.returncode != 0 or not binary.is_file():
-        return BuildResult(
-            ok=False, binary=None, cxxflags=cxxflags, command=cmd,
-            seconds=seconds, log=log,
-        )
-    return BuildResult(
-        ok=True, binary=binary, cxxflags=cxxflags, command=cmd,
-        seconds=seconds, log=log,
-    )
+    ok = proc.returncode == 0 and binary.is_file()
+    return result(ok, seconds, log, rss_kb)
+
+
+def summary(built: BuildResult) -> str:
+    """ログに出すコンパイルの時間とメモリの山。例: 「8.7s, 485 MB」。"""
+    if built.rss_kb is None:
+        return f"{built.seconds:.1f}s"
+    return f"{built.seconds:.1f}s, {built.rss_kb / 1024:.0f} MB"
+
+
+def _read_report(path: Path) -> dict:
+    """compile_meter.py が書いた結果。書かれていなければ空。"""
+    try:
+        report = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return {}
+    return report if isinstance(report, dict) else {}
 
 
 def build_checker(source: Path, out: Path, env: Environment) -> Path | None:

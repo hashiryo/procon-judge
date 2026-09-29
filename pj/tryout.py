@@ -81,11 +81,11 @@ def run_built(
     expected_path はテストケースの期待出力で、判定はせずに場所だけを最後に出す。
     """
     if not built.ok:
-        print(f"CE ({built.seconds:.1f}s)", file=err)
+        print(f"CE ({build_mod.summary(built)})", file=err)
         print(built.log, file=err)
         return 1
     assert built.binary is not None
-    print(f"コンパイル完了 ({built.seconds:.1f}s)", file=err)
+    print(f"コンパイル完了 ({build_mod.summary(built)})", file=err)
     if built.log:
         # 警告。組めたときも出す。
         print(built.log, file=err)

@@ -243,9 +243,9 @@ def check(
     print(f"{env.cxx} {shlex.join(flags)} で組みます", file=out)
     built = build_mod.build_standalone(path, env, flags, out_dir=work)
     if not built.ok:
-        print(f"CE ({built.seconds:.1f}s)", file=out)
+        print(f"CE ({build_mod.summary(built)})", file=out)
         print(built.log, file=out)
         return 1
     assert built.binary is not None
-    print(f"コンパイル完了 ({built.seconds:.1f}s)", file=out)
+    print(f"コンパイル完了 ({build_mod.summary(built)})", file=out)
     return repro_mod.run_binary(problem, built.binary, env, work, cases=cases, out=out)

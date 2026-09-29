@@ -74,7 +74,7 @@ def crosscheck(
         print(f"{source} を {env.cxx} で組みます", file=out)
         built = build_mod.build(problem, source, env, out_dir=work / "build" / label)
         if not built.ok or built.binary is None:
-            print(f"CE ({built.seconds:.1f}s)", file=out)
+            print(f"CE ({build_mod.summary(built)})", file=out)
             print(built.log, file=out)
             return 1
         binaries[label] = built.binary

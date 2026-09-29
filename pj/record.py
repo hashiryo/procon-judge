@@ -49,6 +49,9 @@ class Record:
     # 入り、打ち切ったときは打ち切るまでの時間。キーには入れない (同じソースでも runner の
     # 混み具合で揺れる)。古い記録には無い。
     compile_ms: int | None = None
+    # コンパイラとその子 (cc1plus、lto1、リンカ) のうち、いちばん大きいもののピーク RSS (KB)。
+    # 判定サイトにはコンパイル中のメモリを 512 MB で切るものがある。古い記録には無い。
+    compile_rss_kb: int | None = None
     # キーの残りの成分。参考に落ちたとき、どの成分が動いたかを見分けるために持つ。
     harness_hash: str = ""
     problem_hash: str = ""

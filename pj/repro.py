@@ -69,11 +69,11 @@ def repro(
     print(f"{env.cxx} でコンパイルします", file=out)
     built = build_mod.build(problem, submission, env)
     if not built.ok:
-        print(f"CE ({built.seconds:.1f}s)", file=out)
+        print(f"CE ({build_mod.summary(built)})", file=out)
         print(built.log, file=out)
         return 1
     assert built.binary is not None
-    print(f"コンパイル完了 ({built.seconds:.1f}s, {built.binary.stat().st_size} bytes)", file=out)
+    print(f"コンパイル完了 ({build_mod.summary(built)}, {built.binary.stat().st_size} bytes)", file=out)
     work = work_dir(problem, submission, env.name)
     return run_binary(problem, built.binary, env, work, case=case, cases=cases, out=out)
 

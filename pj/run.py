@@ -459,10 +459,11 @@ def execute_job(job: Job) -> Record:
         "judge_sha": judge_sha(),
         "source_bytes": (problem.dir / submission).stat().st_size,
         "compile_ms": round(built.seconds * 1000),
+        "compile_rss_kb": built.rss_kb,
     }
 
     if not built.ok:
-        _log(f"  CE ({built.seconds:.1f}s)")
+        _log(f"  CE ({build_mod.summary(built)})")
         if built.log:
             _log(_indent(built.log))
         return Record(
@@ -481,7 +482,7 @@ def execute_job(job: Job) -> Record:
         )
 
     assert built.binary is not None
-    _log(f"  コンパイル完了 ({built.seconds:.1f}s, {built.binary.stat().st_size} bytes)")
+    _log(f"  コンパイル完了 ({build_mod.summary(built)}, {built.binary.stat().st_size} bytes)")
     if built.log:
         _log(_indent(built.log))
 
