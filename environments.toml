@@ -8,30 +8,36 @@
 # arm の 2 環境は、GitHub の arm のランナー (Neoverse-N2) に合わせて -mcpu=neoverse-n2+aes にする。
 # +aes は PMULL のためで、SIMDe は __ARM_FEATURE_AES があるときだけ _mm_clmulepi64_si128 を
 # PMULL で組む (clang は 22 から)。
+# CI の 4 環境は、constexpr の評価の上限を判定サイトの最小に揃える。GCC は
+# -fconstexpr-ops-limit=2097152、Clang は -fconstexpr-steps=524288 (AtCoder の C++23 の値。
+# ほかの判定サイトは既定のまま)。値は pj/environment.py の CONSTEXPR_LIMITS と同じで、
+# テストが食い違いを見る。local は c++ が macOS では Apple clang、CI の test のジョブでは
+# GCC になり、片方にしか通らないフラグを書けないので付けない (pj bundle --check は付ける)。
+# 2026-09-29 から。DESIGN.md の「constexpr の上限を判定サイトの最小に揃える記録」。
 
 [[env]]
 name = "x64-gcc"
 runs_on = "ubuntu-24.04"
 cxx = "g++-15"
-cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=x86-64-v3 -mpclmul -mvpclmulqdq -flto=auto -pthread"
+cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=x86-64-v3 -mpclmul -mvpclmulqdq -flto=auto -pthread -fconstexpr-ops-limit=2097152"
 
 [[env]]
 name = "x64-clang"
 runs_on = "ubuntu-24.04"
 cxx = "clang++-21"
-cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=x86-64-v3 -mpclmul -mvpclmulqdq -flto=auto -pthread -fuse-ld=lld"
+cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -march=x86-64-v3 -mpclmul -mvpclmulqdq -flto=auto -pthread -fuse-ld=lld -fconstexpr-steps=524288"
 
 [[env]]
 name = "arm-gcc"
 runs_on = "ubuntu-24.04-arm"
 cxx = "g++-15"
-cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -mcpu=neoverse-n2+aes -flto=auto -pthread -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES"
+cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -mcpu=neoverse-n2+aes -flto=auto -pthread -fconstexpr-ops-limit=2097152 -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES"
 
 [[env]]
 name = "arm-clang"
 runs_on = "ubuntu-24.04-arm"
 cxx = "clang++-21"
-cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -mcpu=neoverse-n2+aes -flto=auto -pthread -fuse-ld=lld -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES"
+cxxflags = "-std=gnu++23 -Wall -Wextra -O2 -mcpu=neoverse-n2+aes -flto=auto -pthread -fuse-ld=lld -fconstexpr-steps=524288 -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES"
 
 [[env]]
 name = "local"

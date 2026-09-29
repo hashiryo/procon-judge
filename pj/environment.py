@@ -13,6 +13,17 @@ from .paths import ENVIRONMENTS_TOML
 
 TOOLCHAINS = {"g++": "gcc", "clang++": "clang", "c++": "system"}
 
+# constexpr の評価の上限。判定サイトの中でいちばん小さい値に揃える。2026-09-29 に約 30 の
+# 判定サイトを調べて、既定から変えていたのは AtCoder の C++23 (GCC 15.2 と Clang 21.1) だけ
+# だった。操作の数は AtCoder が既定 (GCC 33554432、Clang 1048576) より小さくしている。深さと
+# ループの回数は AtCoder が既定より大きくしているので、既定のままが最小になる。数え方が
+# コンパイラごとに違うので系統ごとに持つ。CI の環境は environments.toml に同じ値を書き、
+# テストが食い違いを見る。DESIGN.md の「constexpr の上限を判定サイトの最小に揃える記録」。
+CONSTEXPR_LIMITS = {
+    "gcc": ("-fconstexpr-ops-limit=2097152",),
+    "clang": ("-fconstexpr-steps=524288",),
+}
+
 
 class EnvironmentError_(Exception):
     """環境の定義か検出で失敗したときに投げる。"""
@@ -165,3 +176,15 @@ def toolchain(env: Environment) -> str:
             f"(既知: {', '.join(sorted(TOOLCHAINS))})"
         )
     return TOOLCHAINS[base]
+
+
+def compiler_family(env: Environment) -> str:
+    """env のコンパイラが gcc か clang か。
+
+    c++ は名前から分からないので版の文字列を見る。macOS では Apple clang、CI の test の
+    ジョブ (ubuntu) では GCC になる。
+    """
+    kind = toolchain(env)
+    if kind != "system":
+        return kind
+    return "clang" if "clang" in compiler_version(env.cxx).lower() else "gcc"

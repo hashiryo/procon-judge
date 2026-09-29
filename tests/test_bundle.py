@@ -233,7 +233,26 @@ def test_the_source_limit_comes_from_the_id_prefix(tmp_path):
 
 def test_check_flags_drop_includes_and_arch():
     x64 = env_mod.load("x64-gcc")
-    assert bundle_mod.check_flags(x64) == ["-std=gnu++23", "-O2"]
+    assert bundle_mod.check_flags(x64) == ["-std=gnu++23", "-O2", "-fconstexpr-ops-limit=2097152"]
+
+
+def test_check_flags_carry_the_constexpr_limit_of_the_family():
+    assert "-fconstexpr-steps=524288" in bundle_mod.check_flags(env_mod.load("x64-clang"))
+
+
+@pytest.mark.parametrize(
+    ("version", "flag"),
+    [
+        ("Apple clang version 21.0.0 (clang-2100.1.1.101)", "-fconstexpr-steps=524288"),
+        ("c++ (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0", "-fconstexpr-ops-limit=2097152"),
+    ],
+)
+def test_check_flags_read_the_family_of_local_off_the_version(monkeypatch, version, flag):
+    # local は environments.toml に上限を書けない (c++ が macOS と ubuntu で別のコンパイラ)。
+    monkeypatch.setattr(env_mod, "compiler_version", lambda cxx: version)
+    flags = bundle_mod.check_flags(env_mod.load("local"))
+    assert flag in flags
+    assert len([f for f in flags if f.startswith("-fconstexpr-")]) == 1
 
 
 def test_check_flags_keep_the_simde_switch():

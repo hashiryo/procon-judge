@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import shlex
 from pathlib import Path
 
 import pytest
@@ -131,6 +132,41 @@ def test_the_matrix_toolchains_drive_the_install_loop():
 def test_the_toolchain_is_read_off_the_compiler():
     assert env_mod.toolchain(env_mod.load("x64-gcc")) == "gcc"
     assert env_mod.toolchain(env_mod.load("arm-clang")) == "clang"
+
+
+def test_ci_envs_carry_the_constexpr_limits_of_their_family():
+    """CI の環境は判定サイトの最小の上限で組む。environments.toml と CONSTEXPR_LIMITS を揃える。"""
+    every = {f for flags in env_mod.CONSTEXPR_LIMITS.values() for f in flags}
+    for env in ci_envs():
+        flags = set(shlex.split(env.cxxflags))
+        mine = set(env_mod.CONSTEXPR_LIMITS[env_mod.toolchain(env)])
+        assert mine <= flags, env.name
+        # 別の系統のフラグはコンパイラが知らないので CE になる。
+        assert not (every - mine) & flags, env.name
+
+
+def test_local_env_has_no_constexpr_limit():
+    # c++ は macOS では Apple clang、CI の test のジョブでは GCC で、片方にしか通らない。
+    every = {f for flags in env_mod.CONSTEXPR_LIMITS.values() for f in flags}
+    assert not every & set(shlex.split(env_mod.load("local").cxxflags))
+
+
+@pytest.mark.parametrize(
+    ("version", "family"),
+    [
+        ("Apple clang version 21.0.0 (clang-2100.1.1.101)", "clang"),
+        ("Ubuntu clang version 18.1.3 (1ubuntu1)", "clang"),
+        ("c++ (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0", "gcc"),
+    ],
+)
+def test_the_family_of_cxx_is_read_off_the_version(monkeypatch, version, family):
+    monkeypatch.setattr(env_mod, "compiler_version", lambda cxx: version)
+    assert env_mod.compiler_family(env_mod.load("local")) == family
+
+
+def test_the_family_of_a_named_compiler_needs_no_version():
+    assert env_mod.compiler_family(env_mod.load("x64-gcc")) == "gcc"
+    assert env_mod.compiler_family(env_mod.load("arm-clang")) == "clang"
 
 
 # --- CPU モデルの検出 ------------------------------------------------------

@@ -24,7 +24,7 @@ from typing import TextIO
 from . import build as build_mod
 from . import include as include_mod
 from . import repro as repro_mod
-from .environment import Environment
+from .environment import CONSTEXPR_LIMITS, Environment, compiler_family
 from .paths import CACHE_DIR, LIB_DIR, SIMDE_DIR
 from .problem import Problem
 
@@ -211,9 +211,13 @@ def check_flags(env: Environment) -> list[str]:
     読み替えていて、落とすと x86 の intrinsics を使う提出が組めない。そのときだけ SIMDe の
     -I を足す。SIMDe は山括弧で読むので展開には入らず、判定サイトの x86 ではプリプロセッサが
     飛ばす分岐にある。
+
+    constexpr の上限は判定サイトの最小に揃える (CONSTEXPR_LIMITS)。local の環境は c++ が
+    macOS と ubuntu で別のコンパイラになり、environments.toml に書けないので、ここで
+    コンパイラの系統を見て足す。
     """
     defines = [f for f in shlex.split(env.cxxflags) if f.startswith("-D")]
-    flags = ["-std=gnu++23", "-O2", *defines]
+    flags = ["-std=gnu++23", "-O2", *CONSTEXPR_LIMITS[compiler_family(env)], *defines]
     if any(f.split("=", 1)[0] == "-DUSE_SIMDE" for f in defines):
         flags.append(f"-I{SIMDE_DIR}")
     return flags

@@ -232,6 +232,8 @@ vpclmulqdq を使うコードは、`__builtin_cpu_supports("vpclmulqdq")` で実
 
 gf2-64 の家族の提出は、土台の命令を宣言しません。土台に無い命令 (gfni など) を使う提出だけが、`#define GF2_64_EXTRA_TARGETS "gfni"` のように書きます。書く場所は、共通ヘッダ `_shared/gf2-64/_common.hpp` を初めて include するより前です。共通ヘッダがその命令の領域を開き、各問題の base.cpp の最後で閉じます。include したあとで `#pragma clang attribute push` を重ねても、clang は一番外側の target だけを使うので効きません。
 
+CI の 4 環境は、constexpr の評価の上限を判定サイトの最小に揃えて組みます。GCC は `-fconstexpr-ops-limit=2097152`、Clang は `-fconstexpr-steps=524288` で、AtCoder の C++23 と同じ値です。ほかの判定サイトは、調べた範囲では既定のままです。CI で組めれば、GCC と Clang で組む判定サイトでは、この上限で CE になることはありません。上限は 1 回の定数式の評価ごとに数えるので、大きい表は constexpr の変数をいくつかに分けると収まることがあります。`local` には付けません。`c++` が macOS では Apple clang、CI の test のジョブでは GCC になり、片方にしか通らないフラグを書けないためです (`pj bundle --check` は付けます)。調べた判定サイトの一覧は DESIGN.md の「constexpr の上限を判定サイトの最小に揃える記録」にあります。
+
 ### 5. 手元で確かめる
 
 ```
@@ -261,6 +263,8 @@ run にはモードが 2 つあります。push と Library の dispatch は網�
 ライブラリ (hashiryo/Library) の master への push もこちらを起こし、変わったヘッダを閉包に持つ提出だけが測り直されます。取りこぼしは 1 日 2 回の schedule が拾います。
 
 結果はサイトの問題一覧と順位表、提出ページに出ます。順位表は環境と CPU モデルを選んで見ます。参考の印が付いた行は測ってからソースが変わったもので、次の計測で入れ替わります。
+
+順位表と提出ページのコンパイルの列は、コンパイラを起動してから終わるまでの実時間です。LTO のリンクを含み、runner の混み具合で揺れるので、目安として見てください。2026-09-29 より前の記録には無く、「-」になります。
 
 ## 既存の問題に提出を足す
 
@@ -331,7 +335,7 @@ uv run pj bundle --problem <id> --submission submissions/<name>.hpp > a.cpp
 
 展開したものは `.cache/bundle/<id>/<提出の名前>.cpp` に書き、標準出力にも出します。書き先は `--out FILE` で変えられます。`--copy` を付けると、標準出力へは出さず、クリップボード (pbcopy) に入れます。書いた場所と大きさは stderr に出るので、標準出力はそのまま貼れます。元の問題が Codeforces か AtCoder のときは、ソースの大きさの上限 (64 KB と 512 KiB) を超えると警告を出します。提出欄に貼ったソースはブラウザが改行を CRLF にして送るので、大きさは改行を 2 バイトで数えます。
 
-`--check` を付けると、展開したファイルを 1 つで組み、手元のテストケースを名前順の先頭から 3 ケース走らせます。ケースの数は `--cases N` で変えられ、比べ方は `pj repro` と同じです。組むときは `-I` も `-march` も付けず、環境のコンパイラに `-std=gnu++23 -O2` と環境の `-D` だけを渡すので、include の取りこぼしがあれば CE になります。`local` と arm の環境は `-DUSE_SIMDE` で x86 の intrinsics を SIMDe に読み替えているので、そのときだけ SIMDe の `-I` を足します。
+`--check` を付けると、展開したファイルを 1 つで組み、手元のテストケースを名前順の先頭から 3 ケース走らせます。ケースの数は `--cases N` で変えられ、比べ方は `pj repro` と同じです。組むときは `-I` も `-march` も付けず、環境のコンパイラに `-std=gnu++23 -O2` と環境の `-D` だけを渡すので、include の取りこぼしがあれば CE になります。constexpr の上限は CI と同じ最小の値を付けます。`local` はコンパイラの版の文字列を見て、GCC なら `-fconstexpr-ops-limit=2097152`、Clang なら `-fconstexpr-steps=524288` を選びます。`local` と arm の環境は `-DUSE_SIMDE` で x86 の intrinsics を SIMDe に読み替えているので、そのときだけ SIMDe の `-I` を足します。
 
 macOS の `local` で組めても、判定サイトで組めるとは限りません。手元は arm の Apple clang と libc++ です。x86 の GCC でだけ通る経路 (先頭の宣言や x86 の intrinsics) は試されず、`ext/pb_ds` のように libstdc++ にしか無いヘッダは組めません。判定サイトごとの命令とコンパイラの違いは DESIGN.md の「判定サイトへ出す bundle の実装の記録」にあります。送信は手で行います。
 

@@ -2172,6 +2172,69 @@ agc018-c は 10^5 人のケースを 17 個入れたので、手元の生成物�
 
 abc369-g は、深さ 2×10^5 の道で参照実装の再帰が macOS のスタックの上限 (64 MB) を超えるので、頂点 1 から伸びる道を 15 万頂点までにしました。Linux の CI には上限がありません。
 
+## constexpr の上限を判定サイトの最小に揃える記録
+
+2026-09-29 に、CI の 4 環境で constexpr の評価の上限を判定サイトの最小に揃えました。GCC には `-fconstexpr-ops-limit=2097152`、Clang には `-fconstexpr-steps=524288` を付けます。同じ日から、記録はコンパイルの実時間 (`compile_ms`) も持ち、順位表と提出ページがそれを出します。
+
+きっかけは本人の `self-gf2-64-log` の `V3rho_ce_2.hpp` から `V3rho_ce_5.hpp` です。どれも定数の表を constexpr で作る提出です。CI の 4 環境では AC でした。ところが AtCoder の GCC の上限を付けて組むと、4 本とも CE になりました。メッセージは `'constexpr' evaluation operation count exceeds limit of 2097152` です (docker の gcc:15 で確かめました)。AtCoder の C++23 (GCC 15.2) のフラグは `-fconstexpr-depth=1024 -fconstexpr-loop-limit=524288 -fconstexpr-ops-limit=2097152` です。C++23 (Clang 21.1) は `-fconstexpr-depth=1024 -fconstexpr-steps=524288` です。CI はコンパイラの既定の上限で組んでいたので、AtCoder では CE になる提出が、順位表では AC に見えていました。
+
+### 判定サイトの上限
+
+約 30 の判定サイトと採点系について、公開されているコンパイルコマンドを調べました (2026-09-29 時点)。上限を既定から変えていたのは、AtCoder の 2 つの言語だけでした。
+
+| 区分 | 判定サイト |
+|---|---|
+| 上限を変えている | AtCoder の C++23 (GCC 15.2) と C++23 (Clang 21.1)。C++ IOI-Style (GCC 14.2) は既定のまま |
+| コマンドを確かめて、既定のまま | Codeforces、yukicoder、Library Checker、CodeChef、DMOJ、VNOJ、Kattis、CSES、Timus (MSVC を含む)、ICPC World Finals、DOMjudge、CMS、oj.uz、TopCoder の Marathon Match、LibreOJ、UOJ、QOJ、Luogu、Hydro、TLX、Yandex Contest、Baekjoon (2026-04-28 に終了) |
+| 公開されている説明にフラグが無い | LeetCode、NowCoder |
+| コマンドが公開されていない | AOJ、HackerRank、SPOJ、beecrowd、UVa、Toph、eolymp |
+
+GCC の既定値は、`-fconstexpr-ops-limit` が 33554432、`-fconstexpr-loop-limit` が 262144、`-fconstexpr-depth` が 512 です。操作の数の上限は GCC 9 からで、8 以前にはありません。Clang は `-fconstexpr-steps` が 1048576、`-fconstexpr-depth` が 512 です。値は gcc-mirror の `c.opt` と LLVM の `LangOptions.def` で確かめました。どちらも 1 回の定数式の評価ごとに数えます。数え方がコンパイラごとに違うので、最小は系統ごとに取りました。
+
+| | AtCoder | 既定 | 最小 |
+|---|---|---|---|
+| GCC の操作の数 | 2097152 | 33554432 | 2097152 |
+| GCC のループの回数 | 524288 | 262144 | 262144 |
+| GCC の深さ | 1024 | 512 | 512 |
+| Clang の文の数 (steps) | 524288 | 1048576 | 524288 |
+| Clang の深さ | 1024 | 512 | 512 |
+
+深さとループの回数は、AtCoder のほうが既定より大きくしています。AtCoder のフラグを丸ごと写すと、ほかの判定サイトで CE になる提出を見逃すので、付けるのは操作の数の 2 つだけです。`-ftemplate-depth` を変えている判定サイトはありませんでした。
+
+MSVC は、文書では `/constexpr:steps` の既定が 100000 です。数え方が GCC や Clang と違い、CI では同じ判定を作れないので対象にしていません。Timus の MSVC で組むときだけ気にします。
+
+### 別に組まず、最初からこの上限で組みます
+
+最初は、ふつうのコンパイルとは別に AtCoder の上限で `-fsyntax-only` をもう 1 回走らせ、判定を変えない欄に結果を残す案でした。本人と話して、最初からこの上限で組むことにしました。最小の上限を超える提出は AtCoder では CE になるので、CI でも CE と出れば十分だという判断です。
+
+通ったときの操作の数を出すオプションは、GCC と Clang のどちらにもありません。上限を超えたときに、超えたとだけ言います。上限を振って二分探索すれば数は出せますが、手元の Clang で 16384 要素の表を試すと 20 回のコンパイルが要りました。重い提出はフロントエンドだけで数十秒かかるので、CI で毎回は回せません。時間ならコンパイル 1 回で取れます。Clang の `-ftime-trace` は、constexpr の変数ごとに評価の時間を出します (`EvaluateAsInitializer`)。GCC の `-ftime-report` は、翻訳単位の合計を `constant expression evaluation` の行に出します。どちらも上限の判定には使えないので、今は取っていません。
+
+値は `pj/environment.py` の `CONSTEXPR_LIMITS` に置き、`environments.toml` の CI の 4 環境にも同じものを書きます。食い違いはテストが見ます。`local` には付けません。`c++` が macOS では Apple clang、CI の test のジョブ (ubuntu) では GCC になり、どちらか一方にしか通らないフラグを書けないためです。`pj bundle --check` は `c++ --version` の文字列から系統を見て、同じ最小の値を付けます。
+
+`cxxflags` はキーに入るので、フラグを変えたときに全部の記録が参考に落ち、測り直しになりました。V3rho_ce_2 から V3rho_ce_5 は、手元の `pj bundle --check` (Apple clang、steps 524288) でも CE になります。`CLS65537` と `RHO_CHUNKS<0>` が上限に当たります。
+
+### コンパイル時間
+
+記録の `compile_ms` は、コンパイラを起動してから終わるまでの実時間です。x64 と arm の環境は `-flto=auto` なので、LTO のリンクも入ります。CE でも入り、180 秒で打ち切ったときは打ち切るまでの時間です。同じソースでも runner の混み具合で揺れるので、キーには入れません。順位表と提出ページには、実行時間と同じく、同じキーの記録の最小を秒で出します。2026-09-29 より前の記録には無く、「-」になります。上限を変えたことで全部が測り直されるので、そこで埋まります。
+
+列を足したとき、提出の名前の列を狭めないように、ページの器を 1200px から 1300px に広げました。
+
+判定サイトのコンパイルの上限は、公開されているものだけを並べると次のとおりです。AtCoder、Codeforces、yukicoder は値を公開していません (Codeforces には時間切れの CE があります)。
+
+| 判定サイト | 時間 | メモリ |
+|---|---|---|
+| DMOJ と VNOJ (judge-server の既定値) | CPU 10 秒 (実時間 30 秒) | 上限なし |
+| CMS (既定値) | CPU 10 秒 (実時間 21 秒) | アドレス空間 512 MiB |
+| LibreOJ | 10 秒 | 2 GiB |
+| UOJ (公開されている judger の値) | 15 秒 | 512 MB |
+| Library Checker | 30 秒 | 1024 MB |
+| hydro.ac | 30 秒 | 1024 MB |
+| DOMjudge (既定値) | 実時間 30 秒 | 2 GiB |
+| TLX | 60 秒 | 1 GiB |
+| TopCoder の Marathon Match | 120 秒 | 記載なし |
+
+CI の runner と判定サイトの機械は速さが違うので、比べるのは目安です。`V3rho_ce.hpp` は x64-gcc で 37.4 秒かかっていて、上の表のどの上限も超えます。
+
 ## 既存リポジトリから移すもの
 
 | 移すもの | どこから | 備考 |
