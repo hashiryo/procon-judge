@@ -1,7 +1,12 @@
 #pragma once
-// Library の GF2p64 (mylib/algebra/GF2p64.hpp、17d029785) の log を写し、底 2 の log を a と b に 1 回ずつ使って、
-// 1 次合同式 log(a)·k ≡ log(b) (mod 2^64-1) を解く素朴な版。最小の解を返す。参照実装を兼ねる。
-// 写したのは Log<0>::ln に要る部分だけで、割り算、pow、nimber の変換、GF2p64 のクラスは外してある。
+// naive.hpp と同じ部品 (Library の GF2p64 の log の写し) で、a と b の log を並べて求める版。クエリは 1 件ずつ処理する。
+// 1. a と b の同じ計算を mul2 の 2 本の lane に並べる。log 1 回ぶんのスカラーの掛け算が、a と b の 2 回ぶんで
+//    mul2 1 本になる。線形写像 (F32 など) はスカラーのまま。
+// 2. 2 つの BSGS は、最初の giant step の鍵を両方とも作って表の prefetch を先に出し、641 と 65537 の成分を
+//    計算してから表を引く。
+// 3. log(a) と log(b) を 64 bit に組み立てずに、素数 p ごとに k_p = log_p(b) / log_p(a) (mod p) を出して、最後に
+//    CRT を 1 回かける。65535 の約数と 641 は小さい逆元の表で割り、65537 と 6700417 は拡張ユークリッドで割る。
+// 解なしの判定は最後にまとめて行い、途中では抜けない (pair_early と比べるため)。b = 1、a = b、a = 1 だけは先に返す。
 #ifdef __x86_64__
 #include <immintrin.h>
 #else
@@ -272,32 +277,105 @@ template <int D> struct Log {
  }
 };
 }
-#include <numeric>
+namespace gf2p64_internal {
+using L= Log<0>;
+// 逆元の表に C を掛けたもの。0 の欄は 0 にしておくので、a の成分が 1 (log が 0) なら k の成分も 0 になる。
+template <u32 P, u32 C= 1> constexpr Arr<u16, P> inv_table() {
+ Arr<u16, P> r{};
+ r.t[1]= 1;
+ for(u32 i= 2; i < P; ++i) r.t[i]= u16((P - u64(P / i) * r.t[P % i] % P) % P);
+ for(u32 i= 1; i < P; ++i) r.t[i]= u16(u64(r.t[i]) * C % P);
+ return r;
+}
+constexpr Arr<u16, 3> INV3= inv_table<3>();
+constexpr Arr<u16, 5> INV5= inv_table<5>();
+constexpr Arr<u16, 17> INV17= inv_table<17>();
+constexpr Arr<u16, 257> INV257= inv_table<257>();
+constexpr Arr<u16, 641> INV641= inv_table<641, 590>();  // 590 = ((2^64-1)/641)^-1 mod 641
+// x^-1 mod P (拡張ユークリッド)。x = 0 なら 0 を返す。
+template <u32 P> inline u32 inv_mod(u32 x) {
+ u32 r0= P, r1= x;
+ int s0= 0, s1= 1;
+ while(r1) {
+  const u32 q= r0 / r1;
+  std::tie(r0, r1)= std::make_pair(r1, r0 - q * r1);
+  std::tie(s0, s1)= std::make_pair(s1, s0 - int(q) * s1);
+ }
+ return u32(s0 < 0 ? s0 + int(P) : s0);
+}
+inline u64 fold(__uint128_t x) {
+ const u64 lo= u64(x), t= lo + u64(x >> 64);
+ return t + (t < lo);
+}
+// 2 つの対象の 6700417 の成分を求める BSGS (Log::log_6700417 と同じ手順)。最初の giant step の鍵を作って
+// 表の prefetch を出す start と、表を引く finish に分け、あいだに別の計算を挟めるようにしてある。
+struct Bsgs2 {
+ u64 y[2], k0[2], k1[2];
+ u32 c0[2], c1[2];
+ inline void start(u64 ya, u64 yb) {
+  y[0]= ya, y[1]= yb;
+  for(int q= 0; q < 2; ++q) {
+   c0[q]= L::OR_LAM(y[q]), c1[q]= L::OR_LAMH(y[q]);
+   k0[q]= c0[q] ? orbit_canon(c0[q]) : 0, k1[q]= c1[q] ? orbit_canon(c1[q]) : 0;
+   L::orbit_prefetch(k0[q]), L::orbit_prefetch(k1[q]);
+  }
+ }
+ inline u32 finish(int q) {
+  for(u32 i= 0;; i+= 2) {
+   if(const u32 e= L::orbit_find(y[q], c0[q], k0[q], i); e != OR_L) return e;
+   if(i + 1 < OR_I)
+    if(const u32 e= L::orbit_find(y[q], c1[q], k1[q], i + 1); e != OR_L) return e;
+   if(i + 2 >= OR_I) return OR_L;
+   const u32 c2= L::OR_M1(c1[q]) ^ c0[q];
+   c1[q]= L::OR_M1(c2) ^ c1[q], c0[q]= c2;
+   k0[q]= c0[q] ? orbit_canon(c0[q]) : 0, k1[q]= c1[q] ? orbit_canon(c1[q]) : 0;
+   L::orbit_prefetch(k0[q]), L::orbit_prefetch(k1[q]);
+  }
+ }
+};
+// a^k = b となる k を 1 つ返す。無ければ 2^64-1。素数 p ごとの k の成分は、CRT の定数を掛けるだけで
+// 済むよう ((2^64-1)/p)^-1 倍 (mod p) の形で持つ。43690 などは 65535 の約数ごとの CRT の定数に
+// 16384 = ((2^64-1)/65535)^-1 mod 65535 を掛けたもの。16384 は 65537 での、3883315 は 6700417 での同じ値。
+template <bool V> inline u64 query(u64 a, u64 b) {
+ constexpr u64 M= ~0ull;
+ if(b == 1) return 0;
+ if(a == b) return 1;
+ if(a == 1) return M;
+ const u64 a32= F32(a), b32= F32(b);
+ const auto [na, nb]= unpack(mul2<V>(_mm256_set_epi64x(0, b, 0, a), _mm256_set_epi64x(0, b32, 0, a32)));
+ const u64 fna= F16(na), fnb= F16(nb);
+ const __m256i fn2= _mm256_set_epi64x(0, fnb, 0, fna);
+ const auto [ma, mb]= unpack(mul2<V>(_mm256_set_epi64x(0, nb, 0, na), fn2));
+ const u32 ila= L::IL16.t[u16(ma)], ilb= L::IL16.t[u16(mb)], la= ila & 65535, lb= ilb & 65535;
+ const u32 a3= la % 3, a5= la % 5, a17= la % 17, a257= la % 257, b3= lb % 3, b5= lb % 5, b17= lb % 17, b257= lb % 257;
+ const auto [wa, wb]= unpack(mul2<V>(_mm256_set_epi64x(0, sq(b32), 0, sq(a32)), fn2));
+ const __m256i s2= mul2<V>(_mm256_set_epi64x(0, EMB(u16(ilb >> 16)), 0, EMB(u16(ila >> 16))), _mm256_set_epi64x(0, wb, 0, wa));
+ const auto [sa, sb]= unpack(s2);
+ const __m256i w12= mul2<V>(s2, _mm256_set_epi64x(0, L::F9(sb), 0, L::F9(sa)));
+ const auto [w1a, w1b]= unpack(w12);
+ const __m256i e2= _mm256_set_epi64x(0, L::F57(w1b), 0, L::F57(w1a));
+ const auto [ya, yb]= unpack(mul2<V>(e2, s2));
+ Bsgs2 st;
+ st.start(ya, yb);
+ const auto [w2a, w2b]= unpack(mul2<V>(_mm256_set_epi64x(0, sq(w1b), 0, sq(w1a)), w12));
+ const auto [w3a, w3b]= unpack(mul2<V>(s2, _mm256_set_epi64x(0, sq(w2b), 0, sq(w2a))));
+ const auto [w4a, w4b]= unpack(mul2<V>(_mm256_set_epi64x(0, w3b, 0, w3a), _mm256_set_epi64x(0, F4(w3b), 0, F4(w3a))));
+ const auto [za, zb]= unpack(mul2<V>(e2, _mm256_set_epi64x(0, w4b, 0, w4a)));
+ const u32 v0a= L::LN641(za), v0b= L::LN641(zb), v2a= L::log_65537(na, fna), v2b= L::log_65537(nb, fnb);
+ const u32 v1= (b3 * INV3.t[a3] % 3 * 43690 + b5 * INV5.t[a5] % 5 * 26214 + b17 * INV17.t[a17] % 17 * 3855 + b257 * INV257.t[a257] % 257 * 8160) % 65535;
+ const u32 v0= v0b * INV641.t[v0a] % 641;
+ const u64 v2= v2a ? u64(v2b) * 16384 % 65537 * inv_mod<65537>(v2a) % 65537 : 0;
+ const u32 ra= st.finish(0), rb= st.finish(1);
+ if((!a3 && b3) || (!a5 && b5) || (!a17 && b17) || (!a257 && b257) || (!v0a && v0b) || (!v2a && v2b) || (!ra && rb)) return M;
+ const u64 v3= u64(rb) * 3883315 % 6700417 * inv_mod<6700417>(ra) % 6700417;
+ return fold(__uint128_t(0x1000100010001ull * v1) + 0x663d80ff99c27full * v0 + 0xffff0000ffffull * v2 + 0x280fffffd7full * v3);
+}
+}
 #include <vector>
 using namespace std;
 using u64= unsigned long long;
-// A = log a、B = log b として A·k ≡ B (mod 2^64-1) を解く。d = gcd(A, 2^64-1) が B を割り切らなければ
-// 解なし。割り切れば k = (B/d)·(A/d)^-1 mod ((2^64-1)/d) で、これが最小の解 ((2^64-1)/d = ord(a))。
-inline u64 solve_linear(u64 A, u64 B) {
- constexpr u64 M= ~0ull;
- const u64 d= gcd(A, M);  // A = 0 (a = 1) なら d = M
- if(B % d) return M;
- const u64 m= M / d;
- if(m == 1) return 0;
- // 拡張ユークリッドで (A/d)^-1 mod m。余りは u64 に収まるので、128 bit で持つのは係数だけにする
- // (128 bit の割り算は遅い)。
- u64 r0= m, r1= A / d % m;
- __int128 s0= 0, s1= 1;
- while(r1) {
-  const u64 q= r0 / r1;
-  tie(r0, r1)= make_pair(r1, r0 - q * r1);
-  tie(s0, s1)= make_pair(s1, s0 - __int128(q) * s1);
- }
- const u64 inv= u64((s0 % __int128(m) + m) % m);
- return u64(__uint128_t(B / d % m) * inv % m);
-}
 template <bool V> inline void solve_all(const vector<u64>& as, const vector<u64>& bs, vector<u64>& ans) {
- for(size_t i= 0; i < as.size(); ++i) ans[i]= solve_linear(gf2p64_internal::Log<0>::ln<V>(as[i]), gf2p64_internal::Log<0>::ln<V>(bs[i]));
+ for(size_t i= 0; i < as.size(); ++i) ans[i]= gf2p64_internal::query<V>(as[i], bs[i]);
 }
 // Library の GF2p64::log と同じく、x86 では VPCLMULQDQ があれば mul2 の 2 本を 1 命令で掛け、arm では
 // 64 bit の clmul を 2 回使う形 (mul2<0>) にする。
