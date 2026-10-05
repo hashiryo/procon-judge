@@ -5,7 +5,7 @@
 #include "common.hpp"
 
 #ifndef SUBMISSION_HPP
-#define SUBMISSION_HPP "submissions/naive.hpp"
+#define SUBMISSION_HPP "submissions/cantor_r2_scalar.hpp"
 #endif
 #include SUBMISSION_HPP
 
