@@ -78,6 +78,33 @@ function mark(row) {
   return null;
 }
 
+// Codeforces と同じ命令の CPU を QEMU で真似て、Library の実行時の分岐の代わりの経路を
+// 走らせた結果 (pj fallback)。対象の提出にだけ付ける。CPU モデルの選択とは関係が無い。
+function fallbackChip(submission) {
+  const fallback = DATA.fallback;
+  const result = fallback && fallback.results[submission];
+  if (!result) return null;
+  const skipped = result.status === "SKIP";
+  const span = el(
+    "span",
+    "CF 相当 " + (skipped ? "未確認" : result.status),
+    result.status === "AC" || skipped ? "chip" : "chip bad"
+  );
+  let verdict = "全 " + result.case_count + " ケース AC";
+  if (skipped) verdict = "テストデータを用意できず、確かめられませんでした";
+  else if (result.status !== "AC") {
+    const failed = result.failed_case || {};
+    verdict = result.status + " " + (failed.name || "") + " " + ((failed.detail || "").split("\n")[0]);
+  }
+  span.title = [
+    "Codeforces 相当の CPU で代わりの経路を走らせた結果: " + verdict,
+    fallback.cpu,
+    "対象のヘッダ: " + result.headers.join("、"),
+    fallback.generated_at ? stamp(fallback.generated_at) + " UTC" : "",
+  ].filter((line) => line).join("\n");
+  return span;
+}
+
 // 提出ページ。data/problems/<id>.json の pages に、サイトのルートからのパスで入る。
 function pageHref(submission) {
   const page = DATA.pages && DATA.pages[submission];
@@ -93,7 +120,7 @@ function shortName(path) {
 // 提出の列。名前だけを詰めて、後ろの印が押し出されないようにする。flex は
 // td ではなく中の div に掛ける。td を flex にすると table-cell でなくなり、
 // 行の高さに伸びなくなって、この列だけ罫線がずれる。
-function nameCell(path, className, mark) {
+function nameCell(path, className, ...marks) {
   const td = el("td");
   td.title = path;
   const wrap = el("div", null, "namecell");
@@ -101,7 +128,7 @@ function nameCell(path, className, mark) {
   const name = el(href ? "a" : "span", shortName(path), className);
   if (href) name.href = href;
   wrap.append(name);
-  if (mark) wrap.append(mark);
+  for (const mark of marks) if (mark) wrap.append(mark);
   td.append(wrap);
   return td;
 }
@@ -136,7 +163,7 @@ const COLUMNS = [
     text: true,
     always: true,
     value: (r) => r.submission,
-    cell: (r) => nameCell(r.submission, "mono name", mark(r)),
+    cell: (r) => nameCell(r.submission, "mono name", mark(r), fallbackChip(r.submission)),
   },
   {
     id: "status",
@@ -476,7 +503,7 @@ function missingLine(name) {
   const tr = el("tr", null, "missing");
   for (const column of shown()) {
     if (column.id === "submission") {
-      tr.append(nameCell(name, "mono dim name"));
+      tr.append(nameCell(name, "mono dim name", fallbackChip(name)));
     } else if (column.id === "status") {
       tr.append(el("td", "未計測", "dim"));
     } else {

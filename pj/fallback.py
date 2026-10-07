@@ -340,9 +340,13 @@ def check(
     )
 
 
+def failing(status: str) -> bool:
+    """失敗にする状態か。確かめられなかったもの (SKIP) は数えない。"""
+    return status not in ("AC", SKIP)
+
+
 def failures(outcomes: Sequence[Outcome]) -> list[Outcome]:
-    """失敗にするもの。確かめられなかったものは数えない。"""
-    return [o for o in outcomes if o.status not in ("AC", SKIP)]
+    return [o for o in outcomes if failing(o.status)]
 
 
 def report(

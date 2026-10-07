@@ -223,8 +223,8 @@ jobs:
   # 代わりの経路まで確かめる。x64 のランナーはどれも vpclmulqdq を持つので、測定では
   # 代わりの経路を通らない。対象の提出を x64-gcc と同じフラグで組み、Codeforces と同じ
   # 命令の CPU を QEMU で真似て全ケース走らせる (pj fallback)。1 本でも AC でなければ
-  # このジョブを失敗にするので、run 全体も失敗になる。測定とは並べて走らせ、collect は
-  # 待たない。
+  # このジョブを失敗にするので、run 全体も失敗になる。測定とは並べて走らせる。collect は
+  # 結果をサイトに出すためにこのジョブを待つ。
   fallback:
     needs: plan
     runs-on: ubuntu-24.04
@@ -275,9 +275,9 @@ jobs:
           if-no-files-found: ignore
 
   collect:
-    needs: [plan, run]
+    needs: [plan, run, fallback]
     # run が 1 本も立たなくても通す。lib/ が動けば参考の判定が変わるので、
-    # サイトは作り直す。
+    # サイトは作り直す。fallback が失敗しても (代わりの経路が通らなかった) 通す。
     if: always() && needs.plan.result == 'success'
     runs-on: ubuntu-24.04
     permissions:
@@ -316,11 +316,18 @@ jobs:
       # 弾かれたら最新の results を取り直して、その上に記録を足し直してから押す。
       # git の rebase は同じ jsonl への追記同士が衝突するので、記録の単位でやり直す
       # (append は同じキーの記録を飛ばすので二重には入らない)。
+      # 代わりの経路の結果 (fallback のジョブのアーティファクト) は fallback/latest.json に
+      # 上書きで置く。取り直したあとも置き直すので繰り返しの中に書く。無ければ前の結果を残す。
       - name: results に push する
         run: |
           git -C .results config user.name "github-actions[bot]"
           git -C .results config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          report="${RUNNER_TEMP}/records/fallback/fallback.json"
           for attempt in 1 2 3 4 5; do
+            if [ -f "$report" ]; then
+              mkdir -p .results/fallback
+              cp "$report" .results/fallback/latest.json
+            fi
             git -C .results add -A
             if git -C .results diff --cached --quiet; then
               echo "増えた記録はありません"

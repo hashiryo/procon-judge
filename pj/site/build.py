@@ -21,6 +21,7 @@ import re
 import shlex
 import shutil
 import subprocess
+import sys
 import urllib.parse
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -30,6 +31,7 @@ from pathlib import Path, PurePosixPath
 from .. import batch as batch_mod
 from .. import build as build_mod
 from .. import environment as env_mod
+from .. import fallback as fallback_mod
 from .. import include as include_mod
 from .. import libraries as lib_mod
 from .. import problem as problem_mod
@@ -46,6 +48,11 @@ MARKER = ".pj-site"
 
 # 失敗したケースの説明。提出ページの「失敗」の節に出すので、記録が持つ長さまで残す。
 DETAIL_CHARS = 2000
+
+# 代わりの経路の確かめ (pj fallback) の結果の置き場。記録の置き場からの相対。CI の
+# collect が毎回いちばん新しい結果で上書きする。ある回のジョブが結果を出せなくても、
+# 前の結果が残る。
+FALLBACK_REPORT = Path("fallback") / "latest.json"
 
 PLACEHOLDER = re.compile(r"\{\{(\w+)\}\}")
 
@@ -125,6 +132,9 @@ class Summary:
     headers: int = 0
     # 全環境に現行 AC の提出が揃ったヘッダの数。verify を畳むゲートの判定に使う。
     verified_headers: int = 0
+    # 代わりの経路を確かめた結果を出した提出の数と、そのうち通らなかったもの。
+    fallback_checked: int = 0
+    fallback_failing: int = 0
 
 
 def collapse(
@@ -410,6 +420,50 @@ def problem_url(problem: problem_mod.Problem | None) -> str | None:
     return None
 
 
+def load_fallback(path: Path) -> dict | None:
+    """pj fallback の結果。無いか、読めないか、知らない版なら None。"""
+    try:
+        data = json.loads(path.read_text())
+    except FileNotFoundError:
+        return None
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"warning: {path} を読めません: {e}", file=sys.stderr)
+        return None
+    if not isinstance(data, dict) or data.get("schema") != fallback_mod.REPORT_SCHEMA:
+        print(f"warning: {path} は知らない版なので読みません", file=sys.stderr)
+        return None
+    return data
+
+
+def fallback_for(
+    report: dict | None, problem_id: str, submissions: Sequence[str]
+) -> dict | None:
+    """1 問ぶんの代わりの経路の結果。順位表の JSON と提出ページに渡す。対象が無ければ None。"""
+    if not report:
+        return None
+    results = {
+        r["submission"]: {
+            "status": r.get("status") or "",
+            "case_count": r.get("case_count") or 0,
+            "headers": list(r.get("headers") or []),
+            "failed_case": r.get("failed_case"),
+            "failed_cases": list(r.get("failed_cases") or []),
+        }
+        for r in report.get("results") or []
+        if isinstance(r, dict)
+        and r.get("problem") == problem_id
+        and r.get("submission") in submissions
+    }
+    if not results:
+        return None
+    return {
+        "cpu": report.get("cpu") or "",
+        "generated_at": report.get("generated_at") or "",
+        "library_sha": report.get("library_sha"),
+        "results": results,
+    }
+
+
 def problem_payload(
     problem_id: str,
     problem: problem_mod.Problem | None,
@@ -500,6 +554,8 @@ def problem_payload(
         "submissions": submissions,
         # 提出ページへの、サイトのルートからのパス。作れない提出は None。
         "pages": {s: submission_page(problem_id, s) for s in submissions},
+        # 代わりの経路の確かめ (pj fallback) の結果。build が fallback_for で入れる。
+        "fallback": None,
         "combos": sorted(
             combos.values(),
             key=lambda c: (order.get(c["env"], len(order)), c["env"], c["cpu_model"]),
@@ -566,6 +622,8 @@ class SubmissionPage:
     source_label: str = ""
     # 問題のディレクトリのリポジトリからの相対パス。空なら problems/<id>。
     dir: str = ""
+    # 代わりの経路の確かめの、この問題の結果 (fallback_for)。この提出が無ければ節を出さない。
+    fallback: dict | None = None
 
     def __post_init__(self) -> None:
         if not self.dir:
@@ -694,6 +752,49 @@ def _reasons_html(page: SubmissionPage) -> str:
             f'<li>{esc(reason)} <span class="dim">({esc(where)})</span></li>'
         )
     return '<p class="note">参考の理由</p><ul class="reasons">' + "".join(items) + "</ul>"
+
+
+def _fallback_html(page: SubmissionPage) -> str:
+    """代わりの経路の確かめ (pj fallback) の結果。対象の提出にだけ出す。"""
+    fallback = page.fallback or {}
+    result = (fallback.get("results") or {}).get(page.submission)
+    if not result:
+        return ""
+    status = result["status"]
+    if status == "AC":
+        verdict = f'全 {result["case_count"]} ケースが <span class="st st-AC">AC</span> でした。'
+    elif status == fallback_mod.SKIP:
+        verdict = "テストデータを用意できず、確かめられませんでした。"
+    else:
+        verdict = f'<span class="st st-{esc(status)}">{esc(status)}</span> になりました。'
+    when = []
+    if fallback.get("generated_at"):
+        when.append(f"{_stamp(fallback['generated_at'])} UTC")
+    if fallback.get("library_sha"):
+        when.append(f"Library {fallback['library_sha'][:7]}")
+    cpu = fallback.get("cpu") or "Codeforces と同じ命令の CPU"
+    parts = [
+        "<h2>Codeforces 相当の CPU</h2>",
+        '<p class="note">Library の実行時の分岐 (<span class="mono">'
+        + esc("、".join(result["headers"]))
+        + "</span>) を、判定機の CPU が持たない命令の代わりの経路まで走らせた結果です。"
+        "時間はエミュレーションのものなので出しません。</p>",
+        f"<p>{esc(cpu)} で、{verdict}"
+        + (f' <span class="dim">({esc("、".join(when))})</span>' if when else "")
+        + "</p>",
+    ]
+    failed = result.get("failed_case") or {}
+    if status != "AC" and failed:
+        name = failed.get("name") or ""
+        if name:
+            head = f'ケース <span class="mono">{esc(name)}</span>'
+            others = [n for n in result["failed_cases"] if n != name]
+            if others:
+                head += f' <span class="dim">(ほかに {len(others)} 件: {esc(", ".join(others))})</span>'
+            parts.append(f'<p class="note">{head}</p>')
+        if failed.get("detail"):
+            parts.append(f'<pre class="detail mono">{esc(failed["detail"])}</pre>')
+    return "".join(parts)
 
 
 def repro_command(problem_id: str, submission: str, case: str | None) -> str:
@@ -841,6 +942,7 @@ def submission_html(page: SubmissionPage, style_v: str) -> str:
             "META": "".join(meta) + _note_html(page),
             "ROWS": _rows_html(page),
             "REASONS": _reasons_html(page),
+            "FALLBACK": _fallback_html(page),
             "FAILURES": _failures_html(page),
             "INCLUDES": _includes_html(page.includes),
             "SOURCE": _source_html(page.source_text),
@@ -994,6 +1096,7 @@ def header_entry(
     testdata: str = "",
     official: bool | None = None,
     compare: str = "",
+    fallback: str | None = None,
 ) -> dict:
     return {
         "problem": problem_id,
@@ -1009,6 +1112,9 @@ def header_entry(
         "page": page,
         "problem_page": f"problems/{problem_id}.html",
         "envs": env_summary(cells, env_names),
+        # Codeforces 相当の CPU で代わりの経路を確かめた状態。このヘッダが印を持ち、
+        # この提出が対象だったときだけ入る (pj.fallback)。
+        "fallback": fallback,
     }
 
 
@@ -1073,8 +1179,24 @@ def header_index(
             "compile_only": compile_only,
             "verified": all_verified,
             "envs": envs,
+            "fallback": _fallback_counts(entries),
         }
     return {"headers": out, "gate": {"verified": verified_total, "total": len(out)}}
+
+
+def _fallback_counts(entries: Sequence[dict]) -> dict | None:
+    """ヘッダの、代わりの経路を確かめた提出の数。確かめた提出が無ければ None。"""
+    statuses = [e["fallback"] for e in entries if e.get("fallback")]
+    if not statuses:
+        return None
+    ac = sum(1 for s in statuses if s == "AC")
+    skipped = sum(1 for s in statuses if s == fallback_mod.SKIP)
+    return {
+        "checked": len(statuses),
+        "ac": ac,
+        "failing": len(statuses) - ac - skipped,
+        "skipped": skipped,
+    }
 
 
 def site_url() -> str | None:
@@ -1154,10 +1276,13 @@ def repo_url(root: Path = ROOT) -> str | None:
     return "https://github.com/" + "/".join(parts[-2:])
 
 
-def build(store: Store, out: Path) -> Summary:
+def build(store: Store, out: Path, *, fallback_path: Path | None = None) -> Summary:
+    """fallback_path は代わりの経路の結果。渡さなければ記録の置き場の FALLBACK_REPORT。"""
     generated_at = (
         datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     )
+    report = load_fallback(fallback_path or store.root / FALLBACK_REPORT)
+    fallback_checked = fallback_failing = 0
     repo = repo_url()
     sha = judge_sha()
     lib_sha = library_sha()
@@ -1220,6 +1345,12 @@ def build(store: Store, out: Path) -> Summary:
             case_count=max((r.get("case_count") or 0 for r in records), default=0),
             repo=repo,
         )
+        payload["fallback"] = fallback_for(report, problem_id, payload["submissions"])
+        fallback_results = (payload["fallback"] or {}).get("results", {})
+        fallback_checked += len(fallback_results)
+        fallback_failing += sum(
+            1 for r in fallback_results.values() if fallback_mod.failing(r["status"])
+        )
 
         name = f"{problem_id}.json"
         data_v = _write(
@@ -1275,11 +1406,13 @@ def build(store: Store, out: Path) -> Summary:
                         repo=repo,
                         sha=sha,
                         generated_at=generated_at,
+                        fallback=payload["fallback"],
                     ),
                     style_v,
                 ),
             )
             submission_pages += 1
+            checked = fallback_results.get(submission)
             for link in includes or ():
                 if link.library is None or link.missing or not _safe_label(link.label):
                     continue
@@ -1289,6 +1422,12 @@ def build(store: Store, out: Path) -> Summary:
                         link.direct, mine, env_names,
                         testdata=payload["source"], official=payload["official"],
                         compare=payload["compare"],
+                        # 印を持つヘッダにだけ付ける。同じ提出が読むだけのヘッダの手柄にしない。
+                        fallback=(
+                            checked["status"]
+                            if checked and link.label in checked["headers"]
+                            else None
+                        ),
                     )
                 )
                 header_library[link.label] = link.library
@@ -1380,4 +1519,6 @@ def build(store: Store, out: Path) -> Summary:
         submission_pages=submission_pages,
         headers=len(headers),
         verified_headers=summary_of_headers["gate"]["verified"],
+        fallback_checked=fallback_checked,
+        fallback_failing=fallback_failing,
     )

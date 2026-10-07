@@ -707,7 +707,9 @@ def cmd_site_build(args: argparse.Namespace) -> int:
             "ライブラリを使う提出は古いかどうかを判定しません",
             file=sys.stderr,
         )
-    summary = site_build.build(store, out)
+    summary = site_build.build(
+        store, out, fallback_path=Path(args.fallback) if args.fallback else None
+    )
     parts = [
         f"問題 {summary.problems} 件",
         f"記録 {summary.records} 件",
@@ -719,6 +721,10 @@ def cmd_site_build(args: argparse.Namespace) -> int:
     ]
     if summary.stale:
         parts.append(f"参考 {summary.stale} 件")
+    if summary.fallback_checked:
+        parts.append(
+            f"代わりの経路 {summary.fallback_checked} 本 (通らなかった {summary.fallback_failing} 本)"
+        )
     print(f"{summary.out} に " + " / ".join(parts), file=sys.stderr)
     return 0
 
@@ -1189,6 +1195,10 @@ def build_parser() -> argparse.ArgumentParser:
     site_b = site.add_parser("build", help="記録から静的なサイトを作る")
     site_b.add_argument("--out", help=f"書き先 (既定 {SITE_DIR.name}/)")
     site_b.add_argument("--store", help=f"記録を読む場所 (既定 {RESULTS_DIR.name}/)")
+    site_b.add_argument(
+        "--fallback", metavar="FILE",
+        help=f"pj fallback の結果の JSON (既定 記録を読む場所の {site_build.FALLBACK_REPORT})",
+    )
     site_b.set_defaults(func=cmd_site_build)
 
     return parser

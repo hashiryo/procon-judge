@@ -521,7 +521,7 @@ def test_render_tolerates_braces_in_the_values():
         {
             "TITLE": "t", "STYLE_V": "", "PROBLEM_HTML": "p.html", "PROBLEM_TITLE": "P",
             "NAME": "a", "SUBTITLE": "", "META": "", "ROWS": "", "REASONS": "",
-            "FAILURES": "", "INCLUDES": "", "SOURCE": "<pre>int x{{1}};</pre>",
+            "FALLBACK": "", "FAILURES": "", "INCLUDES": "", "SOURCE": "<pre>int x{{1}};</pre>",
             "GENERATED": "",
         },
     )
@@ -1188,3 +1188,109 @@ def test_problem_payload_says_whether_a_model_is_complete():
     assert combos["EPYC"]["holes"] == 0
     assert combos["Xeon"]["complete"] is False
     assert combos["Xeon"]["holes"] == 1
+
+
+# --- 代わりの経路 (pj fallback) ------------------------------------------------
+
+
+def fallback_report(*results):
+    return {
+        "schema": 1,
+        "cpu": "QEMU Haswell-noTSX",
+        "generated_at": "2026-10-07T11:38:44Z",
+        "library_sha": "6f8462e9c564",
+        "results": [
+            {
+                "problem": "p", "submission": "submissions/a.hpp",
+                "headers": ["mylib/X.hpp"], "status": "AC", "case_count": 6,
+                "failed_cases": [], "failed_case": None, **r,
+            }
+            for r in results
+        ],
+    }
+
+
+def test_fallback_results_are_picked_per_problem():
+    report = fallback_report({}, {"problem": "q"}, {"submission": "submissions/gone.hpp"})
+    picked = site_build.fallback_for(report, "p", ["submissions/a.hpp", "submissions/b.hpp"])
+    assert list(picked["results"]) == ["submissions/a.hpp"]
+    assert picked["cpu"] == "QEMU Haswell-noTSX"
+    assert site_build.fallback_for(report, "r", ["submissions/a.hpp"]) is None
+    assert site_build.fallback_for(None, "p", ["submissions/a.hpp"]) is None
+
+
+def test_submission_page_shows_the_fallback_only_for_targets():
+    cells = site_build.collapse([rec()])
+    fallback = site_build.fallback_for(fallback_report({}), "p", ["submissions/a.hpp"])
+    page = site_build.submission_html(_replace(page_for(cells), fallback=fallback), "")
+    assert "<h2>Codeforces 相当の CPU</h2>" in page
+    assert '全 6 ケースが <span class="st st-AC">AC</span>' in page
+    assert "mylib/X.hpp" in page and "2026-10-07 11:38 UTC" in page and "Library 6f8462e" in page
+    other = page_for(cells, submission="submissions/b.hpp")
+    assert "Codeforces 相当の CPU" not in site_build.submission_html(
+        _replace(other, fallback=fallback), ""
+    )
+
+
+def test_a_failing_fallback_shows_the_case_and_the_detail():
+    failed = {
+        "status": "RE", "failed_cases": ["c1", "c2"],
+        "failed_case": {"name": "c1", "status": "RE", "detail": "SIGILL: CPU に無い命令を実行しました"},
+    }
+    fallback = site_build.fallback_for(fallback_report(failed), "p", ["submissions/a.hpp"])
+    page = site_build.submission_html(
+        _replace(page_for(site_build.collapse([rec()])), fallback=fallback), ""
+    )
+    assert '<span class="st st-RE">RE</span> になりました' in page
+    assert '<span class="mono">c1</span>' in page and "ほかに 1 件: c2" in page
+    assert "SIGILL: CPU に無い命令を実行しました" in page
+
+
+def test_the_report_is_read_only_in_a_known_shape(tmp_path):
+    assert site_build.load_fallback(tmp_path / "nope.json") is None
+    (tmp_path / "old.json").write_text(json.dumps({**fallback_report({}), "schema": 2}))
+    assert site_build.load_fallback(tmp_path / "old.json") is None
+    (tmp_path / "broken.json").write_text("{")
+    assert site_build.load_fallback(tmp_path / "broken.json") is None
+    (tmp_path / "ok.json").write_text(json.dumps(fallback_report({})))
+    assert site_build.load_fallback(tmp_path / "ok.json")["results"][0]["status"] == "AC"
+
+
+def test_header_index_counts_the_fallback_of_marked_headers():
+    envs = ["x64-gcc"]
+    ok = {"x64-gcc": ("AC", True)}
+    headers = {
+        "mylib/X.hpp": [
+            {**_entry("p", "submissions/a.hpp", ok), "fallback": "AC"},
+            {**_entry("q", "submissions/b.hpp", ok), "fallback": "RE"},
+            {**_entry("r", "submissions/c.hpp", ok), "fallback": "SKIP"},
+        ],
+        "mylib/Y.hpp": [{**_entry("p", "submissions/a.hpp", ok), "fallback": None}],
+    }
+    index = site_build.header_index(headers, {}, envs)
+    assert index["headers"]["mylib/X.hpp"]["fallback"] == {
+        "checked": 3, "ac": 1, "failing": 1, "skipped": 1,
+    }
+    assert index["headers"]["mylib/Y.hpp"]["fallback"] is None
+
+
+def test_build_reads_the_report_next_to_the_records(tmp_path, no_problem_dirs):
+    store = store_with(tmp_path, [rec(), rec(submission="submissions/b.hpp")])
+    report = store.root / site_build.FALLBACK_REPORT
+    report.parent.mkdir(parents=True)
+    report.write_text(json.dumps(fallback_report({"status": "RE"})))
+    out = tmp_path / "site"
+    summary = site_build.build(store, out)
+    payload = json.loads((out / "data" / "problems" / "p.json").read_text())
+    assert list(payload["fallback"]["results"]) == ["submissions/a.hpp"]
+    assert (summary.fallback_checked, summary.fallback_failing) == (1, 1)
+    page = (out / "submissions" / "p" / "a.html").read_text()
+    assert "Codeforces 相当の CPU" in page
+
+
+def test_without_a_report_the_payload_has_no_fallback(tmp_path, no_problem_dirs):
+    out = tmp_path / "site"
+    summary = site_build.build(store_with(tmp_path, [rec()]), out)
+    payload = json.loads((out / "data" / "problems" / "p.json").read_text())
+    assert payload["fallback"] is None
+    assert summary.fallback_checked == 0

@@ -208,6 +208,23 @@ def test_the_workflow_installs_what_the_check_needs():
     assert not lib.get("continue-on-error")
 
 
+def test_collect_keeps_the_latest_report_next_to_the_records():
+    """サイトは results の fallback/latest.json を読む。collect がそこへ置く。"""
+    from pj.site import build as site_build
+    from tests.test_environment import workflow
+
+    jobs = workflow()["jobs"]
+    assert "fallback" in jobs["collect"]["needs"]
+    # 代わりの経路が通らずに fallback が失敗しても、サイトは作り直す。
+    assert jobs["collect"]["if"].startswith("always()")
+    upload = next(s for s in jobs["fallback"]["steps"] if "upload-artifact" in s.get("uses", ""))
+    assert upload["with"]["name"] == "fallback"
+    push = next(s for s in jobs["collect"]["steps"] if s.get("name") == "results に push する")
+    assert f".results/{site_build.FALLBACK_REPORT.as_posix()}" in push["run"]
+    # push が弾かれて results を取り直したあとも置き直すよう、繰り返しの中で置く。
+    assert push["run"].index("for attempt") < push["run"].index("cp ")
+
+
 # --- 書き出し ------------------------------------------------------------------
 
 

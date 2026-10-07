@@ -262,7 +262,7 @@ run にはモードが 2 つあります。push と Library の dispatch は網�
 
 ライブラリ (hashiryo/Library) の master への push もこちらを起こし、変わったヘッダを閉包に持つ提出だけが測り直されます。取りこぼしは 1 日 2 回の schedule が拾います。
 
-run と並べて、fallback のジョブが Library の実行時の分岐を確かめます。対象は、閉包にある Library のヘッダが `__builtin_cpu_supports` か、Codeforces の判定機に無い命令 (vpclmulqdq、GFNI、AVX-512) を使っている提出です。x64-gcc と同じフラグで組み、Codeforces と同じ命令の CPU を QEMU で真似て全ケース走らせます。分岐を書き忘れて CPU が持たない命令に当たれば SIGILL の RE、代わりの経路の答えが違えば WA で、どちらも run を失敗にします。手元で対象を見るなら `uv run pj fallback --list` です。走らせるには x86_64 の Linux と qemu-user が要ります。手元の Mac では、docker の amd64 のコンテナに g++ と qemu-user を入れて `python3 -m pj.cli fallback` と走らせます。コンテナの中の uv は QEMU の上で落ちるので使いません。中身は DESIGN.md の「代わりの経路をエミュレーションで確かめる記録」にあります。
+run と並べて、fallback のジョブが Library の実行時の分岐を確かめます。対象は、閉包にある Library のヘッダが `__builtin_cpu_supports` か、Codeforces の判定機に無い命令 (vpclmulqdq、GFNI、AVX-512) を使っている提出です。x64-gcc と同じフラグで組み、Codeforces と同じ命令の CPU を QEMU で真似て全ケース走らせます。分岐を書き忘れて CPU が持たない命令に当たれば SIGILL の RE、代わりの経路の答えが違えば WA で、どちらも run を失敗にします。結果は、順位表では提出の名前の横の「CF 相当 AC」などの印に、提出ページでは「Codeforces 相当の CPU」の節に出ます。手元で対象を見るなら `uv run pj fallback --list` です。走らせるには x86_64 の Linux と qemu-user が要ります。手元の Mac では、docker の amd64 のコンテナに g++ と qemu-user を入れて `python3 -m pj.cli fallback` と走らせます。コンテナの中の uv は QEMU の上で落ちるので使いません。中身は DESIGN.md の「代わりの経路をエミュレーションで確かめる記録」にあります。
 
 結果はサイトの問題一覧と順位表、提出ページに出ます。順位表は環境と CPU モデルを選んで見ます。参考の印が付いた行は測ってからソースが変わったもので、次の計測で入れ替わります。
 

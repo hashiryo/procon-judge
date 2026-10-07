@@ -264,6 +264,12 @@ tbody tr.outside td.st {
   white-space: nowrap;
 }
 
+/* 代わりの経路が通らなかった印 (CF 相当 RE など)。直すまで目に付くようにする。 */
+.chip.bad {
+  border-color: var(--c-fail);
+  color: var(--c-fail);
+}
+
 .empty {
   color: var(--c-text-2);
   padding: 16px 0;
