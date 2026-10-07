@@ -219,6 +219,61 @@ jobs:
           path: ${{ runner.temp }}/records
           if-no-files-found: error
 
+  # Library の実行時の分岐を、判定機の CPU が持たない命令 (vpclmulqdq、GFNI、AVX-512) の
+  # 代わりの経路まで確かめる。x64 のランナーはどれも vpclmulqdq を持つので、測定では
+  # 代わりの経路を通らない。対象の提出を x64-gcc と同じフラグで組み、Codeforces と同じ
+  # 命令の CPU を QEMU で真似て全ケース走らせる (pj fallback)。1 本でも AC でなければ
+  # このジョブを失敗にするので、run 全体も失敗になる。測定とは並べて走らせ、collect は
+  # 待たない。
+  fallback:
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+
+      # g++-15 は run と同じ PPA から入れる。QEMU は Ubuntu の qemu-user (8.2)。
+      - name: コンパイラと QEMU を入れる
+        run: |
+          sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+          sudo apt-get update
+          sudo apt-get install -y g++-15 qemu-user
+          g++-15 --version
+          qemu-x86_64 --version
+
+      # run と同じ commit を取る。取れなければ対象を選べないので、ここで止める。
+      - name: ライブラリを取る
+        env:
+          LIBRARY_SHA: ${{ needs.plan.outputs.library_sha }}
+        run: |
+          git init -q lib
+          git -C lib remote add origin https://github.com/hashiryo/Library.git
+          git -C lib fetch --depth=1 origin "${LIBRARY_SHA:-HEAD}"
+          git -C lib checkout -q FETCH_HEAD
+
+      - name: 代わりの経路を確かめる
+        env:
+          TESTDATA_TOKEN: ${{ secrets.TESTDATA_TOKEN }}
+          YUKICODER_TOKEN: ${{ secrets.YUKICODER_TOKEN }}
+        run: >
+          uv run pj fallback
+          --out ${{ runner.temp }}/fallback/fallback.json
+          --summary "$GITHUB_STEP_SUMMARY"
+
+      # 結果の JSON。サイトに出すときに collect が読む。
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: fallback
+          path: ${{ runner.temp }}/fallback
+          if-no-files-found: ignore
+
   collect:
     needs: [plan, run]
     # run が 1 本も立たなくても通す。lib/ が動けば参考の判定が変わるので、

@@ -218,7 +218,7 @@ uv run pj mirror push --problem <id>
 
 提出のパスはそのまま識別子です。順位表と提出ページとライブラリ側のサイトからのリンクがこのパスを指すので、リネームすると別の提出として測り直しになります。
 
-x64 の環境は、土台の命令をコンパイラのオプションで渡します。x86-64-v3 の命令 (AVX2、BMI2、FMA、popcnt など) に pclmul と vpclmulqdq を足したもので、フラグは `-march=x86-64-v3 -mpclmul -mvpclmulqdq` です。土台の命令は、提出で宣言しなくても使えます。判定サイトへ出すときは、`pj bundle` (「判定サイトへ出す」の節) が、同じ一覧の `#pragma GCC target` を提出の先頭に入れます。宣言は Library の `include/isa-pragma.hpp` にあり、algo-workspace のバンドラも同じものを読みます。GCC 13 と 14 のバグを避けるため、その前に `<bits/allocator.h>` だけを読みます。一覧と理由は DESIGN.md の「土台の命令をオプションに戻しました」にあります。
+x64 の環境は、土台の命令をコンパイラのオプションで渡します。x86-64-v3 の命令 (AVX2、BMI2、FMA、popcnt など) に pclmul と vpclmulqdq を足したもので、フラグは `-march=x86-64-v3 -mpclmul -mvpclmulqdq` です。土台の命令は、提出で宣言しなくても使えます。判定サイトへ出すときは、`pj bundle` (「判定サイトへ出す」の節) が、同じ一覧の `#pragma GCC target` を提出の先頭に入れます。宣言は Library の `include/isa-pragma.hpp` にあり、algo-workspace のバンドラも同じものを読みます。GCC 13 と 14 のバグを避けるため、その前に `<bits/allocator.h>` だけを読みます。一覧と理由は DESIGN.md の「土台の命令をオプションに戻しました」にあります。vpclmulqdq は土台に入っていますが、Codeforces の判定機は持ちません。Library で使うときは `__builtin_cpu_supports` で実行時に経路を分けます。分け方は CI の fallback のジョブが確かめます (「6. push すると起きること」)。
 
 vpclmulqdq を使うコードは、`__builtin_cpu_supports("vpclmulqdq")` で実行時に分け、持たない CPU 向けの経路も書いてください。Codeforces の判定機が vpclmulqdq を持たないためです。vpclmulqdq の intrinsics はすべて分岐の内側に置き、分岐はループの外に置いて判定を 1 回で済ませます。GitHub の x64 ランナーはどれも vpclmulqdq を持つので、持たない側の経路は procon-judge では測られません。
 
@@ -261,6 +261,8 @@ run にはモードが 2 つあります。push と Library の dispatch は網�
 測り直しになるのは、ソース (提出とその include 閉包、ハーネス、problem.toml) とテストデータと環境と CPU モデルから作るキーの記録が無いものだけです。整形やコメントの変更ではキーが変わりません。問題のディレクトリを `problems/` の下で動かしてもキーは変わりません。`base` の問題は (問題, 環境, CPU モデル) を束として扱い、1 本でも未計測なら全提出を同じジョブで測り直します。同じ CPU モデルでも VM ごとに速さが 2 割ほど違うので、順位表は同じジョブで測った記録どうしでだけ比べます。提出を 1 本足すと、その問題の他の提出も測り直されるのはこのためです。`raw` の問題はキーごとに測ります。
 
 ライブラリ (hashiryo/Library) の master への push もこちらを起こし、変わったヘッダを閉包に持つ提出だけが測り直されます。取りこぼしは 1 日 2 回の schedule が拾います。
+
+run と並べて、fallback のジョブが Library の実行時の分岐を確かめます。対象は、閉包にある Library のヘッダが `__builtin_cpu_supports` か、Codeforces の判定機に無い命令 (vpclmulqdq、GFNI、AVX-512) を使っている提出です。x64-gcc と同じフラグで組み、Codeforces と同じ命令の CPU を QEMU で真似て全ケース走らせます。分岐を書き忘れて CPU が持たない命令に当たれば SIGILL の RE、代わりの経路の答えが違えば WA で、どちらも run を失敗にします。手元で対象を見るなら `uv run pj fallback --list` です。走らせるには x86_64 の Linux と qemu-user が要ります。手元の Mac では、docker の amd64 のコンテナに g++ と qemu-user を入れて `python3 -m pj.cli fallback` と走らせます。コンテナの中の uv は QEMU の上で落ちるので使いません。中身は DESIGN.md の「代わりの経路をエミュレーションで確かめる記録」にあります。
 
 結果はサイトの問題一覧と順位表、提出ページに出ます。順位表は環境と CPU モデルを選んで見ます。参考の印が付いた行は測ってからソースが変わったもので、次の計測で入れ替わります。
 
@@ -373,6 +375,7 @@ git push origin results
 | `pj try FILE [--input F \| --problem ID --case NAME]` | 1 ファイルを提出と同じ探索パスで組み、判定せずに走らせる (printf デバッグ用) |
 | `pj try --problem ID --submission PATH [--input F \| --case NAME]` | 提出をハーネスごと組み、判定せずに走らせる |
 | `pj bundle --problem ID --submission PATH [--out FILE] [--copy] [--check [--cases N]]` | 判定サイトへ貼れる 1 ファイルに展開する。`--check` は `-I` も `-march` も付けずに組み、手元のケースを先頭から走らせる |
+| `pj fallback [--problem ID] [--list] [--out FILE] [--summary FILE]` | Library の実行時の分岐を、Codeforces と同じ命令の CPU (QEMU) で代わりの経路まで確かめる。x86_64 の Linux と qemu-user が要る。`--list` は対象を出すだけ |
 | `pj records list` | 記録の一覧 |
 | `pj records append DIR...` | ほかの jsonl を記録に取り込む |
 | `pj site build [--out DIR] [--store DIR]` | 記録からサイトを作る |

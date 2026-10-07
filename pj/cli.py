@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 import sys
 import time
 from collections.abc import Sequence
@@ -18,8 +19,10 @@ from . import bundle as bundle_mod
 from . import claims as claims_mod
 from . import crosscheck as crosscheck_mod
 from . import environment as env_mod
+from . import fallback as fallback_mod
 from . import fetch, tryout
 from . import include as include_mod
+from . import libraries as lib_mod
 from . import migrate as migrate_mod
 from . import plan as plan_mod
 from . import problem as problem_mod
@@ -736,6 +739,75 @@ def cmd_repro(args: argparse.Namespace) -> int:
         return _die(str(e))
 
 
+def cmd_fallback(args: argparse.Namespace) -> int:
+    """Library の実行時の分岐を、判定機の CPU が持たない命令の代わりの経路まで確かめる。
+
+    対象を選んで x64-gcc と同じフラグで組み、Codeforces と同じ命令の CPU を QEMU で
+    真似て全ケース走らせる。1 本でも AC でなければ 1 を返す。
+    """
+    try:
+        env = env_mod.load(args.env)
+        libraries = lib_mod.load_all()
+    except lib_mod.LibrariesError as e:
+        return _die(str(e))
+    directories = problem_mod.all_problem_dirs()
+    if args.problem:
+        directories = [d for d in directories if problem_mod.problem_id_of(d) == args.problem]
+        if not directories:
+            return _die(f"問題 {args.problem!r} がありません")
+    problems = []
+    for directory in directories:
+        try:
+            problems.append(problem_mod.load(directory))
+        except problem_mod.ProblemError as e:
+            print(f"warning: {directory.name} を読めません: {e}", file=sys.stderr)
+    emulator = tuple(shlex.split(args.emulator)) if args.emulator else fallback_mod.EMULATOR
+    if not LIB_DIR.is_dir():
+        print(f"warning: {LIB_DIR.name}/ がありません。Library を使う提出を選べません", file=sys.stderr)
+    selection = fallback_mod.select(problems, libraries)
+
+    if args.list:
+        for t in selection.targets:
+            print(f"対象  {t.problem.id}  {t.submission.as_posix()}  ({', '.join(t.headers)})")
+        for e in selection.excluded:
+            print(f"除外  {e.problem.id}  {e.submission.as_posix()}  {e.reason}")
+        print(f"\n対象 {len(selection.targets)} 本 / 除外 {len(selection.excluded)} 本", file=sys.stderr)
+        return 0
+
+    if (reason := fallback_mod.preflight(env, emulator)) is not None:
+        return _die(reason)
+    outcomes = []
+    for number, target in enumerate(selection.targets, start=1):
+        print(
+            f"[{number}/{len(selection.targets)}] {target.problem.id} {target.submission.as_posix()}",
+            file=sys.stderr, flush=True,
+        )
+        outcomes.append(
+            fallback_mod.check(target, env, emulator=emulator, tle_scale=args.tle_scale)
+        )
+
+    if args.out:
+        out = Path(args.out)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(
+            json.dumps(
+                fallback_mod.report(outcomes, selection.excluded, env, emulator),
+                ensure_ascii=False, indent=1,
+            )
+        )
+    markdown = fallback_mod.summary_markdown(outcomes, selection.excluded)
+    if args.summary:
+        # GitHub のジョブの要約は追記して使うファイル。
+        with open(args.summary, "a") as f:
+            f.write(markdown + "\n")
+    print("\n" + markdown, file=sys.stderr)
+    bad = fallback_mod.failures(outcomes)
+    if bad:
+        print(f"error: {len(bad)} 本が代わりの経路で通りませんでした", file=sys.stderr)
+        return 1
+    return 0
+
+
 def cmd_try(args: argparse.Namespace) -> int:
     """手元で組んで、自分で用意した入力か問題のテストケースで走らせる。判定も記録もしない。
 
@@ -1060,6 +1132,33 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_bundle.add_argument("--env", default="local", help="--check で組む環境 (既定 local)")
     p_bundle.set_defaults(func=cmd_bundle)
+
+    p_fallback = sub.add_parser(
+        "fallback",
+        help="Library の実行時の分岐を、判定機の CPU が持たない命令の代わりの経路まで"
+        "確かめる (Codeforces と同じ命令の CPU を QEMU で真似る)",
+    )
+    p_fallback.add_argument("--problem", help="この問題の提出だけを見る")
+    p_fallback.add_argument(
+        "--list", action="store_true", help="対象と除外を出すだけで、組みも走らせもしない"
+    )
+    p_fallback.add_argument(
+        "--env", default=fallback_mod.BASE_ENV,
+        help=f"組み方を揃える環境 (既定 {fallback_mod.BASE_ENV})",
+    )
+    p_fallback.add_argument(
+        "--emulator",
+        help=f"バイナリの前に付けるコマンド (既定 {shlex.join(fallback_mod.EMULATOR)})",
+    )
+    p_fallback.add_argument(
+        "--tle-scale", type=float, default=fallback_mod.TLE_SCALE,
+        help=f"時間の制限を tle_sec の何倍にするか (既定 {fallback_mod.TLE_SCALE:g})",
+    )
+    p_fallback.add_argument("--out", metavar="FILE", help="結果の JSON の書き先")
+    p_fallback.add_argument(
+        "--summary", metavar="FILE", help="Markdown の要約を追記するファイル (GITHUB_STEP_SUMMARY)"
+    )
+    p_fallback.set_defaults(func=cmd_fallback)
 
     claims_cmd = sub.add_parser("claims", help="CI のジョブが仕事を取るための宣言").add_subparsers(
         dest="subcommand", required=True

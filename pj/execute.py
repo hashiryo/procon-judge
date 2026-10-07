@@ -12,12 +12,14 @@ import json
 import os
 import platform
 import resource
+import shutil
 import signal
 import subprocess
 import sys
 import tempfile
 import threading
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -175,11 +177,16 @@ def run(
     stdout_path: Path,
     stderr_path: Path,
     tle_sec: float,
+    wrapper: Sequence[str] = (),
 ) -> RunResult:
     """1 ケース走らせる。tle_sec を超えたら kill する。
 
     メモリは後判定にできるが時間はできない。無限ループの提出があると
     ジョブが埋まるので、その場で打ち切る。
+
+    wrapper を渡すと、バイナリをその後ろに付けて起こす (QEMU で別の CPU を真似る
+    pj.fallback 用)。そのときは rss_preload を差し込まない。測れるのは wrapper
+    自身のメモリで、提出のものではない。
     """
     raise_stack_limit()
     stdout_path.parent.mkdir(parents=True, exist_ok=True)
@@ -192,7 +199,13 @@ def run(
 
     # posix_spawn は PATH を見ないので絶対パスで渡す。
     exe = str(binary.resolve())
-    env = _child_env()
+    if wrapper:
+        program = shutil.which(wrapper[0]) or wrapper[0]
+        argv = [program, *wrapper[1:], exe]
+        env = os.environ
+    else:
+        program, argv = exe, [exe]
+        env = _child_env()
     # 子の ru_maxrss に乗る pj 自身のピーク。報告が無いときの見分けに使う (peak_rss_kb)。
     parent_peak_kb = (
         _rss_to_kb(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
@@ -200,7 +213,7 @@ def run(
         else None
     )
     t0 = time.monotonic_ns()
-    pid = os.posix_spawn(exe, [exe], env, file_actions=file_actions)
+    pid = os.posix_spawn(program, argv, env, file_actions=file_actions)
 
     lock = threading.Lock()
     state = {"reaped": False, "timed_out": False}
