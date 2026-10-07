@@ -1,0 +1,122 @@
+{
+ "schema": 1,
+ "generated_at": "2026-10-07T13:36:24Z",
+ "judge_sha": "053d1c239aa1a04b11be1277e5ed08552af8157a",
+ "library_sha": "6f8462e9c564b3388799e95163104f5f01ea3f7e",
+ "env": "x64-gcc",
+ "cpu": "QEMU Haswell-noTSX (AVX2、BMI2、FMA、pclmul。vpclmulqdq、GFNI、AVX-512 なし)",
+ "emulator": "qemu-x86_64 -cpu Haswell-noTSX -s 1024M",
+ "results": [
+  {
+   "problem": "self-gf2-64-div",
+   "submission": "submissions/lib-GF2p64.hpp",
+   "headers": [
+    "mylib/algebra/GF2p64.hpp"
+   ],
+   "status": "AC",
+   "case_count": 6,
+   "failed_cases": [],
+   "failed_case": null
+  },
+  {
+   "problem": "self-gf2-64-io",
+   "submission": "submissions/lib.cpp",
+   "headers": [
+    "mylib/algebra/GF2p64.hpp"
+   ],
+   "status": "AC",
+   "case_count": 1,
+   "failed_cases": [],
+   "failed_case": null
+  },
+  {
+   "problem": "self-gf2-64-log",
+   "submission": "submissions/lib-GF2p64.hpp",
+   "headers": [
+    "mylib/algebra/GF2p64.hpp"
+   ],
+   "status": "AC",
+   "case_count": 5,
+   "failed_cases": [],
+   "failed_case": null
+  },
+  {
+   "problem": "self-gf2-64-log-any",
+   "submission": "submissions/lib-GF2p64.hpp",
+   "headers": [
+    "mylib/algebra/GF2p64.hpp"
+   ],
+   "status": "AC",
+   "case_count": 6,
+   "failed_cases": [],
+   "failed_case": null
+  },
+  {
+   "problem": "self-gf2-64-mul",
+   "submission": "submissions/lib-GF2p64.hpp",
+   "headers": [
+    "mylib/algebra/GF2p64.hpp"
+   ],
+   "status": "AC",
+   "case_count": 7,
+   "failed_cases": [],
+   "failed_case": null
+  },
+  {
+   "problem": "self-gf2-64-ord",
+   "submission": "submissions/lib-GF2p64.hpp",
+   "headers": [
+    "mylib/algebra/GF2p64.hpp"
+   ],
+   "status": "AC",
+   "case_count": 6,
+   "failed_cases": [],
+   "failed_case": null
+  },
+  {
+   "problem": "self-gf2-64-pow",
+   "submission": "submissions/lib-GF2p64.hpp",
+   "headers": [
+    "mylib/algebra/GF2p64.hpp"
+   ],
+   "status": "AC",
+   "case_count": 7,
+   "failed_cases": [],
+   "failed_case": null
+  },
+  {
+   "problem": "self-gf2-64-sq",
+   "submission": "submissions/lib-GF2p64.hpp",
+   "headers": [
+    "mylib/algebra/GF2p64.hpp"
+   ],
+   "status": "AC",
+   "case_count": 7,
+   "failed_cases": [],
+   "failed_case": null
+  },
+  {
+   "problem": "self-gf2-64-sqrt",
+   "submission": "submissions/lib-GF2p64.hpp",
+   "headers": [
+    "mylib/algebra/GF2p64.hpp"
+   ],
+   "status": "AC",
+   "case_count": 6,
+   "failed_cases": [],
+   "failed_case": null
+  },
+  {
+   "problem": "yosupo-nim-product-64",
+   "submission": "submissions/lib-GF2p64.hpp",
+   "headers": [
+    "mylib/algebra/GF2p64.hpp"
+   ],
+   "status": "AC",
+   "case_count": 10,
+   "failed_cases": [],
+   "failed_case": null
+  }
+ ],
+ "excluded": []
+}
