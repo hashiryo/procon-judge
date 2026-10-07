@@ -95,8 +95,38 @@ def test_the_same_key_takes_the_minimum():
 
 
 def test_algo_may_be_missing():
-    cells = site_build.collapse([rec(algo_time_max_ns=None)])
+    cells = site_build.collapse([rec(algo_time_max_ns=None, algo_time_total_ns=None)])
     assert cells[0].algo_ns is None
+    assert cells[0].algo_total_ns is None
+
+
+def test_algo_total_takes_the_minimum_apart_from_the_maximum():
+    """合計も同じキーの最小。最大とは別に採るので、最大を出した記録の値とは限らない。"""
+    cells = site_build.collapse(
+        [
+            rec(algo_time_max_ns=900, algo_time_total_ns=5000),
+            rec(algo_time_max_ns=1200, algo_time_total_ns=4000,
+                timestamp="2026-01-02T00:00:00Z"),
+        ]
+    )
+    assert (cells[0].algo_ns, cells[0].algo_total_ns) == (900, 4000)
+    payload = site_build.problem_payload("p", None, cells, "now")
+    assert payload["rows"][0]["algo_total_ns"] == 4000
+
+
+def test_submission_page_shows_the_algo_total_next_to_the_maximum():
+    ac = site_build.collapse(
+        [rec(algo_time_max_ns=12_340_000, algo_time_total_ns=110_401_030_000)]
+    )[0]
+    page = site_build.submission_html(page_for([ac]), "")
+    assert "<th class=\"n\">algo 合計</th>" in page
+    assert '<td class="n">12.34 ms</td><td class="n">110401.03 ms</td>' in page
+    # 打ち切られた実行の合計は通ったケースまでの和なので、最大と同じく落として出す。
+    tle = site_build.collapse(
+        [rec(status="TLE", algo_time_max_ns=1_000_000, algo_time_total_ns=3_000_000)]
+    )[0]
+    page = site_build.submission_html(page_for([tle]), "")
+    assert '<td class="n dim">1.00 ms</td><td class="n dim">3.00 ms</td>' in page
 
 
 def test_compile_time_takes_the_minimum_of_the_records_that_have_it():

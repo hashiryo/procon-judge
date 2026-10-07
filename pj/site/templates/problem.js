@@ -151,11 +151,22 @@ const COLUMNS = [
   {
     id: "algo",
     label: "algo 最大",
-    width: "110px",
+    // 制限が 17 秒の問題があるので、5 桁の ms (「16999.99 ms」) が入る幅。
+    width: "115px",
     value: speed,
     // 打ち切られた実行の algo は通ったケースまでの値でしかない。数字は残すが、
     // 比べる根拠には見えないように落とす。
     cell: (r) => el("td", ms(r.algo_ns), r.status === "AC" ? "n" : "n dim"),
+  },
+  {
+    // ケースごとの algo の和。最大は最大ケースだけで決まるので、ケース全体の速さはこちらで見る。
+    id: "algo_total",
+    label: "algo 合計",
+    // 100 秒を超える問題がある (「110401.03 ms」) ので、最大の列より広く取る。
+    width: "125px",
+    value: (r) => (r.algo_total_ns === null || r.algo_total_ns === undefined ? -1 : r.algo_total_ns),
+    // 打ち切られた実行の合計は通ったケースまでの和でしかない。最大と同じく AC でない行は落とす。
+    cell: (r) => el("td", ms(r.algo_total_ns), r.status === "AC" ? "n" : "n dim"),
   },
   {
     id: "wall",
@@ -167,14 +178,16 @@ const COLUMNS = [
   {
     id: "rss",
     label: "メモリ",
-    width: "85px",
+    // 1 GB を超える提出があるので、4 桁の MB (「1086.9 MB」) が入る幅。
+    width: "100px",
     value: (r) => r.rss_kb,
     cell: (r) => el("td", mb(r.rss_kb), "n"),
   },
   {
     id: "source",
     label: "ソース",
-    width: "90px",
+    // 表を埋め込んだ提出は 1 MB を超える (「1241.3 KB」)。書式が同じバイナリの列と揃える。
+    width: "100px",
     value: (r) => r.source_bytes,
     cell: (r) => linkCell(bytes(r.source_bytes), sourceHref(r), "n"),
   },

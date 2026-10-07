@@ -68,6 +68,8 @@ class Cell:
     cxxflags: str
     status: str
     algo_ns: int | None
+    # ケースごとの algo の和。algo_ns とは別に、同じキーの記録の最小値を採る。
+    algo_total_ns: int | None
     wall_ms: int
     rss_kb: int
     source_bytes: int
@@ -196,6 +198,11 @@ def _cell(
         for r in same
         if r.get("algo_time_max_ns") is not None
     ]
+    algo_total = [
+        r["algo_time_total_ns"]
+        for r in same
+        if r.get("algo_time_total_ns") is not None
+    ]
     # 実行時間と同じく最小を取る。runner の混み具合で遅くなる方にだけ揺れるため。
     compile_ms = [r["compile_ms"] for r in same if r.get("compile_ms") is not None]
     compile_rss = [r["compile_rss_kb"] for r in same if r.get("compile_rss_kb")]
@@ -209,6 +216,7 @@ def _cell(
         cxxflags=newest.get("cxxflags", ""),
         status=newest.get("status", ""),
         algo_ns=min(algo) if algo else None,
+        algo_total_ns=min(algo_total) if algo_total else None,
         wall_ms=min(r.get("time_max_ms") or 0 for r in same),
         rss_kb=min(r.get("memory_max_kb") or 0 for r in same),
         source_bytes=newest.get("source_bytes") or 0,
@@ -504,6 +512,7 @@ def problem_payload(
                 "cpu_model": c.cpu_model,
                 "status": c.status,
                 "algo_ns": c.algo_ns,
+                "algo_total_ns": c.algo_total_ns,
                 "wall_ms": c.wall_ms,
                 "rss_kb": c.rss_kb,
                 "source_bytes": c.source_bytes,
@@ -653,6 +662,7 @@ def _cell_row(page: SubmissionPage, c: Cell) -> str:
         f'<td title="{esc(c.cpu_model)}">{esc(c.cpu_model)}</td>'
         f"{status}"
         f'<td class="{algo_class}">{_ms(c.algo_ns)}</td>'
+        f'<td class="{algo_class}">{_ms(c.algo_total_ns)}</td>'
         f'<td class="n">{c.wall_ms} ms</td>'
         f'<td class="n">{_mb(c.rss_kb)}</td>'
         f'<td class="n">{_sec(c.compile_ms)}</td>'
@@ -726,8 +736,9 @@ def _missing_row(env: str) -> str:
         f"<td>{esc(env)}</td>"
         '<td class="dim">-</td>'
         '<td class="dim">未計測</td>'
+        '<td class="n dim">-</td><td class="n dim">-</td>'
         '<td class="n dim">-</td><td class="n dim">-</td><td class="n dim">-</td>'
-        '<td class="n dim">-</td><td class="n dim">-</td><td class="n dim">-</td>'
+        '<td class="n dim">-</td><td class="n dim">-</td>'
         '<td class="dim">-</td><td class="dim">-</td>'
         '<td class="dim">-</td>'
         "</tr>"
@@ -743,7 +754,7 @@ def _rows_html(page: SubmissionPage) -> str:
     measured = {c.env for c in cells}
     rows += [_missing_row(env) for env in page.env_names if env not in measured]
     if not rows:
-        return '<tr><td colspan="12" class="empty">まだ記録がありません。</td></tr>'
+        return '<tr><td colspan="13" class="empty">まだ記録がありません。</td></tr>'
     return "".join(rows)
 
 

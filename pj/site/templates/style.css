@@ -41,7 +41,7 @@ body {
   color: var(--c-text);
   line-height: 1.6;
   padding: 20px;
-  max-width: 1500px;
+  max-width: 1640px;
   margin: 0 auto;
 }
 
@@ -140,10 +140,10 @@ table {
    表が動くのを止める。入りきらない中身は省略記号にして title に残す。 */
 table.fixed {
   table-layout: fixed;
-  /* ページの器 (1500px から左右の余白 20px を引いた 1460px) いっぱいまで使う。問題の
+  /* ページの器 (1640px から左右の余白 20px を引いた 1600px) いっぱいまで使う。問題の
      ページの順位表は、出している列から problem.js が最小幅を決め直す (固定幅の列の合計に
-     提出の列の 300px を足す)。全部の列を出すと 1427px で、器に収まる。 */
-  min-width: 1460px;
+     提出の列の 300px を足す)。全部の列を出すと 1582px で、器に収まる。 */
+  min-width: 1600px;
 }
 
 table.fixed th,
@@ -320,7 +320,7 @@ h1.mono {
 /* 提出ページの表。幅を決めない列は「現行」で、参考の理由がそこに入る。
    CPU モデルの名前は長いので、こちらは幅を決めて読める分を確保する。 */
 table.submission {
-  min-width: 1460px;
+  min-width: 1600px;
 }
 
 /* 参考の理由。表の下に、同じ理由の行をまとめて出す。 */
