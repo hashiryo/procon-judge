@@ -259,3 +259,29 @@ def test_new_problems_go_under_the_judge_prefix(tmp_path):
     # 自作の問題も self/ の下。族のディレクトリは人が決めるので、self/ の中では平らに置く。
     assert problem_mod.dir_for_new("self-mat-unit-test", root) == root / "self" / "mat-unit-test"
     assert problem_mod.dir_for_new("gf2-64-pow", root) == root / "gf2-64-pow"
+
+
+def test_case_times_defaults_to_false(tmp_path):
+    assert problem_mod.load(make(tmp_path, "x")).case_times is False
+
+
+def test_case_times_is_read_for_a_base_problem(tmp_path):
+    body = MINIMAL.format(id="x").replace('kind = "raw"', 'kind = "base"') + "\n[record]\ncase_times = true\n"
+    directory = make(tmp_path, "x", body)
+    (directory / "base.cpp").write_text("int main() {}\n")
+    assert problem_mod.load(directory).case_times is True
+
+
+def test_case_times_needs_a_base_harness(tmp_path):
+    """raw の問題には計測区間が無いので、ケースごとの時間を残せない。"""
+    body = MINIMAL.format(id="x") + "\n[record]\ncase_times = true\n"
+    with pytest.raises(problem_mod.ProblemError, match="record.case_times"):
+        problem_mod.load(make(tmp_path, "x", body))
+
+
+def test_case_times_must_be_a_bool(tmp_path):
+    body = MINIMAL.format(id="x").replace('kind = "raw"', 'kind = "base"') + '\n[record]\ncase_times = "yes"\n'
+    directory = make(tmp_path, "x", body)
+    (directory / "base.cpp").write_text("int main() {}\n")
+    with pytest.raises(problem_mod.ProblemError, match="true か false"):
+        problem_mod.load(directory)

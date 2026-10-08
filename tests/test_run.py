@@ -555,6 +555,80 @@ def test_wa_keeps_running_and_records_every_failed_case(tmp_path, local_env, mac
     assert "expected '2'" in record.failed_case.detail
 
 
+
+CASE_TIMES_TOML = """
+id = "tmp-case-times"
+title = "t"
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "manual"
+name = "tmp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
+"""
+
+# 読んだ数をそのまま出し、その数の 1000 倍を計測区間の時間として報告するハーネス。
+REPORTING_BASE = r"""#include <cstdio>
+#include SUBMISSION_HPP
+int main() {
+  int n;
+  if (scanf("%d", &n) != 1) return 1;
+  printf("%d\n", n);
+  fprintf(stderr, "PJ_METRICS {\"algo_time_ns\":%d}\n", n * 1000);
+}
+"""
+
+
+def make_case_times_problem(tmp_path, cases, toml=CASE_TIMES_TOML):
+    directory = tmp_path / "tmp-case-times"
+    directory.mkdir()
+    (directory / "problem.toml").write_text(toml)
+    (directory / "base.cpp").write_text(REPORTING_BASE)
+    (directory / "submissions").mkdir()
+    (directory / "submissions" / "sol.hpp").write_text("inline int unused() { return 0; }\n")
+    data = tmp_path / "data"
+    data.mkdir()
+    built = []
+    for name, (stdin, expected) in cases.items():
+        (data / f"{name}.in").write_text(stdin)
+        (data / f"{name}.out").write_text(expected)
+        built.append(run_mod.fetch.Case(name=name, in_path=data / f"{name}.in", out_path=data / f"{name}.out"))
+    testcases = run_mod.fetch.Testcases(dir=data, cases=tuple(built), cases_hash="h")
+    return problem_mod.load(directory), testcases
+
+
+def test_case_times_keep_the_algo_time_of_every_case(tmp_path, local_env, machine, monkeypatch):
+    problem, testcases = make_case_times_problem(
+        tmp_path, {"a": ("1\n", "1\n"), "b": ("2\n", "2\n"), "c": ("3\n", "3\n")}
+    )
+    monkeypatch.setattr(run_mod.fetch, "ensure", lambda p, **kw: testcases)
+    record = run_mod.execute_job(worklist_for(problem, local_env, machine).jobs[0])
+
+    assert record.status == "AC"
+    assert record.case_algo_ns == {"a": 1000, "b": 2000, "c": 3000}
+    assert record.algo_time_max_ns == 3000
+    assert json.loads(record.to_json())["case_algo_ns"] == {"a": 1000, "b": 2000, "c": 3000}
+
+
+def test_without_case_times_the_record_keeps_its_old_shape(tmp_path, local_env, machine, monkeypatch):
+    """case_times でない問題の記録には case_algo_ns が無く、JSON にも書かない。"""
+    toml = CASE_TIMES_TOML.replace("\n[record]\ncase_times = true\n", "")
+    problem, testcases = make_case_times_problem(tmp_path, {"a": ("1\n", "1\n")}, toml=toml)
+    monkeypatch.setattr(run_mod.fetch, "ensure", lambda p, **kw: testcases)
+    record = run_mod.execute_job(worklist_for(problem, local_env, machine).jobs[0])
+
+    assert record.status == "AC"
+    assert record.algo_time_max_ns == 1000
+    assert record.case_algo_ns is None
+    assert "case_algo_ns" not in json.loads(record.to_json())
+
 # 期待出力は読まずに、出力が入力の 2 倍かどうかだけを見るチェッカ。
 DOUBLE_CHECKER = r"""#include <cstdio>
 int main(int argc, char** argv) {

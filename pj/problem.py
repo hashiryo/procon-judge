@@ -75,6 +75,9 @@ class Problem:
     limits: Limits
     testdata: Testdata
     compare: Compare
+    # [record] の case_times。true なら、AC の記録にもケースごとの計測区間の時間を残す
+    # (DESIGN.md「ケースごとの時間を残す記録」)。計測区間を持つ base の問題でだけ使える。
+    case_times: bool = False
     # 元の問題のページ。判定サイトから取る問題は source と name から組めるので書かない。
     # none (AtCoder や自己検証) と manual の問題だけが持つ。表示にしか使わない。
     url: str = ""
@@ -224,6 +227,17 @@ def load(problem_dir: Path) -> Problem:
             f"{toml_path}: harness.kind = 'base' には base.cpp が必要です",
         )
 
+    case_times = raw.get("record", {}).get("case_times", False)
+    _require(
+        isinstance(case_times, bool),
+        f"{toml_path}: record.case_times は true か false にしてください",
+    )
+    _require(
+        not case_times or harness_kind == "base",
+        f"{toml_path}: record.case_times は harness.kind = 'base' の問題でだけ使えます"
+        " (raw の問題には計測区間がありません)",
+    )
+
     return Problem(
         id=pid,
         title=raw.get("title", pid),
@@ -232,6 +246,7 @@ def load(problem_dir: Path) -> Problem:
         limits=limits,
         testdata=testdata,
         compare=compare,
+        case_times=case_times,
         url=str(raw.get("url", "")),
         raw=raw,
     )

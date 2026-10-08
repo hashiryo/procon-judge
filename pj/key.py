@@ -302,6 +302,10 @@ def problem_hash(problem: Problem) -> str:
         # 既存の記録が測り直しになる。
         payload["compare"]["abs_tol"] = problem.compare.abs_tol
         payload["compare"]["rel_tol"] = problem.compare.rel_tol
+    if problem.case_times:
+        # 実行は変えないが、記録の中身 (ケースごとの時間) を変える。true にしたら測り
+        # 直して時間を入れる。false のときは足さない (ほかの問題のキーを動かさない)。
+        payload["record"] = {"case_times": True}
     if problem.testdata.source == "local":
         # ジェネレータと参照実装はリポジトリの中にあって、中身を変えれば出る
         # ケースが変わる。ファイル名だけでは足りない。

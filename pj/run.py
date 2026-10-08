@@ -530,7 +530,7 @@ def execute_job(job: Job) -> Record:
         if status in ("TLE", "MLE"):
             break
 
-    return _summarize(base, outcomes, binary_bytes)
+    return _summarize(base, outcomes, binary_bytes, case_times=problem.case_times)
 
 
 def describe(job: Job) -> dict:
@@ -588,7 +588,14 @@ def prepare_checker(
     return checker
 
 
-def _summarize(base: dict, outcomes: list[CaseOutcome], binary_bytes: int) -> Record:
+def _summarize(
+    base: dict, outcomes: list[CaseOutcome], binary_bytes: int, *, case_times: bool = False
+) -> Record:
+    """ケースごとの結果を 1 件の記録にまとめる。
+
+    case_times なら、走ったケースの計測区間の時間をケース名ごとに残す。そうでなければ
+    最大と合計だけを残し、ケースごとの明細は捨てる (失敗したケースの明細を除く)。
+    """
     failed = next((o for o in outcomes if o.status != "AC"), None)
     failed_names = [o.name for o in outcomes if o.status != "AC"]
     algo = [o.algo_time_ns for o in outcomes if o.algo_time_ns is not None]
@@ -601,6 +608,11 @@ def _summarize(base: dict, outcomes: list[CaseOutcome], binary_bytes: int) -> Re
         algo_time_total_ns=sum(algo) if algo else None,
         memory_max_kb=max((o.memory_kb for o in outcomes), default=0),
         binary_bytes=binary_bytes,
+        case_algo_ns=(
+            {o.name: o.algo_time_ns for o in outcomes if o.algo_time_ns is not None}
+            if case_times
+            else None
+        ),
         failed_cases=failed_names[:FAILED_CASES_MAX],
         failed_case=(
             FailedCase(

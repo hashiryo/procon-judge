@@ -62,6 +62,10 @@ class Record:
     # failed_case はその最初の 1 つの明細。
     failed_cases: list[str] = field(default_factory=list)
     failed_case: FailedCase | None = None
+    # ケース名から、そのケースの計測区間の時間 (ns) への対応。problem.toml の [record] で
+    # case_times = true とした base の問題だけが持つ (DESIGN.md「ケースごとの時間を残す
+    # 記録」)。ほかの記録には無く、JSON にも書かない。
+    case_algo_ns: dict[str, int] | None = None
     # 束の id (pj.batch)。同じジョブで一度に測った記録は同じ id を持つ。順位表は
     # base の問題でいちばん新しい束だけを並べる。手元で 1 本だけ測ったときと古い
     # 記録には無い。
@@ -74,7 +78,11 @@ class Record:
     )
 
     def to_json(self) -> str:
-        return json.dumps(asdict(self), ensure_ascii=False)
+        data = asdict(self)
+        if data["case_algo_ns"] is None:
+            # case_times の問題でなければ、記録の形を今までと変えない。
+            del data["case_algo_ns"]
+        return json.dumps(data, ensure_ascii=False)
 
 
 def _head_sha(directory) -> str | None:

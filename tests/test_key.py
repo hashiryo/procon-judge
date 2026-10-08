@@ -331,6 +331,24 @@ def test_problem_hash_ignores_an_explicit_default(tmp_path):
     assert key_mod.problem_hash(problem_mod.load(with_default.dir)) == before
 
 
+
+def test_problem_hash_ignores_case_times_false(tmp_path):
+    """false と書いても、書かない問題とキーが変わらない。"""
+    without = make_problem(tmp_path, harness="base", base_cpp="int main() {}\n")
+    before = key_mod.problem_hash(without)
+    path = without.dir / "problem.toml"
+    path.write_text(path.read_text() + "\n[record]\ncase_times = false\n")
+    assert key_mod.problem_hash(problem_mod.load(without.dir)) == before
+
+
+def test_problem_hash_follows_case_times(tmp_path):
+    """true にすると測り直しになり、記録にケースごとの時間が入る。"""
+    problem = make_problem(tmp_path, harness="base", base_cpp="int main() {}\n")
+    before = key_mod.problem_hash(problem)
+    path = problem.dir / "problem.toml"
+    path.write_text(path.read_text() + "\n[record]\ncase_times = true\n")
+    assert key_mod.problem_hash(problem_mod.load(problem.dir)) != before
+
 CHECKER_TOML = """
 id = "x"
 title = "T"
