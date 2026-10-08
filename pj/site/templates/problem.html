@@ -30,6 +30,19 @@
         <tbody id="rows"></tbody>
       </table>
     </div>
+    <!-- ケースごとの計測区間の時間。problem.toml の record.case_times の問題だけ problem.js が出す。 -->
+    <section id="cases" hidden>
+      <h2>ケースごとの計測区間の時間</h2>
+      <p class="note" id="cases-note"></p>
+      <div class="wrap">
+        <table id="cases-table">
+          <thead>
+            <tr id="cases-head"></tr>
+          </thead>
+          <tbody id="cases-rows"></tbody>
+        </table>
+      </div>
+    </section>
     <script src="../problem.js{{SCRIPT_V}}"></script>
   </body>
 </html>

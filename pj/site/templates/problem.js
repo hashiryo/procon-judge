@@ -455,12 +455,14 @@ function render() {
 
   const body = document.getElementById("rows");
   body.replaceChildren();
-  for (const row of sortRows(rows)) {
+  const sorted = sortRows(rows);
+  for (const row of sorted) {
     const tr = el("tr", null, row.outside ? "outside" : row.current === false ? "stale" : null);
     for (const column of shown()) tr.append(column.cell(row));
     body.append(tr);
   }
   for (const name of missing) body.append(missingLine(name));
+  renderCases(sorted);
 
   // 参考と未計測はどちらもランナー待ち。表のどこまでが現行かをここで出す。
   const counts = [
@@ -470,6 +472,43 @@ function render() {
   ];
   if (DATA.batched) counts.push(el("span", "束の外 " + outside));
   document.getElementById("counts").replaceChildren(...counts);
+}
+
+// ケースごとの計測区間の時間の表 (problem.toml の record.case_times の問題だけ)。行は
+// 順位表と同じ並びで、行ごとにいちばん長いケースを太字にする。順位は最大のケースで
+// 決まるので、どのケースで順位が決まったか、どのケースで遅いかがここで分かる。
+function renderCases(sorted) {
+  const section = document.getElementById("cases");
+  const names = DATA.case_names || [];
+  const rows = sorted.filter((r) => r.case_ns);
+  if (!names.length || !rows.length) {
+    section.hidden = true;
+    return;
+  }
+  section.hidden = false;
+  document.getElementById("cases-note").textContent =
+    "単位は ms です。行ごとに、いちばん長いケースを太字にしています。";
+  document
+    .getElementById("cases-head")
+    .replaceChildren(el("th", "提出"), ...names.map((n) => el("th", n, "n")));
+  const body = document.getElementById("cases-rows");
+  body.replaceChildren();
+  for (const row of rows) {
+    const tr = el("tr", null, row.outside ? "outside" : row.current === false ? "stale" : null);
+    tr.append(nameCell(row.submission, "mono name"));
+    let slowest = null;
+    for (const n of names) {
+      const v = row.case_ns[n];
+      if (v !== undefined && (slowest === null || v > row.case_ns[slowest])) slowest = n;
+    }
+    for (const n of names) {
+      const v = row.case_ns[n];
+      tr.append(
+        el("td", v === undefined ? "-" : (v / 1e6).toFixed(2), n === slowest ? "n slowest" : "n")
+      );
+    }
+    body.append(tr);
+  }
 }
 
 // 束 (同じランナーで一度に測った記録の集合) の説明。同じ CPU モデルでも VM ごとに

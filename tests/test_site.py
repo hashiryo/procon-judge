@@ -943,6 +943,30 @@ def test_problem_payload_carries_the_failed_cases():
     assert payload["rows"][0]["failed_cases"] == ["x", "y"]
 
 
+
+def test_collapse_keeps_the_fastest_time_of_each_case():
+    """record.case_times の問題。同じキーの記録が複数あれば、ケースごとに最小を採る。"""
+    first = rec(case_algo_ns={"seed_000": 5, "seed_001": 9})
+    second = rec(case_algo_ns={"seed_000": 7, "seed_001": 3}, timestamp="2026-01-02T00:00:00Z")
+    cell = site_build.collapse([first, second])[0]
+    assert cell.case_ns == {"seed_000": 5, "seed_001": 3}
+
+
+def test_problem_payload_carries_the_case_times():
+    cell = site_build.collapse([rec(case_algo_ns={"seed_001": 2, "seed_000": 1})])[0]
+    payload = site_build.problem_payload("p", None, [cell], "2026-01-01T00:00:00Z")
+    assert payload["case_names"] == ["seed_000", "seed_001"]
+    assert payload["rows"][0]["case_ns"] == {"seed_000": 1, "seed_001": 2}
+
+
+def test_problem_payload_without_case_times_keeps_its_rows_small():
+    """case_times でない問題の行には case_ns を書かない。"""
+    cell = site_build.collapse([rec()])[0]
+    assert cell.case_ns is None
+    payload = site_build.problem_payload("p", None, [cell], "2026-01-01T00:00:00Z")
+    assert payload["case_names"] == []
+    assert "case_ns" not in payload["rows"][0]
+
 def test_problem_url_prefers_the_written_url(tmp_path):
     from pj import problem as problem_mod
 

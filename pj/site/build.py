@@ -103,6 +103,9 @@ class Cell:
     outside: bool = False
     # 測ったときの問題のディレクトリ (measured_dir)。空なら今の場所と同じとみなす。
     dir: str = ""
+    # ケースごとの計測区間の時間 (ns)。problem.toml の record.case_times の問題だけが持つ。
+    # 同じキーの記録のうち持っているものから、ケースごとに最小を採る。
+    case_ns: dict[str, int] | None = None
 
 
 @dataclass(frozen=True)
@@ -213,6 +216,10 @@ def _cell(
         for r in same
         if r.get("algo_time_total_ns") is not None
     ]
+    case_ns: dict[str, int] = {}
+    for r in same:
+        for name, ns in (r.get("case_algo_ns") or {}).items():
+            case_ns[name] = min(ns, case_ns.get(name, ns))
     # 実行時間と同じく最小を取る。runner の混み具合で遅くなる方にだけ揺れるため。
     compile_ms = [r["compile_ms"] for r in same if r.get("compile_ms") is not None]
     compile_rss = [r["compile_rss_kb"] for r in same if r.get("compile_rss_kb")]
@@ -247,6 +254,7 @@ def _cell(
         batch=batch,
         outside=outside,
         dir=measured_dir(newest.get("cxxflags", "")),
+        case_ns=case_ns or None,
     )
 
 def describe_diff(diff: Diff | None) -> str | None:
@@ -517,6 +525,37 @@ def problem_payload(
 
     source = problem.testdata.source if problem else ""
     dir_rel = problem_dir_rel(problem, problem_id)
+    rows = []
+    for c in cells:
+        row = {
+            "submission": c.submission,
+            "env": c.env,
+            "cpu_model": c.cpu_model,
+            "status": c.status,
+            "algo_ns": c.algo_ns,
+            "algo_total_ns": c.algo_total_ns,
+            "wall_ms": c.wall_ms,
+            "rss_kb": c.rss_kb,
+            "source_bytes": c.source_bytes,
+            "binary_bytes": c.binary_bytes,
+            "compile_ms": c.compile_ms,
+            "compile_rss_kb": c.compile_rss_kb,
+            "samples": c.samples,
+            "timestamp": c.timestamp,
+            "judge_sha": c.judge_sha,
+            # 測ったときの問題のディレクトリ。今の dir と違うときだけ入る。
+            "dir": c.dir if c.dir and c.dir != dir_rel else None,
+            "failed": c.failed,
+            "failed_cases": list(c.failed_cases),
+            "current": c.current,
+            "reason": describe_diff(c.reason),
+            "batch": c.batch,
+            "outside": c.outside,
+        }
+        # record.case_times の問題の行だけが持つ。ほかの問題の JSON は大きくしない。
+        if c.case_ns:
+            row["case_ns"] = c.case_ns
+        rows.append(row)
     return {
         "id": problem_id,
         "title": problem.title if problem else problem_id,
@@ -561,34 +600,9 @@ def problem_payload(
             key=lambda c: (order.get(c["env"], len(order)), c["env"], c["cpu_model"]),
         ),
         "cxxflags": cxxflags,
-        "rows": [
-            {
-                "submission": c.submission,
-                "env": c.env,
-                "cpu_model": c.cpu_model,
-                "status": c.status,
-                "algo_ns": c.algo_ns,
-                "algo_total_ns": c.algo_total_ns,
-                "wall_ms": c.wall_ms,
-                "rss_kb": c.rss_kb,
-                "source_bytes": c.source_bytes,
-                "binary_bytes": c.binary_bytes,
-                "compile_ms": c.compile_ms,
-                "compile_rss_kb": c.compile_rss_kb,
-                "samples": c.samples,
-                "timestamp": c.timestamp,
-                "judge_sha": c.judge_sha,
-                # 測ったときの問題のディレクトリ。今の dir と違うときだけ入る。
-                "dir": c.dir if c.dir and c.dir != dir_rel else None,
-                "failed": c.failed,
-                "failed_cases": list(c.failed_cases),
-                "current": c.current,
-                "reason": describe_diff(c.reason),
-                "batch": c.batch,
-                "outside": c.outside,
-            }
-            for c in cells
-        ],
+        # ケースごとの表の列 (record.case_times の問題だけ)。名前の順に並べる。
+        "case_names": sorted({name for c in cells for name in (c.case_ns or {})}),
+        "rows": rows,
     }
 
 

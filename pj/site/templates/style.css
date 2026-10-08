@@ -313,6 +313,11 @@ h2 {
   margin: 22px 0 8px;
 }
 
+/* 順位表の下のケースごとの表で、行ごとにいちばん長いケース。 */
+td.slowest {
+  font-weight: 700;
+}
+
 h1.mono {
   font-size: 1.35rem;
 }
