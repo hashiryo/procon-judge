@@ -1,0 +1,18 @@
+id = "self-sort-large-u32"
+title = "u32 の並べ替え (10^7 個)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 256
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 12
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
