@@ -1,0 +1,21 @@
+id = "self-sort-compress-i64"
+title = "i64 の座標圧縮"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 256
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 12
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
