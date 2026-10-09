@@ -1,7 +1,7 @@
 {
  "schema": 1,
- "generated_at": "2026-10-09T04:58:01Z",
- "judge_sha": "c684de607b3bfd08f7964d752391a64c4556c6b8",
+ "generated_at": "2026-10-09T06:08:52Z",
+ "judge_sha": "7b483f6c959a161f6e86bc4a3b49fef6d5fa5c76",
  "library_sha": "9a700034f900201f7564175e8840d25e6ebe5a83",
  "env": "x64-gcc",
  "cpu": "QEMU Haswell-noTSX (AVX2、BMI2、FMA、pclmul。vpclmulqdq、GFNI、AVX-512 なし)",
