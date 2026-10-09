@@ -1,0 +1,16 @@
+id = "loj-179"
+title = "Nim 积"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 256
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "loj"
+name = "179"
+
+[compare]
+kind = "tokens"

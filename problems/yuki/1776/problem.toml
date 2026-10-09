@@ -1,0 +1,16 @@
+id = "yuki-1776"
+title = "Love Triangle 2 (Hard)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "1776"
+
+[compare]
+kind = "tokens"
