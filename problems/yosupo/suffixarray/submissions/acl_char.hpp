@@ -1,4 +1,7 @@
 #pragma once
+// acl の SA-IS で、L 型と S 型を vector<bool> でなく vector<char> に持つ版。induced sorting では、接尾辞配列を順に読んだあと、
+// ls[v - 1] を散らばった位置から読む。vector<bool> だと 1 bit を取り出す手間が毎回かかるので、Library の SuffixArray (vector<char>)
+// との 1.5 倍の差がここから来ているかを見る。ほかは acl と同じ。以下は acl の説明。
 // AtCoder Library (https://github.com/atcoder/ac-library、CC0 1.0) の atcoder/string.hpp から、suffix_array (文字列版) と、それが使う
 // sa_naive、sa_doubling、sa_is を写したもの。中身は変えず、名前空間だけ acl_sa に移した。SA-IS は L 型と S 型を vector<bool> に持ち、
 // バケットの境界を L 型と S 型で分けて持つ。10 文字未満は素朴な比較、40 文字未満は prefix doubling (std::sort) に切り替え、再帰の
@@ -11,7 +14,7 @@
 #include <vector>
 #include "pj.hpp"
 
-namespace acl_sa {
+namespace acl_char_sa {
 
 namespace internal {
 
@@ -76,7 +79,7 @@ std::vector<int> sa_is(const std::vector<int>& s, int upper) {
     }
 
     std::vector<int> sa(n);
-    std::vector<bool> ls(n);
+    std::vector<char> ls(n);
     for (int i = n - 2; i >= 0; i--) {
         ls[i] = (s[i] == s[i + 1]) ? ls[i + 1] : (s[i] < s[i + 1]);
     }
@@ -187,7 +190,7 @@ inline std::vector<int> suffix_array(const std::string& s) {
     return internal::sa_is(s2, 255);
 }
 
-}  // namespace acl_sa
+}  // namespace acl_char_sa
 
 struct Solver {
   string s;
@@ -195,7 +198,7 @@ struct Solver {
 
   explicit Solver(const string &s) : s(s) {}
 
-  void run() { sa = acl_sa::suffix_array(s); }
+  void run() { sa = acl_char_sa::suffix_array(s); }
 
   const vector<int> &answer() const { return sa; }
 };
