@@ -1,4 +1,8 @@
 #pragma once
+// msd16_net32_fused の、振り分けて並べる道の返り値の xs を huge page にする版。xs は容量 n で確保だけしてから、2 MB 境界に揃った中の
+// 部分に huge page を頼み、ページの境界に揃った中の部分をまとめて用意させる (self-sort-compress-u32 の pack_msd16_net32_fused_ph と同じ
+// 手)。i64 では一様なケースの xs が 8 MB になり、4 KB のページのままだと、値を足していくうちにページフォールトが 2000 回ほど起きる。
+// ほかは msd16_net32_fused と同じ。以下は msd16_net32_fused の説明。
 // 値と添字を別の作業用の配列へ値の上の桁で振り分け、塊の中を u32 の鍵の AVX2 のネットワークで並べて (self-sort-i64 の msd16_net32 の
 // 手)、並べたその場で順位を数えて書く (self-sort-compress-u32 の pack_msd16_net32_fused の手)。値と添字は合わせて 84 bit で u64 に
 // 収まらないので、値 (8 byte) と添字 (4 byte) を 2 本の配列の同じ位置に書く。塊の中では、鍵 (最上位 bit を反転した値) から base を
@@ -9,7 +13,6 @@
 // ごとに値が 1 つなので、振り分けずに、塊の番号から順位を引く表で書き換える。64 個を超える塊は、値と添字の組を std::sort で並べて
 // から走査する。値の種類が 1024 個以下なら、ハッシュ表で順位を引く (self-sort-compress-u32 の _hash の手)。塊ごとに通る関数は
 // always_inline にする。作業用の配列は huge page にする。
-// 返り値の xs を huge page にした版は msd16_net32_fused_ph にある。
 #ifdef USE_SIMDE
 #include <simde/x86/avx2.h>
 #else
@@ -19,11 +22,12 @@
 #include <sys/mman.h>
 #endif
 #include <algorithm>
+#include <cstdint>
 #include <cstdlib>
 #include <memory>
 #include <utility>
 #include <vector>
-namespace compress_msd16_net32_fused {
+namespace compress_msd16_net32_fused_ph {
 using T= long long;
 using u32= unsigned;
 using u64= unsigned long long;
@@ -232,6 +236,21 @@ inline void rank_pairs(std::pair<T, u32>* p, size_t m, T* a, std::vector<T>& xs,
  }
  return true;
 }
+// 返り値の xs を、長さ 0、容量 n で作る。確保だけしてから、2 MB 境界に揃った中の部分に huge page を頼み、ページの境界に揃った
+// 中の部分をまとめて用意させる。
+inline std::vector<T> alloc_xs(size_t n) {
+ std::vector<T> xs;
+ xs.reserve(n);
+#ifdef __linux__
+ constexpr uintptr_t H= uintptr_t(1) << 21, P= 4096;
+ const uintptr_t s= reinterpret_cast<uintptr_t>(xs.data()), e= s + n * sizeof(T);
+ const uintptr_t hs= (s + H - 1) & ~(H - 1), he= e & ~(H - 1);
+ if(hs < he) madvise(reinterpret_cast<void*>(hs), he - hs, MADV_HUGEPAGE);
+ const uintptr_t ps= (s + P - 1) & ~(P - 1), pe= e & ~(P - 1);
+ if(ps < pe) madvise(reinterpret_cast<void*>(ps), pe - ps, 23);  // MADV_POPULATE_WRITE
+#endif
+ return xs;
+}
 inline std::vector<T> compress(std::vector<T>& v) {
  const size_t n= v.size();
  T* a= v.data();
@@ -300,7 +319,7 @@ inline std::vector<T> compress(std::vector<T>& v) {
  const KeyParams kp{_mm256_set1_epi64x((long long)(1ull << 63)), _mm256_set1_epi64x((long long)base),
                     _mm256_set1_epi64x((long long)((u64(1) << kr) - 1)), _mm_cvtsi32_si128(sh - kr)};
  const bool fix= r > kr;
- xs.reserve(n);
+ xs= alloc_xs(n);
  for(size_t d= 0, off= 0; d < pos.size(); ++d) {
   const size_t end= pos[d], m= end - off;
   if(m == 1) {
@@ -317,5 +336,5 @@ inline std::vector<T> compress(std::vector<T>& v) {
  }
  return xs;
 }
-}  // namespace compress_msd16_net32_fused
-inline std::vector<long long> run(std::vector<long long>& a) { return compress_msd16_net32_fused::compress(a); }
+}  // namespace compress_msd16_net32_fused_ph
+inline std::vector<long long> run(std::vector<long long>& a) { return compress_msd16_net32_fused_ph::compress(a); }
