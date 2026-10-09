@@ -269,4 +269,7 @@ def test_the_key_flags_hide_where_the_problem_lives():
     assert "yosupo" not in key.replace("-Ilib", "")
     assert "-Iproblems" in real and "-Iproblems " in real + " "
     assert "point-add-range-sum" in real
-    assert real.replace(f"-I{rel}", f"-I{build_mod.PROBLEM_DIR_TOKEN}") == key
+    # lib/ のほかのライブラリの -I は実際のフラグにだけ入り、キーの材料には入らない。
+    assert build_mod.comparable_cxxflags(real).replace(
+        f"-I{rel}", f"-I{build_mod.PROBLEM_DIR_TOKEN}"
+    ) == key

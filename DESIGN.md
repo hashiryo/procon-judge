@@ -2335,6 +2335,10 @@ CI の 4 つのジョブで Library を clone していた手順は、`pj libs f
 
 サイトのソースへのリンクは、ヘッダを持つライブラリの置き場の HEAD を指します。ヘッダごとの逆引き JSON の `library_sha` も、そのヘッダのライブラリの HEAD にしました。`data/headers/index.json` には `library_shas` を足しています。提出ページの「Codeforces 相当の CPU」の節には、取ったライブラリの commit を並べます。
 
+### NeoLibrary を足しました
+
+同じ日に hashiryo/NeoLibrary を作り、libraries.toml に足しました (置き場は `neolib`)。GF2p64 は Library から移しました。GF2p64 を使う 10 本の提出は `self/gf2-64/` の 9 問と yosupo-nim-product-64 にあり、その include を `neo/algebra/GF2p64.hpp` に書き換えました。測り直しになるのはこの 10 問の束だけです。上の書き出しで比べると、変わったのはこの 10 本の記録 (1,524 件) だけでした。
+
 ## 既存リポジトリから移すもの
 
 | 移すもの | どこから | 備考 |

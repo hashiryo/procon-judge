@@ -7,7 +7,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include "mylib/algebra/GF2p64.hpp"
+#include "neo/algebra/GF2p64.hpp"
 using namespace std;
 using u64= unsigned long long;
 int checks= 0, failures= 0;

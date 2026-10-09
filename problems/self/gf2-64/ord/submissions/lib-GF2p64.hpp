@@ -1,5 +1,5 @@
 // Library の GF2p64::ord() をそのまま呼ぶ。中身は frobenius_il16 と同じ手順。
-#include "mylib/algebra/GF2p64.hpp"
+#include "neo/algebra/GF2p64.hpp"
 #include <vector>
 using namespace std;
 using u64= unsigned long long;

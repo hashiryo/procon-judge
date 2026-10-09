@@ -2,7 +2,7 @@
 
 自分用のオンラインジャッジです。`problems/` の下に問題を、その `submissions/` に提出を置いて main に push します。GitHub Actions が 4 つの環境 (x64 と arm、それぞれ gcc と clang) で提出をコンパイルして走らせ、正誤と時間とメモリを記録します。記録は `results` ブランチに溜まり、順位表と提出ページを https://hashiryo.github.io/procon-judge/ に出します。設計と実装の記録は [DESIGN.md](DESIGN.md) にあり、この README はそこから日常の操作だけを抜き出したものです。
 
-AtCoder の提出ページに無いものが 1 つあります。提出はリポジトリの中のファイルなので、include している自分のライブラリ (hashiryo/Library) が変わると自動で測り直され、同じ URL のページが最新の記録を指し続けます。
+AtCoder の提出ページに無いものが 1 つあります。提出はリポジトリの中のファイルなので、include している自分のライブラリ (hashiryo/Library と hashiryo/NeoLibrary) が変わると自動で測り直され、同じ URL のページが最新の記録を指し続けます。
 
 ## 手元の用意
 
@@ -18,7 +18,7 @@ uv run pj problems list | head
 
 `lib/` などのライブラリの置き場は `libraries.toml` の `dir` で決まり、git 管理外です。`pj libs fetch` が各ライブラリの `repo` をその `dir` に取ります。CI は実行のたびに最新を取るので、手元も自分で用意します。無いままだと、そのライブラリを include する提出が include 未解決になって走りません。
 
-ライブラリの作業ツリーが隣にあるなら、取らずに `ln -s ../Library lib` のようにシンボリックリンクを張ってもかまいません。`pj libs fetch` は置き場が既にあれば触りません。まだ commit していない変更を、手元の `pj repro` などでそのまま試せます。CI は手元の置き場を見ずに各ライブラリの既定のブランチを取るので、CI に測らせるときはライブラリを先に push します。
+ライブラリの作業ツリーが隣にあるなら、取らずに `ln -s ../Library lib` や `ln -s ../NeoLibrary neolib` のようにシンボリックリンクを張ってもかまいません。`pj libs fetch` は置き場が既にあれば触りません。まだ commit していない変更を、手元の `pj repro` などでそのまま試せます。CI は手元の置き場を見ずに各ライブラリの既定のブランチを取るので、CI に測らせるときはライブラリを先に push します。
 
 手元の環境は `environments.toml` の `local` で、`c++` (macOS では Apple clang) を使います。CI の 4 環境は GitHub のランナーでしか動きません。
 
@@ -212,7 +212,7 @@ uv run pj mirror push --problem <id>
 
 問題のディレクトリの `submissions/` にファイルを置きます。`base` の提出はハーネスから include されるので `.hpp`、`raw` の提出はそれ自体が翻訳単位なので `.cpp` です。先頭が `_` のファイルは提出として扱いません。
 
-自分のライブラリを使う提出は `#include "mylib/data_structure/UnionFind.hpp"` のように `lib/` からの相対パスで書きます。全環境のフラグに `-Ilib` が入っています。`libraries.toml` に `dir` を持つほかのライブラリも、その置き場からの相対パスで書きます。その置き場は探索パスの最後に入り、キーの材料には入りません (DESIGN.md の「2 つ目のライブラリを足した記録」)。手元のヘッダは必ず引用符で読んでください。山括弧で書いても `-I` があるので組めますが、閉包に入らないので、そのヘッダを直しても測り直されず、`pj bundle` も展開しません。`pj problems check` は、山括弧で読んでいる手元のヘッダを警告します。慣習として、ライブラリを使う提出は `lib.hpp`、同じ問題に複数あれば `lib-<実装>.hpp`、手書きの素朴な実装は `naive.hpp` と名付けますが、`pj` はこの名前に意味を持たせません。ライブラリとの紐付けは include の一覧から作ります。
+自分のライブラリを使う提出は `#include "mylib/data_structure/UnionFind.hpp"` のように `lib/` からの相対パスで書きます。全環境のフラグに `-Ilib` が入っています。`libraries.toml` に `dir` を持つほかのライブラリも、その置き場からの相対パスで書きます (NeoLibrary なら `#include "neo/algebra/GF2p64.hpp"`)。その置き場は探索パスの最後に入り、キーの材料には入りません (DESIGN.md の「2 つ目のライブラリを足した記録」)。手元のヘッダは必ず引用符で読んでください。山括弧で書いても `-I` があるので組めますが、閉包に入らないので、そのヘッダを直しても測り直されず、`pj bundle` も展開しません。`pj problems check` は、山括弧で読んでいる手元のヘッダを警告します。慣習として、ライブラリを使う提出は `lib.hpp`、同じ問題に複数あれば `lib-<実装>.hpp`、手書きの素朴な実装は `naive.hpp` と名付けますが、`pj` はこの名前に意味を持たせません。ライブラリとの紐付けは include の一覧から作ります。
 
 提出ではない共通のヘッダは 3 つの置き方があり、どれも名前ではなく置き場所で区別します。その問題の提出だけで共有するものは `problems/<グループ>/<名前>/common.hpp` のように `submissions/` の外に置きます。問題のディレクトリが `-I` に入っているので、提出からは `#include "common.hpp"` で引けます。`submissions/` の中に置くなら先頭を `_` にします (`submissions/_impl.hpp`)。問題をまたいで使うものは `problems/_shared/<名前>/` に置き、`-Iproblems` が入っているので `#include "_shared/gf2-64/_common.hpp"` の形でどの問題からも同じ書き方で引けます。`common.hpp` という名前自体に意味はなく、慣習です。
 
@@ -260,7 +260,7 @@ run にはモードが 2 つあります。push と Library の dispatch は網�
 
 測り直しになるのは、ソース (提出とその include 閉包、ハーネス、problem.toml) とテストデータと環境と CPU モデルから作るキーの記録が無いものだけです。整形やコメントの変更ではキーが変わりません。問題のディレクトリを `problems/` の下で動かしてもキーは変わりません。`base` の問題は (問題, 環境, CPU モデル) を束として扱い、1 本でも未計測なら全提出を同じジョブで測り直します。同じ CPU モデルでも VM ごとに速さが 2 割ほど違うので、順位表は同じジョブで測った記録どうしでだけ比べます。提出を 1 本足すと、その問題の他の提出も測り直されるのはこのためです。`raw` の問題はキーごとに測ります。
 
-ライブラリ (hashiryo/Library) の master への push もこちらを起こし、変わったヘッダを閉包に持つ提出だけが測り直されます。取りこぼしは 1 日 2 回の schedule が拾います。
+ライブラリ (hashiryo/Library の master と hashiryo/NeoLibrary の main) への push もこちらを起こし、変わったヘッダを閉包に持つ提出だけが測り直されます。取りこぼしは 1 日 2 回の schedule が拾います。
 
 run と並べて、fallback のジョブが Library の実行時の分岐を確かめます。対象は、閉包にある Library のヘッダが `__builtin_cpu_supports` か、Codeforces の判定機に無い命令 (vpclmulqdq、GFNI、AVX-512) を使っている提出です。x64-gcc と同じフラグで組み、Codeforces と同じ命令の CPU を QEMU で真似て全ケース走らせます。分岐を書き忘れて CPU が持たない命令に当たれば SIGILL の RE、代わりの経路の答えが違えば WA で、どちらも run を失敗にします。結果は、順位表では提出の名前の横の「CF 相当 AC」などの印に、提出ページでは「Codeforces 相当の CPU」の節に出ます。手元で対象を見るなら `uv run pj fallback --list` です。走らせるには x86_64 の Linux と qemu-user が要ります。手元の Mac では、docker の amd64 のコンテナに g++ と qemu-user を入れて `python3 -m pj.cli fallback` と走らせます。コンテナの中の uv は QEMU の上で落ちるので使いません。中身は DESIGN.md の「代わりの経路をエミュレーションで確かめる記録」にあります。
 

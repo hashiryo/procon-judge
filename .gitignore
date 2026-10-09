@@ -1,9 +1,11 @@
 .cache/
 .results/
 /site/
-# CI が実行のたびに clone する。pin しないので git には置かない。手元では Library の
-# 作業ツリーへのシンボリックリンクでもよいので、末尾に / を付けない (付けるとリンクに合わない)。
+# ライブラリの置き場 (libraries.toml の dir)。CI が実行のたびに pj libs fetch で取る。pin しないので
+# git には置かない。手元ではライブラリの作業ツリーへのシンボリックリンクでもよいので、末尾に / を
+# 付けない (付けるとリンクに合わない)。
 /lib
+/neolib
 # pj try で試す手元の書き捨て。
 /scratch/
 .venv/

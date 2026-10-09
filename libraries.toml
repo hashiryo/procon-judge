@@ -21,3 +21,12 @@ dir = "lib"
 repo = "https://github.com/hashiryo/Library.git"
 page = "https://hashiryo.github.io/Library/{stem}.html"
 source = "https://github.com/hashiryo/Library/blob/{sha}/mylib/{path}"
+
+# Library を一から作り直す新しいライブラリ (2026-10-09 から)。
+[[library]]
+name = "NeoLibrary"
+prefix = "neo/"
+dir = "neolib"
+repo = "https://github.com/hashiryo/NeoLibrary.git"
+page = "https://hashiryo.github.io/NeoLibrary/{stem}.html"
+source = "https://github.com/hashiryo/NeoLibrary/blob/{sha}/neo/{path}"
