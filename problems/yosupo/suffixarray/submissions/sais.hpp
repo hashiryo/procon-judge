@@ -40,26 +40,43 @@ template <class C> void sa_is(const C *s, int n, int K, int *sa) {
     sa[0] = 0;
     return;
   }
-  // t[i] は S 型なら 1。末尾の番兵は最も小さいので、最後の文字は L 型。
+  // t[i] は S 型なら 1。末尾の番兵は最も小さいので、最後の文字は L 型。種類と LMS の位置は、後ろからの 1 回の走査で分岐せずに決める
+  // (一様な文字列では L 型と S 型がばらばらに並ぶので、分岐にすると予測を外す)。LMS の位置は後ろから書いて、最後に前へ詰める。
   std::vector<unsigned char> t(n);
+  std::vector<int> lms(n / 2 + 1);
   t[n - 1] = 0;
-  for (int i = n - 2; i >= 0; --i) t[i] = s[i] < s[i + 1] || (s[i] == s[i + 1] && t[i + 1]);
+  int m = 0;
+  {
+    int *w = lms.data() + lms.size();
+    for (int i = n - 1; i > 0; --i) {
+      const unsigned char ti = t[i], tp = (s[i - 1] < s[i]) | ((s[i - 1] == s[i]) & ti);
+      t[i - 1] = tp;
+      w[-1] = i;
+      const int is = ti & (tp ^ 1);
+      w -= is, m += is;
+    }
+    std::copy(w, w + m, lms.data());
+    lms.resize(m);
+  }
   const auto is_lms = [&](int i) { return i > 0 && t[i] && !t[i - 1]; };
   // cnt[c] はバケット c の先頭、cnt[c + 1] は末尾の次。
   std::vector<int> cnt(K + 1, 0), head(K), tail(K);
   for (int i = 0; i < n; ++i) ++cnt[int(s[i]) + 1];
   for (int c = 0; c < K; ++c) cnt[c + 1] += cnt[c];
-  std::vector<int> lms;
-  for (int i = 1; i < n; ++i)
-    if (t[i] && !t[i - 1]) lms.push_back(i);
-  const int m = int(lms.size());
   induce(s, t.data(), n, K, cnt.data(), lms.data(), m, sa, head.data(), tail.data());
   if (m == 0) return;  // すべて L 型なら、番兵からの induce だけで並んでいる
   // 並んだ LMS の部分文字列に名前を付ける。LMS の部分文字列は、次の LMS の位置まで (番兵を含むものは番兵まで)。
-  std::vector<int> sorted;
-  sorted.reserve(m);
-  for (int i = 0; i < n; ++i)
-    if (is_lms(sa[i])) sorted.push_back(sa[i]);
+  // 並んだ順に LMS の位置を集める。これも分岐せずに書いて、LMS のときだけ書く位置を進める。
+  std::vector<int> sorted(m + 1);
+  {
+    int k = 0;
+    for (int i = 0; i < n; ++i) {
+      const int v = sa[i];
+      sorted[k] = v;
+      k += v > 0 && (t[v] & (t[v - 1] ^ 1));
+    }
+    sorted.resize(m);
+  }
   const auto same = [&](int a, int b) {
     for (int k = 0;; ++k) {
       const int x = a + k, y = b + k;
