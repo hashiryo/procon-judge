@@ -1,0 +1,21 @@
+id = "self-modulo-throughput-static-998244353"
+title = "配列の積和の throughput (mod = 998244353 固定)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 7
+reference = "submissions/naive.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
