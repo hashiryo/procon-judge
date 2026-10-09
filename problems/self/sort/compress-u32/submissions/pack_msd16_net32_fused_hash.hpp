@@ -9,7 +9,9 @@
 // 並べたら、並べた順に鍵の上の bit を比べて順位を数え、a の添字の位置に書く。塊は値の順に並んでいて、違う塊の値は必ず違うので、
 // 順位は塊をまたいで数え続ければよい。桁より下の bit が全要素で同じなら、空でない塊ごとに値が 1 つなので、振り分けずに、塊の番号から
 // 順位を引く表で各要素を書き換える。64 個を超える塊は、並んでいなければ std::sort で並べてから走査する。作業用の配列は huge page に
-// する。ほかの説明は self-sort-argsort-u32 の pack_msd16_net32 にある。
+// する。ネットワークの部品と塊の処理は always_inline で塊のループにすべて展開させる。インライン化を GCC と clang に任せると、関係の
+// ない書き換えで外に出る関数が変わり、同じ回の中でも 1 割から 2 割の差が出た (最初に _1p と _hash を足した回)。ほかの説明は
+// self-sort-argsort-u32 の pack_msd16_net32 にある。
 #ifdef USE_SIMDE
 #include <simde/x86/avx2.h>
 #else
@@ -60,15 +62,15 @@ inline __m256i merge8(__m256i v) { return step1<0xAA>(step2<0xCC>(step4<0xF0>(v)
 inline __m256i sort8(__m256i v) { return merge8(step1<0x5A>(step2<0x3C>(step1<0x66>(v)))); }
 inline __m256i reverse8(__m256i v) { return _mm256_permutevar8x32_epi32(v, _mm256_setr_epi32(7, 6, 5, 4, 3, 2, 1, 0)); }
 // a, b を並べた 16 個が bitonic なら昇順にする。
-inline void merge16(__m256i& a, __m256i& b) {
+[[gnu::always_inline]] inline void merge16(__m256i& a, __m256i& b) {
  __m256i l= vmin(a, b), h= vmax(a, b);
  a= merge8(l), b= merge8(h);
 }
-inline void sort16(__m256i& a, __m256i& b) {
+[[gnu::always_inline]] inline void sort16(__m256i& a, __m256i& b) {
  a= sort8(a), b= reverse8(sort8(b));
  merge16(a, b);
 }
-inline void sort32(__m256i& a, __m256i& b, __m256i& c, __m256i& d) {
+[[gnu::always_inline]] inline void sort32(__m256i& a, __m256i& b, __m256i& c, __m256i& d) {
  sort16(a, b), sort16(c, d);
  // 後ろの 16 個を逆順にして (reverse8(d), reverse8(c)) とつなぐと 32 個が bitonic になる。
  __m256i rc= reverse8(d), rd= reverse8(c);
@@ -77,13 +79,13 @@ inline void sort32(__m256i& a, __m256i& b, __m256i& c, __m256i& d) {
  a= l0, b= l1, c= h0, d= h1;
 }
 // a, b, c, d を並べた 32 個が bitonic なら昇順にする。
-inline void merge32(__m256i& a, __m256i& b, __m256i& c, __m256i& d) {
+[[gnu::always_inline]] inline void merge32(__m256i& a, __m256i& b, __m256i& c, __m256i& d) {
  __m256i l0= vmin(a, c), h0= vmax(a, c), l1= vmin(b, d), h1= vmax(b, d);
  merge16(l0, l1), merge16(h0, h1);
  a= l0, b= l1, c= h0, d= h1;
 }
 // 8 本のベクタの 64 個を昇順にする。前後の 32 個を並べ、後ろを逆順にしてつないだ bitonic な 64 個を merge する。
-inline void sort64(__m256i* v) {
+[[gnu::always_inline]] inline void sort64(__m256i* v) {
  sort32(v[0], v[1], v[2], v[3]), sort32(v[4], v[5], v[6], v[7]);
  const __m256i r4= reverse8(v[7]), r5= reverse8(v[6]), r6= reverse8(v[5]), r7= reverse8(v[4]);
  __m256i l0= vmin(v[0], r4), h0= vmax(v[0], r4), l1= vmin(v[1], r5), h1= vmax(v[1], r5);
@@ -94,7 +96,7 @@ inline void sort64(__m256i* v) {
 // 塊 s[0, m) の 8t 番目からの 8 個の鍵を作る。詰めた u64 を 4 個ずつ 2 回読み、上位 32 bit (値) を元の順に集めてから、値の bit
 // [lo, lo + r) を上に、塊の中の位置を下の 6 bit に詰める。m 個より後ろの lane は最大値で埋める (読むのは s[0, 8t + 8) で、塊の後ろの
 // 要素を読んでも鍵には使わない)。
-inline __m256i make_keys(const u64* s, int m, int t, __m128i lo, __m256i rmask) {
+[[gnu::always_inline]] inline __m256i make_keys(const u64* s, int m, int t, __m128i lo, __m256i rmask) {
  const int base= 8 * t;
  const __m256 v0= _mm256_castsi256_ps(_mm256_loadu_si256((const __m256i*)(s + base)));
  const __m256 v1= _mm256_castsi256_ps(_mm256_loadu_si256((const __m256i*)(s + base + 4)));
@@ -106,7 +108,7 @@ inline __m256i make_keys(const u64* s, int m, int t, __m128i lo, __m256i rmask) 
  return _mm256_blendv_epi8(_mm256_set1_epi32(-1), k, _mm256_cmpgt_epi32(_mm256_set1_epi32(m - base), iota));
 }
 // 塊 s[0, m) (2 <= m <= 64) の鍵を並べて k[0, m) に書く。
-inline void sort_keys(const u64* s, int m, __m128i lo, __m256i rmask, u32* k) {
+[[gnu::always_inline]] inline void sort_keys(const u64* s, int m, __m128i lo, __m256i rmask, u32* k) {
  const __m256i pad= _mm256_set1_epi32(-1);
  if(m <= 8) {
   _mm256_store_si256((__m256i*)k, sort8(make_keys(s, m, 0, lo, rmask)));
@@ -150,7 +152,7 @@ inline std::vector<u32> all_same(u32* a, size_t n) {
 // 塊 s[0, m) (2 <= m <= 64) を鍵のネットワークで並べ、並べた順に順位を数えて a の添字の位置に書き、新しい値を xs に足す。rk は
 // それまでの値の種類数 (次に付ける順位)。塊の中では桁とそれより上の bit、lo より下の bit がそろっているので、鍵の上の 26 bit 以下
 // (値の bit [lo, sh)) が等しいことと値が等しいことは同じ。
-inline void rank_bucket(const u64* s, int m, __m128i lo, __m256i rmask, u32* a, std::vector<u32>& xs, u32& rk) {
+[[gnu::always_inline]] inline void rank_bucket(const u64* s, int m, __m128i lo, __m256i rmask, u32* a, std::vector<u32>& xs, u32& rk) {
  alignas(32) u32 k[64];
  sort_keys(s, m, lo, rmask, k);
  u32 prev= ~0u;  // 鍵の上の bit は 26 bit 以下なので、塊の最初の要素は必ず新しい値になる
@@ -163,8 +165,9 @@ inline void rank_bucket(const u64* s, int m, __m128i lo, __m256i rmask, u32* a, 
 }
 // 値の種類が 1024 個以下なら、各要素をハッシュ表で引いた順位に書き換えて xs を作り、true を返す。種類が 1024 個を超えた時点で、
 // a に手を付けずに false を返す。表は 4096 個の u64 (上位 32 bit が値、下位 32 bit が埋まった印の 1、あとで順位) の線形探査で、
-// 消すことはないので、値 x を引くと、x の場所に着くまでに空の場所を通らない。
-inline bool few_values(u32* a, size_t n, std::vector<u32>& xs) {
+// 消すことはないので、値 x を引くと、x の場所に着くまでに空の場所を通らない。ほとんどの入力ではすぐにやめる道なので、compress に
+// 展開させない (展開すると compress が大きくなり、塊のループの組み方が変わる)。
+[[gnu::noinline]] inline bool few_values(u32* a, size_t n, std::vector<u32>& xs) {
  constexpr u32 T= 1024, B= 12, S= 1u << B;
  std::vector<u64> tab(S);
  u64* t= tab.data();
