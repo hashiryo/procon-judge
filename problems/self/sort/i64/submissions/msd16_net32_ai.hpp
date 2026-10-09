@@ -1,4 +1,7 @@
 #pragma once
+// msd16_net32 の、塊ごとに呼ぶ関数とその中のネットワークの部品を always_inline にした版。インライン化をコンパイラに任せると、
+// 外に出る関数が書き換えのたびに変わり、self-sort-compress-u32 では同じ回の中でも 1 割から 2 割の差が出た。ここでは、
+// 外に出していた分を展開させると速くなるかを見る。ほかは msd16_net32 と同じ。以下は msd16_net32 の説明。
 // msd16_net2 の塊の中を、64 bit のネットワークでなく u32 の鍵の 8 lane のネットワークで並べる版 (self-sort-argsort-u32 の pack_msd16_net32
 // の手)。塊の中では、鍵から base を引いた値の桁とそれより上の bit がそろっている。桁より下の bit のうち上の 26 bit までを上に、塊の中の
 // 位置を下の 6 bit に詰めた u32 を鍵にして並べ、鍵の下の 6 bit で作業用の配列から値を引いて a に書く。u32 は 8 lane で min と max も
@@ -6,7 +9,6 @@
 // 並びは値の順とは限らないので、並べたあとの鍵をベクタで見て、等しい並びがあればそこだけ挿入ソートで値の順に直す。一様な 64 bit の値
 // なら塊は平均 15 個で、26 bit が等しくなることはまずない。64 個を超えた塊は msd16_net2 と同じ分割に任せる。桁の選び方も msd16_net2
 // と同じ。以下の 64 bit の部品の説明は msd16_net2 のもの。
-// 塊ごとに呼ぶ関数とネットワークの部品を always_inline にした版は msd16_net32_ai にある。
 #ifdef USE_SIMDE
 #include <simde/x86/avx2.h>
 #else
@@ -21,9 +23,9 @@
 #include <limits>
 #include <memory>
 #include <vector>
-namespace sort_msd16_net32 {
-using T= unsigned long long;
-constexpr bool SIGNED= false;
+namespace sort_msd16_net32_ai {
+using T= long long;
+constexpr bool SIGNED= true;
 using u32= unsigned;
 using u64= unsigned long long;
 // 桁を取り出すときの鍵。鍵の符号なしの順が値の順になるようにする (符号付きなら最上位 bit を反転する)。
@@ -242,15 +244,15 @@ inline __m256i merge8(__m256i v) { return step1<0xAA>(step2<0xCC>(step4<0xF0>(v)
 inline __m256i sort8(__m256i v) { return merge8(step1<0x5A>(step2<0x3C>(step1<0x66>(v)))); }
 inline __m256i reverse8(__m256i v) { return _mm256_permutevar8x32_epi32(v, _mm256_setr_epi32(7, 6, 5, 4, 3, 2, 1, 0)); }
 // a, b を並べた 16 個が bitonic なら昇順にする。
-inline void merge16(__m256i& a, __m256i& b) {
+[[gnu::always_inline]] inline void merge16(__m256i& a, __m256i& b) {
  __m256i l= vmin(a, b), h= vmax(a, b);
  a= merge8(l), b= merge8(h);
 }
-inline void sort16(__m256i& a, __m256i& b) {
+[[gnu::always_inline]] inline void sort16(__m256i& a, __m256i& b) {
  a= sort8(a), b= reverse8(sort8(b));
  merge16(a, b);
 }
-inline void sort32(__m256i& a, __m256i& b, __m256i& c, __m256i& d) {
+[[gnu::always_inline]] inline void sort32(__m256i& a, __m256i& b, __m256i& c, __m256i& d) {
  sort16(a, b), sort16(c, d);
  // 後ろの 16 個を逆順にして (reverse8(d), reverse8(c)) とつなぐと 32 個が bitonic になる。
  __m256i rc= reverse8(d), rd= reverse8(c);
@@ -259,13 +261,13 @@ inline void sort32(__m256i& a, __m256i& b, __m256i& c, __m256i& d) {
  a= l0, b= l1, c= h0, d= h1;
 }
 // a, b, c, d を並べた 32 個が bitonic なら昇順にする。
-inline void merge32(__m256i& a, __m256i& b, __m256i& c, __m256i& d) {
+[[gnu::always_inline]] inline void merge32(__m256i& a, __m256i& b, __m256i& c, __m256i& d) {
  __m256i l0= vmin(a, c), h0= vmax(a, c), l1= vmin(b, d), h1= vmax(b, d);
  merge16(l0, l1), merge16(h0, h1);
  a= l0, b= l1, c= h0, d= h1;
 }
 // 8 本のベクタの 64 個を昇順にする。前後の 32 個を並べ、後ろを逆順にしてつないだ bitonic な 64 個を merge する。
-inline void sort64(__m256i* v) {
+[[gnu::always_inline]] inline void sort64(__m256i* v) {
  sort32(v[0], v[1], v[2], v[3]), sort32(v[4], v[5], v[6], v[7]);
  const __m256i r4= reverse8(v[7]), r5= reverse8(v[6]), r6= reverse8(v[5]), r7= reverse8(v[4]);
  __m256i l0= vmin(v[0], r4), h0= vmax(v[0], r4), l1= vmin(v[1], r5), h1= vmax(v[1], r5);
@@ -281,7 +283,7 @@ struct KeyParams {
 };
 // 塊 s[0, m) の 8t 番目からの 8 個の鍵を作る。値を 4 個ずつ 2 回読み、64 bit のまま鍵の bit を取り出してから、下の 32 bit を元の順に
 // 集める。m 個より後ろの lane は最大値で埋める (読むのは s[0, 8t + 8) で、塊の後ろの要素を読んでも鍵には使わない)。
-inline __m256i make_keys(const T* s, int m, int t, const KeyParams& kp) {
+[[gnu::always_inline]] inline __m256i make_keys(const T* s, int m, int t, const KeyParams& kp) {
  const int at= 8 * t;
  const auto part= [&](const T* p) {
   const __m256i v= _mm256_sub_epi64(_mm256_xor_si256(_mm256_loadu_si256((const __m256i*)p), kp.flip), kp.base);
@@ -295,7 +297,7 @@ inline __m256i make_keys(const T* s, int m, int t, const KeyParams& kp) {
  return _mm256_blendv_epi8(_mm256_set1_epi32(-1), k, _mm256_cmpgt_epi32(_mm256_set1_epi32(m - at), iota));
 }
 // 並べた鍵のベクタ v[0, nv) の先頭 m 個に、上の 26 bit が等しい隣どうしがあるか。1 lane ずらした鍵と比べる。
-inline bool has_tie(const __m256i* v, int nv, int m) {
+[[gnu::always_inline]] inline bool has_tie(const __m256i* v, int nv, int m) {
  const __m256i up= _mm256_setr_epi32(7, 0, 1, 2, 3, 4, 5, 6), last= _mm256_set1_epi32(7);
  __m256i carry= _mm256_set1_epi32(-1);  // 先頭の要素の前には、どの鍵とも等しくならない値を置く
  for(int t= 0; t < nv; ++t) {
@@ -325,7 +327,7 @@ inline void fix_ties(const u32* k, int m, T* d) {
  }
 }
 // 塊 s[0, m) (2 <= m <= 64) を並べて d[0, m) に書く。fix は鍵が桁より下の bit を全部は持たないとき。
-inline void sort_bucket(const T* s, int m, const KeyParams& kp, bool fix, T* d) {
+[[gnu::always_inline]] inline void sort_bucket(const T* s, int m, const KeyParams& kp, bool fix, T* d) {
  alignas(32) u32 k[64];
  __m256i v[8];
  const __m256i pad= _mm256_set1_epi32(-1);
@@ -405,5 +407,5 @@ inline void sort(std::vector<T>& v) {
   off= end;
  }
 }
-}  // namespace sort_msd16_net32
-inline void run(std::vector<unsigned long long>& a) { sort_msd16_net32::sort(a); }
+}  // namespace sort_msd16_net32_ai
+inline void run(std::vector<long long>& a) { sort_msd16_net32_ai::sort(a); }

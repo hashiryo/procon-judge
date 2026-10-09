@@ -1,4 +1,7 @@
 #pragma once
+// msd16_net_nm の、塊ごとに呼ぶ関数とその中のネットワークの部品を always_inline にした版。インライン化をコンパイラに任せると、
+// 外に出る関数が書き換えのたびに変わり、self-sort-compress-u32 では同じ回の中でも 1 割から 2 割の差が出た。ここでは、
+// 外に出していた分を展開させると速くなるかを見る。ほかは msd16_net_nm と同じ。以下は msd16_net_nm の説明。
 // msd16_net の塊を並べるところで、vpmaskmovd の読み書きをやめた版。作業用の配列の後ろに 8 個の余白を取り、塊の半端なベクタも
 // ふつうに 8 個読んでから、塊より後ろの lane を最大値で埋める。書き戻しも 8 個ずつふつうに書き、塊より後ろにはみ出した分は、後ろの
 // 塊を並べるときに上書きされる (塊は前から順に並べる)。a の終わりを越える塊だけは vpmaskmovd で書く。AMD では vpmaskmovd の書き込み
@@ -6,7 +9,6 @@
 // 上の 16 bit で 1 回振り分けてから、塊ごとにソーティングネットワークで並べる版 (self-sort-u64 の msd16_net を u32 にしたもの)。
 // 一様な 10^6 個なら塊は 65536 個で平均 15 個になり、全体をなめる振り分けは 1 回で済む (LSD は 3 回)。ネットワーク、vpmaskmovd での
 // 読み書き、64 個を超えた塊の分割は qsort_avx2_oop_all の部品を使う。u32 は 8 lane なので 64 個までのネットワークが安い。
-// 塊ごとに呼ぶ関数とネットワークの部品を always_inline にした版は msd16_net_nm_ai にある。
 #ifdef USE_SIMDE
 #include <simde/x86/avx2.h>
 #else
@@ -20,7 +22,7 @@
 #include <cstring>
 #include <memory>
 #include <vector>
-namespace sort_msd16_net_nm {
+namespace sort_msd16_net_nm_ai {
 using u32= unsigned;
 struct FreeDeleter {
  void operator()(void* p) const { std::free(p); }
@@ -99,15 +101,15 @@ inline __m256i merge8(__m256i v) { return step1<0xAA>(step2<0xCC>(step4<0xF0>(v)
 inline __m256i sort8(__m256i v) { return merge8(step1<0x5A>(step2<0x3C>(step1<0x66>(v)))); }
 inline __m256i reverse8(__m256i v) { return _mm256_permutevar8x32_epi32(v, _mm256_setr_epi32(7, 6, 5, 4, 3, 2, 1, 0)); }
 // a, b を並べた 16 個が bitonic なら昇順にする。
-inline void merge16(__m256i& a, __m256i& b) {
+[[gnu::always_inline]] inline void merge16(__m256i& a, __m256i& b) {
  __m256i l= vmin(a, b), h= vmax(a, b);
  a= merge8(l), b= merge8(h);
 }
-inline void sort16(__m256i& a, __m256i& b) {
+[[gnu::always_inline]] inline void sort16(__m256i& a, __m256i& b) {
  a= sort8(a), b= reverse8(sort8(b));
  merge16(a, b);
 }
-inline void sort32(__m256i& a, __m256i& b, __m256i& c, __m256i& d) {
+[[gnu::always_inline]] inline void sort32(__m256i& a, __m256i& b, __m256i& c, __m256i& d) {
  sort16(a, b), sort16(c, d);
  // 後ろの 16 個を逆順にして (reverse8(d), reverse8(c)) とつなぐと 32 個が bitonic になる。
  __m256i rc= reverse8(d), rd= reverse8(c);
@@ -116,13 +118,13 @@ inline void sort32(__m256i& a, __m256i& b, __m256i& c, __m256i& d) {
  a= l0, b= l1, c= h0, d= h1;
 }
 // a, b, c, d を並べた 32 個が bitonic なら昇順にする。
-inline void merge32(__m256i& a, __m256i& b, __m256i& c, __m256i& d) {
+[[gnu::always_inline]] inline void merge32(__m256i& a, __m256i& b, __m256i& c, __m256i& d) {
  __m256i l0= vmin(a, c), h0= vmax(a, c), l1= vmin(b, d), h1= vmax(b, d);
  merge16(l0, l1), merge16(h0, h1);
  a= l0, b= l1, c= h0, d= h1;
 }
 // 8 本のベクタの 64 個を昇順にする。前後の 32 個を並べ、後ろを逆順にしてつないだ bitonic な 64 個を merge する。
-inline void sort64(__m256i* v) {
+[[gnu::always_inline]] inline void sort64(__m256i* v) {
  sort32(v[0], v[1], v[2], v[3]), sort32(v[4], v[5], v[6], v[7]);
  const __m256i r4= reverse8(v[7]), r5= reverse8(v[6]), r6= reverse8(v[5]), r7= reverse8(v[4]);
  __m256i l0= vmin(v[0], r4), h0= vmax(v[0], r4), l1= vmin(v[1], r5), h1= vmax(v[1], r5);
@@ -169,16 +171,16 @@ inline void small_sort_to(const u32* src, u32* dst, size_t n) {
 inline void small_sort(u32* a, size_t n) { small_sort_to(a, a, n); }
 // src[0, m) (2 <= m <= 64) を並べて dst[0, m) に書く。src は塊の後ろを 7 個まで読んでよい (並べる値には使わない)。wide なら dst も
 // 塊の後ろを 7 個まで書いてよく、そうでなければ半端なベクタは vpmaskmovd で書く。
-inline __m256i load_nm(const u32* a, int rem) {
+[[gnu::always_inline]] inline __m256i load_nm(const u32* a, int rem) {
  const __m256i v= _mm256_loadu_si256((const __m256i*)a);
  if(rem >= 8) return v;
  return _mm256_blendv_epi8(_mm256_set1_epi32(-1), v, _mm256_cmpgt_epi32(_mm256_set1_epi32(rem), _mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7)));
 }
-inline void store_nm(u32* a, int rem, __m256i v, bool wide) {
+[[gnu::always_inline]] inline void store_nm(u32* a, int rem, __m256i v, bool wide) {
  if(wide || rem >= 8) return _mm256_storeu_si256((__m256i*)a, v);
  store_part(a, rem, v);
 }
-inline void small_sort_nm(const u32* src, u32* dst, int m, bool wide) {
+[[gnu::always_inline]] inline void small_sort_nm(const u32* src, u32* dst, int m, bool wide) {
  const __m256i pad= _mm256_set1_epi32(-1);
  if(m <= 8) {
   store_nm(dst, m, sort8(load_nm(src, m)), wide);
@@ -289,5 +291,5 @@ inline void sort(std::vector<u32>& v) {
   }
  }
 }
-}  // namespace sort_msd16_net_nm
-inline void run(std::vector<unsigned>& a) { sort_msd16_net_nm::sort(a); }
+}  // namespace sort_msd16_net_nm_ai
+inline void run(std::vector<unsigned>& a) { sort_msd16_net_nm_ai::sort(a); }

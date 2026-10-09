@@ -1,11 +1,13 @@
 #pragma once
+// pack_msd16_net32 の、塊ごとに呼ぶ関数とその中のネットワークの部品を always_inline にした版。インライン化をコンパイラに任せると、
+// 外に出る関数が書き換えのたびに変わり、self-sort-compress-u32 では同じ回の中でも 1 割から 2 割の差が出た。ここでは、
+// 外に出していた分を展開させると速くなるかを見る。ほかは pack_msd16_net32 と同じ。以下は pack_msd16_net32 の説明。
 // 値を上位 32 bit、添字を下位 32 bit に詰めた u64 を、self-sort-argsort-u32 の首位の pack_msd16_net32 と同じ形で並べ、並べた列を
 // 先頭から走査する。値が変わるたびに順位を 1 増やして xs に足し、添字の位置に順位を書く。並べ方は argsort と同じで、値の上の桁で
 // 振り分けたあと、塊の中を u32 の鍵 (桁より下の bit を上に、塊の中の位置を下の 6 bit に詰めたもの) の AVX2 のネットワークで並べる。
 // argsort では並べたあと添字だけを返り値に書いたが、ここでは詰めた u64 を並べた順にスタックの 64 個の領域へ集めて塊に書き戻し、
 // 振り分けの作業用の配列 1 本の上で走査する。64 個を超える塊は、並んでいなければ std::sort で並べる。作業用の配列は huge page に
 // する。ほかの説明は argsort の pack_msd16_net32 にある。
-// 塊ごとに呼ぶ関数とネットワークの部品を always_inline にした版は pack_msd16_net32_ai にある。
 #ifdef USE_SIMDE
 #include <simde/x86/avx2.h>
 #else
@@ -18,7 +20,7 @@
 #include <cstdlib>
 #include <memory>
 #include <vector>
-namespace compress_pack_msd16_net32 {
+namespace compress_pack_msd16_net32_ai {
 using u32= unsigned;
 using u64= unsigned long long;
 struct FreeDeleter {
@@ -56,15 +58,15 @@ inline __m256i merge8(__m256i v) { return step1<0xAA>(step2<0xCC>(step4<0xF0>(v)
 inline __m256i sort8(__m256i v) { return merge8(step1<0x5A>(step2<0x3C>(step1<0x66>(v)))); }
 inline __m256i reverse8(__m256i v) { return _mm256_permutevar8x32_epi32(v, _mm256_setr_epi32(7, 6, 5, 4, 3, 2, 1, 0)); }
 // a, b を並べた 16 個が bitonic なら昇順にする。
-inline void merge16(__m256i& a, __m256i& b) {
+[[gnu::always_inline]] inline void merge16(__m256i& a, __m256i& b) {
  __m256i l= vmin(a, b), h= vmax(a, b);
  a= merge8(l), b= merge8(h);
 }
-inline void sort16(__m256i& a, __m256i& b) {
+[[gnu::always_inline]] inline void sort16(__m256i& a, __m256i& b) {
  a= sort8(a), b= reverse8(sort8(b));
  merge16(a, b);
 }
-inline void sort32(__m256i& a, __m256i& b, __m256i& c, __m256i& d) {
+[[gnu::always_inline]] inline void sort32(__m256i& a, __m256i& b, __m256i& c, __m256i& d) {
  sort16(a, b), sort16(c, d);
  // 後ろの 16 個を逆順にして (reverse8(d), reverse8(c)) とつなぐと 32 個が bitonic になる。
  __m256i rc= reverse8(d), rd= reverse8(c);
@@ -73,13 +75,13 @@ inline void sort32(__m256i& a, __m256i& b, __m256i& c, __m256i& d) {
  a= l0, b= l1, c= h0, d= h1;
 }
 // a, b, c, d を並べた 32 個が bitonic なら昇順にする。
-inline void merge32(__m256i& a, __m256i& b, __m256i& c, __m256i& d) {
+[[gnu::always_inline]] inline void merge32(__m256i& a, __m256i& b, __m256i& c, __m256i& d) {
  __m256i l0= vmin(a, c), h0= vmax(a, c), l1= vmin(b, d), h1= vmax(b, d);
  merge16(l0, l1), merge16(h0, h1);
  a= l0, b= l1, c= h0, d= h1;
 }
 // 8 本のベクタの 64 個を昇順にする。前後の 32 個を並べ、後ろを逆順にしてつないだ bitonic な 64 個を merge する。
-inline void sort64(__m256i* v) {
+[[gnu::always_inline]] inline void sort64(__m256i* v) {
  sort32(v[0], v[1], v[2], v[3]), sort32(v[4], v[5], v[6], v[7]);
  const __m256i r4= reverse8(v[7]), r5= reverse8(v[6]), r6= reverse8(v[5]), r7= reverse8(v[4]);
  __m256i l0= vmin(v[0], r4), h0= vmax(v[0], r4), l1= vmin(v[1], r5), h1= vmax(v[1], r5);
@@ -90,7 +92,7 @@ inline void sort64(__m256i* v) {
 // 塊 s[0, m) の 8t 番目からの 8 個の鍵を作る。詰めた u64 を 4 個ずつ 2 回読み、上位 32 bit (値) を元の順に集めてから、値の bit
 // [lo, lo + r) を上に、塊の中の位置を下の 6 bit に詰める。m 個より後ろの lane は最大値で埋める (読むのは s[0, 8t + 8) で、塊の後ろの
 // 要素を読んでも鍵には使わない)。
-inline __m256i make_keys(const u64* s, int m, int t, __m128i lo, __m256i rmask) {
+[[gnu::always_inline]] inline __m256i make_keys(const u64* s, int m, int t, __m128i lo, __m256i rmask) {
  const int base= 8 * t;
  const __m256 v0= _mm256_castsi256_ps(_mm256_loadu_si256((const __m256i*)(s + base)));
  const __m256 v1= _mm256_castsi256_ps(_mm256_loadu_si256((const __m256i*)(s + base + 4)));
@@ -102,7 +104,7 @@ inline __m256i make_keys(const u64* s, int m, int t, __m128i lo, __m256i rmask) 
  return _mm256_blendv_epi8(_mm256_set1_epi32(-1), k, _mm256_cmpgt_epi32(_mm256_set1_epi32(m - base), iota));
 }
 // 塊 s[0, m) (2 <= m <= 64) の鍵を並べて k[0, m) に書く。
-inline void sort_keys(const u64* s, int m, __m128i lo, __m256i rmask, u32* k) {
+[[gnu::always_inline]] inline void sort_keys(const u64* s, int m, __m128i lo, __m256i rmask, u32* k) {
  const __m256i pad= _mm256_set1_epi32(-1);
  if(m <= 8) {
   _mm256_store_si256((__m256i*)k, sort8(make_keys(s, m, 0, lo, rmask)));
@@ -144,7 +146,7 @@ inline std::vector<u32> all_same(u32* a, size_t n) {
  return xs;
 }
 // 塊 s[0, m) (2 <= m <= 64) を値の順に並べ直す。
-inline void sort_bucket(u64* s, int m, __m128i lo, __m256i rmask) {
+[[gnu::always_inline]] inline void sort_bucket(u64* s, int m, __m128i lo, __m256i rmask) {
  alignas(32) u32 k[64];
  sort_keys(s, m, lo, rmask, k);
  u64 t[64];
@@ -197,5 +199,5 @@ inline std::vector<u32> compress(std::vector<u32>& a) {
  }
  return scan(b, n, key);
 }
-}  // namespace compress_pack_msd16_net32
-inline std::vector<unsigned> run(std::vector<unsigned>& a) { return compress_pack_msd16_net32::compress(a); }
+}  // namespace compress_pack_msd16_net32_ai
+inline std::vector<unsigned> run(std::vector<unsigned>& a) { return compress_pack_msd16_net32_ai::compress(a); }

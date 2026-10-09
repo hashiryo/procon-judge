@@ -7,6 +7,7 @@
 // 16 個以下になる幅 (6 bit から 16 bit まで) を取る。桁より下の bit が全要素で同じなら、振り分け 1 回で添字を直接書く。64 個を超える
 // 塊は、詰めた u64 が並んでいなければ std::sort で並べる。ネットワークの部品は self-sort-u32 の msd16_net と同じ。作業用の配列は
 // huge page にする。
+// 塊ごとに呼ぶ関数とネットワークの部品を always_inline にした版は pack_msd16_net32_ai にある。
 #ifdef USE_SIMDE
 #include <simde/x86/avx2.h>
 #else
