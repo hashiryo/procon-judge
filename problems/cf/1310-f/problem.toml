@@ -1,0 +1,21 @@
+id = "cf-1310-f"
+title = "Bad Cryptography"
+url = "https://codeforces.com/problemset/problem/1310/F"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+# Codeforces はテストケースを公開していないので、自作する (gen.py と、lib-GF2p64.cpp を固定した reference.cpp)。
+# 答えは a^x = b となる x のどれでもよいので、checker.cpp が入力と提出の出力だけで判定する。
+[testdata]
+source = "local"
+count = 9
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "checker"
