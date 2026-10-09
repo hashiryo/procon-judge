@@ -22,7 +22,7 @@ signed main() {
  auto dfs= [&](auto&& dfs, int k, int n, int s, vector<vector<Nimber>> B) -> void {
   if(k == N) {
    int r= 0;
-   for(int i= N; i--;) r+= B[i][i] == 1;
+   for(int i= T; i--;) r+= B[i][i] == 1;
    Mint x= pw.pow(n - r);
    if((N - n) & 1) ans-= x;
    else ans+= x;
@@ -30,7 +30,7 @@ signed main() {
   }
   dfs(dfs, k + 1, n, s, B);
   auto X= H[k];
-  for(int i= 0; i < N; ++i) {
+  for(int i= 0; i < T; ++i) {
    if(B[i][i] == 0) {
     if(X[i] == 0) continue;
     Nimber iv= Nimber(1) / X[i];
@@ -45,7 +45,7 @@ signed main() {
   }
   dfs(dfs, k + 1, n + 1, s | (1 << k), B);
  };
- dfs(dfs, 0, 0, 0, vector(N, vector<Nimber>(18)));
+ dfs(dfs, 0, 0, 0, vector(T, vector<Nimber>(18)));
  cout << ans << '\n';
  return 0;
 }

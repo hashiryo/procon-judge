@@ -9,7 +9,9 @@ mle_mb = 512
 kind = "raw"
 
 [testdata]
-source = "none"
+source = "yukicoder"
+name = "1421"
 
+# 解が複数あるとき、どれを出してもよい問題。checker.cpp は入力と提出の出力だけで判定する。
 [compare]
-kind = "exit_code"
+kind = "checker"
