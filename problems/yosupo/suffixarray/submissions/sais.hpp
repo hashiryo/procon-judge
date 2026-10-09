@@ -10,6 +10,29 @@
 #include "pj.hpp"
 
 namespace sais_base {
+// order[0, m) (LMS の位置の列) を、その順を保ってバケットの末尾に置き、L 型、S 型の順に induced sorting する。cnt[c] はバケット c の
+// 先頭、cnt[c + 1] は末尾の次。n などは値で受け取る。参照で受けると、sa への書き込みが n と重なるかもしれないと見られ、ループの
+// たびに n を読み直すことになる (ラムダで書いたときの x86_64 の clang がそうだった)。
+template <class C>
+inline void induce(const C *s, const unsigned char *t, int n, int K, const int *cnt, const int *order, int m, int *sa, int *head, int *tail) {
+  std::fill(sa, sa + n, -1);
+  for (int c = 0; c < K; ++c) tail[c] = cnt[c + 1];
+  for (int k = m - 1; k >= 0; --k) {
+    const int d = order[k];
+    sa[--tail[s[d]]] = d;
+  }
+  for (int c = 0; c < K; ++c) head[c] = cnt[c];
+  sa[head[s[n - 1]]++] = n - 1;  // 番兵から最後の文字の接尾辞を induce する
+  for (int i = 0; i < n; ++i) {
+    const int v = sa[i] - 1;
+    if (v >= 0 && !t[v]) sa[head[s[v]]++] = v;
+  }
+  for (int c = 0; c < K; ++c) tail[c] = cnt[c + 1];
+  for (int i = n - 1; i >= 0; --i) {
+    const int v = sa[i] - 1;
+    if (v >= 0 && t[v]) sa[--tail[s[v]]] = v;
+  }
+}
 // s[0, n) (値は 0 以上 K 未満) の接尾辞配列を sa[0, n) に書く。
 template <class C> void sa_is(const C *s, int n, int K, int *sa) {
   if (n == 0) return;
@@ -30,27 +53,7 @@ template <class C> void sa_is(const C *s, int n, int K, int *sa) {
   for (int i = 1; i < n; ++i)
     if (t[i] && !t[i - 1]) lms.push_back(i);
   const int m = int(lms.size());
-  // order (LMS の位置の列) を、その順を保ってバケットの末尾に置き、L 型、S 型の順に induced sorting する。
-  const auto induce = [&](const std::vector<int> &order) {
-    std::fill(sa, sa + n, -1);
-    for (int c = 0; c < K; ++c) tail[c] = cnt[c + 1];
-    for (int k = m - 1; k >= 0; --k) {
-      const int d = order[k];
-      sa[--tail[s[d]]] = d;
-    }
-    for (int c = 0; c < K; ++c) head[c] = cnt[c];
-    sa[head[s[n - 1]]++] = n - 1;  // 番兵から最後の文字の接尾辞を induce する
-    for (int i = 0; i < n; ++i) {
-      const int v = sa[i] - 1;
-      if (v >= 0 && !t[v]) sa[head[s[v]]++] = v;
-    }
-    for (int c = 0; c < K; ++c) tail[c] = cnt[c + 1];
-    for (int i = n - 1; i >= 0; --i) {
-      const int v = sa[i] - 1;
-      if (v >= 0 && t[v]) sa[--tail[s[v]]] = v;
-    }
-  };
-  induce(lms);
+  induce(s, t.data(), n, K, cnt.data(), lms.data(), m, sa, head.data(), tail.data());
   if (m == 0) return;  // すべて L 型なら、番兵からの induce だけで並んでいる
   // 並んだ LMS の部分文字列に名前を付ける。LMS の部分文字列は、次の LMS の位置まで (番兵を含むものは番兵まで)。
   std::vector<int> sorted;
@@ -76,7 +79,7 @@ template <class C> void sa_is(const C *s, int n, int K, int *sa) {
   else
     for (int j = 0; j < m; ++j) sa1[s1[j]] = j;
   for (int k = 0; k < m; ++k) sorted[k] = lms[sa1[k]];
-  induce(sorted);
+  induce(s, t.data(), n, K, cnt.data(), sorted.data(), m, sa, head.data(), tail.data());
 }
 }  // namespace sais_base
 
