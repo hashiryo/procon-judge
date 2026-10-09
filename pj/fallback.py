@@ -32,9 +32,9 @@ from . import execute, fetch
 from . import include as include_mod
 from . import libraries as lib_mod
 from . import run as run_mod
-from .paths import CACHE_DIR, LIB_DIR, ROOT
+from .paths import CACHE_DIR, ROOT
 from .problem import Problem
-from .record import judge_sha, library_sha
+from .record import judge_sha, library_sha, library_shas
 
 # 組み方 (コンパイラとフラグ) を揃える環境。bundle の pragma と同じく vpclmulqdq を含む。
 BASE_ENV = "x64-gcc"
@@ -209,8 +209,10 @@ def preflight(env: env_mod.Environment, emulator: Sequence[str]) -> str | None:
     if not emulator or shutil.which(emulator[0]) is None:
         name = emulator[0] if emulator else "エミュレータ"
         return f"{name} がありません (Ubuntu なら apt-get install qemu-user)"
-    if not LIB_DIR.is_dir():
-        return "lib/ がありません。Library を lib/ に置いてから走らせてください"
+    missing = lib_mod.missing_dirs()
+    if missing:
+        names = "、".join(f"{d.name}/" for d in missing)
+        return f"{names} がありません。ライブラリを置いてから走らせてください (pj libs fetch)"
     return None
 
 
@@ -361,6 +363,7 @@ def report(
         "generated_at": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         "judge_sha": judge_sha(),
         "library_sha": library_sha(),
+        "library_shas": library_shas(),
         "env": env.name,
         "cpu": CPU_LABEL,
         "emulator": shlex.join(emulator),

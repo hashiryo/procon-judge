@@ -7,6 +7,7 @@ import subprocess
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 
+from . import libraries as lib_mod
 from .paths import LIB_DIR, ROOT
 
 STATUSES = ("AC", "WA", "TLE", "MLE", "RE", "CE")
@@ -52,6 +53,10 @@ class Record:
     # コンパイラとその子 (cc1plus、lto1、リンカ) のうち、いちばん大きいもののピーク RSS (KB)。
     # 判定サイトにはコンパイル中のメモリを 512 MB で切るものがある。古い記録には無い。
     compile_rss_kb: int | None = None
+    # libraries.toml のライブラリごとの、測ったときの置き場の HEAD。library_sha は Library
+    # (lib/) のぶんで、こちらは全部のライブラリを持つ。どちらもキーには入れない。再現のため
+    # に持つ。2026-10-09 より前の記録には無い。
+    library_shas: dict[str, str] = field(default_factory=dict)
     # キーの残りの成分。参考に落ちたとき、どの成分が動いたかを見分けるために持つ。
     harness_hash: str = ""
     problem_hash: str = ""
@@ -106,3 +111,15 @@ def library_sha() -> str | None:
     if not (LIB_DIR / ".git").exists():
         return None
     return _head_sha(LIB_DIR)
+
+
+def library_shas() -> dict[str, str]:
+    """libraries.toml のライブラリごとの、置き場の HEAD。取ってきていないものは入れない。"""
+    shas = {}
+    for library in lib_mod.load_all():
+        if library.path is None or not (library.path / ".git").exists():
+            continue
+        sha = _head_sha(library.path)
+        if sha:
+            shas[library.name] = sha
+    return shas

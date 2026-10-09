@@ -37,7 +37,7 @@ from .. import libraries as lib_mod
 from .. import problem as problem_mod
 from ..freshness import Diff, Freshness
 from ..paths import PROBLEMS_DIR, ROOT
-from ..record import judge_sha, library_sha
+from ..record import judge_sha, library_sha, library_shas
 from ..store import Store
 from .highlight import highlight
 
@@ -468,6 +468,7 @@ def fallback_for(
         "cpu": report.get("cpu") or "",
         "generated_at": report.get("generated_at") or "",
         "library_sha": report.get("library_sha"),
+        "library_shas": report.get("library_shas") or {},
         "results": results,
     }
 
@@ -784,12 +785,14 @@ def _fallback_html(page: SubmissionPage) -> str:
     when = []
     if fallback.get("generated_at"):
         when.append(f"{_stamp(fallback['generated_at'])} UTC")
-    if fallback.get("library_sha"):
-        when.append(f"Library {fallback['library_sha'][:7]}")
+    shas = fallback.get("library_shas") or (
+        {"Library": fallback["library_sha"]} if fallback.get("library_sha") else {}
+    )
+    when += [f"{name} {sha[:7]}" for name, sha in shas.items() if sha]
     cpu = fallback.get("cpu") or "Codeforces と同じ命令の CPU"
     parts = [
         "<h2>Codeforces 相当の CPU</h2>",
-        '<p class="note">Library の実行時の分岐 (<span class="mono">'
+        '<p class="note">ライブラリの実行時の分岐 (<span class="mono">'
         + esc("、".join(result["headers"]))
         + "</span>) を、判定機の CPU が持たない命令の代わりの経路まで走らせた結果です。"
         "時間はエミュレーションのものなので出しません。</p>",
@@ -988,12 +991,13 @@ def include_links(
     *,
     repo: str | None,
     sha: str | None,
-    lib_sha: str | None,
+    lib_shas: Mapping[str, str],
 ) -> list[IncludeLink] | None:
     """提出ページの include の欄。提出のファイルが無ければ None。
 
     ライブラリのヘッダは説明ページへ、このリポジトリのファイルは GitHub へ飛ばす。
-    どちらかはラベルの接頭辞で決める。pj はライブラリが何かを知らない。
+    どちらかはラベルの接頭辞で決める。pj はライブラリが何かを知らない。ソースへの
+    リンクは、そのライブラリの置き場の HEAD (lib_shas、名前から commit) を指す。
     """
     source = problem.dir / submission
     if not source.is_file():
@@ -1007,7 +1011,7 @@ def include_links(
         library = lib_mod.find(label, list(libraries))
         if library is not None:
             href = library.page_url(label)
-            source_href = library.source_url(label, lib_sha)
+            source_href = library.source_url(label, lib_shas.get(library.name))
             name = library.name
         else:
             try:
@@ -1300,6 +1304,7 @@ def build(store: Store, out: Path, *, fallback_path: Path | None = None) -> Summ
     repo = repo_url()
     sha = judge_sha()
     lib_sha = library_sha()
+    lib_shas = library_shas()
     try:
         libraries = lib_mod.load_all()
     except lib_mod.LibrariesError as e:
@@ -1393,7 +1398,7 @@ def build(store: Store, out: Path, *, fallback_path: Path | None = None) -> Summ
             mine = [c for c in cells if c.submission == submission]
             includes = (
                 include_links(
-                    problem, submission, libraries, repo=repo, sha=sha, lib_sha=lib_sha
+                    problem, submission, libraries, repo=repo, sha=sha, lib_shas=lib_shas
                 )
                 if problem
                 else None
@@ -1477,7 +1482,8 @@ def build(store: Store, out: Path, *, fallback_path: Path | None = None) -> Summ
                     "library": header_library[label],
                     "generated_at": generated_at,
                     "judge_sha": sha,
-                    "library_sha": lib_sha,
+                    # そのヘッダを持つライブラリの置き場の HEAD。
+                    "library_sha": lib_shas.get(header_library[label]),
                     # ページのパスはサイトのルートからの相対。これを前に付ける。
                     "site": site,
                     "environments": env_names,
@@ -1498,6 +1504,7 @@ def build(store: Store, out: Path, *, fallback_path: Path | None = None) -> Summ
                 "generated_at": generated_at,
                 "judge_sha": sha,
                 "library_sha": lib_sha,
+                "library_shas": lib_shas,
                 "site": site,
                 "environments": env_names,
                 **summary_of_headers,

@@ -1,4 +1,4 @@
-# 提出が include するライブラリと、そのヘッダへ外向きに張るリンク。
+# 提出が include するライブラリの置き場と、そのヘッダへ外向きに張るリンク。
 #
 # pj はライブラリが何かを知らない。閉包に出てきたラベルの接頭辞がここに合えば、
 # 提出ページの include の欄からそのライブラリの説明ページへ飛ばし、ヘッダごとの
@@ -7,10 +7,17 @@
 #
 # {path} はラベルから接頭辞を除いたもの (data_structure/SegmentTree.hpp)、
 # {stem} はさらに拡張子を落としたもの (data_structure/SegmentTree)、
-# {sha} は測ったときのライブラリのコミット (記録の library_sha)。
+# {sha} は測ったときのライブラリのコミット (記録の library_shas)。
+#
+# dir と repo は取得の定義で、CI の各ジョブの `pj libs fetch` が repo を dir に取る。
+# 手元では dir を作業ツリーへのシンボリックリンクにしてもよい (README の「手元の用意」)。
+# lib は探索パスの先頭に固定で、ほかの dir は探索パスの最後に足し、その -I はキーの
+# 材料に入れない (build.key_cxxflags)。dir を足しても今の記録のキーは変わらない。
 
 [[library]]
 name = "Library"
 prefix = "mylib/"
+dir = "lib"
+repo = "https://github.com/hashiryo/Library.git"
 page = "https://hashiryo.github.io/Library/{stem}.html"
 source = "https://github.com/hashiryo/Library/blob/{sha}/mylib/{path}"

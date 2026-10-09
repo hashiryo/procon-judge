@@ -3,7 +3,8 @@ name: judge
 on:
   push:
     branches: [main]
-  # Library の master への push。送り手は hashiryo/Library の procon-judge.yml。
+  # ライブラリの既定のブランチへの push。送り手は hashiryo/Library と hashiryo/NeoLibrary の
+  # procon-judge.yml。
   repository_dispatch:
     types: [library-push]
   schedule:
@@ -58,9 +59,10 @@ jobs:
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
       any: ${{ steps.plan.outputs.any }}
-      # この run の全ジョブが使うライブラリの commit。run の途中で Library に push が
-      # あっても、同じ run の中で違う commit を測ったり判定したりしない。
-      library_sha: ${{ steps.lib.outputs.sha }}
+      # この run の全ジョブが使うライブラリの commit (名前から commit への JSON)。run の
+      # 途中でライブラリに push があっても、同じ run の中で違う commit を測ったり判定したり
+      # しない。
+      library_shas: ${{ steps.lib.outputs.library_shas }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -79,12 +81,11 @@ jobs:
 
       # 閉包を作るのに要る。取れないとライブラリを使う提出が立たなくなるので、
       # そのぶんは次の実行が拾う。ここで取った commit を run と collect にも使わせる。
+      # 取るのは libraries.toml の repo を持つ項目で、それぞれの dir に置く。
       - name: ライブラリを取る
         id: lib
         continue-on-error: true
-        run: |
-          git clone --depth=1 https://github.com/hashiryo/Library.git lib
-          echo "sha=$(git -C lib rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        run: uv run pj libs fetch --github-output "$GITHUB_OUTPUT"
 
       - name: 計画する
         id: plan
@@ -167,17 +168,13 @@ jobs:
       # 走らせる問題のぶんだけ保管庫から落とし (1 問 1 アセット)、測り終えたら
       # 捨てる (--evict-testdata)。ランナーの disk は 14 GB ほどしか無い。
 
-      # plan が決めた commit を取る。plan が取れていなければ (sha が空) 最新を取る。
-      # 取れなくても、ライブラリを使わない提出は走る。
+      # plan が決めた commit を取る。plan が取れていなければ (JSON に名前が無ければ) 最新を
+      # 取る。取れなくても、そのライブラリを使わない提出は走る。
       - name: ライブラリを取る
         continue-on-error: true
         env:
-          LIBRARY_SHA: ${{ needs.plan.outputs.library_sha }}
-        run: |
-          git init -q lib
-          git -C lib remote add origin https://github.com/hashiryo/Library.git
-          git -C lib fetch --depth=1 origin "${LIBRARY_SHA:-HEAD}"
-          git -C lib checkout -q FETCH_HEAD
+          LIBRARY_SHAS: ${{ needs.plan.outputs.library_shas }}
+        run: uv run pj libs fetch --shas "$LIBRARY_SHAS"
 
       # 未計測の問題を 1 つ宣言して、組の全環境で測る、を時間の上限まで繰り返す。
       # 全モデルモードは引いた CPU モデルの欠けを、網羅モードは揃ったモデルの無い環境を
@@ -247,15 +244,11 @@ jobs:
           g++-15 --version
           qemu-x86_64 --version
 
-      # run と同じ commit を取る。取れなければ対象を選べないので、ここで止める。
+      # run と同じ commit を取る。1 つでも取れなければ対象を選べないので、ここで止める。
       - name: ライブラリを取る
         env:
-          LIBRARY_SHA: ${{ needs.plan.outputs.library_sha }}
-        run: |
-          git init -q lib
-          git -C lib remote add origin https://github.com/hashiryo/Library.git
-          git -C lib fetch --depth=1 origin "${LIBRARY_SHA:-HEAD}"
-          git -C lib checkout -q FETCH_HEAD
+          LIBRARY_SHAS: ${{ needs.plan.outputs.library_shas }}
+        run: uv run pj libs fetch --shas "$LIBRARY_SHAS" --strict
 
       - name: 代わりの経路を確かめる
         env:
@@ -346,17 +339,13 @@ jobs:
           exit 1
 
       # 記録が古くなっていないかは include 閉包を作り直して見るので、ここでも
-      # ライブラリが要る。run と同じ commit を取る。取れなければライブラリを使う
+      # ライブラリが要る。run と同じ commit を取る。取れなければそのライブラリを使う
       # 提出の判定だけが落ちる。
       - name: ライブラリを取る
         continue-on-error: true
         env:
-          LIBRARY_SHA: ${{ needs.plan.outputs.library_sha }}
-        run: |
-          git init -q lib
-          git -C lib remote add origin https://github.com/hashiryo/Library.git
-          git -C lib fetch --depth=1 origin "${LIBRARY_SHA:-HEAD}"
-          git -C lib checkout -q FETCH_HEAD
+          LIBRARY_SHAS: ${{ needs.plan.outputs.library_shas }}
+        run: uv run pj libs fetch --shas "$LIBRARY_SHAS"
 
       # サイトはビルド出力なので保存しない。記録から毎回作り直す。
       - name: サイトを作る

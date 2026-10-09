@@ -22,7 +22,7 @@ from . import execute, fetch
 from . import key as key_mod
 from .paths import CACHE_DIR
 from .problem import Problem
-from .record import FailedCase, Record, judge_sha, library_sha
+from .record import FailedCase, Record, judge_sha, library_sha, library_shas
 
 Target = tuple[Problem, Path]
 
@@ -456,6 +456,7 @@ def execute_job(job: Job) -> Record:
         **describe(job),
         "case_count": testcases.count if testcases else int(problem.compare.kind == "exit_code"),
         "library_sha": library_sha(),
+        "library_shas": library_shas(),
         "judge_sha": judge_sha(),
         "source_bytes": (problem.dir / submission).stat().st_size,
         "compile_ms": round(built.seconds * 1000),

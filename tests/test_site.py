@@ -623,7 +623,7 @@ def test_include_links_split_direct_from_via(tmp_path, fake_library):
 
     links = site_build.include_links(
         problem, "submissions/lib-tree.cpp", lib_mod.load_all(),
-        repo="https://github.com/x/judge", sha="abc", lib_sha="lib123",
+        repo="https://github.com/x/judge", sha="abc", lib_shas={"Library": "lib123"},
     )
     by_label = {link.label: link for link in links}
     assert set(by_label) == {"common.hpp", "mylib/Tree.hpp", "mylib/internal/helper.hpp"}
@@ -641,7 +641,7 @@ def test_include_links_report_unresolved_includes(tmp_path, fake_library):
     problem = lib_problem(tmp_path)
     (problem.dir / "submissions" / "plain.cpp").write_text('#include "nowhere.hpp"\n')
     links = site_build.include_links(
-        problem, "submissions/plain.cpp", [], repo=None, sha=None, lib_sha=None
+        problem, "submissions/plain.cpp", [], repo=None, sha=None, lib_shas={}
     )
     assert [(l.label, l.missing) for l in links] == [("nowhere.hpp", True)]
 
@@ -650,7 +650,7 @@ def test_include_links_are_none_without_the_file(tmp_path, fake_library):
     problem = lib_problem(tmp_path)
     assert (
         site_build.include_links(
-            problem, "submissions/gone.cpp", [], repo=None, sha=None, lib_sha=None
+            problem, "submissions/gone.cpp", [], repo=None, sha=None, lib_shas={}
         )
         is None
     )
@@ -1254,6 +1254,17 @@ def test_submission_page_shows_the_fallback_only_for_targets():
     assert "Codeforces 相当の CPU" not in site_build.submission_html(
         _replace(other, fallback=fallback), ""
     )
+
+
+def test_the_fallback_lists_the_commit_of_every_library():
+    cells = site_build.collapse([rec()])
+    report = {
+        **fallback_report({}),
+        "library_shas": {"Library": "6f8462e9c564", "NeoLibrary": "0123456789ab"},
+    }
+    fallback = site_build.fallback_for(report, "p", ["submissions/a.hpp"])
+    page = site_build.submission_html(_replace(page_for(cells), fallback=fallback), "")
+    assert "Library 6f8462e" in page and "NeoLibrary 0123456" in page
 
 
 def test_a_failing_fallback_shows_the_case_and_the_detail():

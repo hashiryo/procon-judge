@@ -13,6 +13,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from . import libraries as lib_mod
 from .environment import Environment
 from .paths import BUILD_CACHE_DIR, HARNESS_DIR, LIB_DIR, PROBLEMS_DIR, ROOT, SIMDE_DIR
 from .problem import Problem
@@ -50,14 +51,19 @@ def effective_cxxflags(env: Environment, problem: Problem) -> str:
     """environments.toml のフラグに -I を足したもの。実際のコンパイルに使う。
 
     記録の cxxflags にはこの文字列をそのまま入れる。include 閉包を辿るときの探索パス
-    もこれと同じにする。キーの材料は key_cxxflags の方で、問題のディレクトリだけが
-    置き換わっている。
+    もこれと同じにする。キーの材料は key_cxxflags の方で、問題のディレクトリが印に
+    置き換わり、lib/ のほかのライブラリの -I が抜けている。
     """
     return _flags(env, problem, for_key=False)
 
 
 def key_cxxflags(env: Environment, problem: Problem) -> str:
     """キーの材料にするフラグ。問題自身のディレクトリの -I を PROBLEM_DIR_TOKEN にしたもの。
+
+    lib/ のほかのライブラリ (libraries.toml の dir) の -I は入れない。ライブラリの中身は
+    閉包のハッシュを通してキーに入っているし、-I を足したことで解決先が変わるなら閉包が
+    変わる。入れると、ライブラリを足した瞬間に全部のキーが変わって全部が測り直しになる。
+    同じ理由で -Ilib は Library を畳んだあとも残す。
 
     run と Freshness の両方がこれを使う。二度書くと片方を直し忘れる。
     """
@@ -66,7 +72,10 @@ def key_cxxflags(env: Environment, problem: Problem) -> str:
 
 def _flags(env: Environment, problem: Problem, *, for_key: bool) -> str:
     flags = shlex.split(env.cxxflags)
+    extras = set(lib_mod.extra_dirs()) if for_key else set()
     for directory in include_dirs(problem):
+        if directory in extras:
+            continue
         if for_key and directory == problem.dir:
             flags.append(f"-I{PROBLEM_DIR_TOKEN}")
         else:
@@ -87,8 +96,25 @@ def include_dirs(problem: Problem) -> list[Path]:
     third_party/simde は submodule を初期化していなくても外さない。有無で外すと
     cxxflags が変わってキーが変わり、手元と CI で別の記録が増える。存在しない
     -I はコンパイラが黙って無視する。
+
+    lib/ のほかのライブラリ (libraries.toml の dir) は最後に足す。今ある探索のどれも
+    横取りしないため。置き場が無くても外さないのは SIMDe と同じ理由。
     """
-    return [LIB_DIR, problem.dir, HARNESS_DIR, PROBLEMS_DIR, SIMDE_DIR]
+    return [LIB_DIR, problem.dir, HARNESS_DIR, PROBLEMS_DIR, SIMDE_DIR, *lib_mod.extra_dirs()]
+
+
+def comparable_cxxflags(cxxflags: str) -> str:
+    """lib/ のほかのライブラリの -I を落としたフラグ。記録の cxxflags どうしを比べるときに使う。
+
+    その -I はキーの材料に入っていないので、有無だけでフラグが変わったとは言わない。
+    ライブラリを足す前に測った記録には入っておらず、足したあとの記録には入っている。
+    """
+    extras = {f"-I{_rel(d)}" for d in lib_mod.extra_dirs()}
+    try:
+        flags = shlex.split(cxxflags)
+    except ValueError:
+        return cxxflags
+    return shlex.join(f for f in flags if f not in extras)
 
 
 def _rel(path: Path) -> str:
@@ -138,15 +164,16 @@ def build_file(
 ) -> BuildResult:
     """問題に属さない 1 ファイルを、環境のフラグと提出と同じ探索パスで組む (pj try 用)。
 
-    問題のディレクトリが無いので、-I は lib、harness、problems、SIMDe の 4 つ。source は
-    絶対パスで渡す。コンパイラは ROOT で動かすので、相対パスだとずれる。
+    問題のディレクトリが無いので、-I は lib、harness、problems、SIMDe と、lib/ のほかの
+    ライブラリ。source は絶対パスで渡す。コンパイラは ROOT で動かすので、相対パスだとずれる。
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     binary = out_dir / (source.stem + ".bin")
     if binary.exists():
         binary.unlink()
     flags = shlex.split(env.cxxflags)
-    flags += [f"-I{_rel(d)}" for d in (LIB_DIR, HARNESS_DIR, PROBLEMS_DIR, SIMDE_DIR)]
+    dirs = (LIB_DIR, HARNESS_DIR, PROBLEMS_DIR, SIMDE_DIR, *lib_mod.extra_dirs())
+    flags += [f"-I{_rel(d)}" for d in dirs]
     cmd = [env.cxx, *flags, *extra_flags, "-o", str(binary), str(source)]
     return _compile(cmd, binary, shlex.join(flags))
 

@@ -203,9 +203,10 @@ def test_the_workflow_installs_what_the_check_needs():
     assert env_mod.load(fallback_mod.BASE_ENV).cxx in install["run"]
     assert "qemu-user" in install["run"] and fallback_mod.EMULATOR[0] in install["run"]
     lib = next(s for s in job["steps"] if s.get("name") == "ライブラリを取る")
-    assert lib["env"]["LIBRARY_SHA"] == "${{ needs.plan.outputs.library_sha }}"
+    assert lib["env"]["LIBRARY_SHAS"] == "${{ needs.plan.outputs.library_shas }}"
     # 取れなかったら対象を選べず、何も確かめずに通ってしまう。
     assert not lib.get("continue-on-error")
+    assert "--strict" in lib["run"]
 
 
 def test_collect_keeps_the_latest_report_next_to_the_records():

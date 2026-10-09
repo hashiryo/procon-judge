@@ -12,13 +12,13 @@ AtCoder の提出ページに無いものが 1 つあります。提出はリポ
 git clone https://github.com/hashiryo/procon-judge.git
 cd procon-judge
 git submodule update --init third_party/simde
-git clone --depth=1 https://github.com/hashiryo/Library.git lib
+uv run pj libs fetch
 uv run pj problems list | head
 ```
 
-`lib/` はライブラリの置き場で、git 管理外です。CI は実行のたびに最新を clone するので、手元も自分で用意します。無いままだと `mylib/...` を include する提出が include 未解決になって走りません。
+`lib/` などのライブラリの置き場は `libraries.toml` の `dir` で決まり、git 管理外です。`pj libs fetch` が各ライブラリの `repo` をその `dir` に取ります。CI は実行のたびに最新を取るので、手元も自分で用意します。無いままだと、そのライブラリを include する提出が include 未解決になって走りません。
 
-Library の作業ツリーが隣にあるなら、clone せず、`ln -s ../Library lib` でシンボリックリンクを張ってもかまいません。Library でまだ commit していない変更を、手元の `pj repro` などでそのまま試せます。CI は `lib/` を見ずに Library の既定のブランチを取るので、CI に測らせるときは Library を先に push します。
+ライブラリの作業ツリーが隣にあるなら、取らずに `ln -s ../Library lib` のようにシンボリックリンクを張ってもかまいません。`pj libs fetch` は置き場が既にあれば触りません。まだ commit していない変更を、手元の `pj repro` などでそのまま試せます。CI は手元の置き場を見ずに各ライブラリの既定のブランチを取るので、CI に測らせるときはライブラリを先に push します。
 
 手元の環境は `environments.toml` の `local` で、`c++` (macOS では Apple clang) を使います。CI の 4 環境は GitHub のランナーでしか動きません。
 
@@ -45,7 +45,7 @@ git archive origin/results | tar -x -C .results
 | `harness/pj.hpp` | 全問題のハーネスと提出が共有するもの |
 | `environments.toml` | 環境 (コンパイラとフラグ) の定義 |
 | `testdata.toml` | Library Checker の問題集のコミットの pin |
-| `libraries.toml` | 提出が include するライブラリと、そのページへのリンクの形 |
+| `libraries.toml` | 提出が include するライブラリの置き場 (`dir`) と取得元 (`repo`)、そのページへのリンクの形 |
 | `pj/` | 実装 (Python)。`tests/` に pytest |
 | `.github/workflows/judge.yml` | CI |
 
@@ -212,7 +212,7 @@ uv run pj mirror push --problem <id>
 
 問題のディレクトリの `submissions/` にファイルを置きます。`base` の提出はハーネスから include されるので `.hpp`、`raw` の提出はそれ自体が翻訳単位なので `.cpp` です。先頭が `_` のファイルは提出として扱いません。
 
-自分のライブラリを使う提出は `#include "mylib/data_structure/UnionFind.hpp"` のように `lib/` からの相対パスで書きます。全環境のフラグに `-Ilib` が入っています。手元のヘッダは必ず引用符で読んでください。山括弧で書いても `-I` があるので組めますが、閉包に入らないので、そのヘッダを直しても測り直されず、`pj bundle` も展開しません。`pj problems check` は、山括弧で読んでいる手元のヘッダを警告します。慣習として、ライブラリを使う提出は `lib.hpp`、同じ問題に複数あれば `lib-<実装>.hpp`、手書きの素朴な実装は `naive.hpp` と名付けますが、`pj` はこの名前に意味を持たせません。ライブラリとの紐付けは include の一覧から作ります。
+自分のライブラリを使う提出は `#include "mylib/data_structure/UnionFind.hpp"` のように `lib/` からの相対パスで書きます。全環境のフラグに `-Ilib` が入っています。`libraries.toml` に `dir` を持つほかのライブラリも、その置き場からの相対パスで書きます。その置き場は探索パスの最後に入り、キーの材料には入りません (DESIGN.md の「2 つ目のライブラリを足した記録」)。手元のヘッダは必ず引用符で読んでください。山括弧で書いても `-I` があるので組めますが、閉包に入らないので、そのヘッダを直しても測り直されず、`pj bundle` も展開しません。`pj problems check` は、山括弧で読んでいる手元のヘッダを警告します。慣習として、ライブラリを使う提出は `lib.hpp`、同じ問題に複数あれば `lib-<実装>.hpp`、手書きの素朴な実装は `naive.hpp` と名付けますが、`pj` はこの名前に意味を持たせません。ライブラリとの紐付けは include の一覧から作ります。
 
 提出ではない共通のヘッダは 3 つの置き方があり、どれも名前ではなく置き場所で区別します。その問題の提出だけで共有するものは `problems/<グループ>/<名前>/common.hpp` のように `submissions/` の外に置きます。問題のディレクトリが `-I` に入っているので、提出からは `#include "common.hpp"` で引けます。`submissions/` の中に置くなら先頭を `_` にします (`submissions/_impl.hpp`)。問題をまたいで使うものは `problems/_shared/<名前>/` に置き、`-Iproblems` が入っているので `#include "_shared/gf2-64/_common.hpp"` の形でどの問題からも同じ書き方で引けます。`common.hpp` という名前自体に意味はなく、慣習です。
 
@@ -335,7 +335,7 @@ uv run pj bundle --problem <id> --submission submissions/<name>.hpp --check
 uv run pj bundle --problem <id> --submission submissions/<name>.hpp > a.cpp
 ```
 
-入口は、base の問題なら base.cpp の `#ifndef SUBMISSION_HPP` から `#include SUBMISSION_HPP` までを提出を読む 1 行に置き換えたもの、raw の問題なら提出そのものです。そこから引用符の include を辿って、その場に中身を入れます。探す順はコンパイルの `-I` と同じ (読み込む側のディレクトリ、`lib/`、問題のディレクトリ、`harness/`、`problems/`、`third_party/simde/`) で、キーの材料にしている閉包とも同じです。同じファイルは 1 回だけ入れ、`#pragma once` の行は落とします。山括弧の include はそのまま残すので、ライブラリや共通のヘッダは引用符で読んでください。先頭には Library の `include/isa-pragma.hpp` を置きます。
+入口は、base の問題なら base.cpp の `#ifndef SUBMISSION_HPP` から `#include SUBMISSION_HPP` までを提出を読む 1 行に置き換えたもの、raw の問題なら提出そのものです。そこから引用符の include を辿って、その場に中身を入れます。探す順はコンパイルの `-I` と同じで、キーの材料にしている閉包とも同じです。読み込む側のディレクトリ、`lib/`、問題のディレクトリ、`harness/`、`problems/`、`third_party/simde/`、`lib/` のほかのライブラリの置き場の順に探します。同じファイルは 1 回だけ入れ、`#pragma once` の行は落とします。山括弧の include はそのまま残すので、ライブラリや共通のヘッダは引用符で読んでください。先頭には Library の `include/isa-pragma.hpp` を置きます。
 
 展開したものは `.cache/bundle/<id>/<提出の名前>.cpp` に書き、標準出力にも出します。書き先は `--out FILE` で変えられます。`--copy` を付けると、標準出力へは出さず、クリップボード (pbcopy) に入れます。書いた場所と大きさは stderr に出るので、標準出力はそのまま貼れます。元の問題が Codeforces か AtCoder のときは、ソースの大きさの上限 (64 KB と 512 KiB) を超えると警告を出します。提出欄に貼ったソースはブラウザが改行を CRLF にして送るので、大きさは改行を 2 バイトで数えます。
 
@@ -376,6 +376,7 @@ git push origin results
 | `pj try --problem ID --submission PATH [--input F \| --case NAME]` | 提出をハーネスごと組み、判定せずに走らせる |
 | `pj bundle --problem ID --submission PATH [--out FILE] [--copy] [--check [--cases N]]` | 判定サイトへ貼れる 1 ファイルに展開する。`--check` は `-I` も `-march` も付けずに組み、手元のケースを先頭から走らせる |
 | `pj fallback [--problem ID] [--list] [--out FILE] [--summary FILE]` | Library の実行時の分岐を、Codeforces と同じ命令の CPU (QEMU) で代わりの経路まで確かめる。x86_64 の Linux と qemu-user が要る。`--list` は対象を出すだけ |
+| `pj libs fetch [--shas JSON] [--github-output FILE] [--strict]` | `libraries.toml` のライブラリを置き場に取る。置き場が既にあれば触らない。CI は plan で取った commit を `--shas` で後ろのジョブに渡す |
 | `pj records list` | 記録の一覧 |
 | `pj records append DIR...` | ほかの jsonl を記録に取り込む |
 | `pj site build [--out DIR] [--store DIR]` | 記録からサイトを作る |

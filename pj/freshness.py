@@ -144,7 +144,16 @@ class Freshness:
         assert sub is not None  # current() が False を返した以上、判定できている
 
         settings = []
-        if record.get("cxxflags") != self._cxxflags.get(record.get("env", "")):
+        recorded_flags = record.get("cxxflags")
+        current_flags = self._cxxflags.get(record.get("env", ""))
+        if recorded_flags is None or current_flags is None:
+            flags_changed = recorded_flags != current_flags
+        else:
+            # lib/ のほかのライブラリの -I はキーの材料に入っていないので、比べない。
+            flags_changed = build_mod.comparable_cxxflags(
+                recorded_flags
+            ) != build_mod.comparable_cxxflags(current_flags)
+        if flags_changed:
             settings.append("cxxflags")
         recorded_problem = record.get("problem_hash")
         if recorded_problem and recorded_problem != self._problem_hash:

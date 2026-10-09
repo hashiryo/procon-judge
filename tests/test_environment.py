@@ -14,6 +14,7 @@ import yaml
 
 from pj import build as build_mod
 from pj import environment as env_mod
+from pj import libraries as lib_mod
 from pj import problem as problem_mod
 from pj.paths import HARNESS_DIR, SIMDE_DIR
 
@@ -51,10 +52,44 @@ def test_effective_cxxflags_append_the_include_dirs():
     env = env_mod.load("local")
     problem = problem_mod.load_by_id("yosupo-point-add-range-sum")
     flags = build_mod.effective_cxxflags(env, problem)
+    extras = "".join(
+        f" -I{d.relative_to(build_mod.ROOT).as_posix()}" for d in lib_mod.extra_dirs()
+    )
     assert flags.startswith(env.cxxflags)
     assert flags.endswith(
         "-Ilib -Iproblems/yosupo/point-add-range-sum -Iharness -Iproblems -Ithird_party/simde"
+        + extras
     )
+
+
+def test_the_key_flags_keep_the_include_dirs_they_had_before_other_libraries():
+    """2026-10-09 に lib/ のほかのライブラリを足せるようにした。キーの材料の -I はその前と
+    1 文字も変えていない。変えると全部の記録が参考に落ちて、全部が測り直しになる。"""
+    env = env_mod.load("local")
+    problem = problem_mod.load_by_id("yosupo-point-add-range-sum")
+    assert build_mod.key_cxxflags(env, problem) == shlex.join(
+        [*shlex.split(env.cxxflags), "-Ilib", "-I@problem", "-Iharness", "-Iproblems",
+         "-Ithird_party/simde"]
+    )
+
+
+def test_other_libraries_are_searched_last_and_stay_out_of_the_key(monkeypatch):
+    env = env_mod.load("local")
+    problem = problem_mod.load_by_id("yosupo-point-add-range-sum")
+    library = lib_mod.Library(
+        name="Library", prefix="mylib/", page="p", source="s", dir="lib", repo="r"
+    )
+    neo = lib_mod.Library(
+        name="NeoLibrary", prefix="neo/", page="p", source="s", dir="neolib", repo="r"
+    )
+    monkeypatch.setattr(lib_mod, "load_all", lambda path=None: [library])
+    key = build_mod.key_cxxflags(env, problem)
+    flags = build_mod.effective_cxxflags(env, problem)
+    monkeypatch.setattr(lib_mod, "load_all", lambda path=None: [library, neo])
+    assert build_mod.include_dirs(problem)[-1] == build_mod.ROOT / "neolib"
+    assert build_mod.key_cxxflags(env, problem) == key
+    assert build_mod.effective_cxxflags(env, problem) == flags + " -Ineolib"
+    assert build_mod.comparable_cxxflags(flags + " -Ineolib") == flags
 
 
 def test_the_problem_directory_wins_over_the_shared_harness():

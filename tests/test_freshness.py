@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from pj import environment as env_mod
+from pj import libraries as lib_mod
 from pj import problem as problem_mod
 from pj import run as run_mod
 from pj.freshness import Diff, Freshness
@@ -128,6 +129,25 @@ def test_changed_flags_are_a_setting(tmp_path, envs):
     record = record_for(problem, envs[0])
     changed = [replace(envs[0], cxxflags=envs[0].cxxflags + " -DEXTRA"), *envs[1:]]
     assert Freshness(problem, changed).diff(record) == Diff(settings=("cxxflags",))
+
+
+def test_an_added_library_is_not_a_flag_change(tmp_path, envs, monkeypatch):
+    """lib/ のほかのライブラリの -I はキーの材料に入らない。足す前に測った記録は現行のままで、
+    別の理由で参考に落ちても、フラグが変わったとは言わない。"""
+    library = lib_mod.Library(
+        name="Library", prefix="mylib/", page="p", source="s", dir="lib", repo="r"
+    )
+    neo = lib_mod.Library(
+        name="NeoLibrary", prefix="neo/", page="p", source="s", dir="neolib", repo="r"
+    )
+    monkeypatch.setattr(lib_mod, "load_all", lambda path=None: [library])
+    problem = make_problem(tmp_path)
+    record = record_for(problem, envs[0])
+    assert "-Ineolib" not in record["cxxflags"]
+    monkeypatch.setattr(lib_mod, "load_all", lambda path=None: [library, neo])
+    assert Freshness(problem, envs).current(record) is True
+    rewrite(problem, "dep.hpp", "int g() { return 1; }\n")
+    assert Freshness(problem, envs).diff(record) == Diff(changed=("dep.hpp",))
 
 
 def test_changed_limits_are_a_setting(tmp_path, envs):

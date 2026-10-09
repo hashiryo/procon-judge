@@ -30,7 +30,7 @@ from . import repro as repro_mod
 from . import run as run_mod
 from . import titles as titles_mod
 from .fetch import mirror
-from .paths import LIB_DIR, RESULTS_DIR, SITE_DIR
+from .paths import RESULTS_DIR, SITE_DIR
 from .site import build as site_build
 from .store import Store
 
@@ -38,6 +38,14 @@ from .store import Store
 def _die(message: str) -> int:
     print(f"error: {message}", file=sys.stderr)
     return 1
+
+
+def _warn_missing_libraries(consequence: str) -> None:
+    """ライブラリの置き場が無ければ警告する。lib/ と libraries.toml の dir を見る。"""
+    missing = lib_mod.missing_dirs()
+    if missing:
+        names = "、".join(f"{d.name}/" for d in missing)
+        print(f"warning: {names} がありません。{consequence}", file=sys.stderr)
 
 
 def cmd_problems_list(args: argparse.Namespace) -> int:
@@ -301,14 +309,9 @@ def cmd_plan(args: argparse.Namespace) -> int:
     envs = env_mod.load_all()
     problems = [problem_mod.load(d) for d in problem_mod.all_problem_dirs()]
     store = Store(Path(args.store) if args.store else RESULTS_DIR)
-    # lib/ が無いとライブラリを使う提出の閉包が欠ける。欠けた閉包はキーを
+    # ライブラリの置き場が無いと、それを使う提出の閉包が欠ける。欠けた閉包はキーを
     # 誤らせるので、plan はそれを未計測と数えずに警告だけ出す。
-    if not LIB_DIR.is_dir():
-        print(
-            f"warning: {LIB_DIR.name}/ がありません。"
-            "ライブラリを使う提出は立てません",
-            file=sys.stderr,
-        )
+    _warn_missing_libraries("そのライブラリを使う提出は立てません")
 
     plans = plan_mod.build(problems, envs, store, mode=args.mode)
     for one in plans:
@@ -689,6 +692,34 @@ def cmd_claims_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_libs_fetch(args: argparse.Namespace) -> int:
+    """libraries.toml の repo を持つライブラリを、それぞれの dir に取ってくる。
+
+    CI の各ジョブの最初に呼ぶ。plan は先端を取り、取った commit を library_shas に
+    載せる。run、fallback、collect はその commit を --shas で受けて取る。同じ run の
+    中で違う commit を測ったり判定したりしないため。置き場が既にあれば触らない。
+    """
+    try:
+        libraries = lib_mod.load_all()
+        wanted = json.loads(args.shas) if args.shas else {}
+    except (lib_mod.LibrariesError, json.JSONDecodeError) as e:
+        return _die(str(e))
+    if not isinstance(wanted, dict):
+        return _die("--shas はライブラリの名前から commit への JSON にします")
+    fetched, failed = lib_mod.fetch_all(libraries, wanted)
+    for library in libraries:
+        if library.name in fetched:
+            print(f"{library.name}\t{library.dir}/\t{fetched[library.name]}")
+    for name, reason in failed.items():
+        print(f"warning: {name} を取れませんでした: {reason}", file=sys.stderr)
+    if args.github_output:
+        with Path(args.github_output).open("a") as f:
+            f.write(f"library_shas={json.dumps(fetched, ensure_ascii=False)}\n")
+    if failed and args.strict:
+        return _die("取れなかったライブラリがあります: " + ", ".join(failed))
+    return 0
+
+
 def cmd_records_append(args: argparse.Namespace) -> int:
     store = Store(Path(args.store) if args.store else RESULTS_DIR)
     added, skipped = store.absorb(Path(d) for d in args.dirs)
@@ -699,14 +730,9 @@ def cmd_records_append(args: argparse.Namespace) -> int:
 def cmd_site_build(args: argparse.Namespace) -> int:
     store = Store(Path(args.store) if args.store else RESULTS_DIR)
     out = Path(args.out) if args.out else SITE_DIR
-    # 古い記録かどうかは include 閉包を作り直して見る。lib/ が無いと
-    # ライブラリを使う提出の閉包が欠けて、判定できないまま現行として出る。
-    if not LIB_DIR.is_dir():
-        print(
-            f"warning: {LIB_DIR.name}/ がありません。"
-            "ライブラリを使う提出は古いかどうかを判定しません",
-            file=sys.stderr,
-        )
+    # 古い記録かどうかは include 閉包を作り直して見る。ライブラリの置き場が無いと
+    # それを使う提出の閉包が欠けて、判定できないまま現行として出る。
+    _warn_missing_libraries("そのライブラリを使う提出は古いかどうかを判定しません")
     summary = site_build.build(
         store, out, fallback_path=Path(args.fallback) if args.fallback else None
     )
@@ -768,8 +794,7 @@ def cmd_fallback(args: argparse.Namespace) -> int:
         except problem_mod.ProblemError as e:
             print(f"warning: {directory.name} を読めません: {e}", file=sys.stderr)
     emulator = tuple(shlex.split(args.emulator)) if args.emulator else fallback_mod.EMULATOR
-    if not LIB_DIR.is_dir():
-        print(f"warning: {LIB_DIR.name}/ がありません。Library を使う提出を選べません", file=sys.stderr)
+    _warn_missing_libraries("そのライブラリを使う提出を選べません")
     selection = fallback_mod.select(problems, libraries)
 
     if args.list:
@@ -1177,6 +1202,22 @@ def build_parser() -> argparse.ArgumentParser:
     c_list.add_argument("--remote", default="origin")
     c_list.set_defaults(func=cmd_claims_list)
 
+    libs = sub.add_parser("libs", help="提出が include するライブラリ").add_subparsers(
+        dest="subcommand", required=True
+    )
+    l_fetch = libs.add_parser("fetch", help="libraries.toml のライブラリを置き場に取ってくる")
+    l_fetch.add_argument(
+        "--shas", metavar="JSON",
+        help="ライブラリの名前から取る commit への JSON。無い名前は既定のブランチの先端",
+    )
+    l_fetch.add_argument(
+        "--github-output", metavar="FILE", help="library_shas を書き足すファイル ($GITHUB_OUTPUT)"
+    )
+    l_fetch.add_argument(
+        "--strict", action="store_true", help="1 つでも取れなければ 1 を返す"
+    )
+    l_fetch.set_defaults(func=cmd_libs_fetch)
+
     records = sub.add_parser("records", help="記録").add_subparsers(
         dest="subcommand", required=True
     )
@@ -1216,6 +1257,7 @@ def main(argv: list[str] | None = None) -> int:
         migrate_mod.MigrateError,
         site_build.SiteError,
         claims_mod.ClaimError,
+        lib_mod.LibrariesError,
     ) as e:
         return _die(str(e))
 
