@@ -1,15 +1,9 @@
 #pragma once
-// Deléglise–Rivat の素数の個数 π(x) (6 回目)。NeoLibrary 4e36eb1 の prime_pi (5 回目を w = y にし、倍数を消すときに
-// 消えた数を局所変数で数える形) を土台に、次を変えた。
-// - hard leaves の合成数の m は、b ごとに lpf(m) > p_b のものだけを t = x / (p_b m) の昇順に並べ、t そのものを持つ。
-//   区間ごとに lpf を比べて飛ばすと分岐が外れる (x = 10^11 では、有効な 2.1 万個に対して 6.2 万個を飛ばしていた)。
-//   並べるときは、lpf > p_b の合成数の列 (m の昇順) から lpf = p_b のものを抜きながら b を進める。
-// - easy leaves の合成数の m は素数 2 つの積なので (y ≤ √x のとき 3 つ以上の積は easy にならない)、素数の 2 重の
-//   走査でたどる。
-// - p_b > max(x^{1/3}, √y) の b は葉がすべて trivial で、b の分は a - b になるので、和を式で足す。残りの b の
-//   x / p などは、割る数ごとに持った値との掛け算で求める。
-// - DBL なら割り算 n / d を、d ごとに持った 1 / d の切り上げ (丸めた値を 1 ulp 上げた double) との掛け算で求める。
-//   n < 2^50 なら正確。DBL でなければ floor(2^64 / d) + 1 との掛け算の上位で求める (n d < 2^64 なら正確)。
+// Deléglise–Rivat の素数の個数 π(x) (7 回目)。_dr6.hpp の割り算を magic のまま (dr6_mg と同じ)、π の表を奇数だけにし、
+// easy leaves の表引きを AVX2 で 4 つずつ回す。商 floor(N / q) は 1 / q を 1 ulp 上げた double との掛け算で
+// 4 つまとめて求め (N < 2^50 で正確)、表は 1 回の gather で引く。π(t) は表の値 e の上位 32 bit と、
+// e を 63 - ((t - 1) / 2 mod 32) だけ左にずらした値の popcount (pshufb の 4 bit の表と psadbw) の和に 1 を足したもの。
+// x86 では immintrin.h、ほかでは SIMDe で組む。
 //
 // 式と葉の分け方は _dr5.hpp と同じ。y = α x^{1/3}、z = x / y、a = π(y)、c = 8 (p_c = 19) として
 //   π(x) = S1 + S2 + a - 1 - P2
@@ -19,8 +13,13 @@
 // special leaves は t = x / (p_b m) で分け、t ≥ p_b^2 (hard) は [1, z] を区間ごとに篩って数え、p_b ≤ t < p_b^2 (easy)
 // は π の表を引き、t < p_b (trivial) は個数だけ足す。
 #include "../common.hpp"
+#ifdef __x86_64__
+#include <immintrin.h>
+#else
+#include <simde/x86/avx2.h>
+#endif
 
-namespace dr6 {
+namespace dr7 {
 
 inline u64 isqrt(u64 n) {
     u64 r = (u64)std::sqrt((double)n);
@@ -75,19 +74,6 @@ inline constexpr std::array<std::array<u8, 8>, 8> WOFF = [] {
         for (u32 i = 0; i < 8; ++i) t[c][i] = (u8)(WR[c] * WR[i] / 30);
     return t;
 }();
-
-struct PiTable {
-    struct E {
-        u64 bits, cnt;  // bits: 240 w + 30 k + WR[i] が素数なら bit 8 k + i、cnt: 240 w 未満の 7 以上の素数の個数
-    };
-    std::vector<E> t;
-    // 5 ≤ n < 2^32
-    u64 operator()(u64 n) const {
-        const u32 m = (u32)n;
-        const E& e = t[m / 240];
-        return 3 + e.cnt + (u64)std::popcount(e.bits & MASK[m % 240]);
-    }
-};
 
 // 奇数だけの π の表。t[k] の下位 32 bit の bit j は 64 k + 2 j + 1 が素数か、上位 32 bit は 64 k 未満の奇素数の個数。
 // 引くときに 240 で割らずに済み、位置は shift だけで決まる。
@@ -177,6 +163,47 @@ inline u32 cross_off(u8* seg, u32 nbytes, SievingPrime& s) {
     }
 }
 
+// Σ_{l < i ≤ r} π(floor(n inv[i]))。4 つずつ AVX2 で回し、端は 1 つずつ。
+inline i64 sum_pi4(const PiOdd& pt, const double* inv, u64 l, u64 r, double n) {
+    u64 i = l + 1;
+    i64 s = 0;
+    if (i + 3 <= r) {
+        const __m256d vn = _mm256_set1_pd(n);
+        const __m256i one = _mm256_set1_epi64x(1), c31 = _mm256_set1_epi64x(31), c63 = _mm256_set1_epi64x(63), m4 = _mm256_set1_epi8(0x0f);
+        const __m256i lut = _mm256_setr_epi8(0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4);
+        const long long* tab = (const long long*)pt.t.data();
+        __m256i acc = _mm256_setzero_si256();
+        for (; i + 3 <= r; i += 4) {
+            const __m256i t = _mm256_cvtepu32_epi64(_mm256_cvttpd_epi32(_mm256_mul_pd(vn, _mm256_loadu_pd(inv + i))));
+            const __m256i m = _mm256_sub_epi64(t, one);
+            const __m256i e = _mm256_i64gather_epi64(tab, _mm256_srli_epi64(m, 6), 8);
+            // 下位 32 bit の bit j (j ≤ (m / 2) mod 32) だけが残り、上位 32 bit の個数は押し出される
+            const __m256i v = _mm256_sllv_epi64(e, _mm256_sub_epi64(c63, _mm256_and_si256(_mm256_srli_epi64(m, 1), c31)));
+            const __m256i pc = _mm256_add_epi8(_mm256_shuffle_epi8(lut, _mm256_and_si256(v, m4)), _mm256_shuffle_epi8(lut, _mm256_and_si256(_mm256_srli_epi16(v, 4), m4)));
+            acc = _mm256_add_epi64(acc, _mm256_add_epi64(_mm256_sad_epu8(pc, _mm256_setzero_si256()), _mm256_srli_epi64(e, 32)));
+        }
+        alignas(32) u64 a4[4];
+        _mm256_store_si256((__m256i*)a4, acc);
+        s = (i64)(a4[0] + a4[1] + a4[2] + a4[3] + (i - l - 1));  // 1 つにつき 2 の分の 1
+    }
+    for (; i <= r; ++i) s += (i64)pt((u64)(i64)(n * inv[i]));
+    return s;
+}
+
+// sum_pi4 と同じ和。商だけ 4 つずつ AVX2 で求め、表は 1 つずつ引く (gather を使わない)。
+inline i64 sum_pi4s(const PiOdd& pt, const double* inv, u64 l, u64 r, double n) {
+    u64 i = l + 1;
+    i64 s = 0;
+    const __m256d vn = _mm256_set1_pd(n);
+    alignas(16) u32 tb[4];
+    for (; i + 3 <= r; i += 4) {
+        _mm_store_si128((__m128i*)tb, _mm256_cvttpd_epi32(_mm256_mul_pd(vn, _mm256_loadu_pd(inv + i))));
+        s += (i64)(pt(tb[0]) + pt(tb[1]) + pt(tb[2]) + pt(tb[3]));
+    }
+    for (; i <= r; ++i) s += (i64)pt((u64)(i64)(n * inv[i]));
+    return s;
+}
+
 // 奇数だけの篩で数える。小さい x 用。
 inline u64 pi_small(u64 n) {
     if (n < 2) return 0;
@@ -190,23 +217,16 @@ inline u64 pi_small(u64 n) {
     return cnt;
 }
 
-// am は primecount の α の当てはめに掛ける倍率。OT なら π の表を奇数だけで持つ (PiOdd)。
-template <bool DBL, bool OT = false>
+// am は primecount の α の当てはめに掛ける倍率。easy leaves の表引きは、MODE が 0 なら 1 つずつ、1 なら AVX2 で
+// 4 つずつ (gather)、2 なら商だけ AVX2 で 4 つずつ求めて表は 1 つずつ引く。
+template <int MODE = 1>
 inline u64 prime_pi(u64 x, double am = 1.5) {
     if (x < 100000) return pi_small(x);
-    using D = std::conditional_t<DBL, double, u64>;
-    auto mkd = [](u64 d) -> D {
-        if constexpr (DBL) return std::nextafter(1.0 / (double)d, 2.0);
-        else return magic(d);
-    };
-    auto num = [](u64 n) -> D {
-        if constexpr (DBL) return (double)n;
-        else return n;
-    };
-    auto qt = [](D n, D dv) -> u64 {
-        if constexpr (DBL) return (u64)(i64)(n * dv);  // 2^63 未満なので符号つきで変換する (符号なしだと分岐が入る)
-        else return mulhi(n, dv);
-    };
+    // n / d は floor(2^64 / d) + 1 との掛け算の上位 (n d < 2^64 で正確)。AVX2 の表引きだけ double で割る。
+    using D = u64;
+    auto mkd = [](u64 d) -> D { return magic(d); };
+    auto num = [](u64 n) -> D { return n; };
+    auto qt = [](D n, D dv) -> u64 { return mulhi(n, dv); };
     constexpr u32 c = 8;
     const double L = std::log((double)x);
     const double alpha = std::max(1.0, am * (((0.00148918 * L - 0.0691909) * L + 1.00165) * L + 0.372253));
@@ -251,6 +271,11 @@ inline u64 prime_pi(u64 x, double am = 1.5) {
     std::vector<D> pd(primes.size()), cd(cm.size());
     for (size_t i = 1; i < primes.size(); ++i) pd[i] = mkd(primes[i]);
     for (size_t i = 0; i < cm.size(); ++i) cd[i] = mkd(cm[i]);
+    std::vector<double> pinv;  // 1 / p を 1 ulp 上げた値。N < 2^50 なら floor(N pinv) = floor(N / p)
+    if constexpr (MODE != 0) {
+        pinv.resize(primes.size());
+        for (size_t i = 1; i < primes.size(); ++i) pinv[i] = std::nextafter(1.0 / primes[i], 2.0);
+    }
     const D xD = num(x);
     // hard leaves: b ごとに m ∈ (max(y/p, p), min(y, x/p^3)]。素数の m は primes の添字 (plo, pcur] で持ち、上から下る
     // (t が増える向き)。範囲が空でないなら p^2 ≤ z。
@@ -307,8 +332,8 @@ inline u64 prime_pi(u64 x, double am = 1.5) {
     }
     std::vector<i64> phi(bmax + 1, 0);
     std::vector<u32> pre(SW + 1);
-    std::conditional_t<OT, PiOdd, PiTable> pt;
-    pt.t.resize(OT ? z / 64 + 1 : z / 240 + 1);
+    PiOdd pt;
+    pt.t.resize(z / 64 + 1);
     u64 running = 0;
     i64 s2h = 0;
     for (u64 low = 0; low <= z; low += SEGN) {
@@ -364,7 +389,7 @@ inline u64 prime_pi(u64 x, double am = 1.5) {
             seg[0] &= (u8)~1u;                                                                                      // 1 は素数でない
             for (u64 b = 4; b <= std::max<u64>(bmax, c); ++b) seg[primes[b] / 30] |= (u8)(1u << BI[primes[b] % 30]);  // 消した素数を戻す
         }
-        if constexpr (OT) {
+        {
             // 奇数の位置の列は 1 バイトにつき 15 bit 進む。32 bit たまるごとに書く。
             const u32 ne = (u32)((high - low + 63) / 64);
             u64* out = pt.t.data() + low / 64;
@@ -378,8 +403,6 @@ inline u64 prime_pi(u64 x, double am = 1.5) {
                     out[o++] = running << 32 | v, running += (u64)std::popcount(v), acc >>= 32, nacc -= 32;
                 }
             }
-        } else {
-            for (u32 k = 0; k < nw; ++k) pt.t[low / 240 + k] = PiTable::E{seg64[k], running}, running += (u64)std::popcount(seg64[k]);
         }
     }
     // easy leaves と trivial leaves。p_b > max(x^{1/3}, √y) の b は葉が q ∈ (p_b, y] の trivial だけで、b の分は a - b。
@@ -406,12 +429,15 @@ inline u64 prime_pi(u64 x, double am = 1.5) {
         if (lo >= he) continue;
         const u64 s = isqrt(Nb), ilo = pt(lo), ihe = pt(he), imid = std::min(ihe, pt(std::max(lo, std::min(he, s))));
         auto acc = [&](u64 l, u64 r) -> i64 {  // π(Nb / q_i) の (l, r] の和
-#ifdef DR6_DIAG_NOEASY
-            return (i64)(r - l);  // 診断用: 表引きを抜く (答えは合わない)
-#endif
-            i64 v = 0;
-            for (u64 i = l + 1; i <= r; ++i) v += (i64)pt(qt(NbD, pd[i]));
-            return v;
+            if constexpr (MODE == 1) {
+                return sum_pi4(pt, pinv.data(), l, r, (double)Nb);
+            } else if constexpr (MODE == 2) {
+                return sum_pi4s(pt, pinv.data(), l, r, (double)Nb);
+            } else {
+                i64 v = 0;
+                for (u64 i = l + 1; i <= r; ++i) v += (i64)pt(qt(NbD, pd[i]));
+                return v;
+            }
         };
         // sparse: q ∈ (lo, min(he, s)]。clustered: q ∈ (al, he] を反転して r ∈ (Nb / he, Nb / al] の和にし、
         // r の添字 (rlo, rhi] のうち sparse の範囲に入る部分は、同じ表引きを 2 回足す。
@@ -431,40 +457,21 @@ inline u64 prime_pi(u64 x, double am = 1.5) {
     // ordinary leaves: m = 1、p_c < q ≤ y の素数、合成数
     Phi8 phic;
     i64 s1 = (i64)phic(x);
-    if constexpr (DBL) {
-        for (u64 i = c + 1; i <= a; ++i) s1 -= (i64)phic(qt(xD, pd[i]));
-        for (size_t i = 0; i < cm.size(); ++i) {
-            const i64 ph = (i64)phic(qt(xD, cd[i]));
-            s1 += cmu[i] > 0 ? ph : -ph;
-        }
-    } else {
-        for (u64 i = c + 1; i <= a; ++i) s1 -= (i64)phic(fdiv(x, primes[i]));
-        for (size_t i = 0; i < cm.size(); ++i) {
-            const i64 ph = (i64)phic(fdiv(x, cm[i]));
-            s1 += cmu[i] > 0 ? ph : -ph;
-        }
+    for (u64 i = c + 1; i <= a; ++i) s1 -= (i64)phic(fdiv(x, primes[i]));
+    for (size_t i = 0; i < cm.size(); ++i) {
+        const i64 ph = (i64)phic(fdiv(x, cm[i]));
+        s1 += cmu[i] > 0 ? ph : -ph;
     }
     // P2: y < p ≤ √x の素数を π の表のビットから列挙する
     i64 p2 = 0;
-    if constexpr (OT) {
-        for (u64 w = (y + 1) / 64, b = a; w <= sx / 64; ++w)
-            for (u32 bits = (u32)pt.t[w]; bits; bits &= bits - 1) {
-                const u64 p = 64 * w + 2 * (u32)std::countr_zero(bits) + 1;
-                if (p <= y) continue;
-                if (p > sx) break;
-                p2 += (i64)pt(fdiv(x, p)) - (i64)(++b) + 1;
-            }
-    } else {
-        for (u64 w = (y + 1) / 240, b = a; w <= sx / 240; ++w)
-            for (u64 bits = pt.t[w].bits; bits; bits &= bits - 1) {
-                const u32 k = (u32)std::countr_zero(bits);
-                const u64 p = 240 * w + 30 * (k >> 3) + WR[k & 7];
-                if (p <= y) continue;
-                if (p > sx) break;
-                p2 += (i64)pt(fdiv(x, p)) - (i64)(++b) + 1;
-            }
-    }
+    for (u64 w = (y + 1) / 64, b = a; w <= sx / 64; ++w)
+        for (u32 bits = (u32)pt.t[w]; bits; bits &= bits - 1) {
+            const u64 p = 64 * w + 2 * (u32)std::countr_zero(bits) + 1;
+            if (p <= y) continue;
+            if (p > sx) break;
+            p2 += (i64)pt(fdiv(x, p)) - (i64)(++b) + 1;
+        }
     return (u64)(s1 + s2h + s2e + (i64)a - 1 - p2);
 }
 
-}  // namespace dr6
+}  // namespace dr7
