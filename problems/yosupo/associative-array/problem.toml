@@ -1,0 +1,19 @@
+id = "yosupo-associative-array"
+title = "Associative Array"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "data_structure/associative_array"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true
