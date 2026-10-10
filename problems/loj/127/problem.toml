@@ -6,7 +6,7 @@ tle_sec = 5.0
 mle_mb = 512
 
 [harness]
-kind = "raw"
+kind = "base"
 
 [testdata]
 source = "loj"
@@ -14,3 +14,6 @@ name = "127"
 
 [compare]
 kind = "tokens"
+
+[record]
+case_times = true
