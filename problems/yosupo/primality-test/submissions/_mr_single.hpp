@@ -89,7 +89,7 @@ template <int K> inline bool sprp(u64 n, const u64 (&bs)[K]) {
 }
 
 // n が奇素数 p で割り切れるか。p の 2^64 を法とする逆元を掛け、(2^64-1)/p 以下なら割り切れる。
-template <u64 p> inline bool divisible(u64 n) {
+template <u64 p> inline u32 divisible(u64 n) {
   constexpr u64 inv = [] {
     u64 x = p;
     for (int i = 0; i < 6; ++i) x *= 2 - p * x;
