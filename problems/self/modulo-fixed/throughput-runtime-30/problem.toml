@@ -1,0 +1,21 @@
+id = "self-modulo-fixed-throughput-runtime-30"
+title = "決まった値を掛ける配列の積和の throughput (mod は入力、30 bit の奇数)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 7
+reference = "submissions/naive.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
