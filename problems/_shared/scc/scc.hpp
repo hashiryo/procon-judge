@@ -1,19 +1,25 @@
 #pragma once
-// 強連結成分分解の核。方式 (Kosaraju、Tarjan、Pearce、path-based) と、隣接の持ち方 (CSR、辺の連結リスト) と、
-// 作業領域の確保 (配列ごとの malloc、2 MB 境界の 1 本の領域で huge page を頼む形) を掛け合わせて提出を作る。
-// DFS はどれも反復で書き、いま見ている頂点とその辺の位置は変数に置いて、下りるときだけフレームのスタックに積む。
-// 成分の番号は run() の中では方式ごとの生の値で持ち、comp(v) で 0 から K - 1 のトポロジカル順に直して返す。
+// 強連結成分分解の核 (yosupo-scc の提出と、yosupo-two-sat の提出が使う)。方式
+// (Kosaraju、Tarjan、Pearce、path-based) と、隣接の持ち方 (CSR、辺の連結リスト)
+// と、 作業領域の確保 (配列ごとの malloc、2 MB 境界の 1 本の領域で huge page
+// を頼む形) を掛け合わせて提出を作る。 DFS
+// はどれも反復で書き、いま見ている頂点とその辺の位置は変数に置いて、下りるときだけフレームのスタックに積む。
+// 成分の番号は run() の中では方式ごとの生の値で持ち、comp(v) で 0 から K - 1
+// のトポロジカル順に直して返す。
 #ifdef __linux__
 #include <sys/mman.h>
 #endif
-#include <cstring>
 #include "pj.hpp"
+#include <cstring>
 namespace scc {
 using Edges= vector<array<int, 2>>;
 constexpr u32 NIL= ~u32(0);
-// 作業領域。HP なら reserve で全体を 2 MB 境界の 1 本の領域に取り、huge page を頼む。take はそこから 64 byte 境界に揃えて
-// 切り出す。HP でなければ take ごとに malloc する。どちらも 0 では埋めない。フレームのスタックのように最悪の大きさで取って
-// 一部しか触らない配列があるので、触る前にまとめて用意させること (MADV_POPULATE_WRITE) はしない。
+// 作業領域。HP なら reserve で全体を 2 MB 境界の 1 本の領域に取り、huge page
+// を頼む。take はそこから 64 byte 境界に揃えて 切り出す。HP でなければ take
+// ごとに malloc する。どちらも 0
+// では埋めない。フレームのスタックのように最悪の大きさで取って
+// 一部しか触らない配列があるので、触る前にまとめて用意させること
+// (MADV_POPULATE_WRITE) はしない。
 template <bool HP> struct Mem {
  vector<void*> blocks;
  u32* base= nullptr;
@@ -49,8 +55,9 @@ template <bool HP> struct Mem {
  }
  template <class T> T* take_as(size_t n) { return reinterpret_cast<T*>(take(n * sizeof(T) / sizeof(u32))); }
 };
-// CSR。頂点 v から出る辺の行き先は adj[off[v]] から adj[off[v + 1] - 1]。S = 1 なら辺を逆向きに読む。
-// 次数を数え、累積を取り、辺を後ろから置く (Library の Graph::adjacency_vertex と同じ組み方)。
+// CSR。頂点 v から出る辺の行き先は adj[off[v]] から adj[off[v + 1] - 1]。S = 1
+// なら辺を逆向きに読む。 次数を数え、累積を取り、辺を後ろから置く (Library の
+// Graph::adjacency_vertex と同じ組み方)。
 struct CSR {
  u32 *off, *adj;
  struct Cur {
@@ -61,7 +68,7 @@ struct CSR {
   const size_t m= es.size();
   off= mem.take(n + 1), adj= mem.take(m);
   memset(off, 0, (n + 1) * sizeof(u32));
-  for(auto& e: es) ++off[e[S]];
+  for(const auto& e: es) ++off[e[S]];
   for(int i= 1; i <= n; ++i) off[i]+= off[i - 1];
   for(size_t i= m; i--;) adj[--off[es[i][S]]]= es[i][!S];
  }
@@ -70,8 +77,9 @@ struct CSR {
  u32 to(const Cur& c) const { return adj[c.i]; }
  void step(Cur& c) const { ++c.i; }
 };
-// 辺の連結リスト。nx[2 e] が辺 e の行き先、nx[2 e + 1] が同じ頂点から出る次の辺 (NIL で終わり)。辺の列を 1 回
-// 前から読むだけで組める。たどるときは辺ごとに 1 か所を読む。
+// 辺の連結リスト。nx[2 e] が辺 e の行き先、nx[2 e + 1] が同じ頂点から出る次の辺
+// (NIL で終わり)。辺の列を 1 回 前から読むだけで組める。たどるときは辺ごとに 1
+// か所を読む。
 struct List {
  u32 *head, *nx;
  struct Cur {
@@ -92,8 +100,10 @@ struct List {
  u32 to(const Cur& c) const { return nx[2 * c.e]; }
  void step(Cur& c) const { c.e= nx[2 * c.e + 1]; }
 };
-// Kosaraju。順向きの DFS の帰りがけ順を取り、その逆順に、逆向きのグラフでまだ成分の無い頂点を集める。見つかる順が
-// そのままトポロジカル順になる。cm[v] は 0 が未訪問、1 が順向きで訪問済み、2 + k が成分 k。
+// Kosaraju。順向きの DFS
+// の帰りがけ順を取り、その逆順に、逆向きのグラフでまだ成分の無い頂点を集める。見つかる順が
+// そのままトポロジカル順になる。cm[v] は 0 が未訪問、1 が順向きで訪問済み、2 +
+// k が成分 k。
 template <class G, bool HP> struct Kosaraju {
  using M= Mem<HP>;
  struct F {
@@ -151,8 +161,10 @@ template <class G, bool HP> struct Kosaraju {
  }
  int comp(int v) const { return int(cm[v] - 2); }
 };
-// Tarjan。訪問順 ord と lowlink の low を頂点ごとの配列で持つ。成分に入った頂点は ord を NIL - k にして、スタックに
-// 載っているかの印と成分の番号を兼ねる (どの訪問順より大きいので low を下げない)。成分はトポロジカル順の逆に見つかる。
+// Tarjan。訪問順 ord と lowlink の low
+// を頂点ごとの配列で持つ。成分に入った頂点は ord を NIL - k にして、スタックに
+// 載っているかの印と成分の番号を兼ねる (どの訪問順より大きいので low
+// を下げない)。成分はトポロジカル順の逆に見つかる。
 template <class G, bool HP> struct Tarjan {
  using M= Mem<HP>;
  struct F {
@@ -203,9 +215,12 @@ template <class G, bool HP> struct Tarjan {
  }
  int comp(int v) const { return int(K - 1 - (NIL - ord[v])); }
 };
-// Pearce の省メモリ版。頂点ごとの配列は rix の 1 本だけで、訪問中は訪問順、帰ったあとは下がった lowlink、成分に入ったら
-// 成分の番号 (n - 1 から下がる) を持つ。成分に入れた頂点の数だけ訪問順を戻すので、訪問中の値はどの成分の番号より小さく、
-// 成分に入った頂点は lowlink を下げない。訪問中の頂点の lowlink と訪問順はフレームに持ち、根かどうかは lowlink が訪問順
+// Pearce の省メモリ版。頂点ごとの配列は rix の 1
+// 本だけで、訪問中は訪問順、帰ったあとは下がった lowlink、成分に入ったら
+// 成分の番号 (n - 1 から下がる)
+// を持つ。成分に入れた頂点の数だけ訪問順を戻すので、訪問中の値はどの成分の番号より小さく、
+// 成分に入った頂点は lowlink を下げない。訪問中の頂点の lowlink
+// と訪問順はフレームに持ち、根かどうかは lowlink が訪問順
 // から下がっていないかで見る。成分はトポロジカル順の逆に、大きい番号から振られる。
 template <class G, bool HP> struct Pearce {
  using M= Mem<HP>;
@@ -256,8 +271,10 @@ template <class G, bool HP> struct Pearce {
  }
  int comp(int v) const { return int(rix[v] - base); }
 };
-// path-based (Gabow)。頂点ごとの配列は I の 1 本で、st に載っている間はその位置 (1 から)、成分に入ったら成分の番号
-// (2n から下がる。どの位置より大きい) を持つ。bs は根の候補の位置のスタックで、辺の先が st に載っていれば、その位置より
+// path-based (Gabow)。頂点ごとの配列は I の 1 本で、st に載っている間はその位置
+// (1 から)、成分に入ったら成分の番号 (2n から下がる。どの位置より大きい)
+// を持つ。bs は根の候補の位置のスタックで、辺の先が st
+// に載っていれば、その位置より
 // 上の候補を捨てる。成分に入った頂点は位置より大きいので何も捨てない。成分はトポロジカル順の逆に見つかる。
 template <class G, bool HP> struct Gabow {
  using M= Mem<HP>;
@@ -317,4 +334,4 @@ template <template <class, bool> class A, class G, bool HP> struct Solver {
  int count() const { return a.K; }
  int comp(int v) const { return a.comp(v); }
 };
-}
+}  // namespace scc
