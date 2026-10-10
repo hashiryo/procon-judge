@@ -142,4 +142,84 @@ template <class Z> std::vector<u64> tri_solve(const Elim<Z>& e, const std::vecto
  }
  return X;
 }
+
+// acc の 8 行 (行の間隔 wx) に、X の ns 行 (行の間隔 wx) を足す: acc[q][j] += sum_s c[s * 8 + q] * X[s][j]。
+// 4 列ずつ 8 行分の和をレジスタに持ち、X の各行の 4 列を 1 回読んで 8 行に足す。8 本足すごとに畳む。c[...] < M、X[s][j] < M。
+inline void block_update(u64* __restrict acc, const u64* __restrict X, const u32* c, int ns, int wx, u64 R) {
+ const __m256i Rv= _mm256_set1_epi64x(R), LO= _mm256_set1_epi64x(0xffffffffll);
+ auto fold= [&](__m256i x) { return _mm256_add_epi64(_mm256_mul_epu32(_mm256_srli_epi64(x, 32), Rv), _mm256_and_si256(x, LO)); };
+ for(int j= 0; j < wx; j+= 4) {
+  u64* ap= acc + j;
+  __m256i a0= _mm256_loadu_si256((const __m256i*)ap), a1= _mm256_loadu_si256((const __m256i*)(ap + wx));
+  __m256i a2= _mm256_loadu_si256((const __m256i*)(ap + 2 * wx)), a3= _mm256_loadu_si256((const __m256i*)(ap + 3 * wx));
+  __m256i a4= _mm256_loadu_si256((const __m256i*)(ap + 4 * wx)), a5= _mm256_loadu_si256((const __m256i*)(ap + 5 * wx));
+  __m256i a6= _mm256_loadu_si256((const __m256i*)(ap + 6 * wx)), a7= _mm256_loadu_si256((const __m256i*)(ap + 7 * wx));
+  const u64* xp= X + j;
+  const u32* cp= c;
+  for(int s= 0; s < ns;) {
+   for(const int e= std::min(ns, s + 8); s < e; ++s, xp+= wx, cp+= 8) {
+    const __m256i x= _mm256_loadu_si256((const __m256i*)xp);
+    a0= _mm256_add_epi64(a0, _mm256_mul_epu32(x, _mm256_set1_epi32(cp[0])));
+    a1= _mm256_add_epi64(a1, _mm256_mul_epu32(x, _mm256_set1_epi32(cp[1])));
+    a2= _mm256_add_epi64(a2, _mm256_mul_epu32(x, _mm256_set1_epi32(cp[2])));
+    a3= _mm256_add_epi64(a3, _mm256_mul_epu32(x, _mm256_set1_epi32(cp[3])));
+    a4= _mm256_add_epi64(a4, _mm256_mul_epu32(x, _mm256_set1_epi32(cp[4])));
+    a5= _mm256_add_epi64(a5, _mm256_mul_epu32(x, _mm256_set1_epi32(cp[5])));
+    a6= _mm256_add_epi64(a6, _mm256_mul_epu32(x, _mm256_set1_epi32(cp[6])));
+    a7= _mm256_add_epi64(a7, _mm256_mul_epu32(x, _mm256_set1_epi32(cp[7])));
+   }
+   a0= fold(a0), a1= fold(a1), a2= fold(a2), a3= fold(a3), a4= fold(a4), a5= fold(a5), a6= fold(a6), a7= fold(a7);
+  }
+  _mm256_storeu_si256((__m256i*)ap, a0), _mm256_storeu_si256((__m256i*)(ap + wx), a1);
+  _mm256_storeu_si256((__m256i*)(ap + 2 * wx), a2), _mm256_storeu_si256((__m256i*)(ap + 3 * wx), a3);
+  _mm256_storeu_si256((__m256i*)(ap + 4 * wx), a4), _mm256_storeu_si256((__m256i*)(ap + 5 * wx), a5);
+  _mm256_storeu_si256((__m256i*)(ap + 6 * wx), a6), _mm256_storeu_si256((__m256i*)(ap + 7 * wx), a7);
+ }
+}
+
+// tri_solve と同じ T X = Y を、下から 8 行ずつのブロックで解く。ブロックより下の行の分は block_update で 8 行まとめて足し、
+// ブロックの中は下の行から順に update_row で足す。
+template <class Z> std::vector<u64> tri_solve_blk(const Elim<Z>& e, const std::vector<int>& cols, int& wx) {
+ const u32 M= Z::mod();
+ const u64 R= (u64(1) << 32) % M;
+ const int r= e.prow.size(), nc= cols.size();
+ wx= (nc + 3) & ~3;
+ std::vector<u64> X((size_t)r * wx), acc((size_t)K * wx), zero(wx);
+ std::vector<u32> c((size_t)r * K);
+ for(int t1= r; t1 > 0; t1-= K) {
+  const int t0= std::max(0, t1 - K), bs= t1 - t0, ns= r - t1;
+  for(int q= 0; q < K; ++q) {
+   u64* aq= &acc[(size_t)q * wx];
+   std::fill(aq, aq + wx, 0);
+   if(q < bs) {
+    const u64* ut= e.urow(t0 + q);
+    for(int k= 0; k < nc; ++k) aq[k]= ut[cols[k]];
+   }
+  }
+  for(int s= t1; s < r; ++s)
+   for(int q= 0; q < K; ++q) {
+    const u32 x= q < bs ? u32(e.urow(t0 + q)[e.pcol[s]]) : 0;
+    c[(size_t)(s - t1) * K + q]= x ? M - x : 0;
+   }
+  if(ns) block_update(acc.data(), &X[(size_t)t1 * wx], c.data(), ns, wx, R);
+  for(int q= bs - 1; q >= 0; --q) {
+   const int t= t0 + q;
+   u64* aq= &acc[(size_t)q * wx];
+   const u64* Ub[K];
+   u32 f[K];
+   for(int i= 0; i < K; ++i) {
+    const int s= t + 1 + i;
+    if(s < t1) {
+     const u32 x= u32(e.urow(t)[e.pcol[s]]);
+     Ub[i]= &X[(size_t)s * wx], f[i]= x ? M - x : 0;
+    } else Ub[i]= zero.data(), f[i]= 0;
+   }
+   update_row(aq, Ub, f, 0, wx, R);
+   const Z iv= Z::raw(e.pval[t]).inv();
+   u64* xt= &X[(size_t)t * wx];
+   for(int k= 0; k < wx; ++k) xt[k]= (Z(aq[k]) * iv).val();
+  }
+ }
+ return X;
+}
 }  // namespace lazy_elim
