@@ -17,7 +17,7 @@ template <class Cap> class MaxFlow {
  public:
   struct Edge {
    int from, to;
-   Cap cap, flow;
+   Cap cap, rev_cap, flow;  // flow は from から to へ正、逆向きに流れていれば負
   };
   explicit MaxFlow(int n= 0): n_(n) {}
   int add_vertex() { return sync(), built_= false, n_++; }
@@ -46,7 +46,95 @@ template <class Cap> class MaxFlow {
   }
   Edge get_edge(int i) {
    sync();
-   return {eu_[i], ev_[i], ecap_[i], eflow_[i]};
+   return {eu_[i], ev_[i], ecap_[i], erev_[i], eflow_[i]};
+  }
+  std::vector<Edge> edges() {
+   sync();
+   std::vector<Edge> ret(eu_.size());
+   for(size_t i= 0; i < eu_.size(); ++i) ret[i]= {eu_[i], ev_[i], ecap_[i], erev_[i], eflow_[i]};
+   return ret;
+  }
+  // 辺 i の容量を cap、逆向きの容量を rev_cap に変える。今の流れは s から t への流れとする。流量が新しい容量に収まらない分は、
+  // まず辺の両端の間で迂回させ、迂回できない分は t の側と s の側から流れを戻して直す。s から t への流量が減った分を返す。
+  Cap change_cap(int i, Cap cap, Cap rev_cap, int s, int t) {
+   assert(cap >= 0 && rev_cap >= 0);
+   build(), finish();
+   if(pos_[i] < 0) return ecap_[i]= cap, erev_[i]= rev_cap, 0;
+   A& a= as_[pos_[i]];
+   int u= eu_[i], v= ev_[i];
+   Cap f= cap_of_forward(i), ext= 0;
+   ecap_[i]= cap, erev_[i]= rev_cap;
+   if(f > cap) ext= f - cap, f= cap;
+   else if(f < -rev_cap) ext= -rev_cap - f, f= -rev_cap, std::swap(u, v);
+   a.cap= cap - f, as_[a.rev].cap= rev_cap + f, eflow_[i]= f;
+   if(ext == 0) return 0;
+   // u に ext だけ余り、v に ext だけ足りない。
+   ext-= flow(u, v, ext);
+   if(ext > 0) {
+    if(v != t) flow(t, v, ext);
+    if(u != s) flow(u, s, ext);
+   }
+   finish();
+   return ext;
+  }
+  Cap change_cap(int i, Cap cap, int s, int t) { return change_cap(i, cap, erev_[i], s, t); }
+  // 今の流れ (s から t への流れとする) を、s から t への道に分ける。道ごとの流量と、通る辺の番号の列を返す。逆向きの容量
+  // のある辺は、to から from へ通ることもある。流れの中の循環は道に含めない。
+  std::vector<std::pair<Cap, std::vector<int>>> decompose(int s, int t) {
+   sync();
+   const int m= eu_.size();
+   std::vector<Cap> rem(m);
+   std::vector<int> head(n_ + 1, 0), arc;
+   auto tail= [&](int i) { return eflow_[i] > 0 ? eu_[i] : ev_[i]; };
+   auto tip= [&](int i) { return eflow_[i] > 0 ? ev_[i] : eu_[i]; };
+   for(int i= 0; i < m; ++i)
+    if(eflow_[i] != 0 && eu_[i] != ev_[i]) rem[i]= eflow_[i] > 0 ? eflow_[i] : -eflow_[i], ++head[tail(i) + 1];
+   for(int x= 0; x < n_; ++x) head[x + 1]+= head[x];
+   arc.resize(head[n_]);
+   {
+    std::vector<int> p(head.begin(), head.end() - 1);
+    for(int i= 0; i < m; ++i)
+     if(rem[i] > 0) arc[p[tail(i)]++]= i;
+   }
+   std::vector<int> it(head.begin(), head.end() - 1), on(n_, -1), pv{s}, pe;
+   std::vector<std::pair<Cap, std::vector<int>>> ret;
+   on[s]= 0;
+   // pe[from..] の辺から bottleneck を引き、頂点 pv[from] まで戻る。
+   auto cancel= [&](int from) {
+    Cap d= rem[pe[from]];
+    for(size_t k= from; k < pe.size(); ++k) d= std::min(d, rem[pe[k]]);
+    for(size_t k= from; k < pe.size(); ++k) rem[pe[k]]-= d;
+    return d;
+   };
+   auto back_to= [&](int k) {
+    while((int)pv.size() > k + 1) on[pv.back()]= -1, pv.pop_back(), pe.pop_back();
+   };
+   for(;;) {
+    const int x= pv.back();
+    if(x == t) {
+     const Cap d= cancel(0);
+     ret.emplace_back(d, pe);
+     back_to(0);
+     continue;
+    }
+    while(it[x] < head[x + 1] && rem[arc[it[x]]] == 0) ++it[x];
+    if(it[x] == head[x + 1]) {
+     if(x == s) break;
+     rem[pe.back()]= 0;  // 正しい流れなら起きない行き止まり。入ってきた辺を捨てて戻る
+     back_to((int)pv.size() - 2);
+     continue;
+    }
+    const int e= arc[it[x]], y= tip(e);
+    if(on[y] >= 0) {
+     pe.push_back(e);
+     cancel(on[y]);
+     pe.pop_back();
+     back_to(on[y]);
+     continue;
+    }
+    on[y]= pv.size(), pv.push_back(y), pe.push_back(e);
+   }
+   return ret;
   }
   int size() const { return n_; }
  private:
@@ -55,7 +143,7 @@ template <class Cap> class MaxFlow {
    Cap cap;
   };
   int n_;
-  bool built_= false, pending_= false;
+  bool built_= false, pending_= false, used_= false;  // used_: 一度 flow を呼んだ
   int ps_= -1, pt_= -1;  // 余りを戻す段が残っている flow の s と t
   std::vector<int> eu_, ev_;
   std::vector<Cap> ecap_, erev_, eflow_;
@@ -63,6 +151,7 @@ template <class Cap> class MaxFlow {
   std::vector<A> as_;
   std::vector<int> h_, cur_, anext_, atail_, ahead_, bnext_, bprev_, bhead_, q_;
   std::vector<Cap> ex_;
+  Cap cap_of_forward(int i) const { return pos_[i] < 0 ? Cap(0) : ecap_[i] - as_[pos_[i]].cap; }
   void sync() {
    if(!built_) return;
    finish();
@@ -178,9 +267,60 @@ template <class Cap> class MaxFlow {
     if(work > freq) work= 0, global_relabel();
    }
   }
+  // Dinic で s から t へ limit まで流す。今の流れから続け、流し終えても正しい流れのまま。DFS は再帰しない。
+  Cap augment(int s, int t, Cap limit) {
+   Cap total= 0;
+   std::vector<int>& lv= h_;
+   std::vector<int> stk;
+   while(total < limit) {
+    std::fill(lv.begin(), lv.end(), -1);
+    int qh= 0, qt= 0;
+    lv[s]= 0, q_[qt++]= s;
+    while(qh < qt && lv[t] < 0) {
+     const int u= q_[qh++];
+     for(int k= st_[u]; k < st_[u + 1]; ++k)
+      if(const A& a= as_[k]; a.cap > 0 && lv[a.to] < 0) lv[a.to]= lv[u] + 1, q_[qt++]= a.to;
+    }
+    if(lv[t] < 0) break;
+    std::copy(st_.begin(), st_.end() - 1, cur_.begin());
+    // stk は辿っている弧の列。t に着いたら bottleneck を流し、bottleneck の弧の手前まで戻る。
+    stk.clear();
+    int v= s;
+    while(total < limit) {
+     if(v == t) {
+      Cap d= limit - total;
+      int cut= 0;
+      for(int i= 0; i < (int)stk.size(); ++i)
+       if(as_[stk[i]].cap < d) d= as_[stk[i]].cap, cut= i;
+      for(int k: stk) as_[k].cap-= d, as_[as_[k].rev].cap+= d;
+      total+= d;
+      stk.resize(cut);
+      v= stk.empty() ? s : as_[stk.back()].to;
+      continue;
+     }
+     int& k= cur_[v];
+     for(; k < st_[v + 1]; ++k)
+      if(const A& a= as_[k]; a.cap > 0 && lv[a.to] == lv[v] + 1) break;
+     if(k == st_[v + 1]) {
+      if(v == s) break;
+      lv[v]= -1;  // 行き止まり
+      stk.pop_back();
+      v= stk.empty() ? s : as_[stk.back()].to;
+      ++cur_[v];
+      continue;
+     }
+     stk.push_back(k), v= as_[k].to;
+    }
+   }
+   return total;
+  }
   Cap run(int s, int t, bool limited, Cap limit) {
    assert(0 <= s && s < n_ && 0 <= t && t < n_ && s != t);
    build(), finish();
+   // 2 回目からは、今の流れから少しだけ増やす使い方 (容量を変えて流し直すなど) が多いので Dinic で流す。
+   // push-relabel は呼ぶたびにグラフ全体の BFS がかかり、少しだけ流し直す使い方に向かない。
+   if(used_) return augment(s, t, limited ? limit : std::numeric_limits<Cap>::max());
+   used_= true;
    std::fill(ex_.begin(), ex_.end(), Cap(0));
    if(limited) {
     // s を普通の頂点として、limit だけの余りを持たせる (仮想の始点から容量 limit の辺で s に流し込むのと同じ)。
