@@ -88,6 +88,66 @@ template <int K> inline bool sprp(u64 n, const u64 (&bs)[K]) {
   return pass == all;
 }
 
+// x^2 R^{-1} 2^bit mod n を (0, 4n) で返す。x < 4n、n < 2^60、bit は 0 か 1。
+// 2 倍は、還元で掛ける定数を n から 2n に替えて還元の中に畳む。x^2 = hi R + lo、qn = m R + lo とすると
+// mulhi(q, 2n) = 2m + (lo >> 63) なので、2 (hi - m + n) = 2 hi + 2n + (lo >> 63) - mulhi(q, 2n)。
+// 選ぶのは定数と足す側だけで、どちらも鎖の外で決まるので、鎖からシフトが消える。
+// 三項演算子で書くと gcc がビットで分岐するので、選択はシフトとマスクで書く。
+inline u64 sqr2(u64 x, u64 bit, u64 n, u64 ninv) {
+  u128 t = (u128)x * x;
+  u64 lo = (u64)t, hi = (u64)(t >> 64), q = lo * ninv;
+  u64 h = hi + n;
+  h += (h + (lo >> 63)) & (0 - bit);
+  return h - (u64)(((u128)q * (n << bit)) >> 64);
+}
+
+// sprp と同じ判定で、底 2 の鎖を sqr2 で回す。n は奇数で 3 <= n < 2^60。
+template <int K> inline bool sprp_fold(u64 n, const u64 (&bs)[K]) {
+  const u64 ninv = inv64(n), one = (0 - n) % n, mone = n - one, n2 = 2 * n;
+  const double inv_n = 1.0 / (double)(i64)n;
+  const int s = __builtin_ctzll(n - 1);
+  const u64 d = (n - 1) >> s;
+  const int L = 64 - __builtin_clzll(d);
+  u64 x = one << 1, da = d << (64 - L);
+  u64 y[K], z[K];
+#pragma GCC unroll 8
+  for (int k = 0; k < K; ++k) y[k] = to_mont_small(bs[k], one, n, inv_n), z[k] = mmul(y[k], y[k], n, ninv);
+  u64 db = d >> 1;
+  for (int i = 1; i < L - 1; ++i) {
+    da <<= 1;
+    x = sqr2(x, da >> 63, n, ninv);
+    const u64 bit = db & 1;
+    db >>= 1;
+#pragma GCC unroll 8
+    for (int k = 0; k < K; ++k) y[k] = mmul(y[k], bit ? z[k] : one, n, ninv), z[k] = mmul(z[k], z[k], n, ninv);
+  }
+  if (L > 1) {
+    x = sqr2(x, 1, n, ninv);
+#pragma GCC unroll 8
+    for (int k = 0; k < K; ++k) y[k] = mmul(y[k], z[k], n, ninv);
+  }
+  u64 v[K + 1];
+  x = x >= n2 ? x - n2 : x;
+  v[0] = x;
+#pragma GCC unroll 8
+  for (int k = 0; k < K; ++k) v[k + 1] = y[k];
+  unsigned pass = 0;
+#pragma GCC unroll 8
+  for (int k = 0; k <= K; ++k) {
+    v[k] = v[k] >= n ? v[k] - n : v[k];
+    pass |= unsigned(v[k] == one || v[k] == mone) << k;
+  }
+  constexpr unsigned all = (1u << (K + 1)) - 1;
+  for (int r = 1; pass != all && r < s; ++r)
+#pragma GCC unroll 8
+    for (int k = 0; k <= K; ++k) {
+      v[k] = mmul(v[k], v[k], n, ninv);
+      v[k] = v[k] >= n ? v[k] - n : v[k];
+      pass |= unsigned(v[k] == mone) << k;
+    }
+  return pass == all;
+}
+
 // n が奇素数 p で割り切れるか。p の 2^64 を法とする逆元を掛け、(2^64-1)/p 以下なら割り切れる。
 template <u64 p> inline u32 divisible(u64 n) {
   constexpr u64 inv = [] {
