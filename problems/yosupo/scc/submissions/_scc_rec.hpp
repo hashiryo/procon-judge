@@ -1,37 +1,25 @@
 #pragma once
-// 頂点ごとの記録に、方式の鍵 (Pearce の rix、path-based の I)
-// と最初の隣接を並べて置く形。scc.hpp の形では、頂点 w に
-// 下りると、鍵と隣接の始まりを読み、その値で隣接の先頭を読んでから次の頂点に進むので、下りる鎖の
-// 1 歩に読み込みが 2 段 つながる。最初の隣接を鍵と同じ記録に置けば、1
-// 歩が読み込み 1 段で済む。残りの隣接は、R = RecCSR なら CSR (最初の隣接も
-// 並んでいて、そこは飛ばす)、R = RecList
-// なら記録に先頭を持つ辺の連結リストから読み、読み始めるのは最初の隣接から帰ったあと。
+// 頂点ごとの記録に、方式の鍵 (Pearce の rix、path-based の I) と最初の隣接を並べて置く形。_scc.hpp の形では、頂点 w に
+// 下りると、鍵と隣接の始まりを読み、その値で隣接の先頭を読んでから次の頂点に進むので、下りる鎖の 1 歩に読み込みが 2 段
+// つながる。最初の隣接を鍵と同じ記録に置けば、1 歩が読み込み 1 段で済む。残りの隣接は、R = RecCSR なら CSR (最初の隣接も
+// 並んでいて、そこは飛ばす)、R = RecList なら記録に先頭を持つ辺の連結リストから読み、読み始めるのは最初の隣接から帰ったあと。
 //
-// TRIM が 1 以上なら、DFS の前に入次数 0 の頂点を待ち行列で剥がす
-// (Kahn)。剥がした頂点はどれも 1 頂点の成分で、剥がした
-// 順がトポロジカル順の先頭に来る。剥がされない頂点から剥がした頂点への辺は無いので、DFS
-// は剥がした頂点に触れない。DFS は 読み込みが 1
-// 本の鎖につながるが、剥がしは待ち行列の頂点ごとに独立なので、読み込みを並べて出せる。剥がした頂点の鍵は
-// NIL - (剥がした順) にして、DFS の根の走査で飛ばす。TRIM が 1
-// なら入次数を別の走査で数えて素直に剥がし、2 なら剥がしで
-// 待ち行列の先の頂点を先読みする (peel_pf)。3 は 2
-// の入次数を、隣接を組む走査の中で数える。4 は 3 の先読みの位置を待ち行列の
-// 末尾から切り離し、2 番目の隣接も分岐せずに扱う (peel_pf2)。5 は 4
-// に加えて、DFS の根の走査を記録でなく入次数の配列で行う
+// TRIM が 1 以上なら、DFS の前に入次数 0 の頂点を待ち行列で剥がす (Kahn)。剥がした頂点はどれも 1 頂点の成分で、剥がした
+// 順がトポロジカル順の先頭に来る。剥がされない頂点から剥がした頂点への辺は無いので、DFS は剥がした頂点に触れない。DFS は
+// 読み込みが 1 本の鎖につながるが、剥がしは待ち行列の頂点ごとに独立なので、読み込みを並べて出せる。剥がした頂点の鍵は
+// NIL - (剥がした順) にして、DFS の根の走査で飛ばす。TRIM が 1 なら入次数を別の走査で数えて素直に剥がし、2 なら剥がしで
+// 待ち行列の先の頂点を先読みする (peel_pf)。3 は 2 の入次数を、隣接を組む走査の中で数える。4 は 3 の先読みの位置を待ち行列の
+// 末尾から切り離し、2 番目の隣接も分岐せずに扱う (peel_pf2)。5 は 4 に加えて、DFS の根の走査を記録でなく入次数の配列で行う
 // (剥がした頂点は入次数が 0、残った頂点は 0 でない)。
 //
-// 成分の番号の振り方は scc.hpp の同じ名前の方式と同じで、TRIM
-// なら剥がした頂点の分だけ後ろへずらす。 run() は段
-// (alloc、build、count、peel、dfs) を順に呼ぶだけ。辺の列は Edges
-// でなくてもよく、size() と添字で辺 {a, b} を返し、 範囲 for で回せればよい
-// (yosupo-two-sat は節の列をそのまま含意グラフの辺の列に見せて渡す)。
-#include "scc.hpp"
+// 成分の番号の振り方は _scc.hpp の同じ名前の方式と同じで、TRIM なら剥がした頂点の分だけ後ろへずらす。
+// run() は段 (alloc、build、count、peel、dfs) を順に呼ぶだけ。辺の列は Edges でなくてもよく、size() と添字で辺 {a, b} を返し、
+// 範囲 for で回せる型ならよい。
+#include "_scc.hpp"
 namespace scc {
-// 記録は鍵と最初の隣接の 8 byte。残りは CSR。CSR を組んでから、頂点の順に 1
-// 回なめて記録を作る。 BL なら、記録を作る走査の「隣接が無ければ
-// NIL」を分岐にせず、adj[off[v]] を毎回読んでマスクで選ぶ。adj は 2
-// 語多く取り、 範囲の外を読んでもよいようにしておく (peel_pf2 も off[v] + 1
-// を読む)。
+// 記録は鍵と最初の隣接の 8 byte。残りは CSR。CSR を組んでから、頂点の順に 1 回なめて記録を作る。
+// BL なら、記録を作る走査の「隣接が無ければ NIL」を分岐にせず、adj[off[v]] を毎回読んでマスクで選ぶ。adj は 2 語多く取り、
+// 範囲の外を読んでもよいようにしておく (peel_pf2 も off[v] + 1 を読む)。
 template <bool BL> struct RecCSRT {
  struct Rec {
   u32 key, first;
@@ -43,8 +31,7 @@ template <bool BL> struct RecCSRT {
  };
  template <class M> static size_t words(size_t n, size_t m) { return M::words(2 * n) + M::words(n + 1) + M::words(m + 2); }
  template <class M> void alloc(int n, size_t m, M& mem) { rec= mem.template take_as<Rec>(n), off= mem.take(n + 1), adj= mem.take(m + 2); }
- // deg が nullptr でなければ、次数を数える走査で入次数も数える (deg は 0
- // で埋めてから渡す)。
+ // deg が nullptr でなければ、次数を数える走査で入次数も数える (deg は 0 で埋めてから渡す)。
  template <class E> void build(int n, const E& es, u32* deg) {
   const size_t m= es.size();
   memset(off, 0, (n + 1) * sizeof(u32));
@@ -76,11 +63,9 @@ template <bool BL> struct RecCSRT {
  static bool done(const Cur& c) { return c.i == c.e; }
  u32 next(Cur& c) const { return adj[c.i++]; }
 };
-// 記録は鍵と最初の隣接と残りの連結リストの先頭の 16 byte。辺の列を 1
-// 回前から読むだけで組める。 BL
-// なら、組む走査の「その頂点の最初の辺か」を分岐にせず、マスクで選ぶ。最初の辺でも
-// nx の辺の場所には書く (使われない)。 辺 m は peel_pf2 の番兵で、行き先が
-// n、次が NIL。
+// 記録は鍵と最初の隣接と残りの連結リストの先頭の 16 byte。辺の列を 1 回前から読むだけで組める。
+// BL なら、組む走査の「その頂点の最初の辺か」を分岐にせず、マスクで選ぶ。最初の辺でも nx の辺の場所には書く (使われない)。
+// 辺 m は peel_pf2 の番兵で、行き先が n、次が NIL。
 template <bool BL> struct RecListT {
  struct Rec {
   u32 key, first, head, pad;
@@ -107,8 +92,7 @@ template <bool BL> struct RecListT {
    if constexpr(C) ++deg[b];
   }
  }
- // deg が nullptr でなければ、同じ走査で入次数も数える (deg は 0
- // で埋めてから渡す)。
+ // deg が nullptr でなければ、同じ走査で入次数も数える (deg は 0 で埋めてから渡す)。
  template <class E> void build(int n, const E& es, u32* deg) {
   for(int v= 0; v < n; ++v) rec[v]= {0, NIL, NIL, 0};
   nx[2 * m]= n, nx[2 * m + 1]= NIL;
@@ -126,13 +110,10 @@ template <bool BL> struct RecListT {
   return w;
  }
 };
-// 鍵、最初の隣接、残りの連結リストの先頭を、別々の 4 byte の配列 (ky、fst、hd)
-// に置く形。DFS の 1 歩の鎖は fst の読み込み 1
-// 段のままで、鍵は、まだ訪れていないという分岐の予想が当たるあいだは鎖に入らない。RecListT
-// の 16 byte の記録より配列が 小さいので、L2 の大きい CPU
-// では載りやすい。組む走査は RecListB
-// と同じくマスクで選ぶが、離れた場所の読み書きは fst と hd の 2 か所になる。辺
-// m は peel の番兵で、行き先が n、次が NIL。
+// 鍵、最初の隣接、残りの連結リストの先頭を、別々の 4 byte の配列 (ky、fst、hd) に置く形。DFS の 1 歩の鎖は fst の読み込み 1 段の
+// ままで、鍵は、まだ訪れていないという分岐の予想が当たるあいだは鎖に入らない。RecListT の 16 byte の記録より配列が小さいので、
+// L2 の大きい CPU では載りやすい。組む走査は RecListB と同じくマスクで選ぶが、離れた場所の読み書きは fst と hd の 2 か所になる。
+// 辺 m は peel の番兵で、行き先が n、次が NIL。
 struct RecSplit {
  u32 *ky, *fst, *hd, *nx;
  u32 m;
@@ -172,9 +153,8 @@ template <class E> void count_in(int n, const E& es, u32* deg) {
  memset(deg, 0, (n + 1) * sizeof(u32));
  for(const auto& e: es) ++deg[e[1]];
 }
-// 入次数 0 の頂点を剥がし、剥がした数を返す。剥がした頂点の鍵は NIL -
-// (剥がした順) にする。q は n + 1 語。 積むかどうかは分岐にせず、毎回 q
-// の末尾に書いて、入次数が 0 になったときだけ末尾を進める。
+// 入次数 0 の頂点を剥がし、剥がした数を返す。剥がした頂点の鍵は NIL - (剥がした順) にする。q は n + 1 語。
+// 積むかどうかは分岐にせず、毎回 q の末尾に書いて、入次数が 0 になったときだけ末尾を進める。
 template <class R> u32 peel_plain(int n, R& g, u32* q, u32* deg) {
  u32 qt= 0;
  for(u32 v= 0; v < u32(n); ++v) q[qt]= v, qt+= deg[v] == 0;
@@ -188,11 +168,9 @@ template <class R> u32 peel_plain(int n, R& g, u32* q, u32* deg) {
  }
  return qt;
 }
-// peel_plain と同じことを、待ち行列の D 個先の頂点の記録と隣接の始まり、D / 2
-// 個先の頂点の最初の隣接の入次数と残りの隣接を
+// peel_plain と同じことを、待ち行列の D 個先の頂点の記録と隣接の始まり、D / 2 個先の頂点の最初の隣接の入次数と残りの隣接を
 // 先読みしながら行う。読み込みの結果で決まる分岐は、予想を外すとその読み込みの待ちがそのまま出るので、先読みで待ちを
-// 短くする。最初の隣接が無い頂点は、行き先を番兵の n にして同じ手順を踏む
-// (deg[n] は 0 から減らすので 0 に戻らず、積まれない)。
+// 短くする。最初の隣接が無い頂点は、行き先を番兵の n にして同じ手順を踏む (deg[n] は 0 から減らすので 0 に戻らず、積まれない)。
 // 待ち行列の末尾より先はまだ決まっていないので、先読みの位置は末尾で止める。
 template <u32 D, bool BL> u32 peel_pf(int n, RecCSRT<BL>& g, u32* q, u32* deg) {
  u32 qt= 0;
@@ -213,8 +191,7 @@ template <u32 D, bool BL> u32 peel_pf(int n, RecCSRT<BL>& g, u32* q, u32* deg) {
  }
  return qt;
 }
-// 連結リストの形。残りの隣接は D / 2 個先で先頭の辺だけを先読みする
-// (その先は辺をたどらないと分からない)。
+// 連結リストの形。残りの隣接は D / 2 個先で先頭の辺だけを先読みする (その先は辺をたどらないと分からない)。
 template <u32 D, bool BL> u32 peel_pf(int n, RecListT<BL>& g, u32* q, u32* deg) {
  u32 qt= 0;
  for(u32 v= 0; v < u32(n); ++v) q[qt]= v, qt+= deg[v] == 0;
@@ -233,8 +210,7 @@ template <u32 D, bool BL> u32 peel_pf(int n, RecListT<BL>& g, u32* q, u32* deg) 
  }
  return qt;
 }
-// RecSplit の形。先読みする場所は RecListT の peel_pf と同じで、記録が 2
-// つの配列に分かれている。
+// RecSplit の形。先読みする場所は RecListT の peel_pf と同じで、記録が 2 つの配列に分かれている。
 template <u32 D> u32 peel_pf(int n, RecSplit& g, u32* q, u32* deg) {
  u32 qt= 0;
  for(u32 v= 0; v < u32(n); ++v) q[qt]= v, qt+= deg[v] == 0;
@@ -253,14 +229,10 @@ template <u32 D> u32 peel_pf(int n, RecSplit& g, u32* q, u32* deg) {
  }
  return qt;
 }
-// peel_pf の先読みの位置を、待ち行列の末尾から切り離したもの。peel_pf
-// は位置を末尾で止めていたので、先読みの番地が、直前までの
-// 入次数の読み込みで決まる末尾を待っていた。ここでは末尾に関係なく q[qh + D]
-// を読み、値を n - 1 で止めてから先読みする (まだ
-// 積まれていない場所の値でも、番地が範囲に入っていれば害は無い。q は n + 1 + D
-// 語取る)。2 番目の隣接も、無ければ番兵の n を
-// 行き先にして分岐せずに入次数を減らし、その入次数も D / 4 個先で先読みする。3
-// 番目からは分岐で回す。
+// peel_pf の先読みの位置を、待ち行列の末尾から切り離したもの。peel_pf は位置を末尾で止めていたので、先読みの番地が、直前までの
+// 入次数の読み込みで決まる末尾を待っていた。ここでは末尾に関係なく q[qh + D] を読み、値を n - 1 で止めてから先読みする (まだ
+// 積まれていない場所の値でも、番地が範囲に入っていれば害は無い。q は n + 1 + D 語取る)。2 番目の隣接も、無ければ番兵の n を
+// 行き先にして分岐せずに入次数を減らし、その入次数も D / 4 個先で先読みする。3 番目からは分岐で回す。
 template <u32 D, bool BL> u32 peel_pf2(int n, RecCSRT<BL>& g, u32* q, u32* deg) {
  u32 qt= 0;
  for(u32 v= 0; v < u32(n); ++v) q[qt]= v, qt+= deg[v] == 0;
@@ -335,8 +307,7 @@ template <class R, bool HP, int TRIM, class F> struct RecBase {
   else if constexpr(TRIM >= 4) P= peel_pf2<16>(n, g, q, deg);
  }
 };
-// Pearce の省メモリ版 (scc.hpp の Pearce と同じ) を記録の形で回す。nf
-// は、いまの頂点の最初の隣接のうち、まだ見ていないもの。
+// Pearce の省メモリ版 (_scc.hpp の Pearce と同じ) を記録の形で回す。nf は、いまの頂点の最初の隣接のうち、まだ見ていないもの。
 template <class R> struct PearceFrame {
  u32 v, lv, ov;
  typename R::Cur c;
@@ -383,8 +354,7 @@ template <class R, bool HP, int TRIM> struct PearceRec: RecBase<R, HP, TRIM, Pea
   return int(x > n ? NIL - x : x - base + P);
  }
 };
-// path-based (scc.hpp の Gabow と同じ)
-// を記録の形で回す。根の候補の位置のスタックは aux に置く。
+// path-based (_scc.hpp の Gabow と同じ) を記録の形で回す。根の候補の位置のスタックは aux に置く。
 template <class R> struct GabowFrame {
  u32 v;
  typename R::Cur c;
@@ -448,10 +418,8 @@ template <class R, bool HP> using GabowRecTrimPf= GabowRec<R, HP, 2>;
 template <class R, bool HP> using GabowRecTrimPfFused= GabowRec<R, HP, 3>;
 template <class R, bool HP> using GabowRecTrimPf2Fused= GabowRec<R, HP, 4>;
 template <class R, bool HP> using GabowRecTrimPf2FusedDs= GabowRec<R, HP, 5>;
-// 平均の出次数で隣接の持ち方を選ぶ。m >= 2 n なら
-// CSR、そうでなければ連結リスト。連結リストは組むのが速く、辺の少ない
-// グラフで勝つが、たどるときは辺ごとに離れた場所を読むので、密なグラフでは CSR
-// に負ける (1 回目の random_02)。
+// 平均の出次数で隣接の持ち方を選ぶ。m >= 2 n なら CSR、そうでなければ連結リスト。連結リストは組むのが速く、辺の少ない
+// グラフで勝つが、たどるときは辺ごとに離れた場所を読むので、密なグラフでは CSR に負ける (1 回目の random_02)。
 template <template <class, bool> class A, bool HP> struct AutoAlg {
  bool csr= false;
  A<RecCSR, HP> c;
@@ -473,4 +441,4 @@ template <template <class, bool> class A, bool HP> struct AutoSolver {
  int count() const { return a.K; }
  int comp(int v) const { return a.comp(v); }
 };
-}  // namespace scc
+}

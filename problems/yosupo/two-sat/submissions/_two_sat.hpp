@@ -1,9 +1,10 @@
 #pragma once
-// 2-SAT を、含意グラフの強連結成分分解で解く (yosupo-scc の核を使う)。変数 i (1 から n) の肯定を頂点 2 (i - 1)、否定を
-// 2 (i - 1) + 1 とし、節 a ∨ b を辺 ¬a → b と ¬b → a にする。辺の列は作らず、節の列をそのまま辺の列に見せて核に渡す。
+// 2-SAT を、含意グラフの強連結成分分解で解く (yosupo-scc の核を写した _scc_rec.hpp を使う)。変数 i (1 から n) の肯定を
+// 頂点 2 (i - 1)、否定を 2 (i - 1) + 1 とし、節 a ∨ b を辺 ¬a → b と ¬b → a にする。辺の列は作らず、節の列をそのまま辺の列に
+// 見せて核に渡す。
 // 成分の番号はトポロジカル順なので、x と ¬x が同じ成分なら充足不能で、そうでなければ x が真になるのは comp(x) > comp(¬x)
 // のとき (x から ¬x へ道があれば x は偽でなければならず、そのとき comp(x) <= comp(¬x))。
-#include "_shared/scc/scc_rec.hpp"
+#include "_scc_rec.hpp"
 namespace two_sat {
 // 節の列を、含意グラフの辺の列に見せる。辺 2 j と 2 j + 1 は、節 j = (a, b) の ¬a → b と ¬b → a。
 struct ImplicationEdges {
