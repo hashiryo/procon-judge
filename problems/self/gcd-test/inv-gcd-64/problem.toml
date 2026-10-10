@@ -1,0 +1,21 @@
+id = "self-gcd-test-inv-gcd-64"
+title = "64 bit 整数の拡張 gcd (a x ≡ gcd(a, b) mod b)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 15
+reference = "submissions/naive_euclid.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
