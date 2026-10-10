@@ -1,0 +1,20 @@
+id = "hdu-6173"
+title = "Boring Game"
+url = "https://acm.hdu.edu.cn/showproblem.php?pid=6173"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+# テストケースは公開されていないので、自作する (gen.py と、lib-GF2p64.cpp を固定した reference.cpp)。
+[testdata]
+source = "local"
+count = 8
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,20 @@
+id = "qoj-1846"
+title = "Nimber Sequence"
+url = "https://qoj.ac/problem/1846"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 256
+
+[harness]
+kind = "raw"
+
+# テストケースは公開されていないので、自作する (gen.py と、lib-GF2p64.cpp を固定した reference.cpp)。
+[testdata]
+source = "local"
+count = 15
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "tokens"

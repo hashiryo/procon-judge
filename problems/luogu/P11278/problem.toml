@@ -1,0 +1,20 @@
+id = "luogu-P11278"
+title = "绝世丑角"
+url = "https://www.luogu.com.cn/problem/P11278"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+# テストケースは公開されていないので、自作する (gen.py と、lib-GF2p64.cpp を固定した reference.cpp)。
+[testdata]
+source = "local"
+count = 13
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "tokens"
