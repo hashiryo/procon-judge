@@ -1,10 +1,10 @@
-// _shared/flow/proto_bipartite.hpp の試作の API で書いたもの。列 x を左、行 y を右に置き、塗られたマスを辺にする。
+// NeoLibrary の BipartiteMatching (neo/graph/BipartiteMatching.hpp) で書いたもの。列 x を左、行 y を右に置き、塗られたマスを辺にする。
 // 最小点被覆は min_vertex_cover() で、左 (列) の頂点が [0, N)、右 (行) の頂点が [N, 2N) の番号で番号の順に返る。
 #include <algorithm>
 #include <array>
 #include <cstdio>
 #include <vector>
-#include "_shared/flow/proto_bipartite.hpp"
+#include "neo/graph/BipartiteMatching.hpp"
 int main() {
  constexpr int N= 300'001;
  int n;
@@ -26,7 +26,7 @@ int main() {
    hi= std::max(hi, b);
   }
  }
- proto::BipartiteMatching bm(N, N, es);
+ BipartiteMatching bm(N, N, es);
  std::vector<int> l, r;
  for(int v: bm.min_vertex_cover()) (v < N ? l : r).push_back(v < N ? v : v - N);
  std::printf("%d\n%d\n", (int)(l.size() + r.size()), (int)l.size());

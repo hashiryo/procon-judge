@@ -1,11 +1,11 @@
-// _shared/flow/proto_bipartite.hpp の試作の API で書いたもの。辺の張り方は lib と同じで、答えの向きは matching() が返す
+// NeoLibrary の BipartiteMatching (neo/graph/BipartiteMatching.hpp) で書いたもの。辺の張り方は lib と同じで、答えの向きは matching() が返す
 // 辺の番号から引く。
 #include <algorithm>
 #include <array>
 #include <cstdio>
 #include <utility>
 #include <vector>
-#include "_shared/flow/proto_bipartite.hpp"
+#include "neo/graph/BipartiteMatching.hpp"
 int main() {
  constexpr int DX[8]= {1, 1, 0, -1, -1, -1, 0, 1}, DY[8]= {0, 1, 1, 1, 0, -1, -1, -1};
  int n;
@@ -28,7 +28,7 @@ int main() {
    std::pair<long long, long long> q{a[i].first + t * DX[d], a[i].second + t * DY[d]};
    if(auto p= std::lower_bound(sb.begin(), sb.end(), q); p != sb.end() && *p == q) es.push_back({i, ord[p - sb.begin()]}), dir.push_back(d);
   }
- proto::BipartiteMatching bm(n, n, es);
+ BipartiteMatching bm(n, n, es);
  if(bm.size() < n) return puts("No"), 0;
  std::vector<int> ans(n);
  for(int i: bm.matching()) ans[es[i][0]]= dir[i] + 1;
