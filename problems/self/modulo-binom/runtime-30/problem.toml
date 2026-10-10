@@ -1,0 +1,21 @@
+id = "self-modulo-binom-runtime-30"
+title = "二項係数の表と問い合わせ (法は入力、30 bit の素数)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 7
+reference = "submissions/naive.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
