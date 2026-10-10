@@ -3,7 +3,9 @@
 struct MP {  // mod < 2^30
  u32 mod;
  constexpr MP(): mod(0), s(0), mo(0), r2(0), mask(0), iv1(0), iv2(0) {}
- MP(u32 m): mod(m), s(__builtin_ctz(m)), mo(m >> s), r2(-u64(mo) % mo), mask((1ull << (s + 32)) - 1) {
+ // 法が 2 の冪だと奇数部 mo が 1 で -u64(mo) % mo が 0 になり、u32(-r2) を 2^32 - r2 と見ている iv2 が崩れて set が mod を返す。
+ // mo = 1 なら r2 は 1 でよい。
+ MP(u32 m): mod(m), s(__builtin_ctz(m)), mo(m >> s), r2(mo == 1 ? 1 : -u64(mo) % mo), mask((1ull << (s + 32)) - 1) {
   u64 iv= inv(mo);
   iv1= iv * -u64(u32(-1)), iv2= iv * -u64(u32(-r2));
  }
