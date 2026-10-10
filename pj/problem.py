@@ -32,7 +32,7 @@ SOURCE_PREFIXES = {
 # 書き出すとき、この接頭辞を持つ id は problems/<接頭辞>/<残り>/ に置く。
 JUDGE_PREFIXES = (
     "yosupo", "aoj", "yuki", "atcoder", "loj", "hackerrank", "cses", "joisc", "cf",
-    "ojuz", "codechef", "kattis", "luogu",
+    "ojuz", "codechef", "kattis", "luogu", "qoj", "hdu",
 )
 
 # 自作の問題の id の接頭辞。自作の問題は problems/self/ の下に族ごとに置く。

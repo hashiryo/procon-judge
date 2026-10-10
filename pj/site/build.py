@@ -331,7 +331,7 @@ def submission_page(problem_id: str, submission: str) -> str | None:
 # id の接頭辞。問題の定義の表 (DESIGN.md の「problem.toml」) と同じ。無ければ自作。
 KNOWN_ORIGINS = (
     "yosupo", "aoj", "yuki", "atcoder", "loj", "hackerrank", "cses", "joisc",
-    "cf", "ojuz", "codechef", "kattis", "luogu",
+    "cf", "ojuz", "codechef", "kattis", "luogu", "qoj", "hdu",
 )
 OWN_ORIGIN = "自作"
 

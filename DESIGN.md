@@ -156,6 +156,8 @@ id は `<出どころ>-<問題>` の形にします。出どころはテスト�
 | CodeChef | `codechef-` | `codechef-CCDSAP` |
 | Kattis | `kattis-` | `kattis-conquertheworld` |
 | Luogu | `luogu-` | `luogu-P5055` |
+| QOJ | `qoj-` | `qoj-1846` |
+| HDU | `hdu-` | `hdu-6173` |
 | 自作 | `self-` | `self-gf2-64-pow`、`self-warshall-floyd`、`self-constexpr-modint` |
 
 `pj problems import` はこの表のとおりに URL から id を作ります。yosupo と atcoder は URL の名前の `_` を `-` に、AOJ と yukicoder は判定サイトの id をそのまま使います。入出力を持たない自己検証のテスト (`STANDALONE`) は、普通のコメントに書いてある元の問題の URL から id を取り、無ければ自作の問題として `self-` にファイル名を続けた id にします。

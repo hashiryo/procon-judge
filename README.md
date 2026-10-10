@@ -62,7 +62,7 @@ git archive origin/results | tar -x -C .results
 | yukicoder | `yuki-` | `yuki-1234` |
 | AtCoder | `atcoder-` | `atcoder-abc172-d` |
 | LOJ | `loj-` | `loj-6620` |
-| HackerRank、CSES、Codeforces など | `hackerrank-`、`cses-`、`cf-` | `cses-2132` |
+| HackerRank、CSES、Codeforces、QOJ、HDU など | `hackerrank-`、`cses-`、`cf-`、`qoj-`、`hdu-` | `cses-2132` |
 | 自作 | `self-` | `self-gf2-64-pow` |
 
 id は `results` ブランチの記録のファイル名と保管庫のアセット名になるので、あとから変えるときは記録を新しい id へ移さないと全部測り直しになり、保管庫のアセットも孤児になります (移し方は「問題を消す」の節)。付けるときに決めます。
