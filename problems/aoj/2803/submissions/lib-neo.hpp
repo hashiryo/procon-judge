@@ -1,8 +1,8 @@
 #pragma once
-// _shared/flow/proto_maxflow.hpp の試作の API で書いたもの。解き方は common.hpp と同じで、最小カットに乗る辺を 1 本ずつ
+// NeoLibrary の MaxFlow (neo/flow/MaxFlow.hpp) で書いたもの。解き方は common.hpp と同じで、最小カットに乗る辺を 1 本ずつ
 // change_cap で上限まで広げて流し直し、増分を見てから元の容量に戻す。容量を下げる change_cap のあとも最大流のまま
 // なので、戻したあとに流し直さなくてよい。
-#include "_shared/flow/proto_maxflow.hpp"
+#include "neo/flow/MaxFlow.hpp"
 struct Solver {
  static constexpr i64 INF= 512345;
  int k, n;
@@ -10,7 +10,7 @@ struct Solver {
  i64 ans= 0;
  Solver(int k, int n, const vector<array<i64, 3>>& edges): k(k), n(n), edges(edges) {}
  void run() {
-  proto::MaxFlow<i64> g(n + k + 1);
+  MaxFlow<i64> g(n + k + 1);
   const int src= g.add_vertex();
   for(int j= 1; j <= k; ++j) g.add_edge(src, j, INF);
   vector<int> id(edges.size());

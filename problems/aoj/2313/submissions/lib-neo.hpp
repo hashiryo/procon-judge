@@ -1,7 +1,7 @@
 #pragma once
-// _shared/flow/proto_maxflow.hpp の試作の API で書いたもの。解き方は common.hpp と同じで、クエリで触る辺も容量 0 で先に
+// NeoLibrary の MaxFlow (neo/flow/MaxFlow.hpp) で書いたもの。解き方は common.hpp と同じで、クエリで触る辺も容量 0 で先に
 // 張っておき、change_cap で容量を 0 と 1 の間で変えて、上限 1 の flow で流し直す。辺は両向きに容量 1。
-#include "_shared/flow/proto_maxflow.hpp"
+#include "neo/flow/MaxFlow.hpp"
 struct Solver {
  int n;
  const vector<array<int, 2>>& edges;
@@ -9,7 +9,7 @@ struct Solver {
  vector<i64> ans;
  Solver(int n, const vector<array<int, 2>>& edges, const vector<array<int, 3>>& qs): n(n), edges(edges), qs(qs) {}
  void run() {
-  proto::MaxFlow<i64> g(n);
+  MaxFlow<i64> g(n);
   vector<vector<int>> id(n, vector<int>(n, -1));
   for(auto& e: edges) id[e[0]][e[1]]= g.add_edge(e[0], e[1], 1, 1);
   for(auto& q: qs)
