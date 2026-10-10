@@ -1,0 +1,22 @@
+id = "atcoder-abc373-g"
+title = "G - No Cross Matching"
+url = "https://atcoder.jp/contests/abc373/tasks/abc373_g"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+# AtCoder はテストケースを公開していないので、自作する (gen.py と、偏角で並べて分ける分割統治の reference.cpp)。長さの和が
+# 最小の完全マッチングは交差しないので、答えはいつもある。順列はどれでもよいので、checker.cpp が、-1 でないこと、R が
+# 順列であること、どの 2 本の線分も交わらないことを整数の計算で確かめる。
+[testdata]
+source = "local"
+count = 13
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "checker"
