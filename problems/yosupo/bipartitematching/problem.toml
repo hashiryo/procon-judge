@@ -14,3 +14,6 @@ name = "graph/bipartitematching"
 
 [compare]
 kind = "checker"
+
+[record]
+case_times = true
