@@ -1,8 +1,9 @@
 #pragma once
 // NeoLibrary に置く最大流の形の試作。ACL の mf_graph と同じく、add_edge で辺を足し (番号を返す)、flow(s, t) か
 // flow(s, t, limit) で流し、min_cut(s) と get_edge(i) で解を取り出す。中身は hlpp_fifo と同じ highest label の
-// push-relabel (同じ高さの中は FIFO、gap、global relabel)。flow のあとは常に正しい流れを持つ。前流の段で t へ流し、
-// 届かなかった余りを、s を終点にしたもう一度の push-relabel で s へ戻す。流量の上限があるときは、s を普通の頂点と
+// push-relabel (同じ高さの中は FIFO、gap、global relabel)。flow は前流の段 (t へ流し、届かなかった余りは途中に
+// 残す) だけで値を返す。余りを、s を終点にしたもう一度の push-relabel で s へ戻す段は、辺ごとの流量か最小カットを
+// 初めて聞かれたとき (と、辺を足すときや次の flow の前) まで遅らせる。値だけの使い方では、この段の費用がかからない。流量の上限があるときは、s を普通の頂点と
 // して上限の分だけ余りを持たせて始める (仮想の始点から容量 limit の辺で s に流し込むのと同じ)。辺は flow を呼んだ
 // ときに CSR に組み、そのあと辺を足したら、流量を保ったまま組み直す。今の流れから続けて流すので、終点の違う
 // flow を何度呼んでもよい。
@@ -34,7 +35,7 @@ template <class Cap> class MaxFlow {
   Cap flow(int s, int t, Cap limit) { return run(s, t, true, limit); }
   // 直前の flow のあとの残余グラフで s から届く頂点。
   std::vector<bool> min_cut(int s) {
-   build();
+   build(), finish();
    std::vector<bool> vis(n_);
    std::vector<int> q{s};
    vis[s]= true;
@@ -54,7 +55,8 @@ template <class Cap> class MaxFlow {
    Cap cap;
   };
   int n_;
-  bool built_= false;
+  bool built_= false, pending_= false;
+  int ps_= -1, pt_= -1;  // 余りを戻す段が残っている flow の s と t
   std::vector<int> eu_, ev_;
   std::vector<Cap> ecap_, erev_, eflow_;
   std::vector<int> st_, pos_;  // pos_[i] = arc index of edge i (forward)
@@ -63,8 +65,15 @@ template <class Cap> class MaxFlow {
   std::vector<Cap> ex_;
   void sync() {
    if(!built_) return;
+   finish();
    for(size_t i= 0; i < pos_.size(); ++i)
     if(pos_[i] >= 0) eflow_[i]= ecap_[i] - as_[pos_[i]].cap;
+  }
+  // 保留している、余りを s へ戻す段を回す。
+  void finish() {
+   if(!pending_) return;
+   discharge_all(ps_, pt_);
+   ex_[ps_]= 0, pending_= false;
   }
   void build() {
    if(built_) return;
@@ -171,27 +180,22 @@ template <class Cap> class MaxFlow {
   }
   Cap run(int s, int t, bool limited, Cap limit) {
    assert(0 <= s && s < n_ && 0 <= t && t < n_ && s != t);
-   build();
+   build(), finish();
    std::fill(ex_.begin(), ex_.end(), Cap(0));
    if(limited) {
     // s を普通の頂点として、limit だけの余りを持たせる (仮想の始点から容量 limit の辺で s に流し込むのと同じ)。
     if(limit <= 0) return 0;
     ex_[s]= limit;
     discharge_all(t, -1);
-    const Cap got= ex_[t];
-    ex_[t]= 0, ex_[s]= 0;
-    discharge_all(s, t);
+   } else {
+    for(int k= st_[s]; k < st_[s + 1]; ++k)
+     if(A& a= as_[k]; a.cap > 0) ex_[a.to]+= a.cap, as_[a.rev].cap+= a.cap, a.cap= 0;
     ex_[s]= 0;
-    return got;
+    discharge_all(t, s);
    }
-   for(int k= st_[s]; k < st_[s + 1]; ++k)
-    if(A& a= as_[k]; a.cap > 0) ex_[a.to]+= a.cap, as_[a.rev].cap+= a.cap, a.cap= 0;
-   ex_[s]= 0;
-   discharge_all(t, s);
    const Cap got= ex_[t];
-   ex_[t]= 0;
-   discharge_all(s, t);
-   ex_[s]= 0;
+   ex_[t]= 0, ex_[s]= 0;
+   pending_= true, ps_= s, pt_= t;
    return got;
   }
 };
