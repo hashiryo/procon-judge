@@ -11,8 +11,11 @@ kind = "base"
 [testdata]
 source = "local"
 generator = "gen.py"
-count = 12
+count = 16
 reference = "submissions/naive_mod.hpp"
 
 [compare]
 kind = "tokens"
+
+[record]
+case_times = true
