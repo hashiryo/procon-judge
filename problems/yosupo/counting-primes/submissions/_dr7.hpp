@@ -45,6 +45,10 @@ inline u64 fdiv(u64 n, u64 d) {
     return n / d;
 }
 
+// 1 / d を丸めてから 1 ulp 上げた値。n < 2^50 なら floor(n inv_up(d)) = floor(n / d)。正の有限の double は、ビット列に 1 を
+// 足すと次に大きい値になる (std::nextafter は関数の呼び出しになる)。
+inline double inv_up(double d) { return std::bit_cast<double>(std::bit_cast<u64>(1.0 / d) + 1); }
+
 inline constexpr u32 WR[8] = {1, 7, 11, 13, 17, 19, 23, 29};
 inline constexpr std::array<u8, 30> BI = [] {
     std::array<u8, 30> t{};
@@ -134,7 +138,7 @@ inline void to_odd(const u8* seg, u32 ne, u64* out, u64& running, bool first) {
 // φ(t, 6) を 30030 周期の表で引き、φ(t, 8) = φ(t, 6) - φ(t / 17, 6) - φ(t / 19, 6) + φ(t / 323, 6)
 struct Phi8 {
     std::vector<uint16_t> tab;
-    Phi8() : tab(30030) {
+    Phi8() : tab(30032) {  // 32 bit の gather で 2 バイト先まで読むので余分に持つ
         std::vector<u8> co(30030, 1);
         co[0] = 0;
         for (u32 p : {2u, 3u, 5u, 7u, 11u, 13u})
@@ -225,6 +229,78 @@ inline i64 sum_pi4(const PiOdd& pt, const double* inv, u64 l, u64 r, double n) {
     return s;
 }
 
+// P2 の Σ π(floor(x / p)) を素数の列 ps[0, n) について求める。商は double の割り算で 4 つずつ求め、正しく丸めた商が
+// 1 大きいとき (t p > x) だけ 1 引く。π は sum_pi4 と同じく gather で引く。
+inline i64 p2_sum4(const PiOdd& pt, const u32* ps, size_t n, u64 x) {
+    size_t i = 0;
+    i64 s = 0;
+    if (n >= 4) {
+        const __m256d vx = _mm256_set1_pd((double)x);
+        const __m256i vxi = _mm256_set1_epi64x((long long)x);
+        const __m256i one = _mm256_set1_epi64x(1), c31 = _mm256_set1_epi64x(31), c63 = _mm256_set1_epi64x(63), m4 = _mm256_set1_epi8(0x0f);
+        const __m256i lut = _mm256_setr_epi8(0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4);
+        const long long* tab = (const long long*)pt.t.get();
+        __m256i acc = _mm256_setzero_si256();
+        for (; i + 4 <= n; i += 4) {
+            const __m128i p32 = _mm_loadu_si128((const __m128i*)(ps + i));
+            const __m256i t0 = _mm256_cvtepu32_epi64(_mm256_cvttpd_epi32(_mm256_div_pd(vx, _mm256_cvtepi32_pd(p32))));
+            const __m256i t = _mm256_add_epi64(t0, _mm256_cmpgt_epi64(_mm256_mul_epu32(t0, _mm256_cvtepu32_epi64(p32)), vxi));
+            const __m256i m = _mm256_sub_epi64(t, one);
+            const __m256i e = _mm256_i64gather_epi64(tab, _mm256_srli_epi64(m, 6), 8);
+            const __m256i v = _mm256_sllv_epi64(e, _mm256_sub_epi64(c63, _mm256_and_si256(_mm256_srli_epi64(m, 1), c31)));
+            const __m256i pc = _mm256_add_epi8(_mm256_shuffle_epi8(lut, _mm256_and_si256(v, m4)), _mm256_shuffle_epi8(lut, _mm256_and_si256(_mm256_srli_epi16(v, 4), m4)));
+            acc = _mm256_add_epi64(acc, _mm256_add_epi64(_mm256_sad_epu8(pc, _mm256_setzero_si256()), _mm256_srli_epi64(e, 32)));
+        }
+        alignas(32) u64 a4[4];
+        _mm256_store_si256((__m256i*)a4, acc);
+        s = (i64)(a4[0] + a4[1] + a4[2] + a4[3] + i);
+    }
+    for (; i < n; ++i) s += (i64)pt(fdiv(x, ps[i]));
+    return s;
+}
+
+// ordinary leaves の Σ s_i φ(floor(x inv[i]), 8) (0 ≤ i < n)。s_i は sg が空なら 1、そうでなければ sg[i] (±1)。
+// 商はどれも、整数の値を持つ double と 1 ulp 上げた逆数の掛け算の floor で求める (どの値も 2^50 未満なので正確)。
+// φ(u, 6) = (u / 30030) 5760 + tab[u mod 30030] の表は 32 bit の gather で引いて下位 16 bit を取る。
+inline i64 s1_sum4(const Phi8& ph, const double* inv, const int8_t* sg, size_t n, u64 x) {
+    size_t i = 0;
+    i64 s = 0;
+    if (n >= 4) {
+        const __m256d vx = _mm256_set1_pd((double)x), i17 = _mm256_set1_pd(inv_up(17)), i19 = _mm256_set1_pd(inv_up(19));
+        const __m256d i323 = _mm256_set1_pd(inv_up(323)), i30030 = _mm256_set1_pd(inv_up(30030)), c30030 = _mm256_set1_pd(30030);
+        const __m256i c5760 = _mm256_set1_epi64x(5760);
+        const __m128i m16 = _mm_set1_epi32(0xffff);
+        const int* tab = (const int*)ph.tab.data();
+        auto phi6 = [&](__m256d u) {
+            const __m256d q = _mm256_floor_pd(_mm256_mul_pd(u, i30030));
+            const __m128i r = _mm256_cvttpd_epi32(_mm256_sub_pd(u, _mm256_mul_pd(q, c30030)));  // q 30030 < 2^53 なので正確
+            const __m128i tv = _mm_and_si128(_mm_i32gather_epi32(tab, r, 2), m16);
+            return _mm256_add_epi64(_mm256_mul_epi32(_mm256_cvtepi32_epi64(_mm256_cvttpd_epi32(q)), c5760), _mm256_cvtepu32_epi64(tv));
+        };
+        __m256i acc = _mm256_setzero_si256();
+        for (; i + 4 <= n; i += 4) {
+            const __m256d t = _mm256_floor_pd(_mm256_mul_pd(vx, _mm256_loadu_pd(inv + i)));
+            __m256i f = _mm256_sub_epi64(_mm256_add_epi64(phi6(t), phi6(_mm256_floor_pd(_mm256_mul_pd(t, i323)))),
+                                         _mm256_add_epi64(phi6(_mm256_floor_pd(_mm256_mul_pd(t, i17))), phi6(_mm256_floor_pd(_mm256_mul_pd(t, i19)))));
+            if (sg) {
+                int32_t s4;
+                std::memcpy(&s4, sg + i, 4);
+                const __m256i ng = _mm256_cmpgt_epi64(_mm256_setzero_si256(), _mm256_cvtepi8_epi64(_mm_cvtsi32_si128(s4)));
+                f = _mm256_sub_epi64(_mm256_xor_si256(f, ng), ng);
+            }
+            acc = _mm256_add_epi64(acc, f);
+        }
+        alignas(32) i64 a4[4];
+        _mm256_store_si256((__m256i*)a4, acc);
+        s = a4[0] + a4[1] + a4[2] + a4[3];
+    }
+    for (; i < n; ++i) {
+        const i64 f = (i64)ph((u64)(i64)((double)x * inv[i]));
+        s += sg && sg[i] < 0 ? -f : f;
+    }
+    return s;
+}
+
 // sum_pi4 と同じ和。商だけ 4 つずつ AVX2 で求め、表は 1 つずつ引く (gather を使わない)。
 inline i64 sum_pi4s(const PiOdd& pt, const double* inv, u64 l, u64 r, double n) {
     u64 i = l + 1;
@@ -278,8 +354,9 @@ inline u64 pi_small(u64 n) {
 
 // am は primecount の α の当てはめに掛ける倍率。easy leaves の表引きは、MODE が 0 なら 1 つずつ、1 なら AVX2 で
 // 4 つずつ (gather)、2 なら商だけ AVX2 で 4 つずつ求めて表は 1 つずつ引く。HARD なら hard leaves の素数の q の葉も
-// 商と位置を AVX2 で 4 つずつ求める (MODE が 0 でないときだけ)。
-template <int MODE = 1, bool HARD = false>
+// 商と位置を AVX2 で 4 つずつ求める (MODE が 0 でないときだけ)。P2V なら P2 の商と表引きを、S1V なら ordinary leaves を
+// AVX2 で 4 つずつ回す。
+template <int MODE = 1, bool HARD = false, bool P2V = false, bool S1V = false>
 inline u64 prime_pi(u64 x, double am = 1.5) {
     if (x < 100000) return pi_small(x);
     // n / d は floor(2^64 / d) + 1 との掛け算の上位 (n d < 2^64 で正確)。AVX2 の表引きだけ double で割る。
@@ -334,7 +411,7 @@ inline u64 prime_pi(u64 x, double am = 1.5) {
     std::vector<double> pinv;  // 1 / p を 1 ulp 上げた値。N < 2^50 なら floor(N pinv) = floor(N / p)
     if constexpr (MODE != 0) {
         pinv.resize(primes.size());
-        for (size_t i = 1; i < primes.size(); ++i) pinv[i] = std::nextafter(1.0 / primes[i], 2.0);
+        for (size_t i = 1; i < primes.size(); ++i) pinv[i] = inv_up(primes[i]);
     }
     const D xD = num(x);
     // hard leaves: b ごとに m ∈ (max(y/p, p), min(y, x/p^3)]。素数の m は primes の添字 (plo, pcur] で持ち、上から下る
@@ -475,7 +552,8 @@ inline u64 prime_pi(u64 x, double am = 1.5) {
                     for (u32 k = hc0; k < hk; ++k) {
                         const u32 u = ht[k] - (u32)low, w = u / 240;
                         const i64 ph = phi[b] + (i64)pre[w] + std::popcount(seg64[w] & MASK[u - 240 * w]);
-                        s2h += hneg[k] ? -ph : ph;
+                        const i64 ng = -(i64)hneg[k];  // 0 か -1。条件式で書くと gcc は分岐にする
+                        s2h += (ph ^ ng) - ng;
                     }
 #else
                     pcur[b] = pj, s2h += (i64)wl + sum;  // 診断用: 累積と葉を抜く (答えは合わない)
@@ -551,22 +629,45 @@ inline u64 prime_pi(u64 x, double am = 1.5) {
     Phi8 phic;
     i64 s1 = (i64)phic(x);
 #ifndef DR7_DIAG_NOS1
-    for (u64 i = c + 1; i <= a; ++i) s1 -= (i64)phic(fdiv(x, primes[i]));
-    for (size_t i = 0; i < cm.size(); ++i) {
-        const i64 ph = (i64)phic(fdiv(x, cm[i]));
-        s1 += cmu[i] > 0 ? ph : -ph;
+    if constexpr (S1V) {
+        std::vector<double> cinv(cm.size());
+        for (size_t i = 0; i < cm.size(); ++i) cinv[i] = inv_up(cm[i]);
+        if (pinv.size() < primes.size()) {
+            pinv.resize(primes.size());
+            for (size_t i = 1; i < primes.size(); ++i) pinv[i] = inv_up(primes[i]);
+        }
+        s1 += s1_sum4(phic, cinv.data(), cmu.data(), cm.size(), x) - s1_sum4(phic, pinv.data() + c + 1, nullptr, a - c, x);
+    } else {
+        for (u64 i = c + 1; i <= a; ++i) s1 -= (i64)phic(fdiv(x, primes[i]));
+        for (size_t i = 0; i < cm.size(); ++i) {
+            const i64 ph = (i64)phic(fdiv(x, cm[i]));
+            s1 += cmu[i] > 0 ? ph : -ph;
+        }
     }
 #endif
     // P2: y < p ≤ √x の素数を π の表のビットから列挙する
     i64 p2 = 0;
 #ifndef DR7_DIAG_NOP2
-    for (u64 w = (y + 1) / 64, b = a; w <= sx / 64; ++w)
-        for (u32 bits = (u32)pt.t[w]; bits; bits &= bits - 1) {
-            const u64 p = 64 * w + 2 * (u32)std::countr_zero(bits) + 1;
-            if (p <= y) continue;
-            if (p > sx) break;
-            p2 += (i64)pt(fdiv(x, p)) - (i64)(++b) + 1;
-        }
+    if constexpr (P2V) {
+        // 素数を列に書き出してから Σ π(x / p) を求め、Σ (b - 1) = n a + n (n - 1) / 2 を引く
+        std::vector<u32> ps;
+        ps.reserve((size_t)(1.3 * (double)sx / std::log((double)sx)));
+        for (u64 w = (y + 1) / 64; w <= sx / 64; ++w)
+            for (u32 bits = (u32)pt.t[w]; bits; bits &= bits - 1) {
+                const u64 p = 64 * w + 2 * (u32)std::countr_zero(bits) + 1;
+                if (y < p && p <= sx) ps.push_back((u32)p);
+            }
+        const i64 n = (i64)ps.size();
+        p2 = p2_sum4(pt, ps.data(), ps.size(), x) - n * (i64)a - n * (n - 1) / 2;
+    } else {
+        for (u64 w = (y + 1) / 64, b = a; w <= sx / 64; ++w)
+            for (u32 bits = (u32)pt.t[w]; bits; bits &= bits - 1) {
+                const u64 p = 64 * w + 2 * (u32)std::countr_zero(bits) + 1;
+                if (p <= y) continue;
+                if (p > sx) break;
+                p2 += (i64)pt(fdiv(x, p)) - (i64)(++b) + 1;
+            }
+    }
 #endif
     return (u64)(s1 + s2h + s2e + (i64)a - 1 - p2);
 }
