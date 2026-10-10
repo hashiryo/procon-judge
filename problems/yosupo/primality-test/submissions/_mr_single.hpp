@@ -51,6 +51,7 @@ template <int K> inline bool sprp(u64 n, const u64 (&bs)[K]) {
   u64 x = one << 1, da = d << (64 - L);
   // ほかの底: d は奇数なので 0 桁目は y = b で済ませ、1 桁目から上へ読む。
   u64 y[K], z[K];
+#pragma GCC unroll 8
   for (int k = 0; k < K; ++k) y[k] = to_mont_small(bs[k], one, n, inv_n), z[k] = mmul(y[k], y[k], n, ninv);
   u64 db = d >> 1;
   for (int i = 1; i < L - 1; ++i) {
@@ -58,22 +59,27 @@ template <int K> inline bool sprp(u64 n, const u64 (&bs)[K]) {
     x = mmul(x, x << (da >> 63), n, ninv);
     const u64 bit = db & 1;
     db >>= 1;
+#pragma GCC unroll 8
     for (int k = 0; k < K; ++k) y[k] = mmul(y[k], bit ? z[k] : one, n, ninv), z[k] = mmul(z[k], z[k], n, ninv);
   }
   if (L > 1) {
     x = mmul(x, x << 1, n, ninv);  // 0 桁目は 1
+#pragma GCC unroll 8
     for (int k = 0; k < K; ++k) y[k] = mmul(y[k], z[k], n, ninv);  // L-1 桁目は 1
   }
   u64 v[K + 1];
   v[0] = x;
+#pragma GCC unroll 8
   for (int k = 0; k < K; ++k) v[k + 1] = y[k];
   unsigned pass = 0;
+#pragma GCC unroll 8
   for (int k = 0; k <= K; ++k) {
     v[k] = v[k] >= n ? v[k] - n : v[k];
     pass |= unsigned(v[k] == one || v[k] == mone) << k;
   }
   constexpr unsigned all = (1u << (K + 1)) - 1;
   for (int r = 1; pass != all && r < s; ++r)
+#pragma GCC unroll 8
     for (int k = 0; k <= K; ++k) {
       v[k] = mmul(v[k], v[k], n, ninv);
       v[k] = v[k] >= n ? v[k] - n : v[k];
