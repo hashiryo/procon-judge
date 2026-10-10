@@ -1,0 +1,23 @@
+id = "self-flow-general-matching"
+title = "一般グラフの最大マッチング (グラフの族)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# 提出の答えは、ハーネスが計測のあとにマッチングになっていることを確かめてから、大きさだけを出す。期待出力は参照実装
+# (今の Library の general_matching) の大きさで、愚直解 (頂点の部分集合ごとの DP) と小さい入力で突き合わせる。
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 10
+reference = "reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
