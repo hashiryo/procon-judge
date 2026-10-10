@@ -17,7 +17,7 @@ constexpr u32 NIL= ~u32(0);
 template <bool HP> struct Mem {
  vector<void*> blocks;
  u32* base= nullptr;
- size_t used= 0;
+ size_t used= 0, bytes= 0;  // bytes は HP のときに取った大きさ
  Mem()= default;
  Mem(const Mem&)= delete;
  ~Mem() {
@@ -28,7 +28,7 @@ template <bool HP> struct Mem {
  void reserve(size_t w) {
   if constexpr(HP) {
    constexpr size_t H= size_t(1) << 21;
-   const size_t bytes= (w * sizeof(u32) + H - 1) & ~(H - 1);
+   bytes= (w * sizeof(u32) + H - 1) & ~(H - 1);
    base= static_cast<u32*>(aligned_alloc(H, bytes));
 #ifdef __linux__
    madvise(base, bytes, MADV_HUGEPAGE);
