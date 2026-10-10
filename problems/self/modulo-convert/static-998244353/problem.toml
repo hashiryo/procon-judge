@@ -1,0 +1,21 @@
+id = "self-modulo-convert-static-998244353"
+title = "64 bit の整数から剰余の表現への変換 (mod = 998244353 固定)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 7
+reference = "submissions/naive.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
