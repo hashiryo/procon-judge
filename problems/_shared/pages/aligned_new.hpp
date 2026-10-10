@@ -2,8 +2,9 @@
 // 診断用。整列付きの operator new と delete を差し替えて、alignas(64) の型の配列のうち 2 MB 以上のものが載るページを選ぶ。
 // NeoLibrary の OrderedSet の葉と節点 (alignas(64)) の vector はこの new で取られる。ハーネスと提出のほかの vector は
 // 既定の整列なので使わない。PAGES_HP なら 2 MB 境界の mmap に置いて MADV_HUGEPAGE を頼み、PAGES_4K なら mmap に置いて
-// MADV_NOHUGEPAGE で 4 KB のページに留める。x64-gcc で OrderedSet<false> が <true> より遅く出たのが、透過的な huge page の
-// 当たり外れから来ているかを見るために置いた。Linux でなければ何もしない。
+// MADV_NOHUGEPAGE で 4 KB のページに留める。どちらも定義しなければ何もしない。Linux でなければ何もしない。
+// yosupo-predecessor-problem と yosupo-ordered-set の diag_os_* が使う。x64-gcc で OrderedSet<false> が <true> より遅く
+// 出たのが透過的な huge page の当たり外れから来ているかと、OrderedSet に huge page を頼ませると速くなるかを見るために置いた。
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
