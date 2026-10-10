@@ -1,0 +1,22 @@
+id = "atcoder-abc239-g"
+title = "G - Builder Takahashi"
+url = "https://atcoder.jp/contests/abc239/tasks/abc239_g"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 256
+
+[harness]
+kind = "raw"
+
+# AtCoder はテストケースを公開していないので、自作する (gen.py と、素朴な Dinic の reference.cpp)。
+# 壁を置く頂点の集合はどれでもよいので、checker.cpp が、費用が期待出力の最適値と一致すること、頂点の列が正しいこと、
+# その頂点を除くと 1 から N へ行けないことを確かめる。
+[testdata]
+source = "local"
+count = 11
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "checker"

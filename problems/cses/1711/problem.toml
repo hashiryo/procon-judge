@@ -1,0 +1,22 @@
+id = "cses-1711"
+title = "Distinct Routes"
+url = "https://cses.fi/problemset/task/1711"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 256
+
+[harness]
+kind = "raw"
+
+# CSES のテストケースは自作する (gen.py と、容量 1 の Dinic の reference.cpp)。道の組はどれでもよいので、checker.cpp が、
+# 道の数が期待出力の最適値と一致すること、各道が 1 から n へ転送装置をたどること、どの転送装置も 1 回までしか
+# 使わないことを確かめる。
+[testdata]
+source = "local"
+count = 10
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "checker"
