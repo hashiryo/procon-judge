@@ -96,6 +96,41 @@ inline constexpr std::array<uint16_t, 256> EXP15 = [] {
     return t;
 }();
 
+// 区間の車輪のバイト列 seg を奇数だけの表 out[0, ne) にする。running は手前の奇素数の個数で、書いた分だけ進める。
+// first なら車輪の外の 3 と 5 を足す。BMI2 があれば 4 バイトを pdep で 60 bit に広げ、32 バイト (480 bit) から 15 語を作る。
+inline void to_odd(const u8* seg, u32 ne, u64* out, u64& running, bool first) {
+#ifdef __BMI2__
+    constexpr u64 M60 = 0x4B69ull | 0x4B69ull << 15 | 0x4B69ull << 30 | 0x4B69ull << 45;  // 0x4B69 は位置 {0,3,5,6,8,9,11,14}
+    for (u32 g = 0, o = 0; o < ne; ++g) {
+        u64 q[8] = {};
+        for (u32 k = 0; k < 8; ++k) {
+            u32 b;
+            std::memcpy(&b, seg + 32 * g + 4 * k, 4);
+            const u64 v = _pdep_u64(b, M60);
+            const u32 off = 60 * k;
+            q[off / 64] |= v << (off % 64);
+            if (off % 64 > 4) q[off / 64 + 1] |= v >> (64 - off % 64);
+        }
+        if (first && g == 0) q[0] |= 6;
+        for (u32 j = 0; j < 15 && o < ne; ++j, ++o) {
+            const u32 v = (u32)(q[j / 2] >> (32 * (j % 2)));
+            out[o] = running << 32 | v, running += (u64)std::popcount(v);
+        }
+    }
+#else
+    // 奇数の位置の列は 1 バイトにつき 15 bit 進む。32 bit たまるごとに書く。
+    u64 acc = first ? 6 : 0;
+    u32 nacc = 0;
+    for (u32 k = 0, o = 0; o < ne; ++k) {
+        acc |= (u64)EXP15[seg[k]] << nacc, nacc += 15;
+        if (nacc >= 32) {
+            const u32 v = (u32)acc;
+            out[o++] = running << 32 | v, running += (u64)std::popcount(v), acc >>= 32, nacc -= 32;
+        }
+    }
+#endif
+}
+
 // φ(t, 6) を 30030 周期の表で引き、φ(t, 8) = φ(t, 6) - φ(t / 17, 6) - φ(t / 19, 6) + φ(t / 323, 6)
 struct Phi8 {
     std::vector<uint16_t> tab;
@@ -365,9 +400,14 @@ inline u64 prime_pi(u64 x, double am = 1.5) {
                     if (pj < pih) tmax = qt(NbD, pd[pj + 1]);
                     if (hc0 < hk) tmax = std::max<u64>(tmax, ht[hk - 1]);
                     const u32 wl = (u32)((tmax - low) / 240);
+#if !defined(DR7_DIAG_NOPRE) && !defined(DR7_DIAG_NOHARD)
                     u32 run = 0;
                     for (u32 w = 0; w <= wl; ++w) pre[w] = run, run += (u32)std::popcount(seg64[w]);
+#elif defined(DR7_DIAG_NOPRE)
+                    (void)wl;
+#endif
                     i64 sum = 0;
+#ifndef DR7_DIAG_NOHARD
                     for (u32 i = pih; i > pj; --i) {
                         const u32 u = (u32)(qt(NbD, pd[i]) - low), w = u / 240;
                         sum += (i64)pre[w] + std::popcount(seg64[w] & MASK[u - 240 * w]);
@@ -378,6 +418,9 @@ inline u64 prime_pi(u64 x, double am = 1.5) {
                         const i64 ph = phi[b] + (i64)pre[w] + std::popcount(seg64[w] & MASK[u - 240 * w]);
                         s2h += hneg[k] ? -ph : ph;
                     }
+#else
+                    pcur[b] = pj, s2h += (i64)wl + sum;  // 診断用: 累積と葉を抜く (答えは合わない)
+#endif
                     hcur[b] = hk;
                 }
             }
@@ -389,21 +432,7 @@ inline u64 prime_pi(u64 x, double am = 1.5) {
             seg[0] &= (u8)~1u;                                                                                      // 1 は素数でない
             for (u64 b = 4; b <= std::max<u64>(bmax, c); ++b) seg[primes[b] / 30] |= (u8)(1u << BI[primes[b] % 30]);  // 消した素数を戻す
         }
-        {
-            // 奇数の位置の列は 1 バイトにつき 15 bit 進む。32 bit たまるごとに書く。
-            const u32 ne = (u32)((high - low + 63) / 64);
-            u64* out = pt.t.data() + low / 64;
-            u64 acc = 0;
-            u32 nacc = 0;
-            if (low == 0) acc = 6;  // 3 と 5 は車輪の外なので足す (位置 1 と 2)
-            for (u32 k = 0, o = 0; o < ne; ++k) {
-                acc |= (u64)EXP15[seg[k]] << nacc, nacc += 15;
-                if (nacc >= 32) {
-                    const u32 v = (u32)acc;
-                    out[o++] = running << 32 | v, running += (u64)std::popcount(v), acc >>= 32, nacc -= 32;
-                }
-            }
-        }
+        to_odd(seg, (u32)((high - low + 63) / 64), pt.t.data() + low / 64, running, low == 0);
     }
     // easy leaves と trivial leaves。p_b > max(x^{1/3}, √y) の b は葉が q ∈ (p_b, y] の trivial だけで、b の分は a - b。
     i64 s2e = 0;
@@ -429,6 +458,9 @@ inline u64 prime_pi(u64 x, double am = 1.5) {
         if (lo >= he) continue;
         const u64 s = isqrt(Nb), ilo = pt(lo), ihe = pt(he), imid = std::min(ihe, pt(std::max(lo, std::min(he, s))));
         auto acc = [&](u64 l, u64 r) -> i64 {  // π(Nb / q_i) の (l, r] の和
+#ifdef DR7_DIAG_NOEASY
+            return (i64)(r - l);  // 診断用: 表引きを抜く (答えは合わない)
+#endif
             if constexpr (MODE == 1) {
                 return sum_pi4(pt, pinv.data(), l, r, (double)Nb);
             } else if constexpr (MODE == 2) {
