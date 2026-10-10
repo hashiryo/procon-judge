@@ -28,8 +28,8 @@ inline u64 redc_c(u64 v, int c, u64 M, u64 Minv) {
 struct Res {
  u64 g, x, M;  // A x ≡ g (mod B)、0 <= x < M = B / g
 };
-// B は奇数、Binv = B^{-1} mod 2^64。
-template <int T> inline Res odd(u64 A, u64 B, u64 Binv) {
+// B は奇数、Binv = B^{-1} mod 2^64。gcc は大きさを見て展開しないことがあるので、展開を強いる。
+template <int T> [[gnu::always_inline]] inline Res odd(u64 A, u64 B, u64 Binv) {
  if(T < 64 && A > B && __builtin_clzll(B) - __builtin_clzll(A) > T) A%= B;
  if(A == 0) return {B, 0, 1};
  int k= __builtin_ctzll(A);
@@ -56,24 +56,20 @@ template <int T> inline Res odd(u64 A, u64 B, u64 Binv) {
  x= x >= M ? x - M : x;
  return {b, (neg & 1) && x ? M - x : x, M};
 }
+// odd を呼ぶところを 1 か所にする。3 か所に分けていた最初の版 (procon-judge 7d333e11) は、
+// T = 8 と 16 のとき gcc 15 が odd を展開せず、結果をメモリ経由で返して 1 回 3 ns ほど遅かった。
 template <int T> inline std::pair<u64, u64> inv_gcd(u64 a, u64 b) {
- if(b & 1) {
-  Res r= odd<T>(a, b, inv64(b));
-  return {r.g, r.x};
- }
- if(a == 0) return {b, 0};
+ // 共通の 2 の冪を除く (b が奇数なら z = 0)。a = 0 なら a1 = 0 で、odd が (b1, 0) を返す。
  const int z= __builtin_ctzll(a | b);
  const u64 a1= a >> z, b1= b >> z;
- if(b1 & 1) {
-  Res r= odd<T>(a1, b1, inv64(b1));
-  return {r.g << z, r.x};
- }
- // a1 は奇数で b1 は偶数。役を入れ替えて b1 y ≡ g1 (mod a1) を解き、a1 x + b1 y = g1 から x を出す。
+ // b1 が偶数なら a1 は奇数なので、役を入れ替えて b1 y ≡ g1 (mod a1) を解き、a1 x + b1 y = g1 から x を出す。
+ const bool sw= !(b1 & 1);
+ const u64 B= sw ? a1 : b1, Binv= inv64(B);
+ const Res r= odd<T>(sw ? b1 : a1, B, Binv);
+ if(!sw) return {r.g << z, r.x};
  // t = (b1 y - g1) / a1 は割り切れて -1 <= t < b1 / g1 なので、mod 2^64 で a1^{-1} を掛けて求まる。
- const u64 ainv= inv64(a1);
- Res r= odd<T>(b1, a1, ainv);
- const u64 t= (b1 * r.x - r.g) * ainv, m= b1 * (r.M * ainv);  // m = b1 / g1 (g1^{-1} = (a1 / g1) a1^{-1})
- u64 x= m - t;
+ const u64 t= (b1 * r.x - r.g) * Binv, m= b1 * (r.M * Binv);  // m = b1 / g1 (g1^{-1} = (a1 / g1) a1^{-1})
+ const u64 x= m - t;
  return {r.g << z, x >= m ? x - m : x};
 }
 }  // namespace kaliski
