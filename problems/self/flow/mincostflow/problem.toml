@@ -1,0 +1,23 @@
+id = "self-flow-mincostflow"
+title = "最小費用流 (グラフの族)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# 提出の流量とポテンシャルは、ハーネスが計測のあとに確かめる (実行可能性と相補性で最適性が言える)。期待出力は
+# 参照実装 (今の Library の NetworkSimplex の写し) の費用の和で、愚直解 (負閉路を 1 つずつ消す) と小さい入力で突き合わせる。
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 10
+reference = "reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true

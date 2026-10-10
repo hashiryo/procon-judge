@@ -26,6 +26,11 @@
 //                      level graph)。s から最初の段の各頂点へ、最後の段の各頂点から t へ容量 C D の辺
 //   closure P Q D C    project selection の形。s から P 個の仕事へ容量 [1, C]、各仕事から乱択の D 個の道具へ容量 2^30、
 //                      道具から t へ容量 [1, C]
+//   ak K               Cherkassky と Goldberg の AK (DIMACS の生成器 ak.c をそのまま写す)。頂点 4K + 6、辺 6K + 7 の
+//                      決まった形で、seed は使わない。s と t にそれぞれつながる 2 つの部分からなる。1 つ目は、容量が
+//                      K + 1 から 2 へ減る道 v と、v の各頂点から w の先頭へ出る容量 1 の辺と、容量 K + 1 の長い道 w。
+//                      2 つ目は、容量 K の道と、その両端から内へ入れ子に張った容量 1 の弦 K 本。push-relabel も Dinic も
+//                      K の 2 乗ほどの手間がかかる
 #include "pj.hpp"
 #include <algorithm>
 #include <numeric>
@@ -146,6 +151,25 @@ Graph rlg(Rng &rng, int L, int W, int D, int C) {
   return g;
 }
 
+// ak.c (Cherkassky, Goldberg, 1994) の頂点 x (1 始まり) を x - 1 にしたもの。辺の順も ak.c の出力の順のまま。
+Graph ak(int K) {
+  Graph g;
+  g.n = 4 * K + 6, g.s = 0, g.t = 1;
+  auto arc = [&](int u, int v, int c) { g.e.push_back({u - 1, v - 1, c}); };
+  for (int i = 0; i < K; ++i) arc(i + 3, i + 4, K - i + 1), arc(i + 3, K + 4, 1);
+  arc(K + 3, 2 * K + 4, 1);
+  arc(K + 3, K + 4, 1);
+  for (int i = K + 3; i <= 2 * K + 2; ++i) arc(i + 1, i + 2, K + 1);
+  const int d = 2 * K + 4;
+  for (int i = d; i <= 2 * K + d; ++i) arc(i + 1, i + 2, K);
+  for (int i = 0; i < K; ++i) arc(i + d + 1, 2 * K + 2 - i + d, 1);
+  arc(1, 3, 1000000);
+  arc(1, d + 1, 1000000);
+  arc(d, 2, 1000000);
+  arc(4 * K + 6, 2, 1000000);
+  return g;
+}
+
 Graph closure(Rng &rng, int P, int Q, int D, int C) {
   Graph g;
   g.n = P + Q + 2, g.s = P + Q, g.t = P + Q + 1;
@@ -176,6 +200,7 @@ signed main() {
   else if (fam == "genrmf") { auto a = args(4); g = gen::genrmf(rng, a[0], a[1], a[2], a[3]); }
   else if (fam == "rlg") { auto a = args(4); g = gen::rlg(rng, a[0], a[1], a[2], a[3]); }
   else if (fam == "closure") { auto a = args(4); g = gen::closure(rng, a[0], a[1], a[2], a[3]); }
+  else if (fam == "ak") { auto a = args(1); g = gen::ak(a[0]); }
   else {
     fprintf(stderr, "unknown family %s\n", fam.c_str());
     return 1;
