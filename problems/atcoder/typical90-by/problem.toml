@@ -1,0 +1,22 @@
+id = "atcoder-typical90-by"
+title = "077 - Planes on a 2D Plane（★7）"
+url = "https://atcoder.jp/contests/typical90/tasks/typical90_by"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+# AtCoder はテストケースを公開していないので、自作する (gen.py と、Hopcroft-Karp の reference.cpp)。向きの組はどれでもよいので、
+# checker.cpp が、Yes と No が期待出力と一致すること、Yes なら N 個の向きが 1 から 8 で、時刻 T の位置が報告の N 点と
+# 1 つずつ一致することを確かめる。
+[testdata]
+source = "local"
+count = 14
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "checker"

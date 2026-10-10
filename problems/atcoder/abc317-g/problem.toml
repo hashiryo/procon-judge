@@ -1,0 +1,22 @@
+id = "atcoder-abc317-g"
+title = "G - Rearranging"
+url = "https://atcoder.jp/contests/abc317/tasks/abc317_g"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+# AtCoder はテストケースを公開していないので、自作する (gen.py と、完全マッチングを M 回取る reference.cpp)。行と数を結ぶ
+# M 正則の二部多重グラフは M 個の完全マッチングに分けられるので、答えはいつも Yes。並べ方はどれでもよいので、checker.cpp が、
+# Yes であること、各行が元の行の並べ替えであること、各列が 1 から N を 1 つずつ含むことを確かめる。
+[testdata]
+source = "local"
+count = 12
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "checker"
