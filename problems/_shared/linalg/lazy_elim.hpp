@@ -102,7 +102,9 @@ template <class Z> struct Elim {
    for(int r : rem) {
     u32* fr= &F[(size_t)r * K];
     for(int s= bt; s < K; ++s) fr[s]= 0;
-    update_row(row(r), Ub, fr, jb, w, R);
+    u32 any= 0;
+    for(int s= 0; s < K; ++s) any|= fr[s];
+    if(any) update_row(row(r), Ub, fr, jb, w, R);  // 掛ける数が全部 0 の行 (疎な行列で多い) は飛ばす
    }
   }
   return true;
