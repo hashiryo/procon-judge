@@ -10,6 +10,8 @@
 #include <algorithm>
 #include <array>
 #include <cstdlib>
+#include <queue>
+#include <utility>
 #include <vector>
 #include "neo/flow/MaxFlow.hpp"
 namespace mcf_cost_scaling {
@@ -19,7 +21,12 @@ struct Result {
  __int128 cost= 0;
  std::vector<i64> pot, flow;
 };
-template <int ALPHA= 16> Result b_flow(int n, const std::vector<i64>& b, const std::vector<std::array<i64, 5>>& edges) {
+// PU なら global price update を、LA なら push look-ahead を使う。
+// - global price update: 余りの負の頂点から残余の辺を逆にたどる最短路 (辺の長さは floor(縮約費用 / ε) + 1) を Dijkstra で
+//   求め、p_v を ε d(v) だけ下げる。余りのある頂点がどれも負の頂点へ admissible な道を持つようになる。余りのある頂点を
+//   すべて取り出したら打ち切り、残りの頂点は最後に取り出した距離にする。refine の初めと、relabel が n 回たまるごとにかける。
+// - push look-ahead: 余りの負でない頂点 w へ流す前に、w に admissible な辺があるかを見て、無ければ先に w を relabel する。
+template <int ALPHA= 16, bool PU= false, bool LA= false> Result b_flow(int n, const std::vector<i64>& b, const std::vector<std::array<i64, 5>>& edges) {
  const int m= edges.size();
  Result res;
  std::vector<i64> ex(b.begin(), b.end());
@@ -61,6 +68,44 @@ template <int ALPHA= 16> Result b_flow(int n, const std::vector<i64>& b, const s
  std::vector<i64> p(n, 0);
  std::vector<int> cur(n), q(n);
  std::vector<char> inq(n);
+ std::vector<i64> dist(n);
+ std::vector<char> done(n);
+ long long relabels= 0;
+ // relabel: 残余の辺の縮約費用の最小が -ε になるように p_v を下げる。残余の辺が無ければ何もせず false を返す。
+ auto relabel= [&](int v) {
+  i64 best= -(i64(1) << 62);
+  bool any= false;
+  for(int j= st[v]; j < st[v + 1]; ++j)
+   if(cap[j] > 0) best= std::max(best, p[to[j]] - cost[j]), any= true;
+  if(!any) return false;
+  p[v]= best - eps, cur[v]= st[v], ++relabels;
+  return true;
+ };
+ auto price_update= [&] {
+  using P= std::pair<i64, int>;
+  std::priority_queue<P, std::vector<P>, std::greater<P>> pq;
+  constexpr i64 INF= i64(1) << 62;
+  int left= 0;
+  for(int v= 0; v < n; ++v) {
+   dist[v]= INF, done[v]= 0, left+= ex[v] > 0;
+   if(ex[v] < 0) dist[v]= 0, pq.push({0, v});
+  }
+  i64 last= 0;
+  while(!pq.empty() && left > 0) {
+   const auto [d, w]= pq.top();
+   pq.pop();
+   if(done[w] || d != dist[w]) continue;
+   done[w]= 1, last= d, left-= ex[w] > 0;
+   for(int k= st[w]; k < st[w + 1]; ++k) {
+    const int v= to[k], r= rev[k];  // r は v から w への弧
+    if(done[v] || cap[r] == 0) continue;
+    const i64 rc= cost[r] + p[v] - p[w];
+    const i64 nd= d + (rc >= 0 ? rc / eps : -((-rc + eps - 1) / eps)) + 1;
+    if(nd < dist[v]) dist[v]= nd, pq.push({nd, v});
+   }
+  }
+  for(int v= 0; v < n; ++v) p[v]-= eps * (done[v] ? dist[v] : last), cur[v]= st[v];
+ };
  // 費用がすべて 0 でも、余りを流すために refine を 1 回は回す。
  do {
   eps= std::max<i64>(1, eps / ALPHA);
@@ -71,10 +116,12 @@ template <int ALPHA= 16> Result b_flow(int n, const std::vector<i64>& b, const s
      const i64 d= cap[k];
      cap[k]= 0, cap[rev[k]]+= d, ex[v]-= d, ex[to[k]]+= d;
     }
+  for(int v= 0; v < n; ++v) cur[v]= st[v];
+  if constexpr(PU) price_update(), relabels= 0;
   // 余りのある頂点を、長さ n の輪の FIFO で回す。
   int qh= 0, qn= 0;
   for(int v= 0; v < n; ++v) {
-   cur[v]= st[v], inq[v]= ex[v] > 0;
+   inq[v]= ex[v] > 0;
    if(inq[v]) q[(qh + qn++) % n]= v;
   }
   while(qn) {
@@ -83,15 +130,21 @@ template <int ALPHA= 16> Result b_flow(int n, const std::vector<i64>& b, const s
    while(ex[v] > 0) {
     int& k= cur[v];
     if(k == st[v + 1]) {
-     // relabel: 残余の辺の縮約費用の最小が -ε になるように p_v を下げる。
-     i64 best= -(i64(1) << 62);
-     for(int j= st[v]; j < st[v + 1]; ++j)
-      if(cap[j] > 0) best= std::max(best, p[to[j]] - cost[j]);
-     p[v]= best - eps, k= st[v];
+     relabel(v);
+     if constexpr(PU)
+      if(relabels >= n) price_update(), relabels= 0;
      continue;
     }
     const int w= to[k];
     if(cap[k] > 0 && cost[k] + p[v] - p[w] < 0) {
+     if constexpr(LA) {
+      if(ex[w] >= 0) {
+       // w に admissible な辺が無ければ、流す前に w を relabel する (v から w への辺は admissible でなくなりうる)。
+       int& kw= cur[w];
+       while(kw < st[w + 1] && !(cap[kw] > 0 && cost[kw] + p[w] - p[to[kw]] < 0)) ++kw;
+       if(kw == st[w + 1] && relabel(w)) continue;
+      }
+     }
      const i64 d= std::min(ex[v], cap[k]);
      cap[k]-= d, cap[rev[k]]+= d, ex[v]-= d, ex[w]+= d;
      if(ex[w] > 0 && !inq[w]) inq[w]= 1, q[(qh + qn++) % n]= w;
