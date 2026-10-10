@@ -3,7 +3,8 @@
 // 高さを上げる。高さごとに、活性な頂点の片方向リストと、すべての頂点の両方向リストを持つ。ある高さの頂点が
 // いなくなったら (gap)、それより上の頂点は t に届かないので高さを n にして外す。高さを上げた仕事量 (1 回につき
 // 12 と見た辺の数) が FREQ (6n + m) を超えるたびに、t から逆向きの BFS で高さを正確な距離に直す (global relabel)。
-// HIPR の既定の頻度は FREQ = 2 にあたる。求めるのは最大流の値だけなので、前流 (余りが t に届かない頂点に残った
+// HIPR の既定の頻度は FREQ = 2 にあたる。同じ高さの活性な頂点は、FIFO_BUCKET が false なら後に入れたものから、
+// true なら先に入れたものから取り出す。求めるのは最大流の値だけなので、前流 (余りが t に届かない頂点に残った
 // 状態) を作った時点で止め、t の余りを返す。辺は CSR に並べ、容量は int (残余容量は元の容量を超えない)、余りは
 // i64 で持つ。自己ループは捨てる。
 #include <algorithm>
@@ -15,7 +16,7 @@ struct E {
  int to, rev, cap;
 };
 // edges は {u, v, 容量}。容量は 0 以上。
-template <int FREQ> i64 max_flow(int n, int s, int t, const std::vector<std::array<int, 3>>& edges) {
+template <int FREQ, bool FIFO_BUCKET= false> i64 max_flow(int n, int s, int t, const std::vector<std::array<int, 3>>& edges) {
  std::vector<int> st(n + 1);
  for(auto& e: edges)
   if(e[0] != e[1]) ++st[e[0] + 1], ++st[e[1] + 1];
@@ -29,7 +30,7 @@ template <int FREQ> i64 max_flow(int n, int s, int t, const std::vector<std::arr
     es[a]= {e[1], b, e[2]}, es[b]= {e[0], a, 0};
    }
  }
- std::vector<int> h(n), cur(n), anext(n), bnext(n), bprev(n), ahead(n + 1), bhead(n + 1), q(n);
+ std::vector<int> h(n), cur(n), anext(n), bnext(n), bprev(n), ahead(n + 1), atail(FIFO_BUCKET ? n + 1 : 0), bhead(n + 1), q(n);
  std::vector<i64> ex(n);
  int amax= -1, bmax= -1;
  auto ins_b= [&](int v, int d) {
@@ -42,7 +43,14 @@ template <int FREQ> i64 max_flow(int n, int s, int t, const std::vector<std::arr
   else bhead[d]= bnext[v];
   if(bnext[v] >= 0) bprev[bnext[v]]= bprev[v];
  };
- auto ins_a= [&](int v, int d) { anext[v]= ahead[d], ahead[d]= v, amax= std::max(amax, d); };
+ auto ins_a= [&](int v, int d) {
+  if constexpr(FIFO_BUCKET) {
+   anext[v]= -1;
+   if(ahead[d] < 0) ahead[d]= atail[d]= v;
+   else anext[atail[d]]= v, atail[d]= v;
+  } else anext[v]= ahead[d], ahead[d]= v;
+  amax= std::max(amax, d);
+ };
  auto global_relabel= [&] {
   std::fill(h.begin(), h.end(), n);
   std::fill(ahead.begin(), ahead.end(), -1), std::fill(bhead.begin(), bhead.end(), -1);
