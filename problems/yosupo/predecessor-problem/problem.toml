@@ -1,0 +1,19 @@
+id = "yosupo-predecessor-problem"
+title = "Predecessor Problem"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 2048
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "data_structure/predecessor_problem"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true
