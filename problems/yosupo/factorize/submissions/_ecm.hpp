@@ -78,6 +78,22 @@ inline Pt ladder(const M60& m, Pt P, u64 k, u64 a24) {
  return sw ? R1 : R0;
 }
 
+// 2 本の曲線の [k]P を同じ手順で同時に求める。ビットが同じなので入れ替えも共通で、xor とマスクで書く
+// (gcc 15 は三項演算子で書くと入れ替えを分岐にした)。1 本だと鎖の長さで決まり、掛け算器が空くのを埋める。
+inline void ladder2(const M60& m, Pt& Pa, Pt& Pb, u64 k, u64 a24a, u64 a24b) {
+ Pt R0a= Pa, R1a= xdbl(m, Pa, a24a), R0b= Pb, R1b= xdbl(m, Pb, a24b);
+ u64 sw= 0;
+ for(int i= 62 - __builtin_clzll(k); i >= 0; --i) {
+  const u64 bit= (k >> i) & 1, mk= 0 - (bit ^ sw);
+  sw= bit;
+  const u64 dax= (R0a.X ^ R1a.X) & mk, daz= (R0a.Z ^ R1a.Z) & mk, dbx= (R0b.X ^ R1b.X) & mk, dbz= (R0b.Z ^ R1b.Z) & mk;
+  const Pt Aa{R0a.X ^ dax, R0a.Z ^ daz}, Ba{R1a.X ^ dax, R1a.Z ^ daz}, Ab{R0b.X ^ dbx, R0b.Z ^ dbz}, Bb{R1b.X ^ dbx, R1b.Z ^ dbz};
+  R1a= xadd(m, Aa, Ba, Pa), R0a= xdbl(m, Aa, a24a);
+  R1b= xadd(m, Ab, Bb, Pb), R0b= xdbl(m, Ab, a24b);
+ }
+ Pa= sw ? R1a : R0a, Pb= sw ? R1b : R0b;
+}
+
 template <int B1, int E2, int E3> struct Stage1 {
  std::array<u64, 16> c{};
  int len= 0;
@@ -166,6 +182,46 @@ template <int B1, int E2, int E3, int MH> inline u64 ecm(u64 n, int max_curves) 
  return 0;
 }
 
+// σ の曲線を作る。0 なら (P, a24) が使え、1 なら f に因数、-1 ならこの σ は使えない。
+inline int curve(const M60& m, u64 n, u64 sigma, u64 c16, Pt& P, u64& a24, u64& f) {
+ const u64 U= m.norm(m.to(sigma * sigma - 5)), V= m.norm(m.to(4 * sigma));
+ const u64 U3= m.mul(m.mul(U, U), U), V3= m.mul(m.mul(V, V), V), vu= V - U + m.n, w= 3 * U + V;
+ const u64 num= m.mul(m.mul(m.mul(vu, vu), vu), w), den= m.mul(m.mul(U3, V), c16);
+ const auto [g, inv]= inv_gcd(m.from(den), n);
+ if(g != 1) return f= g, g != n ? 1 : -1;
+ a24= m.mul(num, m.to(inv)), P= {U3, V3};
+ return 0;
+}
+// 2 本の曲線を同時に回す ECM。gcd は 2 本の積でまとめて取り、n ごと割れたときだけ 1 本ずつ見る。
+template <int B1, int E2, int E3, int MH> inline u64 ecm_dual(u64 n) {
+ static constexpr Stage1<B1, E2, E3> S1{};
+ const M60 m(n);
+ const u64 c16= m.to(16);
+ for(u64 sigma= 6;; sigma+= 2) {
+  Pt Pa, Pb;
+  u64 a24a, a24b, f;
+  const int sa= curve(m, n, sigma, c16, Pa, a24a, f);
+  if(sa == 1) return f;
+  const int sb= curve(m, n, sigma + 1, c16, Pb, a24b, f);
+  if(sb == 1) return f;
+  if(sa || sb) continue;
+  for(int i= 0; i < S1.len; ++i) ladder2(m, Pa, Pb, S1.c[i], a24a, a24b);
+  auto check= [&](u64 za, u64 zb) -> u64 {  // za zb の gcd。n ごとなら 1 本ずつ
+   const u64 g= gcd(m.norm(m.mul(za, zb)), n);
+   if(g == 1 || g != n) return g == 1 ? 0 : g;
+   for(u64 z: {za, zb})
+    if(const u64 h= gcd(m.norm(z), n); h != 1 && h != n) return h;
+   return n;
+  };
+  if(const u64 g= check(Pa.Z, Pb.Z); g) {
+   if(g != n) return g;
+   continue;
+  }
+  const u64 g2= check(stage2<MH>(m, Pa, a24a), stage2<MH>(m, Pb, a24b));
+  if(g2 && g2 != n) return g2;
+ }
+}
+
 // Pollard rho (Brent)。c の違う 2 本の列を同時に進め、M 段ごとに差の積の gcd を取る。奇数の合成数 n < 2^60。
 inline u64 rho(u64 n) {
  const u64 ninv= inv64(n);
@@ -217,14 +273,14 @@ inline u64 rho_slow(u64 n) {
  }
 }
 
-template <int T, int B1, int E2, int E3, int MH> inline void rec(u64 n, std::vector<u64>& out) {
+template <int T, int B1, int E2, int E3, int MH, bool DUAL> inline void rec(u64 n, std::vector<u64>& out) {
  if(n == 1) return;
  if(is_prime(n)) return out.push_back(n);
  u64 d= 0;
  if(n >= (1ull << 60)) d= rho_slow(n);
- else if(n >= (1ull << T)) d= ecm<B1, E2, E3, MH>(n, 1 << 20);
+ else if(n >= (1ull << T)) d= DUAL ? ecm_dual<B1, E2, E3, MH>(n) : ecm<B1, E2, E3, MH>(n, 1 << 20);
  if(!d) d= rho(n);
- rec<T, B1, E2, E3, MH>(d, out), rec<T, B1, E2, E3, MH>(n / d, out);
+ rec<T, B1, E2, E3, MH, DUAL>(d, out), rec<T, B1, E2, E3, MH, DUAL>(n / d, out);
 }
 
 // 97 以下の奇素数 p について、p で割り切れるかを n p^{-1} mod 2^64 <= (2^64 - 1) / p で見る。
@@ -243,7 +299,7 @@ inline constexpr auto SMALL= [] {
  return t;
 }();
 
-template <int T= 40, int B1= 150, int E2= 3, int E3= 2, int MH= 16> inline std::vector<u64> factorize(u64 n) {
+template <int T= 40, bool DUAL= false, int B1= 150, int E2= 3, int E3= 2, int MH= 16> inline std::vector<u64> factorize(u64 n) {
  std::vector<u64> out;
  if(n <= 1) return out;
  const int z= __builtin_ctzll(n);
@@ -253,7 +309,7 @@ template <int T= 40, int B1= 150, int E2= 3, int E3= 2, int MH= 16> inline std::
   if(p * p > n) break;
   while(n * inv <= lim) out.push_back(p), n*= inv;
  }
- if(n > 1) rec<T, B1, E2, E3, MH>(n, out);
+ if(n > 1) rec<T, B1, E2, E3, MH, DUAL>(n, out);
  std::sort(out.begin(), out.end());
  return out;
 }
