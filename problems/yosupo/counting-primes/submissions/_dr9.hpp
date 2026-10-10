@@ -2,7 +2,7 @@
 // Deléglise–Rivat の 9 回目。NeoLibrary 0e2f14f の prime_pi の写しに、段ごとに打ち切る診断 (DR9_CUT) と、1 回目の呼び出しの
 // 手間を減らす直し (FIX のビット) を足したもの。FIX & 1: hard leaves の b ごとの配列を a + 1 でなく √z までの素数の個数で取る。
 // FIX & 2: φ(t, 6) の表を 7、11、13 の型から作る (作業用の配列と 30030 の篩を省く)。FIX & 4: P2 を AVX2 で回す (素数を 256 個
-// ずつ書き出し、大きい列を取らない)。
+// ずつ書き出し、大きい列を取らない)。FIX & 8: AVX2 のとき、素数での割り算もすべて 1 / p の double で行い、magic を作らない。
 #if defined(__AVX2__) || defined(__BMI2__)
 #include <immintrin.h>
 #endif
@@ -355,6 +355,9 @@ template <int FIX= 0> inline u64 prime_pi(u64 x) {
   for(u64 i= 1; i <= h; ++i) primes[k]= (u32)(2 * i + 1), k+= !comp[i];
   primes.resize(k);
  }
+#if DR9_CUT == 11
+ return primes.size() + primes[primes.size() / 2];
+#endif
  auto npr= [&](u64 n) -> u64 { return (u64)(std::upper_bound(primes.begin() + 1, primes.end(), (u32)n) - primes.begin()) - 1; };
  const u64 a= npr(y), nsz= npr(sz);
  // y 以下の平方因子のない合成数で lpf > p_c のもの (昇順)。素数の積を深さ優先でたどって表に lpf と μ を書き、小さい順に詰める。
@@ -378,13 +381,29 @@ template <int FIX= 0> inline u64 prime_pi(u64 x) {
   cm.resize(cnt), clp.resize(cnt), cmu.resize(cnt);
   for(size_t i= 0; i < cnt; ++i) clp[i]= tag[cm[i]] & 0x7fff, cmu[i]= (tag[cm[i]] & 0x8000) ? -1 : 1;
  }
- std::vector<u64> pd(primes.size());
- for(size_t i= 1; i < primes.size(); ++i) pd[i]= magic(primes[i]);
+#if DR9_CUT == 12
+ return cm.size() + cm[cm.size() / 2] + (u64)clp[cm.size() / 3] + (u64)cmu[cm.size() / 4];
+#endif
  std::vector<double> cinv(cm.size());  // 1 / m を 1 ulp 上げた値。N < 2^50 なら floor(N cinv) = floor(N / m)
  for(size_t i= 0; i < cm.size(); ++i) cinv[i]= inv_up(cm[i]);
 #if defined(__AVX2__)
+ constexpr bool DQ= (FIX & 8) != 0;  // 素数での割り算も pinv で行い、magic を作らない
  std::vector<double> pinv(primes.size());  // 1 / p を 1 ulp 上げた値。N < 2^50 なら floor(N pinv) = floor(N / p)
  for(size_t i= 1; i < primes.size(); ++i) pinv[i]= inv_up(primes[i]);
+#else
+ constexpr bool DQ= false;
+#endif
+ std::vector<u64> pd(DQ ? 0 : primes.size());
+ if constexpr(!DQ)
+  for(size_t i= 1; i < primes.size(); ++i) pd[i]= magic(primes[i]);
+ auto qp= [&](u64 n, u64 i) -> u64 {  // n / primes[i]
+#if defined(__AVX2__)
+  if constexpr(DQ) return (u64)(i64)((double)n * pinv[i]);
+#endif
+  return mulhi(n, pd[i]);
+ };
+#if DR9_CUT == 13
+ return (u64)cinv[cm.size() / 2] + qp(x, a);
 #endif
  // hard leaves: b ごとに m ∈ (max(y/p, p), min(y, x/p^3)]。素数の m は primes の添字 (plo, pcur] で持ち、上から下る
  // (t が増える向き)。範囲が空でないなら p^2 ≤ z。
@@ -437,6 +456,9 @@ template <int FIX= 0> inline u64 prime_pi(u64 x) {
    for(auto it= i2; it != i1;) --it, *out++= (u32)(i64)((double)N[b] * cinv[*it]) | (cmu[*it] > 0 ? 1u << 31 : 0);
   }
  }
+#if DR9_CUT == 14
+ return ht.size() + ht[ht.size() / 2] + N[bmax];
+#endif
  std::vector<u32> hcur(hcb.begin(), hcb.end());
  // 区間の篩。区間の先頭 low は 240 の倍数で、バイト k は 30 (low / 30 + k) + WR[i]。
  constexpr u32 SW= 2048;
@@ -475,7 +497,7 @@ template <int FIX= 0> inline u64 prime_pi(u64 x) {
  u64 running= 0;
  i64 s2h= 0;
 #if DR9_CUT == 1
- return ht.size() + pd[a] + sp.size() + (u64)cinv[0];
+ return ht.size() + qp(x, a) + sp.size() + (u64)cinv[0];
 #endif
  for(u64 low= 0; low <= z; low+= SEGN) {
   const u64 high= std::min(low + SEGN, z + 1);
@@ -499,7 +521,7 @@ template <int FIX= 0> inline u64 prime_pi(u64 x) {
    if(pih > plo[b] || hc0 < hc1) {
     const u64 Nb= N[b];
     u32 pj= pih;
-    if(pih > plo[b] && mulhi(Nb, pd[pih]) < high) {
+    if(pih > plo[b] && qp(Nb, pih) < high) {
      const u32 mb= (u32)(N[b] / high);  // t < high ⇔ m > mb
      pj= (u32)(std::upper_bound(primes.begin() + plo[b] + 1, primes.begin() + pih + 1, mb) - primes.begin()) - 1;
     }
@@ -507,14 +529,19 @@ template <int FIX= 0> inline u64 prime_pi(u64 x) {
     if(pj < pih || hc0 < hk) {
      // 最も大きい t の語まで、語ごとの累積を作ってから葉を数える
      u64 tmax= 0;
-     if(pj < pih) tmax= mulhi(Nb, pd[pj + 1]);
+     if(pj < pih) tmax= qp(Nb, pj + 1);
      if(hc0 < hk) tmax= std::max<u64>(tmax, ht[hk - 1] & 0x7fffffff);
      const u32 wl= (u32)((tmax - low) / 240);
+#if DR9_SEG == 1
+     pcur[b]= pj, s2h+= wl;  // 診断用: 累積と葉を抜く
+#else
+#if DR9_SEG != 2
      u32 run= 0;
      for(u32 w= 0; w <= wl; ++w) pre[w]= run, run+= (u32)std::popcount(seg64[w]);
+#endif
      i64 sum= 0;
      for(u32 i= pih; i > pj; --i) {
-      const u32 u= (u32)(mulhi(Nb, pd[i]) - low), w= u / 240;
+      const u32 u= (u32)(qp(Nb, i) - low), w= u / 240;
       sum+= (i64)pre[w] + std::popcount(seg64[w] & MASK[u - 240 * w]);
      }
      s2h+= sum + (i64)(pih - pj) * phi[b], pcur[b]= pj;
@@ -524,18 +551,27 @@ template <int FIX= 0> inline u64 prime_pi(u64 x) {
       const i64 ng= -(i64)(ht[k] >> 31);  // 0 か -1。条件式で書くと gcc は分岐にする
       s2h+= (ph ^ ng) - ng;
      }
+#endif
      hcur[b]= hk;
     }
    }
    phi[b]+= (i64)cnt;
+#if DR9_SEG == 3
+   cnt-= 1 + cross_off<false>(seg, nbytes, sp[b]);  // 診断用: 数えずに消す
+#else
    cnt-= cross_off<true>(seg, nbytes, sp[b]);  // p_b の倍数を消し、消えた数を cnt から引く
+#endif
   }
+#if DR9_SEG != 4
   for(u64 b= bmax + 1; b <= nsz; ++b) cross_off<false>(seg, nbytes, sp[b]);
+#endif
   if(low == 0) {
    seg[0]&= (u8)~1u;                                                                                      // 1 は素数でない
    for(u64 b= 4; b <= std::max<u64>(bmax, c); ++b) seg[primes[b] / 30]|= (u8)(1u << BI[primes[b] % 30]);  // 消した素数を戻す
   }
+#if DR9_SEG != 5
   to_odd(seg, (u32)((high - low + 63) / 64), pt.t.get() + low / 64, running, low == 0);
+#endif
  }
  // easy leaves と trivial leaves。p_b > max(x^{1/3}, √y) の b は葉が q ∈ (p_b, y] の trivial だけで、b の分は a - b。
 #if DR9_CUT == 2
@@ -547,14 +583,13 @@ template <int FIX= 0> inline u64 prime_pi(u64 x) {
  if(b0 < a) s2e+= (i64)((a - b0) * (a - b0 + 1) / 2);
  for(u64 b= c + 1; b < b0; ++b) {
   const u64 p= primes[b];
-  const u64 dv= pd[b];
-  const u64 Nb= mulhi(x, dv), Nbp= mulhi(Nb, dv), lo= std::max({mulhi(y, dv), p, mulhi(Nbp, dv)});  // 素数の q も合成数の m も lo より大きい
+  const u64 Nb= qp(x, b), Nbp= qp(Nb, b), lo= std::max({qp(y, b), p, qp(Nbp, b)});  // 素数の q も合成数の m も lo より大きい
   if(lo >= y) continue;
   // 合成数の m = q1 q2 (p < q1 < q2、lo < m ≤ y)。t ≥ p (p < √y ≤ √z) なので trivial はなく、μ(m) = 1 なので引く。
   for(u64 j= b + 1; primes[j] * primes[j + 1] <= y; ++j) {
    const u64 q1= primes[j], k1= npr(y / q1);
-   const u64 Nq= mulhi(Nb, pd[j]);
-   for(u64 k= std::max<u64>(j, npr(lo / q1)) + 1; k <= k1; ++k) s2e-= (i64)pt(mulhi(Nq, pd[k])) - (i64)b + 2;
+   const u64 Nq= qp(Nb, j);
+   for(u64 k= std::max<u64>(j, npr(lo / q1)) + 1; k <= k1; ++k) s2e-= (i64)pt(qp(Nq, k)) - (i64)b + 2;
   }
   // 素数の q ∈ (lo, y]: q ≤ he なら easy、q > he なら trivial
   const u64 he= std::min(y, Nbp);
@@ -566,7 +601,7 @@ template <int FIX= 0> inline u64 prime_pi(u64 x) {
    return sum_pi4(pt, pinv.data(), l, r, (double)Nb);
 #else
    i64 v= 0;
-   for(u64 i= l + 1; i <= r; ++i) v+= (i64)pt(mulhi(Nb, pd[i]));
+   for(u64 i= l + 1; i <= r; ++i) v+= (i64)pt(qp(Nb, i));
    return v;
 #endif
   };
