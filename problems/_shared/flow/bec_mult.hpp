@@ -16,7 +16,11 @@ namespace bec_mult {
 struct CE {
  int l, r, k, id;  // 左の組、右の組 (K + 番号)、重複度、まとめた辺の番号
 };
-template <int SMALL= 64> std::vector<int> edge_coloring(int L, int R, const std::vector<std::array<int, 2>>& e) {
+// PAIR が true なら、奇数の重複度の辺の振り分けを Euler 閉路でなく、各頂点で辺を隣り合う 2 本ずつ組にしてたどる形で行う。
+// どの頂点も本数が偶数なので CSR の各頂点の始まりは偶数番地で、組の相手は番地の xor 1 になる。辺を、右の端の組の相手、
+// 左の端の組の相手、と交互にたどると閉路になり (二部なので長さは偶数)、たどった順に両側へ交互に振り分ければ、どの頂点でも
+// 組の 2 本が違う側に入る。
+template <int SMALL= 64, bool PAIR= false> std::vector<int> edge_coloring(int L, int R, const std::vector<std::array<int, 2>>& e) {
  const int m= e.size();
  std::vector<int> col(m, 0);
  if(m == 0) return col;
@@ -120,10 +124,25 @@ template <int SMALL= 64> std::vector<int> edge_coloring(int L, int R, const std:
    for(int i: odd) ++off[list[i].l + 1], ++off[list[i].r + 1];
    for(int v= 0; v < n2; ++v) off[v + 1]+= off[v];
    it.assign(off.begin(), off.end() - 1);
+   std::vector<char> side(no);
+   if constexpr(PAIR) {
+    std::vector<int> pl(no), pr(no);
+    for(int j= 0; j < no; ++j) adj[pl[j]= it[list[odd[j]].l]++]= j, adj[pr[j]= it[list[odd[j]].r]++]= j;
+    std::vector<char> done(no);
+    for(int j0= 0; j0 < no; ++j0) {
+     if(done[j0]) continue;
+     int cur= j0;
+     char sd= 0;
+     for(bool right= true;; right= !right) {
+      done[cur]= 1, side[cur]= sd, sd^= 1;
+      cur= adj[(right ? pr[cur] : pl[cur]) ^ 1];
+      if(cur == j0) break;
+     }
+    }
+   } else {
    for(int j= 0; j < no; ++j) adj[it[list[odd[j]].l]++]= j, adj[it[list[odd[j]].r]++]= j;
    it.assign(off.begin(), off.end() - 1);
    // Hierholzer。閉路の辺を出てくる順に並べ、交互に A と B へ。
-   std::vector<char> side(no);
    for(int s= 0; s < n2; ++s) {
     if(it[s] == off[s + 1]) continue;
     cyc.clear(), st2.clear();
@@ -142,6 +161,7 @@ template <int SMALL= 64> std::vector<int> edge_coloring(int L, int R, const std:
      }
     }
     for(size_t q= 0; q < cyc.size(); ++q) side[cyc[q]]= q & 1;
+   }
    }
    for(int j= 0; j < no; ++j) {
     const CE& x= list[odd[j]];
