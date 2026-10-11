@@ -114,13 +114,24 @@ jobs:
       - name: CPU の命令
         run: grep -m1 -E '^(flags|Features)' /proc/cpuinfo || true
 
-      # 透過的な huge page の設定とカーネルの版をログに残す。AtCoder の判定機は madvise
-      # (頼んだ領域だけ 2 MB のページ) なので、ランナーが always だと、大きい配列を
-      # ばらばらに読む提出の速さが AtCoder とずれる。値を見るだけで、設定は変えない。
+      # 透過的な huge page の設定とカーネルの版をログに残す。次のステップで変える前の値。
+      # 2026-10-11 の確認では、x64 のランナーは always、arm は madvise だった。
       - name: huge page の設定
         run: |
           uname -r
           cat /sys/kernel/mm/transparent_hugepage/enabled /sys/kernel/mm/transparent_hugepage/defrag || true
+
+      # 透過的な huge page を AtCoder の判定機と同じ madvise (頼んだ領域だけ 2 MB の
+      # ページ) にする。always のままだと、頼まない大きい配列も 2 MB のページに載り、
+      # ばらばらに読む提出を AtCoder より速く測る。設定は記録のキーに入らないので、
+      # 測り直しは起きない。この形にした 2026-10-11 より後の x64 の記録が madvise。
+      # 変えられなければジョブを止める (違う設定で測った記録を残さない)。設計は
+      # algo-notes の「procon-judge の x64 のランナーの huge page の設定を AtCoder に合わせる設計」。
+      - name: huge page を madvise にする
+        run: |
+          echo madvise | sudo tee /sys/kernel/mm/transparent_hugepage/enabled /sys/kernel/mm/transparent_hugepage/defrag
+          cat /sys/kernel/mm/transparent_hugepage/enabled /sys/kernel/mm/transparent_hugepage/defrag
+          grep -q '\[madvise\]' /sys/kernel/mm/transparent_hugepage/enabled
 
       # arm では x86 の intrinsics を SIMDe で動かすので submodule が要る。
       - uses: actions/checkout@v7
