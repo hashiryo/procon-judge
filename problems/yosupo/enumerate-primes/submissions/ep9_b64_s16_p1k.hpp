@@ -1,5 +1,0 @@
-#pragma once
-// 素数の列挙の 9 回目 (核は _ep9.hpp)。run<8192, 2048, 1000, 163, 16> (区画の語数、小区画の語数、小区画で消す素数の上限、型で消す素数の上限、2 段で取り出す A の下限)。
-#include "_ep9.hpp"
-
-inline std::pair<u32, std::vector<u32>> run(u32 N, u32 A, u32 B) { return ep9::run<8192, 2048, 1000, 163, 16>(N, A, B); }
