@@ -1,0 +1,19 @@
+id = "yosupo-three-edge-connected-components"
+title = "Three-Edge-Connected Components"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "graph/three_edge_connected_components"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true

@@ -1,0 +1,19 @@
+id = "yosupo-dominator-tree"
+title = "Dominator Tree"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "graph/dominatortree"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
