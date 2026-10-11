@@ -37,7 +37,8 @@ std::vector<std::array<int, 3>> collect(const std::vector<int> &nxt0, const std:
   std::vector<std::array<int, 3>> found;
   if (n < 2) return found;
   std::vector<int> last_r(n + 1, 0);
-  auto check = [&](int i, int j) {
+  // 根ごとに呼ぶので、extend ごと呼び出し側へ展開させる (gcc は extend が大きいと展開せず、根ごとに関数の呼び出しが残る)。
+  auto check = [&](int i, int j) __attribute__((always_inline)) {
     const int p = j - i;
     if (i + p <= last_r[p]) return;  // 同じ周期の、前に見つけた run の中に収まる根
     const auto [l, r] = extend(i, j, p);
