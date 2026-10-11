@@ -6,7 +6,7 @@
 #include "_shared/wavelet/wm4.hpp"
 struct Solver {
  wavelet::Compressed c;
- wavelet::WM4 wm;
+ wavelet::WM4<> wm;
  explicit Solver(const vector<int>& a): c(wavelet::compress(a)), wm(c.id, c.vals.size()) {}
  int kth_smallest(int l, int r, int k) const { return c.vals[wm.kth(l, r, k)]; }
 };

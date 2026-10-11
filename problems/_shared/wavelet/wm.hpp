@@ -123,6 +123,23 @@ inline int lower_bl(const int* v, int n, int x) {
  }
  return b + (v[b] < x);
 }
+// 昇順の v[0, n) のうち x 未満のものの数。lower の条件式は GCC 15 だと cmov になるので、clang にも
+// __builtin_unpredictable で cmov を選ばせる。2 回目の lower_bl (マスクの形) は、GCC で cmov より 1 段の待ちが長く、
+// x64-gcc の pos_bl は pos の 1.5 倍かかった。
+inline int lower_cm(const int* v, int n, int x) {
+ if(n == 0) return 0;
+ const int* b= v;
+ while(n > 1) {
+  const int half= n / 2;
+#ifdef __clang__
+  b= __builtin_unpredictable(b[half] < x) ? b + half : b;
+#else
+  b= b[half] < x ? b + half : b;
+#endif
+  n-= half;
+ }
+ return int(b - v) + (*b < x);
+}
 // 昇順の v (重複してよい、値は 0 以上 2^30 未満) のうち x 未満のものの数を引く表。値を上位 16 bit で 65536 個の区間に
 // 分け、区間ごとにそれより前の数を持つ。引くときは区間の中だけを lower_bl で探す (区間の大きさは平均 n / 65536)。
 struct Table {
@@ -141,6 +158,11 @@ struct Table {
  int lower(int x) const {
   const int k= x >> SH, lo= t[k];
   return lo + lower_bl(v + lo, t[k + 1] - lo, x);
+ }
+ // 区間の中を lower_cm で探す形。
+ int lower_cm(int x) const {
+  const int k= x >> SH, lo= t[k];
+  return lo + wavelet::lower_cm(v + lo, t[k + 1] - lo, x);
  }
 };
 // 段ごとの bit 列 (全段を 1 本の配列に段の順で並べる)。
