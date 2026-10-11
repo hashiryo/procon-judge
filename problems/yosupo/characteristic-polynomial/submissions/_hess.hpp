@@ -1,0 +1,131 @@
+#pragma once
+// 特性多項式を、相似変換で上 Hessenberg の形に直してから漸化式で求める。法は 998244353。
+// 記録は algo-notes の notes/linear-algebra.md。
+//
+// 列 k の手順: 行 k + 1 以降から列 k の値が 0 でない行を選んで行 k + 1 に置き (行と列を同時に入れ替える)、
+// f_i = H[i][k] / H[k + 1][k] (i >= k + 2) として、行 i から行 k + 1 の f_i 倍を引き (左から L^{-1})、列 k + 1 に
+// 列 i の f_i 倍を足す (右から L)。列の操作は、全部の行で「行の列 k + 2 以降と f の内積」を列 k + 1 に足すことになる。
+// 行 k + 2 以降は、行の更新と内積を 1 回の読み書きで済ませる (内積は更新したあとの値で取る)。行の更新は、掛ける数を
+// 行ごとに決まった値として Shoup の方法で 2M 未満に直し、内積は u64 にためて 4 回ごとに畳む。値は 2M 未満で持つ。
+// Hessenberg の形からは、左上 k × k の特性多項式 p_k を p_{k+1} = (x - H[k][k]) p_k - sum_{i<k} H[i][k] (prod H[j][j-1]) p_i
+// で順に求め、和は lazy_elim::update_row で 8 本ずつ足す。
+#include "../common.hpp"
+#include "neo/algebra/ZMod.hpp"
+#include "_shared/linalg/lazy_elim.hpp"
+namespace hess {
+using Z= ZMod<MOD>;
+constexpr u32 M2= 2 * MOD;
+constexpr u64 R32= (u64(1) << 32) % MOD;
+inline __m256i fold(__m256i x) {
+ return _mm256_add_epi64(_mm256_mul_epu32(_mm256_srli_epi64(x, 32), _mm256_set1_epi64x(R32)), _mm256_and_si256(x, _mm256_set1_epi64x(0xffffffffll)));
+}
+inline u32 hsum(__m256i acc) {
+ alignas(32) u64 t[4];
+ _mm256_store_si256((__m256i*)t, acc);
+ return (Z(t[0] % MOD + t[1] % MOD + t[2] % MOD + t[3] % MOD)).val();
+}
+// row[j] (2M 未満) に c P[j] mod M を足して 2M 未満に直し (j in [j0, w))、更新したあとの値と f[j] の内積を返す。
+// cs = floor(c 2^32 / M)。P[j] < 2M、f[j] < M。
+inline u32 fused(u64* __restrict row, const u64* __restrict P, const u64* __restrict f, u32 c, u32 cs, int j0, int w) {
+ const __m256i C= _mm256_set1_epi64x(c), CS= _mm256_set1_epi64x(cs), Mv= _mm256_set1_epi64x(MOD), MM= _mm256_set1_epi32(M2);
+ __m256i acc= _mm256_setzero_si256();
+ int t= 0;
+ for(int j= j0; j < w; j+= 4) {
+  __m256i x= _mm256_loadu_si256((const __m256i*)(row + j));
+  const __m256i p= _mm256_loadu_si256((const __m256i*)(P + j));
+  const __m256i q= _mm256_srli_epi64(_mm256_mul_epu32(p, CS), 32);
+  x= _mm256_add_epi64(x, _mm256_sub_epi64(_mm256_mul_epu32(p, C), _mm256_mul_epu32(q, Mv)));
+  x= _mm256_min_epu32(x, _mm256_sub_epi32(x, MM));
+  _mm256_storeu_si256((__m256i*)(row + j), x);
+  acc= _mm256_add_epi64(acc, _mm256_mul_epu32(x, _mm256_loadu_si256((const __m256i*)(f + j))));
+  if(++t == 4) acc= fold(acc), t= 0;
+ }
+ return hsum(fold(acc));
+}
+// sum_j row[j] f[j] (j in [j0, w))。row[j] < 2M、f[j] < M。
+inline u32 dot(const u64* __restrict row, const u64* __restrict f, int j0, int w) {
+ __m256i acc= _mm256_setzero_si256();
+ int t= 0;
+ for(int j= j0; j < w; j+= 4) {
+  acc= _mm256_add_epi64(acc, _mm256_mul_epu32(_mm256_loadu_si256((const __m256i*)(row + j)), _mm256_loadu_si256((const __m256i*)(f + j))));
+  if(++t == 4) acc= fold(acc), t= 0;
+ }
+ return hsum(fold(acc));
+}
+inline u32 val(u64 x) { return x >= MOD ? u32(x - MOD) : u32(x); }
+inline u64 addm(u64 x, u32 d) {  // 2M 未満の x に M 未満の d を足して 2M 未満に直す
+ x+= d;
+ return x >= M2 ? x - M2 : x;
+}
+inline vector<u32> charpoly(int n, const vector<vector<u32>>& A) {
+ if(n == 0) return {1};
+ const int w= (n + 3) & ~3;
+ vector<u64> H((size_t)n * w), f(w);
+ for(int i= 0; i < n; ++i) copy(A[i].begin(), A[i].end(), &H[(size_t)i * w]);
+ auto row= [&](int i) { return &H[(size_t)i * w]; };
+ for(int k= 0; k + 2 < n; ++k) {
+  int p= -1;
+  for(int i= k + 1; i < n; ++i)
+   if(val(row(i)[k])) {
+    p= i;
+    break;
+   }
+  if(p < 0) continue;
+  if(p != k + 1) {
+   swap_ranges(row(p), row(p) + w, row(k + 1));
+   for(int i= 0; i < n; ++i) swap(row(i)[p], row(i)[k + 1]);
+  }
+  const Z iv= Z::raw(val(row(k + 1)[k])).inv();
+  bool any= false;
+  for(int i= k + 2; i < n; ++i) f[i]= (Z::raw(val(row(i)[k])) * iv).val(), any|= f[i] != 0;
+  if(!any) continue;
+  const u64* P= row(k + 1);
+  const int jd= (k + 2) & ~3;
+  for(int r= k + 2; r < n; ++r) {
+   u64* x= row(r);
+   u32 d;
+   if(f[r]) {
+    const u32 c= MOD - u32(f[r]), cs= u32((u64(c) << 32) / MOD);
+    d= fused(x, P, f.data(), c, cs, k & ~3, w);
+   } else d= dot(x, f.data(), jd, w);
+   x[k + 1]= addm(x[k + 1], d);
+  }
+  for(int r= 0; r <= k + 1; ++r) {
+   u64* x= row(r);
+   x[k + 1]= addm(x[k + 1], dot(x, f.data(), jd, w));
+  }
+  fill(f.begin() + k + 2, f.end(), 0);
+ }
+ // p_{k+1} = (x - H[k][k]) p_k - sum_{i<k} H[i][k] t_i p_i (t_i = prod_{j=i+1}^{k} H[j][j-1])
+ const int wp= (n + 1 + 3) & ~3;
+ vector<u64> Pl((size_t)(n + 1) * wp), acc(wp), zero(wp);
+ Pl[0]= 1;
+ for(int k= 0; k < n; ++k) {
+  const u64* pk= &Pl[(size_t)k * wp];
+  const u32 hk= val(row(k)[k]), c= hk ? MOD - hk : 0;
+  for(int j= 0; j < wp; ++j) acc[j]= (j ? pk[j - 1] : 0) + u64(c) * pk[j];
+  const u64* Ub[lazy_elim::K];
+  u32 cf[lazy_elim::K];
+  int q= 0;
+  Z t= Z::raw(1);
+  const int jw= (k + 2 + 3) & ~3;
+  for(int i= k - 1; i >= 0; --i) {
+   t*= Z::raw(val(row(i + 1)[i]));
+   if(t == Z()) break;
+   const u32 coef= (t * Z::raw(val(row(i)[k]))).val();
+   if(!coef) continue;
+   Ub[q]= &Pl[(size_t)i * wp], cf[q++]= MOD - coef;
+   if(q == lazy_elim::K) lazy_elim::update_row(acc.data(), Ub, cf, 0, jw, R32), q= 0;
+  }
+  if(q) {
+   for(int s= q; s < lazy_elim::K; ++s) Ub[s]= zero.data(), cf[s]= 0;
+   lazy_elim::update_row(acc.data(), Ub, cf, 0, jw, R32);
+  }
+  u64* pn= &Pl[(size_t)(k + 1) * wp];
+  for(int j= 0; j <= k + 1; ++j) pn[j]= Z(acc[j]).val();
+ }
+ vector<u32> res(n + 1);
+ for(int j= 0; j <= n; ++j) res[j]= u32(Pl[(size_t)n * wp + j]);
+ return res;
+}
+}  // namespace hess
