@@ -713,11 +713,11 @@ template <int MODE> inline u64 count(u64 x) {
  p2-= n * (i64)a + n * (n - 1) / 2;
  return (u64)(s1 + s2h + s2e + (i64)a - 1 - p2);
 }
-// MODE が -1 なら CPU を見て 1 か 2 を選ぶ。AVX2 が無ければ 0。
+// MODE が -1 なら CPU を見て 1 か 0 を選ぶ (AVX2 が無ければ 0)。2 は比べる用 (EPYC 7763 では 0 より遅かった)。
 template <int MODE= -1> inline u64 prime_pi(u64 x) {
  if(x < 100000) return pi_small(x);
 #if defined(__AVX2__)
- if constexpr(MODE < 0) return gather_ok() ? count<1>(x) : count<2>(x);
+ if constexpr(MODE < 0) return gather_ok() ? count<1>(x) : count<0>(x);
  else return count<MODE>(x);
 #else
  return count<0>(x);
