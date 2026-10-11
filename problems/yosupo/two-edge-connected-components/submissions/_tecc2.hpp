@@ -14,7 +14,6 @@
 // DFS は頂点ごとの記録 {CSR の始まり, 終わり, 最初の隣接, 2 番目の隣接} で回す path-based で、次数 2 の頂点に下りたら、親でない方の
 // 隣接 n0 ^ n1 ^ 親 だけを持つ頂点として扱う (親への木の辺はそこで飛ばしたことになる。2 本とも親への辺なら親になり、平行な辺として
 // 後ろ向きの辺に扱われる)。子から帰ったあとの隣接は adj から読む。フレームには、頂点、位置、終わり、親、スタックでの位置を持つ。
-// PFN なら、下りた頂点の 2 番目の隣接の鍵を先読みする。
 // 鍵には成分を閉じた頂点の詰めた番号を置き、comp() で元の番号に直す。
 //
 // PF なら、次数と XOR を数える走査で 16 本先の辺の端を、CSR を組む走査で 16 本先の辺の端の番号の表と 8 本先の辺の端の off を
@@ -48,7 +47,7 @@ struct Mem {
   return p;
  }
 };
-template <bool AOS= false, bool PF= false, bool D8= false, bool PFN= false> struct Solver {
+template <bool AOS= false, bool PF= false, bool D8= false> struct Solver {
  struct R {
   u32 s, e, n0, n1;
  };
@@ -168,7 +167,6 @@ template <bool AOS= false, bool PF= false, bool D8= false, bool PFN= false> stru
       *sp++= {v, i, e, par, pv};
       const R cw= rec[w];
       par= v, v= w, i= s0= cw.s, e= cw.e, n0= cw.n0, n1= cw.n1;
-      if constexpr(PFN) __builtin_prefetch(key + n1);
       const u32 m2= -u32(e - i == 2);
       n0^= (n1 ^ par) & m2, e-= m2 & 1, par|= m2;
       st[top++]= v, key[v]= pv= top, bs[bt++]= top;
