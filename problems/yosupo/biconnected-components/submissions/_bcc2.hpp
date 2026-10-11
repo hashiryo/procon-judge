@@ -17,7 +17,11 @@
 // low[v] >= ord[親] の判定は変わらないので、多重辺もすべて飛ばしてよい。次数 2 の頂点は、親でない方の隣接 n0 ^ n1 ^ 親 だけを
 // 持つ頂点として扱う (2 本とも親への辺なら親になり、後ろ向きの辺として扱われるが、判定は変わらない)。閉路の頂点では、DFS が
 // 下りる 1 歩が記録と訪問順の読み込み 1 段で済む。子から帰ったあとの隣接は adj から読む (記録の n0、n1 は adj の先頭 2 つの写し)。
-// フレームには、頂点、位置、終わり、lowlink、訪問順を持つ。
+// フレームには、頂点、位置、終わり、lowlink、訪問順を持つ。PFN なら、下りた頂点の 2 番目の隣接の訪問順を先読みする。
+//
+// PF なら、次数と XOR を数える走査で 16 本先の辺の端を、CSR を組む走査で 16 本先の辺の端の番号の表と 8 本先の辺の端の off を
+// 先読みする。D8 なら、CSR を組むときに捨てる辺の行き先を辺の番号で 8 つの番兵に回し、番兵の書き込み位置を減らさない (番兵が
+// 1 つで位置を減らすと、捨てる辺ごとに同じ番地の読み書きが直列につながる)。
 #ifdef __linux__
 #include <sys/mman.h>
 #endif
@@ -46,7 +50,7 @@ struct Mem {
   return p;
  }
 };
-template <bool AOS= false, bool PF= false, bool D8= false> struct Solver {
+template <bool AOS= false, bool PF= false, bool D8= false, bool PFN= false> struct Solver {
  struct R {
   u32 s, e, n0, n1;
  };
@@ -171,6 +175,7 @@ template <bool AOS= false, bool PF= false, bool D8= false> struct Solver {
       *sp++= {v, i, e, lv, ov};
       const R cw= rec[w];
       par= v, v= w, i= s0= cw.s, e= cw.e, n0= cw.n0, n1= cw.n1;
+      if constexpr(PFN) __builtin_prefetch(ord + n1);
       const u32 m2= -u32(e - i == 2);
       n0^= (n1 ^ par) & m2, e-= m2 & 1, par|= m2;
       lv= ov= ord[v]= ++idx, st[top++]= v;
