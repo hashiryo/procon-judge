@@ -2,12 +2,10 @@
 // 二辺連結成分の核。隣接は CSR で、自己ループは入れない (二辺連結性に関わらない)。DFS は反復で書き、親への木の辺は、多重辺を
 // 正しく扱うため、隣接の中で親を初めて見たときだけ飛ばす (2 本目からの平行な辺は後ろ向きの辺として扱う)。
 //
-// ALG = 0 は path-based (Gabow)。鍵は st に載っている間はその位置 (1 から) で、bs は成分の根の候補の位置のスタック。
+// DFS は path-based (Gabow)。鍵は st に載っている間はその位置 (1 から) で、bs は成分の根の候補の位置のスタック。
 // 後ろ向きの辺 (v, w) では、w の位置より上の候補を捨てる。v から帰るとき、v の位置が候補のいちばん上なら、st の v から上が 1 つの
 // 成分になる。無向グラフの DFS には横向きの辺が無く、成分に入った頂点への辺は子孫への辺なので、成分に入った頂点の鍵を
 // どの位置より大きい値にしておけば、何も捨てない。
-// ALG = 1 は lowlink (Tarjan)。訪問順 ord と lowlink の low を頂点ごとの配列で持ち、low[v] == ord[v] の頂点から帰るとき、st の
-// v から上を 1 つの成分にする。成分に入った頂点への辺は子孫への辺で ord が大きいので、low を下げない。
 //
 // PEEL なら、DFS の前に次数 1 以下の頂点を待ち行列で剥がす。剥がした頂点はどれも 1 頂点の成分 (その辺は橋)。頂点ごとに次数と、
 // 残っている隣接の番号の XOR を持つので、次数が 1 になった頂点の残りの隣接は XOR の値そのもので、隣接を組まずに辺の列だけで
@@ -43,7 +41,7 @@ struct Mem {
   return p;
  }
 };
-template <bool PEEL, int ALG> struct Solver {
+template <bool PEEL> struct Solver {
  struct F {
   u32 v, i, e, par;
  };
@@ -92,8 +90,7 @@ template <bool PEEL, int ALG> struct Solver {
     if(key[a] | key[b]) continue;
    adj[--off[a]]= b, adj[--off[b]]= a;
   }
-  if constexpr(ALG == 0) gabow(off, adj, st, aux, fs);
-  else tarjan(off, adj, st, aux, fs);
+  gabow(off, adj, st, aux, fs);
  }
  void gabow(const u32* off, const u32* adj, u32* st, u32* bs, F* fs) {
   u32 top= 0, bt= 0;
@@ -121,38 +118,6 @@ template <bool PEEL, int ALG> struct Solver {
      }
      if(sp == fs) break;
      --sp, v= sp->v, i= sp->i, e= sp->e, par= sp->par;
-    }
-   }
-  }
- }
- // ord は key に置き、low は aux に置く。成分に入った頂点の key は NIL - (名前) で、どの ord より大きい。
- void tarjan(const u32* off, const u32* adj, u32* st, u32* low, F* fs) {
-  u32 idx= 0, top= 0;
-  for(u32 r= 0; r < u32(n); ++r) {
-   if(key[r]) continue;
-   u32 v= r, i= off[r], e= off[r + 1], par= NIL;
-   F* sp= fs;
-   key[v]= low[v]= ++idx, st[top++]= v;
-   for(;;) {
-    if(i != e) {
-     const u32 w= adj[i++];
-     if(w == par) {
-      par= NIL;
-      continue;
-     }
-     const u32 kw= key[w];
-     if(!kw) *sp++= {v, i, e, par}, par= v, v= w, i= off[w], e= off[w + 1], key[v]= low[v]= ++idx, st[top++]= v;
-     else if(kw < low[v]) low[v]= kw;
-    } else {
-     const u32 lv= low[v];
-     if(lv == key[v]) {
-      u32 x;
-      do x= st[--top], key[x]= NIL - v;
-      while(x != v);
-     }
-     if(sp == fs) break;
-     --sp, v= sp->v, i= sp->i, e= sp->e, par= sp->par;
-     if(lv < low[v]) low[v]= lv;
     }
    }
   }
