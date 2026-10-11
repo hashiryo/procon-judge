@@ -1,0 +1,19 @@
+id = "aoj-2426"
+title = "Treasure Hunt"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "aoj"
+name = "2426"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true

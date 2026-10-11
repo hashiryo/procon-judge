@@ -90,6 +90,36 @@ inline Compressed compress(const std::vector<int>& a) {
  }
  return c;
 }
+// sorted_keys の負の値も受ける形。上位 32 bit に値の符号の bit を反転したもの、下位 32 bit に添字を詰め、
+// 11 bit、11 bit、10 bit の 3 回の基数ソートで並べる。値は上位 32 bit を戻して符号の bit を反転すれば戻る。
+inline Vec<u64> sorted_keys_s(const std::vector<int>& a) {
+ const int n= a.size();
+ Vec<u64> p(n), q(n);
+ for(int i= 0; i < n; ++i) p[i]= u64(u32(a[i]) ^ 0x80000000u) << 32 | u32(i);
+ for(int s= 32; s < 64; s+= 11) {
+  const int w= std::min(11, 64 - s), m= (1 << w) - 1;
+  u32 cnt[2049]= {};
+  for(u64 k: p) ++cnt[(k >> s & m) + 1];
+  for(int b= 0; b < (1 << w); ++b) cnt[b + 1]+= cnt[b];
+  for(u64 k: p) q[cnt[k >> s & m]++]= k;
+  p.swap(q);
+ }
+ return p;
+}
+inline int key_value_s(u64 k) { return int(u32(k >> 32) ^ 0x80000000u); }
+// compress の負の値も受ける形。
+inline Compressed compress_s(const std::vector<int>& a) {
+ const int n= a.size();
+ Compressed c;
+ c.id.resize(n);
+ const Vec<u64> k= sorted_keys_s(a);
+ for(int j= 0; j < n; ++j) {
+  const int v= key_value_s(k[j]);
+  if(c.vals.empty() || c.vals.back() != v) c.vals.push_back(v);
+  c.id[u32(k[j])]= c.vals.size() - 1;
+ }
+ return c;
+}
 // 昇順の v[0, n) のうち x 未満のものの数 (分岐なしの二分探索)。
 inline int lower(const int* v, int n, int x) {
  if(n == 0) return 0;
@@ -163,6 +193,34 @@ struct Table {
  int lower_cm(int x) const {
   const int k= x >> SH, lo= t[k];
   return lo + wavelet::lower_cm(v + lo, t[k + 1] - lo, x);
+ }
+};
+// 昇順の v (重複してよい、負の値もよい) のうち x 未満のものの数を引く表。Table と違い、区間を値の範囲
+// [v の最小, v の最大] に合わせ、最大 65536 個 (範囲が狭ければ 1 つの値に 1 つ) の区間に分ける。区間の中は
+// lower_cm で探す。範囲の外の x は表を引かずに 0 か n を返す。
+struct Lookup {
+ static constexpr int B= 16;
+ const int* v= nullptr;
+ int n= 0, sh= 0;
+ i64 lo= 0, hi= -1;
+ std::vector<int> t;  // t[k] は v のうち ((x - lo) >> sh) < k のものの数
+ Lookup()= default;
+ explicit Lookup(const std::vector<int>& v_): v(v_.data()), n(v_.size()) {
+  if(n == 0) return;
+  lo= v_[0], hi= v_[n - 1];
+  while(((hi - lo) >> sh) >= (1 << B)) ++sh;
+  const int K= int((hi - lo) >> sh) + 1;
+  t.resize(K + 1);
+  for(int i= 0, k= 0; k <= K; ++k) {
+   while(i < n && ((v_[i] - lo) >> sh) < k) ++i;
+   t[k]= i;
+  }
+ }
+ int lower(int x) const {
+  if(x <= lo) return 0;
+  if(x > hi) return n;
+  const int k= int((x - lo) >> sh), a= t[k];
+  return a + wavelet::lower_cm(v + a, t[k + 1] - a, x);
  }
 };
 // 段ごとの bit 列 (全段を 1 本の配列に段の順で並べる)。
@@ -298,6 +356,22 @@ template <class BV, bool Sum= false> struct WaveletMatrix {
    r= sel(m, zero[h] + r1, r0);
   }
   return {c, s};
+ }
+ // [l, r) の小さい方から k 個の重みの和。0 <= k <= r - l。Sum のときだけ。kth と同じく下り、1 の側へ行く段で
+ // 0 の側へ行くものの重みを足す。最後の段では、残りの k 個は値の同じ並びの先頭 k 個なので、最後の並びの累積で足す。
+ i64 kth_sum(int l, int r, int k) const {
+  static_assert(Sum);
+  i64 s= 0;
+  for(int h= lg - 1; h >= 0; --h) {
+   const int l1= bv.rank1(h, l), r1= bv.rank1(h, r), l0= l - l1, r0= r - r1, z= r0 - l0;
+   if(k >= z) {
+    const i64* S= sums.data() + std::size_t(h) * (n + 1);
+    s+= S[r0] - S[l0], k-= z;
+    l= zero[h] + l1, r= zero[h] + r1;
+   } else l= l0, r= r0;
+  }
+  const i64* S= sums.data();
+  return s + S[l + k] - S[l];
  }
  // count_sum_less と同じ値を返す。累積は x の bit が 1 の段だけ読む (分岐で飛ばす)。主記憶への読み出しは半分に
  // なるが、x の bit で分岐する。

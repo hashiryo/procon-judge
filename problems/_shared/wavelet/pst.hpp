@@ -63,6 +63,36 @@ template <bool Sum= false> struct PersistentSegTree {
   }
   return res;
  }
+ // [l, r) の順位 x 未満の値の数。x は 0 以上 sigma 以下。
+ int count_less(int l, int r, u32 x) const {
+  int a= root[l], b= root[r];
+  if(x >= sigma) return t[b].c - t[a].c;
+  int c= 0;
+  for(int h= lg - 1; h >= 0; --h) {
+   const int m= mask(x >> h & 1);
+   c+= (t[t[b].l].c - t[t[a].l].c) & m;
+   a= sel(m, t[a].r, t[a].l);
+   b= sel(m, t[b].r, t[b].l);
+  }
+  return c;
+ }
+ // [l, r) の小さい方から k 個の値の和。0 <= k <= r - l。Sum で、重みが値 (vals[順位]) のときだけ。kth と同じく
+ // 下り、右へ行く段で左の子の和を足す。葉に残った k 個は同じ値なので k 倍して足す。
+ i64 kth_sum_v(int l, int r, int k, const std::vector<int>& vals) const {
+  static_assert(Sum);
+  int a= root[l], b= root[r];
+  u32 res= 0;
+  i64 s= 0;
+  for(int h= lg - 1; h >= 0; --h) {
+   const Node &la= t[t[a].l], &lb= t[t[b].l];
+   const int cl= lb.c - la.c, m= mask(k >= cl);
+   s+= (lb.s - la.s) & i64(m), k-= cl & m;
+   res|= u32(m & 1) << h;
+   a= sel(m, t[a].r, t[a].l);
+   b= sel(m, t[b].r, t[b].l);
+  }
+  return s + (k ? i64(k) * vals[res] : 0);
+ }
  // [l, r) の順位 x 未満の値の数と重みの和。x は 0 以上 sigma 以下。Sum のときだけ。
  std::pair<int, i64> count_sum_less(int l, int r, u32 x) const {
   static_assert(Sum);

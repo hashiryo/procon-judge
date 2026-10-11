@@ -1,0 +1,23 @@
+id = "atcoder-abc281-e"
+title = "E - Least Elements"
+url = "https://atcoder.jp/contests/abc281/tasks/abc281_e"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# AtCoder はテストケースを公開していないので、自作する (gen.py と、2 つの multiset で窓をずらす参照実装の submissions/reference.hpp)。
+[testdata]
+source = "local"
+count = 20
+generator = "gen.py"
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true

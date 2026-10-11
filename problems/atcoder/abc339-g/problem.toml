@@ -7,14 +7,17 @@ tle_sec = 5.0
 mle_mb = 1024
 
 [harness]
-kind = "raw"
+kind = "base"
 
-# AtCoder はテストケースを公開していないので、自作する (gen.py と、lib-seg2d.cpp を固定した reference.cpp)。
+# AtCoder はテストケースを公開していないので、自作する (gen.py と、マージソート木で答える参照実装の submissions/reference.hpp)。
 [testdata]
 source = "local"
 count = 12
 generator = "gen.py"
-reference = "reference.cpp"
+reference = "submissions/reference.hpp"
 
 [compare]
 kind = "tokens"
+
+[record]
+case_times = true

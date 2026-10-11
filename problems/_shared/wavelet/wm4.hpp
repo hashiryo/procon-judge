@@ -20,7 +20,7 @@ template <bool Sum= false> struct WM4 {
  Vec<Blk> b;                         // 段 d のブロック j は b[d * nb + j]。段 d は下から d 番目の 2 bit
  std::vector<std::array<int, 4>> z;  // z[d][s] は段 d の記号 s より小さい記号の数
  Vec<i64> sums;                      // Sum のとき。段 d の記号 k 未満 (k = 1, 2, 3) の累積は sums[(3d + k - 1)(n + 1) + i]。
-                                     // 最後に元の並びの累積
+                                     // その後ろに元の並びの累積と、最後の段で分けたあとの並びの累積
  // v は 0 以上 sigma 未満。Sum のときは w に重みを渡す。
  WM4(const std::vector<u32>& v, u32 sigma_, const std::vector<i64>* w= nullptr): n(v.size()), sigma(sigma_) {
   int lg= 1;
@@ -31,7 +31,7 @@ template <bool Sum= false> struct WM4 {
   std::vector<u32> cur(v), nxt(n);
   std::vector<i64> cw, nw;
   if constexpr(Sum) {
-   cw= *w, nw.resize(n), sums.assign(std::size_t(3 * levels + 1) * (n + 1), 0);
+   cw= *w, nw.resize(n), sums.assign(std::size_t(3 * levels + 2) * (n + 1), 0);
    i64* S= sums.data() + std::size_t(3 * levels) * (n + 1);
    for(int i= 0; i < n; ++i) S[i + 1]= S[i] + cw[i];
   }
@@ -65,11 +65,65 @@ template <bool Sum= false> struct WM4 {
    cur.swap(nxt);
    if constexpr(Sum) cw.swap(nw);
   }
+  if constexpr(Sum) {
+   i64* S= sums.data() + std::size_t(3 * levels + 1) * (n + 1);
+   for(int i= 0; i < n; ++i) S[i + 1]= S[i] + cw[i];
+  }
  }
  // 記号 s の [0, i) の数。hs と ls は、s の上の bit と下の bit が 1 なら全部 1、0 なら 0 のマスク。
  static int rank_eq(const Blk& k, int i, int s, u64 hs, u64 ls) {
   const u64 m= (u64(1) << (i & 63)) - 1;
   return k.c[s] + __builtin_popcountll(~(k.h ^ hs) & ~(k.l ^ ls) & m);
+ }
+ // 記号 s 未満の [0, i) の数。s = 0 なら 0。記号 s 未満の印は、s = 1 なら h = l = 0、2 なら h = 0、3 なら h と l の
+ // 少なくとも一方が 0。マスクで分岐なしに選ぶ。
+ static int rank_lt(const Blk& k, int i, int s) {
+  const u64 m= (u64(1) << (i & 63)) - 1, m2= -u64(s >= 2), m3= -u64(s == 3), m1= -u64(s == 1);
+  const u64 a= m2 | (m1 & ~k.l), b3= m3 & ~k.l;
+  const u32 k1= -u32(s >= 1), k2= -u32(s >= 2), k3= -u32(s >= 3);
+  return int((k.c[0] & k1) + (k.c[1] & k2) + (k.c[2] & k3)) + __builtin_popcountll(((~k.h & a) | (k.h & b3)) & m);
+ }
+ // [l, r) の順位 x 未満の値の数。x は 0 以上 sigma 以下。両端とも段ごとに popcount 2 回 (s 未満の数と s の数)。
+ int count_less(int l, int r, u32 x) const {
+  if(x >= sigma) return r - l;
+  int c= 0;
+  for(int d= levels - 1; d >= 0; --d) {
+   const int s= x >> (2 * d) & 3;
+   const u64 hs= -u64(s >> 1), ls= -u64(s & 1);
+   const Blk *B= b.data() + std::size_t(d) * nb, &bl= B[l >> 6], &br= B[r >> 6];
+   const int zs= z[d][s];
+   c+= rank_lt(br, r, s) - rank_lt(bl, l, s);
+   l= zs + rank_eq(bl, l, s, hs, ls);
+   r= zs + rank_eq(br, r, s, hs, ls);
+  }
+  return c;
+ }
+ // [l, r) の小さい方から k 個の重みの和。0 <= k <= r - l。Sum のときだけ。kth と同じく下り、記号 s へ行く段で
+ // 記号 s 未満の重みを足す (s = 0 の段は累積を読まない)。最後の段では、残りの k 個は値の同じ並びの先頭 k 個なので、
+ // 最後の並びの累積で足す。
+ i64 kth_sum(int l, int r, int k) const {
+  static_assert(Sum);
+  i64 sum= 0;
+  for(int d= levels - 1; d >= 0; --d) {
+   const Blk *B= b.data() + std::size_t(d) * nb, &bl= B[l >> 6], &br= B[r >> 6];
+   const u64 ml= (u64(1) << (l & 63)) - 1, mr= (u64(1) << (r & 63)) - 1;
+   const int l0= bl.c[0] + __builtin_popcountll(~bl.h & ~bl.l & ml), l1= bl.c[1] + __builtin_popcountll(~bl.h & bl.l & ml);
+   const int l2= bl.c[2] + __builtin_popcountll(bl.h & ~bl.l & ml), l3= l - l0 - l1 - l2;
+   const int r0= br.c[0] + __builtin_popcountll(~br.h & ~br.l & mr), r1= br.c[1] + __builtin_popcountll(~br.h & br.l & mr);
+   const int r2= br.c[2] + __builtin_popcountll(br.h & ~br.l & mr), r3= r - r0 - r1 - r2;
+   const int a0= r0 - l0, a01= a0 + (r1 - l1), a012= a01 + (r2 - l2);
+   const int g1= mask(k >= a0), g2= mask(k >= a01), g3= mask(k >= a012), s= (g1 & 1) + (g2 & 1) + (g3 & 1);
+   if(s) {
+    const i64* S= sums.data() + std::size_t(3 * d + s - 1) * (n + 1);
+    sum+= S[r] - S[l];
+   }
+   const std::array<int, 4>& Z= z[d];
+   k-= sel(g3, a012, sel(g2, a01, a0 & g1));
+   l= sel(g3, Z[3] + l3, sel(g2, Z[2] + l2, sel(g1, Z[1] + l1, l0)));
+   r= sel(g3, Z[3] + r3, sel(g2, Z[2] + r2, sel(g1, Z[1] + r1, r0)));
+  }
+  const i64* S= sums.data() + std::size_t(3 * levels + 1) * (n + 1);
+  return sum + S[l + k] - S[l];
  }
  // [l, r) の小さい方から k 番目の値の順位。0 <= k < r - l。
  u32 kth(int l, int r, int k) const {
@@ -118,16 +172,9 @@ template <bool Sum= false> struct WM4 {
    const Blk *B= b.data() + std::size_t(d) * nb, &bl= B[l >> 6], &br= B[r >> 6];
    const int zs= z[d][s];
    if(s) {
-    // 記号 s 未満の数はブロックから、重みの和は累積の配列から求める。記号 s 未満の印は、s = 1 なら h = l = 0、
-    // 2 なら h = 0、3 なら h と l の少なくとも一方が 0。
-    const u64 ml= (u64(1) << (l & 63)) - 1, mr= (u64(1) << (r & 63)) - 1;
-    const u64 m2= -u64(s >= 2), m3= -u64(s == 3), m1= -u64(s == 1);
-    const u64 al= m2 | (m1 & ~bl.l), bl3= m3 & ~bl.l, ar= m2 | (m1 & ~br.l), br3= m3 & ~br.l;
-    const u32 k1= -u32(s >= 1), k2= -u32(s >= 2), k3= -u32(s >= 3);
-    const int pl= int((bl.c[0] & k1) + (bl.c[1] & k2) + (bl.c[2] & k3)) + __builtin_popcountll(((~bl.h & al) | (bl.h & bl3)) & ml);
-    const int pr= int((br.c[0] & k1) + (br.c[1] & k2) + (br.c[2] & k3)) + __builtin_popcountll(((~br.h & ar) | (br.h & br3)) & mr);
+    // 記号 s 未満の数はブロックから、重みの和は累積の配列から求める。
     const i64* S= sums.data() + std::size_t(3 * d + s - 1) * (n + 1);
-    c+= pr - pl, sum+= S[r] - S[l];
+    c+= rank_lt(br, r, s) - rank_lt(bl, l, s), sum+= S[r] - S[l];
    }
    l= zs + rank_eq(bl, l, s, hs, ls);
    r= zs + rank_eq(br, r, s, hs, ls);
