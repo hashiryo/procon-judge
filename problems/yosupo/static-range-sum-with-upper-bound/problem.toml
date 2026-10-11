@@ -1,0 +1,19 @@
+id = "yosupo-static-range-sum-with-upper-bound"
+title = "Static Range Sum With Upper Bound"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "data_structure/static_range_sum_with_upper_bound"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true

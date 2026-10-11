@@ -1,0 +1,19 @@
+id = "yosupo-rectangle-sum"
+title = "Rectangle Sum"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "data_structure/rectangle_sum"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true
