@@ -1,0 +1,20 @@
+id = "cf-1609-e"
+title = "William The Oblivious"
+url = "https://codeforces.com/contest/1609/problem/E"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# Codeforces のテストケースは取らずに、自作する (gen.py と、参照実装の submissions/reference.hpp)。
+[testdata]
+source = "local"
+count = 16
+generator = "gen.py"
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
