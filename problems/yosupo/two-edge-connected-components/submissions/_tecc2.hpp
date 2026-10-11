@@ -5,7 +5,8 @@
 // 剥がしは、積むかどうかを分岐にしない (毎回 q の末尾に書き、次数がちょうど 1 になったときだけ末尾を進める)。待ち行列から出した
 // 頂点の次数が 0 のときも、隣接の次数を減らすかどうかを次数の値 (0 か 1) を掛けて選ぶ。次数が 0 の頂点の XOR は 0 なので、隣接は
 // 頂点 0 になり、0 を足し引きするだけで済む。16 個先の頂点の XOR と次数、8 個先の頂点の隣接の XOR と次数を先読みする。
-// 自己ループは、次数と XOR に足す値を 0 にして分岐なしで捨てる。
+// 自己ループは、次数と XOR に足す値を 0 にして分岐なしで捨てる。AOS なら、次数と XOR を 1 つの配列に並べて置き、1 頂点の
+// 読み書きを 1 本のキャッシュラインで済ませる。
 //
 // PEEL = 1 は頂点の番号のままで 2-core の CSR を組む。PEEL = 2 は 2-core の頂点に 0 から番号を振り直し (詰める)、DFS の配列を
 // その頂点の数で持つ。端が剥がれた辺と自己ループは、番兵の頂点 D への辺として隣接の配列の末尾に書いて捨てる (分岐なし)。
@@ -16,6 +17,9 @@
 // フレームには、頂点、位置、終わり、親、スタックでの位置を持つ。
 //
 // 成分の名前は、PEEL = 1 では DFS で成分を閉じた頂点か剥がした頂点。PEEL = 2 では鍵に詰めた番号を置き、comp() で元の番号に直す。
+//
+// 段は 4 つ (1: 確保と次数と XOR、2: 剥がし、3: CSR と記録、4: DFS)。STOP が 0 でなければ、run() は STOP の段までで止め、残りを
+// 最初の comp() に回す (段ごとの時間を測る診断用。出力は変わらない)。
 #ifdef __linux__
 #include <sys/mman.h>
 #endif
@@ -44,7 +48,7 @@ struct Mem {
   return p;
  }
 };
-template <int PEEL, int DFS> struct Solver {
+template <int PEEL, int DFS, bool AOS= false, int STOP= 0> struct Solver {
  struct F {
   u32 v, i, e, par;
  };
@@ -58,39 +62,69 @@ template <int PEEL, int DFS> struct Solver {
  const vector<array<int, 2>>& es;
  Mem mem;
  u32 *key, *id= nullptr, *orig= nullptr;  // 鍵は成分に入ったら NIL - (名前)。DFS が触らない頂点の鍵は 0
+ u32 *deg, *xr, *q, *off, *adj, *st, *bs, *fs, qt= 0, n2= 0;
+ R* rec= nullptr;
+ int stage= 0;
  Solver(int n, const vector<array<int, 2>>& es): n(n), es(es) {}
- void run() {
+ // AOS なら deg[2 v] が次数、deg[2 v + 1] が XOR。
+ u32& D(u32 v) {
+  if constexpr(AOS) return deg[2 * v];
+  else return deg[v];
+ }
+ u32& X(u32 v) {
+  if constexpr(AOS) return deg[2 * v + 1];
+  else return xr[v];
+ }
+ void run() { step(STOP ? STOP : 4); }
+ void step(int upto) {
+  while(stage < upto) {
+   ++stage;
+   if(stage == 1) s1();
+   else if(stage == 2) s2();
+   else if(stage == 3) s3();
+   else s4();
+  }
+ }
+ void s1() {
   const u32 N= n;
   const size_t m= es.size();
-  mem.reserve(8 * Mem::words(N + 2) + Mem::words(2 * m + 2) + Mem::words(5 * size_t(N)) + (DFS ? Mem::words(4 * size_t(N)) : 0));
-  u32 *deg= mem.take(N + 1), *xr= mem.take(N + 1), *q= mem.take(N + 1), *off= mem.take(N + 2), *adj= mem.take(2 * m + 2), *st= mem.take(N + 1), *bs= mem.take(N + 1);
+  mem.reserve(10 * Mem::words(N + 2) + Mem::words(2 * m + 2) + Mem::words(5 * size_t(N)) + (DFS ? Mem::words(4 * size_t(N)) : 0));
+  if constexpr(AOS) deg= mem.take(2 * (N + 1)), xr= nullptr;
+  else deg= mem.take(N + 1), xr= mem.take(N + 1);
+  q= mem.take(N + 1), off= mem.take(N + 2), adj= mem.take(2 * m + 2), st= mem.take(N + 1), bs= mem.take(N + 1);
   key= mem.take(N + 1);
-  u32* fs= mem.take(5 * size_t(N));
-  memset(deg, 0, N * sizeof(u32)), memset(xr, 0, N * sizeof(u32));
+  fs= mem.take(5 * size_t(N));
+  if constexpr(AOS) id= mem.take(N + 1), memset(deg, 0, 2 * size_t(N) * sizeof(u32));
+  else id= xr, memset(deg, 0, N * sizeof(u32)), memset(xr, 0, N * sizeof(u32));
   for(auto& e: es) {
    const u32 a= e[0], b= e[1], d= a != b;
-   deg[a]+= d, deg[b]+= d, xr[a]^= b & -d, xr[b]^= a & -d;
+   D(a)+= d, D(b)+= d, X(a)^= b & -d, X(b)^= a & -d;
   }
-  u32 qt= 0;
-  for(u32 v= 0; v < N; ++v) q[qt]= v, qt+= deg[v] == 1;
+  for(u32 v= 0; v < N; ++v) q[qt]= v, qt+= D(v) == 1;
+ }
+ void s2() {
   for(u32 qh= 0; qh < qt; ++qh) {
    const u32 a= q[std::min(qh + 16, qt - 1)];
-   __builtin_prefetch(xr + a), __builtin_prefetch(deg + a);
-   const u32 ub= xr[q[std::min(qh + 8, qt - 1)]];
-   __builtin_prefetch(xr + ub), __builtin_prefetch(deg + ub);
-   const u32 v= q[qh], live= deg[v], u= xr[v];
-   deg[v]= 0, xr[u]^= v & -live;
-   const u32 du= deg[u] - live;
-   deg[u]= du, q[qt]= u, qt+= live & (du == 1);
+   __builtin_prefetch(&X(a)), __builtin_prefetch(&D(a));
+   const u32 ub= X(q[std::min(qh + 8, qt - 1)]);
+   __builtin_prefetch(&X(ub)), __builtin_prefetch(&D(ub));
+   const u32 v= q[qh], live= D(v), u= X(v);
+   D(v)= 0, X(u)^= v & -live;
+   const u32 du= D(u) - live;
+   D(u)= du, q[qt]= u, qt+= live & (du == 1);
   }
-  // CSR。off[x] は x までの次数の累積で、辺を置くたびに減らして off[x] を x の始まりにする。D は捨てる辺の行き先の番兵で、
-  // off[D] は 2 m から下がって、2-core の辺の終わりで止まる。剥がした頂点の次数は 0。
-  u32 n2= N;
+ }
+ // CSR。off[x] は x までの次数の累積で、辺を置くたびに減らして off[x] を x の始まりにする。D は捨てる辺の行き先の番兵で、
+ // off[D] は 2 m から下がって、2-core の辺の終わりで止まる。剥がした頂点の次数は 0。
+ void s3() {
+  const u32 N= n;
+  const size_t m= es.size();
+  n2= N;
   if constexpr(PEEL == 2) {
-   id= xr, orig= q;  // xr と q は剥がしで使い終わった
+   orig= q;  // q は剥がしで使い終わった
    u32 s= 0, k= 0;
    for(u32 v= 0; v < N; ++v) {
-    const u32 d= deg[v], c= -u32(d >= 2);
+    const u32 d= D(v), c= -u32(d >= 2);
     id[v]= k | ~c, orig[k]= v, s+= d, off[k]= s, k-= c;
    }
    n2= k, off[k]= 2 * m;
@@ -100,19 +134,28 @@ template <int PEEL, int DFS> struct Solver {
    }
   } else {
    u32 s= 0;
-   for(u32 v= 0; v < N; ++v) s+= deg[v], off[v]= s;
+   for(u32 v= 0; v < N; ++v) s+= D(v), off[v]= s;
    off[N]= 2 * m;
    for(auto& e: es) {
-    const u32 a= e[0], b= e[1], sk= -u32((deg[a] == 0) | (deg[b] == 0) | (a == b)), x= (a & ~sk) | (N & sk), y= (b & ~sk) | (N & sk);
+    const u32 a= e[0], b= e[1], sk= -(u32(D(a) == 0) | u32(D(b) == 0) | u32(a == b)), x= (a & ~sk) | (N & sk), y= (b & ~sk) | (N & sk);
     adj[--off[x]]= y, adj[--off[y]]= x;
    }
   }
   memset(key, 0, n2 * sizeof(u32));
-  if constexpr(DFS == 0) gabow(n2, off, adj, st, bs, reinterpret_cast<F*>(fs));
-  else gabow_rec(n2, off, adj, st, bs, reinterpret_cast<R*>(mem.take(4 * size_t(N))), reinterpret_cast<FG*>(fs));
+  if constexpr(DFS == 1) {
+   rec= reinterpret_cast<R*>(mem.take(4 * size_t(N)));
+   for(u32 x= 0; x < n2; ++x) {
+    const u32 s= off[x], e= off[x + 1];
+    rec[x]= {s, e, s < e ? adj[s] : NIL, s + 1 < e ? adj[s + 1] : NIL};
+   }
+  }
+ }
+ void s4() {
+  if constexpr(DFS == 0) gabow(reinterpret_cast<F*>(fs));
+  else gabow_rec(reinterpret_cast<FG*>(fs));
  }
  // 次数 0 の頂点 (剥がした頂点) は飛ばす。
- void gabow(u32 n2, const u32* off, const u32* adj, u32* st, u32* bs, F* fs) {
+ void gabow(F* fs) {
   u32 top= 0, bt= 0;
   for(u32 r= 0; r < n2; ++r) {
    if(key[r] || off[r] == off[r + 1]) continue;
@@ -144,11 +187,7 @@ template <int PEEL, int DFS> struct Solver {
  }
  // いまの頂点の隣接の位置 i が s0 なら n0、s0 + 1 なら n1、それ以外は adj[i]。子から帰ったら s0 を NIL - 1 にして、adj から読む。
  // pv はいまの頂点のスタックでの位置 (= 鍵)。
- void gabow_rec(u32 n2, const u32* off, const u32* adj, u32* st, u32* bs, R* rec, FG* fs) {
-  for(u32 x= 0; x < n2; ++x) {
-   const u32 s= off[x], e= off[x + 1];
-   rec[x]= {s, e, s < e ? adj[s] : NIL, s + 1 < e ? adj[s + 1] : NIL};
-  }
+ void gabow_rec(FG* fs) {
   u32 top= 0, bt= 0;
   for(u32 r= 0; r < n2; ++r) {
    if(key[r]) continue;
@@ -188,6 +227,7 @@ template <int PEEL, int DFS> struct Solver {
   }
  }
  int comp(int v) const {
+  const_cast<Solver*>(this)->step(4);
   if constexpr(PEEL == 2) {
    const u32 x= id[v];
    return int(x == NIL ? u32(v) : orig[NIL - key[x]]);
