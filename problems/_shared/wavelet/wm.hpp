@@ -111,6 +111,38 @@ inline int mask(bool c) {
 }
 // m のマスクで a と b から選ぶ。
 inline int sel(int m, int a, int b) { return b ^ ((a ^ b) & m); }
+// 昇順の v[0, n) のうち x 未満のものの数。lower と同じ二分探索を、マスクを通して分岐なしに固定したもの (lower は
+// GCC 15 だと cmov、clang だと分岐になり、frequency の pos が x64-clang で 2.5 倍遅かった)。
+inline int lower_bl(const int* v, int n, int x) {
+ if(n == 0) return 0;
+ int b= 0;
+ while(n > 1) {
+  const int half= n / 2;
+  b+= half & mask(v[b + half] < x);
+  n-= half;
+ }
+ return b + (v[b] < x);
+}
+// 昇順の v (重複してよい、値は 0 以上 2^30 未満) のうち x 未満のものの数を引く表。値を上位 16 bit で 65536 個の区間に
+// 分け、区間ごとにそれより前の数を持つ。引くときは区間の中だけを lower_bl で探す (区間の大きさは平均 n / 65536)。
+struct Table {
+ static constexpr int B= 16, SH= 30 - B;
+ const int* v= nullptr;
+ std::vector<int> t;  // t[k] は v のうち (x >> SH) < k のものの数
+ Table()= default;
+ explicit Table(const std::vector<int>& v_): v(v_.data()), t((1 << B) + 1) {
+  const int n= v_.size();
+  for(int i= 0, k= 0; k <= (1 << B); ++k) {
+   while(i < n && (v_[i] >> SH) < k) ++i;
+   t[k]= i;
+  }
+ }
+ // x は 0 以上 2^30 未満。
+ int lower(int x) const {
+  const int k= x >> SH, lo= t[k];
+  return lo + lower_bl(v + lo, t[k + 1] - lo, x);
+ }
+};
 // 段ごとの bit 列 (全段を 1 本の配列に段の順で並べる)。
 struct Sep {
  int nw= 0;  // 1 段の語の数
@@ -242,6 +274,26 @@ template <class BV, bool Sum= false> struct WaveletMatrix {
    c+= (r0 - l0) & m, s+= (S[r0] - S[l0]) & i64(m);
    l= sel(m, zero[h] + l1, l0);
    r= sel(m, zero[h] + r1, r0);
+  }
+  return {c, s};
+ }
+ // count_sum_less と同じ値を返す。累積は x の bit が 1 の段だけ読む (分岐で飛ばす)。主記憶への読み出しは半分に
+ // なるが、x の bit で分岐する。
+ std::pair<int, i64> count_sum_less_br(int l, int r, u32 x) const {
+  static_assert(Sum);
+  if(x >= sigma) {
+   const i64* S= sums.data() + std::size_t(lg) * (n + 1);
+   return {r - l, S[r] - S[l]};
+  }
+  int c= 0;
+  i64 s= 0;
+  for(int h= lg - 1; h >= 0; --h) {
+   const int l1= bv.rank1(h, l), r1= bv.rank1(h, r), l0= l - l1, r0= r - r1;
+   if(x >> h & 1) {
+    const i64* S= sums.data() + std::size_t(h) * (n + 1);
+    c+= r0 - l0, s+= S[r0] - S[l0];
+    l= zero[h] + l1, r= zero[h] + r1;
+   } else l= l0, r= r0;
   }
   return {c, s};
  }
