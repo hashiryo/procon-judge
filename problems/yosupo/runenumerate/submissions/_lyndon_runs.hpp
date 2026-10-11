@@ -11,7 +11,7 @@
 #include <vector>
 
 namespace lyndon_runs {
-// nxt0[i] と nxt1[i] は、i より後ろで順位が i より小さい (大きい) 最初の位置。無ければ n。
+// nxt0[i] と nxt1[i] は、i より後ろで順位が i より小さい (大きい) 最初の位置。無ければ n。順位の配列を後ろから読み、スタックで求める。
 inline void lyndon_ends(const std::vector<int> &isa, std::vector<int> &nxt0, std::vector<int> &nxt1) {
   const int n = int(isa.size());
   nxt0.resize(n), nxt1.resize(n);
@@ -29,14 +29,14 @@ inline void lyndon_ends(const std::vector<int> &isa, std::vector<int> &nxt0, std
     st.push_back(i);
   }
 }
-// 長さ n の文字列の run を (周期, 始まり, 終わり) の昇順で返す。extend(i, j, p) は根 [i, j) (周期 p) の run を {始まり, 終わり} で
-// 返し、run にならないときは始まりを -1 にする。
-template <class Extend> std::vector<std::array<int, 3>> collect(const std::vector<int> &isa, Extend &&extend) {
-  const int n = int(isa.size());
+// 長さ n の文字列の run を (周期, 始まり, 終わり) の昇順で返す。nxt0 と nxt1 は lyndon_ends と同じ 2 つの Lyndon 配列。extend(i, j, p) は
+// 根 [i, j) (周期 p) の run を {始まり, 終わり} で返し、run にならないときは始まりを -1 にする。
+template <class Extend>
+std::vector<std::array<int, 3>> collect(const std::vector<int> &nxt0, const std::vector<int> &nxt1, Extend &&extend) {
+  const int n = int(nxt0.size());
   std::vector<std::array<int, 3>> found;
   if (n < 2) return found;
-  std::vector<int> nxt0, nxt1, last_r(n + 1, 0);
-  lyndon_ends(isa, nxt0, nxt1);
+  std::vector<int> last_r(n + 1, 0);
   auto check = [&](int i, int j) {
     const int p = j - i;
     if (i + p <= last_r[p]) return;  // 同じ周期の、前に見つけた run の中に収まる根
@@ -59,5 +59,11 @@ template <class Extend> std::vector<std::array<int, 3>> collect(const std::vecto
   std::vector<std::array<int, 3>> res(found.size());
   for (const auto &x : found) res[cnt[x[0]]++] = x;
   return res;
+}
+// isa から 2 つの Lyndon 配列を求めてから collect する。
+template <class Extend> std::vector<std::array<int, 3>> collect(const std::vector<int> &isa, Extend &&extend) {
+  std::vector<int> nxt0, nxt1;
+  lyndon_ends(isa, nxt0, nxt1);
+  return collect(nxt0, nxt1, extend);
 }
 }  // namespace lyndon_runs
