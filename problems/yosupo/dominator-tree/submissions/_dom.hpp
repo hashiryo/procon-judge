@@ -10,7 +10,10 @@
 // ALG = 2 は Cooper–Harvey–Kennedy の繰り返しの形。番号は帰りがけ順の逆 (s が 0)。番号の小さい順に、直接支配点の決まった
 // 逆向きの辺の始点どうしの共通の祖先 (番号の大きい方を直接支配点で登る) を取り、変わらなくなるまで繰り返す。最悪は 2 乗だが、
 // 繰り返しの回数が少なければ速い。
-// ALG = 3 は SEMI-NCA で、eval の森の親と最小の値を 1 つの配列に並べたもの。TMP なら、逆向きの CSR を組むときに辺の端の番号を
+// STOP が 0 でなければ診断用で、run() を STOP の段 (1: DFS まで、2: 逆向きの CSR まで、3: ALG = 3 の sdom の走査まで) で打ち切り、
+// 最初の parent() で同じ作業領域を使って全部を回し直す。
+// ALG = 3 は SEMI-NCA で、eval の森の親と最小の値を 1 つの配列に並べたもの。ALG = 4 はそれに、DFS の隣接を最初の行き先と残りの
+// 連結リストに分けて置く形を足したもの。TMP なら、逆向きの CSR を組むときに辺の端の番号を
 // 1 回だけ引く。
 #ifdef __linux__
 #include <sys/mman.h>
@@ -40,16 +43,22 @@ struct Mem {
   return p;
  }
 };
-template <int ALG, bool TMP= false> struct Solver {
+template <int ALG, bool TMP= false, int STOP= 0> struct Solver {
  int n, s;
  const vector<array<int, 2>>& es;
  Mem mem;
+ bool partial= false, cut= STOP != 0;  // 診断用: cut なら STOP の段で run() を打ち切り、partial を立てる
  u32 *num, *vert, *idom;  // num[v] は頂点 v の番号 (届かなければ NIL)、vert[i] は番号 i の頂点、idom[i] は番号 i の直接支配点の番号
  Solver(int n, int s, const vector<array<int, 2>>& es): n(n), s(s), es(es) {}
  void run() {
+  if constexpr(ALG == 4) {
+   run_split();
+   return;
+  }
   const u32 N= n;
   const size_t m= es.size();
-  mem.reserve(14 * Mem::words(N + 2) + 2 * Mem::words(m + 1) + Mem::words(2 * size_t(N)) + (TMP ? Mem::words(2 * m + 2) : 0));
+  if(!mem.base) mem.reserve(14 * Mem::words(N + 2) + 2 * Mem::words(m + 1) + Mem::words(2 * size_t(N)) + (TMP ? Mem::words(2 * m + 2) : 0));
+  mem.used= 0;
   u32 *fo= mem.take(N + 2), *fa= mem.take(m + 1), *ro= mem.take(N + 2), *ra= mem.take(m + 1);
   num= mem.take(N + 1), vert= mem.take(N + 1), idom= mem.take(N + 1);
   u32 *par= mem.take(N + 1), *fs= mem.take(2 * size_t(N));
@@ -80,6 +89,10 @@ template <int ALG, bool TMP= false> struct Solver {
     }
    }
   }
+  if(STOP == 1 && cut) {
+   partial= true;
+   return;
+  }
   if constexpr(ALG == 2) {
    // 帰りがけ順の逆に番号を振り直す (s が 0)。
    for(u32 k= 0; k < R / 2; ++k) std::swap(vert[k], vert[R - 1 - k]);
@@ -107,6 +120,10 @@ template <int ALG, bool TMP= false> struct Solver {
     const u32 a= num[e[0]], b= num[e[1]];
     if(a != NIL && b != NIL) ra[--ro[b]]= a;
    }
+  }
+  if(STOP == 2 && cut) {
+   partial= true;
+   return;
   }
   if constexpr(ALG == 0) lt(R, ro, ra, par);
   else if constexpr(ALG == 1) snca(R, ro, ra, par);
@@ -188,6 +205,10 @@ template <int ALG, bool TMP= false> struct Solver {
    for(u32 j= ro[w]; j < ro[w + 1]; ++j) sw= std::min(sw, eval_pk(ra[j], al, path));
    sdom[w]= sw, al[w]= {par[w], sw};
   }
+  if(STOP == 3 && cut) {
+   partial= true;
+   return;
+  }
   idom[0]= 0;
   for(u32 w= 1; w < R; ++w) {
    u32 d= par[w];
@@ -218,7 +239,63 @@ template <int ALG, bool TMP= false> struct Solver {
    }
   }
  }
+ // ALG = 4 は ALG = 3 の SEMI-NCA で、DFS の隣接を yosupo-scc の gabow_split と同じ形にする。頂点ごとに最初の出辺の行き先 fst と、
+ // 残りの出辺の連結リストの先頭 hd を別々の 4 byte の配列に置き、辺の列を 1 回なめて組む (その頂点の最初の辺かどうかはマスクで
+ // 選ぶ)。DFS が下りる 1 歩は、行き先の fst と hd と訪問の印の読み込み 1 段で済む。逆向きの CSR は TMP と同じく番号の組を残して
+ // 組む。
+ void run_split() {
+  const u32 N= n;
+  const size_t m= es.size();
+  mem.reserve(12 * Mem::words(N + 2) + Mem::words(2 * m + 2) + 2 * Mem::words(m + 1) + Mem::words(3 * size_t(N)) + Mem::words(2 * m + 2));
+  u32 *fst= mem.take(N + 1), *hd= mem.take(N + 1), *nx= mem.take(2 * m + 2), *ro= mem.take(N + 2), *ra= mem.take(m + 1);
+  num= mem.take(N + 1), vert= mem.take(N + 1), idom= mem.take(N + 1);
+  u32 *par= mem.take(N + 1), *fs= mem.take(3 * size_t(N));
+  memset(fst, 0xff, N * sizeof(u32)), memset(hd, 0xff, N * sizeof(u32));
+  for(size_t j= 0; j < m; ++j) {
+   const u32 a= es[j][0], b= es[j][1], f= fst[a], h= hd[a], k= -u32(f == NIL);
+   nx[2 * j]= b, nx[2 * j + 1]= h;
+   fst[a]= (b & k) | (f & ~k), hd[a]= (h & k) | (u32(j) & ~k);
+  }
+  // 反復の DFS。フレームは {頂点, 残りの連結リストのうちまだ見ていない先頭, 頂点の番号}。nf はいまの頂点の最初の行き先のうち
+  // まだ見ていないもの。
+  memset(num, 0xff, N * sizeof(u32));
+  u32 R= 0;
+  {
+   u32* sp= fs;
+   num[s]= R, par[R]= 0, vert[R++]= s;
+   u32 v= s, iv= 0, nf= fst[s], ce= hd[s];
+   for(;;) {
+    u32 w;
+    if(nf != NIL) w= nf, nf= NIL;
+    else if(ce != NIL) w= nx[2 * ce], ce= nx[2 * ce + 1];
+    else {
+     if(sp == fs) break;
+     sp-= 3, v= sp[0], ce= sp[1], iv= sp[2];
+     continue;
+    }
+    const u32 nw= num[w], fw= fst[w], hw= hd[w];
+    if(nw != NIL) continue;
+    sp[0]= v, sp[1]= ce, sp[2]= iv, sp+= 3;
+    num[w]= R, par[R]= iv, vert[R]= w, iv= R++, v= w, nf= fw, ce= hw;
+   }
+  }
+  memset(ro, 0, (R + 1) * sizeof(u32));
+  u32* tp= mem.take(2 * m + 2);
+  for(size_t j= 0; j < m; ++j) {
+   const u32 a= num[es[j][0]], b= num[es[j][1]], ok= (a != NIL) & (b != NIL);
+   tp[2 * j]= a, tp[2 * j + 1]= ok ? b : R;
+   ++ro[ok ? b : R];
+  }
+  for(u32 k= 1; k <= R; ++k) ro[k]+= ro[k - 1];
+  for(size_t j= m; j--;) ra[--ro[tp[2 * j + 1]]]= tp[2 * j];
+  snca_pk(R, ro, ra, par);
+ }
  int parent(int v) const {
+  if(partial) {
+   // 診断用。打ち切った run() を、同じ作業領域で最後まで回し直す (計測区間の外)。
+   auto* self= const_cast<Solver*>(this);
+   self->cut= false, self->partial= false, self->run();
+  }
   const u32 x= num[v];
   return x == NIL ? -1 : int(vert[idom[x]]);
  }

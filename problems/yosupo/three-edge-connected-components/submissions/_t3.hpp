@@ -7,6 +7,9 @@
 // 辺は橋なので、剥がした頂点はどれも 1 頂点の成分。剥がしたあとの 2-core の頂点に 0 から番号を振り直し、2-core の辺だけで CSR を
 // 組む (端が剥がれた辺は、辺の番号で回す 8 つの番兵に書いて捨てる)。次数と XOR は 1 つの配列に並べ、辺の端を先読みする。
 //
+// STOP が 0 でなければ診断用で、run() を STOP の段 (1: 剥がしまで、2: CSR と REC の記録まで) で打ち切り、最初の comp() で同じ
+// 作業領域を使って全部を回し直す。
+//
 // 吸収した頂点は、吸収した祖先を親に持つ。成分の名前は、行きがけ順に親の名前を写して決める (吸収する祖先は吸収される頂点より先に
 // 訪れている)。
 #ifdef __linux__
@@ -37,7 +40,7 @@ struct Mem {
   return p;
  }
 };
-template <bool PEEL, bool REC= false> struct Solver {
+template <bool PEEL, bool REC= false, int STOP= 0> struct Solver {
  struct F {
   u32 v, p, i;
  };
@@ -55,11 +58,13 @@ template <bool PEEL, bool REC= false> struct Solver {
  const vector<array<int, 2>>& es;
  Mem mem;
  u32 *id= nullptr, *orig= nullptr, *lab;
+ bool partial= false, cut= STOP != 0;  // 診断用: cut なら STOP の段で run() を打ち切り、partial を立てる
  Solver(int n, const vector<array<int, 2>>& es): n(n), es(es) {}
  void run() {
   const u32 N= n;
   const size_t m= es.size();
-  mem.reserve(12 * Mem::words(N + 10) + Mem::words(2 * m + 2) + Mem::words(3 * size_t(N)) + (REC ? Mem::words(16 * size_t(N) + 16) + 3 * Mem::words(N + 1) : 0));
+  if(!mem.base) mem.reserve(12 * Mem::words(N + 10) + Mem::words(2 * m + 2) + Mem::words(3 * size_t(N)) + (REC ? Mem::words(16 * size_t(N) + 16) + 3 * Mem::words(N + 1) : 0));
+  mem.used= 0;
   u32 *dg= mem.take(2 * size_t(N + 1)), *q= mem.take(N + 1), *off= mem.take(N + 10), *adj= mem.take(2 * m + 2);
   u32 n2= N;
   if constexpr(PEEL) {
@@ -81,6 +86,10 @@ template <bool PEEL, bool REC= false> struct Solver {
     dg[2 * v]= 0, dg[2 * u + 1]^= v & -live;
     const u32 du= dg[2 * u] - live;
     dg[2 * u]= du, q[qt]= u, qt+= live & (du == 1);
+   }
+   if(STOP == 1 && cut) {
+    partial= true;
+    return;
    }
    orig= q;
    u32 s= 0;
@@ -186,6 +195,10 @@ template <bool PEEL, bool REC= false> struct Solver {
    rec[x]= {b, e, b < e ? adj[b] : NIL, b + 1 < e ? adj[b + 1] : NIL};
    st[x].in= NIL;
   }
+  if(STOP == 2 && cut) {
+   partial= true;
+   return;
+  }
   u32 cnt= 0;
   for(u32 r= 0; r < n2; ++r) {
    if(st[r].in != NIL) continue;
@@ -242,6 +255,11 @@ template <bool PEEL, bool REC= false> struct Solver {
   }
  }
  int comp(int v) const {
+  if(partial) {
+   // 診断用。打ち切った run() を、同じ作業領域で最後まで回し直す (計測区間の外)。
+   auto* self= const_cast<Solver*>(this);
+   self->cut= false, self->partial= false, self->run();
+  }
   if constexpr(PEEL) {
    const u32 x= id[v];
    return int(x == NIL ? u32(v) : orig[lab[x]]);
