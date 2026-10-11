@@ -358,12 +358,13 @@ inline u64 pi_small(u64 n) {
   }
  return cnt;
 }
-template <int FIX= 0> inline u64 prime_pi(u64 x) {
+// AM は primecount の α の当てはめに掛ける倍率の 100 倍。
+template <int FIX= 0, int AM= 150> inline u64 prime_pi(u64 x) {
  if(x < 100000) return pi_small(x);
  constexpr bool POP= (FIX & 16) != 0;
  constexpr u32 c= 8;
  const double L= std::log((double)x);
- const double alpha= std::max(1.0, 1.5 * (((0.00148918 * L - 0.0691909) * L + 1.00165) * L + 0.372253));
+ const double alpha= std::max(1.0, AM / 100.0 * (((0.00148918 * L - 0.0691909) * L + 1.00165) * L + 0.372253));
  const u64 x13= icbrt(x), sx= isqrt(x);
  const u64 y= std::min(sx, std::max(x13 + 1, (u64)(alpha * (double)x13))), z= x / y, sz= isqrt(z);
  // y + 2 までの素数 (1 始まり)。反転で引く r は √(x / p) + 2 以下で、反転があるのは √(x / p) < y のときだけ。
