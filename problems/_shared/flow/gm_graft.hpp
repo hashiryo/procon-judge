@@ -8,10 +8,8 @@
 // 空になったとき、偶の頂点から出る辺はどれも、端点の印が最後に変わったあとに見てあるので、森は完成していて最大。
 #include "_shared/flow/gm_gabow.hpp"
 namespace gm_graft {
-template <int INIT> std::vector<int> general_matching(int n, const std::vector<std::array<int, 2>>& e) {
- std::vector<int> off, adj;
- gm_gabow::build_csr(n, e, off, adj);
- std::vector<int> mate= gm_gabow::init_matching<INIT>(n, off, adj);
+// mate から始めて最大にする (off と adj は両向きの CSR)。
+inline void finish(int n, const std::vector<int>& off, const std::vector<int>& adj, std::vector<int>& mate) {
  // z[v] が 1 なら偶、zo[v] が 1 なら奇 (花で偶になった頂点は両方)。どちらも 0 なら印が無い。tr[v] は木の根で、
  // 木の頂点は根ごとの連結リスト (hd, nx) に並べる。
  std::vector<int> z(n), zo(n), p(n), tr(n), hd(n, -1), nx(n), q, stk, dead;
@@ -83,6 +81,12 @@ template <int INIT> std::vector<int> general_matching(int n, const std::vector<s
    }
   }
  }
+}
+template <int INIT> std::vector<int> general_matching(int n, const std::vector<std::array<int, 2>>& e) {
+ std::vector<int> off, adj;
+ gm_gabow::build_csr(n, e, off, adj);
+ std::vector<int> mate= gm_gabow::init_matching<INIT>(n, off, adj);
+ finish(n, off, adj, mate);
  return mate;
 }
 }

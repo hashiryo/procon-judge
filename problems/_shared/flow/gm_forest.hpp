@@ -9,10 +9,9 @@
 // 頂点はその回の残りで通らない。どちらでも、最後の回は 1 本も流さない完全な森なので、最大になっている。
 #include "_shared/flow/gm_gabow.hpp"
 namespace gm_forest {
-template <int INIT, bool RELABEL> std::vector<int> general_matching(int n, const std::vector<std::array<int, 2>>& e) {
- std::vector<int> off, adj;
- gm_gabow::build_csr(n, e, off, adj);
- std::vector<int> mate= gm_gabow::init_matching<INIT>(n, off, adj);
+// mate から始めて最大にする (off と adj は両向きの CSR)。max_pass 回の森で終わらなければ false を返す (mate はそこまで
+// 大きくしたもの)。
+template <bool RELABEL> bool finish(int n, const std::vector<int>& off, const std::vector<int>& adj, std::vector<int>& mate, int max_pass= 1 << 30) {
  // z[v] == t なら v はこの回の偶、zo[v] == t なら奇 (花で偶になった頂点は両方が t)。tr[v] は木の根。
  std::vector<int> z(n), zo(n), p(n), tr(n), q, stk;
  std::vector<char> alive(n);
@@ -81,8 +80,15 @@ template <int INIT, bool RELABEL> std::vector<int> general_matching(int n, const
     }
    }
   }
-  if(!aug) break;
+  if(!aug) return true;
+  if(t >= max_pass) return false;
  }
+}
+template <int INIT, bool RELABEL> std::vector<int> general_matching(int n, const std::vector<std::array<int, 2>>& e) {
+ std::vector<int> off, adj;
+ gm_gabow::build_csr(n, e, off, adj);
+ std::vector<int> mate= gm_gabow::init_matching<INIT>(n, off, adj);
+ finish<RELABEL>(n, off, adj, mate);
  return mate;
 }
 }
