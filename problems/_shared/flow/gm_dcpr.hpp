@@ -131,11 +131,38 @@ inline std::vector<int> general_matching(int n, const std::vector<std::array<int
 }
 // Karp-Sipser のあと交互森を max_pass 回まで回し、終わらなければ、そのマッチングから二重被覆の push-relabel を始めて丸め、
 // 交互森で仕上げる。増加路の短いグラフは森だけで終わり、長い増加路が残るグラフだけ二重被覆に回す。
-inline std::vector<int> hybrid(int n, const std::vector<std::array<int, 2>>& e, int max_pass) {
+// BFS が true なら、二重被覆に回すときに、頂点を BFS で見つけた順に番号を振り直して CSR を組み直してから解く (隣り合う頂点の
+// 番号が近くなり、push-relabel と global relabel の読み込みが散らばりにくい)。
+template <bool BFS= false> std::vector<int> hybrid(int n, const std::vector<std::array<int, 2>>& e, int max_pass) {
  std::vector<int> off, adj;
  gm_gabow::build_csr(n, e, off, adj);
  std::vector<int> mate= gm_gabow::init_matching<2>(n, off, adj);
  if(gm_forest::finish<true>(n, off, adj, mate, max_pass)) return mate;
+ if constexpr(BFS) {
+  // 新しい番号 id[v] と、その逆 ord。
+  std::vector<int> id(n, -1), ord;
+  ord.reserve(n);
+  for(int r= 0; r < n; ++r) {
+   if(id[r] >= 0) continue;
+   id[r]= ord.size(), ord.push_back(r);
+   for(size_t h= ord.size() - 1; h < ord.size(); ++h) {
+    const int v= ord[h];
+    for(int k= off[v]; k < off[v + 1]; ++k)
+     if(const int u= adj[k]; id[u] < 0) id[u]= ord.size(), ord.push_back(u);
+   }
+  }
+  std::vector<int> off2(n + 1), adj2(adj.size()), mate2(n, -1);
+  for(int i= 0; i < n; ++i) {
+   const int v= ord[i];
+   off2[i + 1]= off2[i] + (off[v + 1] - off[v]);
+   for(int k= off[v], j= off2[i]; k < off[v + 1]; ++k, ++j) adj2[j]= id[adj[k]];
+   if(mate[v] >= 0) mate2[i]= id[mate[v]];
+  }
+  mate2= round_dcover(n, dcover_matching(n, off2, adj2, &mate2));
+  gm_forest::finish<true>(n, off2, adj2, mate2);
+  for(int i= 0; i < n; ++i) mate[ord[i]]= mate2[i] >= 0 ? ord[mate2[i]] : -1;
+  return mate;
+ }
  mate= round_dcover(n, dcover_matching(n, off, adj, &mate));
  gm_forest::finish<true>(n, off, adj, mate);
  return mate;
