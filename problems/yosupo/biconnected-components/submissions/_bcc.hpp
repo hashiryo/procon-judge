@@ -10,6 +10,11 @@
 // 辺の列だけで剥がせる。剥がしで次数が 0 になった頂点は、もう剥がした頂点との成分に入っているので、新しい成分を作らない。
 // 剥がしたあとの次数はそのまま 2-core の CSR の次数になるので、CSR は 2-core の辺だけで組む。作業領域は 2 MB 境界の 1 本の
 // 領域で、huge page を頼む (yosupo-scc の _scc.hpp の Mem<true> と同じ)。
+//
+// REC なら、DFS を頂点ごとの記録 {CSR の始まり, 終わり, 最初の隣接, 2 番目の隣接} (16 byte) で回し、low は頂点ごとの配列に置かず
+// フレームに持つ (low[v] を読み書きするのは、v がスタックに載っている間だけで、子から帰るときに親へ渡せば足りる)。無向グラフの
+// 隣接の 1 つは親なので、2 つ置けば、次数 2 の頂点 (閉路の頂点) では DFS が下りる 1 歩が記録の読み込み 1 段で済む。フレームには
+// 頂点と位置と low だけを持ち、戻るときに記録を読み直す。
 #ifdef __linux__
 #include <sys/mman.h>
 #endif
@@ -37,7 +42,7 @@ struct Mem {
   return p;
  }
 };
-template <bool PEEL> struct Solver {
+template <bool PEEL, bool REC= false> struct Solver {
  struct F {
   u32 v, i, e;
  };
@@ -49,7 +54,7 @@ template <bool PEEL> struct Solver {
  void run() {
   const u32 N= n;
   const size_t m= es.size();
-  mem.reserve(6 * Mem::words(N + 1) + Mem::words(2 * m) + Mem::words(3 * size_t(N)) + Mem::words(N + m + 2) + Mem::words(N + m + 2) + (PEEL ? 2 * Mem::words(N) : 0));
+  mem.reserve(6 * Mem::words(N + 1) + Mem::words(2 * m) + Mem::words(3 * size_t(N)) + Mem::words(N + m + 2) + Mem::words(N + m + 2) + (PEEL ? 2 * Mem::words(N) : 0) + (REC ? Mem::words(4 * size_t(N)) : 0));
   u32 *ord= mem.take(N + 1), *low= mem.take(N + 1), *deg= mem.take(N + 1), *off= mem.take(N + 1), *adj= mem.take(2 * m), *st= mem.take(N + 1);
   F* fs= reinterpret_cast<F*>(mem.take(3 * size_t(N)));
   bv= mem.take(N + m + 2), bo= mem.take(N + m + 2);
@@ -87,6 +92,10 @@ template <bool PEEL> struct Solver {
     if(ord[a] | ord[b]) continue;
    adj[--off[a]]= b, adj[--off[b]]= a;
   }
+  if constexpr(REC) {
+   dfs_rec(off, adj, ord, st, reinterpret_cast<R*>(mem.take(4 * size_t(N))), reinterpret_cast<FR*>(fs), nv);
+   return;
+  }
   u32 idx= 0, top= 0;
   for(u32 r= 0; r < N; ++r) {
    if(ord[r]) continue;
@@ -116,6 +125,54 @@ template <bool PEEL> struct Solver {
       while(x != c);
       bv[nv++]= v, close();
      } else if(lv < low[v]) low[v]= lv;
+    }
+   }
+  }
+ }
+ struct R {
+  u32 s, e, n0, n1;
+ };
+ struct FR {
+  u32 v, i, lv;
+ };
+ // いまの頂点の隣接の位置 i が s なら n0、s + 1 なら n1、それより後ろは adj[i]。lv はいまの頂点の lowlink。
+ void dfs_rec(const u32* off, const u32* adj, u32* ord, u32* st, R* rec, FR* fs, u32 nv) {
+  const u32 N= n;
+  auto close= [&] { bo[++nb]= nv; };
+  for(u32 v= 0; v < N; ++v) {
+   const u32 s= off[v], e= off[v + 1];
+   rec[v]= {s, e, s < e ? adj[s] : ~u32(0), s + 1 < e ? adj[s + 1] : ~u32(0)};
+  }
+  u32 idx= 0, top= 0;
+  for(u32 r= 0; r < N; ++r) {
+   if(ord[r]) continue;
+   R c= rec[r];
+   if(c.s == c.e) {
+    ord[r]= ++idx, bv[nv++]= r, close();
+    continue;
+   }
+   u32 v= r, i= c.s, lv= ord[v]= ++idx;
+   FR* sp= fs;
+   st[top++]= v;
+   for(;;) {
+    if(i != c.e) {
+     const u32 w= i == c.s ? c.n0 : i == c.s + 1 ? c.n1 : adj[i], ow= ord[w];
+     ++i;
+     if(!ow) *sp++= {v, i, lv}, v= w, c= rec[w], i= c.s, lv= ord[v]= ++idx, st[top++]= v;
+     else if(ow < lv) lv= ow;
+    } else {
+     if(sp == fs) {
+      --top;
+      break;
+     }
+     const u32 lc= lv, ch= v;
+     --sp, v= sp->v, i= sp->i, lv= sp->lv, c= rec[v];
+     if(lc >= ord[v]) {
+      u32 x;
+      do x= st[--top], bv[nv++]= x;
+      while(x != ch);
+      bv[nv++]= v, close();
+     } else if(lc < lv) lv= lc;
     }
    }
   }
