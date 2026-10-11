@@ -1,11 +1,21 @@
 #pragma once
-// 診断用 (答えは合わない)。8 回目 (_ep8.hpp) の写しで、EPD_SKIP のビットの段を抜く。1 は型を書く段、2 は小さい素数で
-// 消す段、4 は大きい素数で消す段、8 は取り出し (数えるだけにする)、16 は数える段と取り出し。抜いた段の時間は、抜かない
-// 版との差で見る。
-#ifndef EPD_SKIP
-#define EPD_SKIP 0
-#endif
-// 以下は 8 回目の説明。素数の列挙の 8 回目。7 回目の形で、倍数を消す関数の出入りの手間を減らす。7 回目までは素数ごとに「今の区画の先頭が周の
+// 素数の列挙の 11 回目。10 回目の取り出しの機械語を直す。8 回目から 10 回目は、GCC が next と cnt をメモリに置いたまま
+// 語ごとに読み書きしていて (take が参照で捕まえるため)、語ごとにメモリを経た依存の鎖ができていた。9 回目と 10 回目の
+// 2 段の取り出しでは、GCC が「取り出す素数があるか」の選択を分岐に戻していた。11 回目は区画の中の数を手元の変数で回し、
+// 次に取り出す番号の更新をマスクの算術で書く。A ≥ 16 なら区画の中で取り出す数は 4 nw + 1 個以下なので、1 段目の列は
+// 溢れない (溢れの確かめを輪から除く)。A < 16 は語ごとに素直に取り出す。
+// 以下は 10 回目の説明。9 回目の形で、小区画で消す小さい素数 (PSPLIT 以下) の倍数を 210 の車輪で進めて、7 の倍数の m を
+// 飛ばす (消す数が 7 分の 1 減る)。m が 210 進む 7 周 (56 個から 7 の倍数の 8 個を除いた 48 個) をまとめて消す。周の先頭を
+// m ≡ 1 (mod 210) にそろえると、飛ばす位置は p によらず、周 r の中で (2r + WR[k]) mod 7 = 0 の k になる。7 周の中は、
+// 周の先頭のポインタを p ずつ進め、周の中の 8 個の差 (30 の車輪と同じ) を使い回す。最初のまとまりは
+// m = 210 floor(p / 210) + 1 から始める。p < 210 なら m = 1 で p 自身を消すので、最初の区画で戻す。はみ出しは 7p バイト
+// 未満になるので、7 PSPLIT が小区画と余白に収まるようにする。
+// 以下は 9 回目の説明。8 回目の形で、A 個おきの素数の取り出しを 2 段に分ける。1 段目は語を前から見て、popcount の累積と
+// 次に取り出す番号を比べ、取り出す素数がある語の番号と、その語より前の個数を列に書く (分岐なし。取り出す素数が無い語
+// でも書いて、列の長さを進めない)。2 段目は列の各項で語の中の k 番目のビットを引く。2 段目は項どうしが独立なので、
+// 8 回目のように語ごとに k 番目のビットを引くより命令が少なく、並べて実行できる。A < A2 (1 語に 2 個以上を取り出すことが
+// 多い) なら 8 回目の形で取り出す。
+// 以下は 8 回目の説明。7 回目の形で、倍数を消す関数の出入りの手間を減らす。7 回目までは素数ごとに「今の区画の先頭が周の
 // 何番目か」を持ち、周の途中から始めて周の途中で終わるので、出入りのたびに輪の出口の分岐が 2〜3 回外れていた。8 回目は
 // 周の先頭だけを持ち、区画の中に先頭がある周を 8 個ずつ丸ごと消す。周の最後は区画の後ろへ p バイト未満はみ出す。
 // 小区画どうしのはみ出しは、次の小区画の型を先に書いておいて受ける。区画の後ろへのはみ出しは、余白を全部 1 にして
@@ -26,7 +36,7 @@
 #include <immintrin.h>
 #endif
 
-namespace epd8 {
+namespace ep11 {
 
 inline constexpr u32 WR[8] = {1, 7, 11, 13, 17, 19, 23, 29};
 inline constexpr std::array<u8, 30> BI = [] {
@@ -75,6 +85,38 @@ template <u32 C = 0>
 inline void cross_all(u8* seg, u32 nbytes, SievingPrime* st, const u32* beg) {
     for (u32 k = beg[C]; k < beg[C + 1]; ++k) cross_cls<C>(seg, nbytes, st[k]);
     if constexpr (C < 7) cross_all<C + 1>(seg, nbytes, st, beg);
+}
+
+// 7 周のまとまりの周 R で、周の先頭 q から 8 個の差 o の位置を消す。m が 7 の倍数になる k ((2R + WR[k]) mod 7 = 0) は飛ばす。
+template <u32 C, u32 R, u32... K>
+inline void row210(u8* q, const u32* o, std::integer_sequence<u32, K...>) {
+    ((((2 * R + WR[K]) % 7 != 0) ? (void)(q[o[K]] &= (u8)~(1u << WBIT[C][K])) : (void)0), ...);
+}
+// 区画の [0, nbytes) に先頭がある p の倍数の 7 周のまとまりを丸ごと消す (p ≡ WR[C] mod 30)。pos はまとまりの先頭
+// (m ≡ 1 mod 210) の位置。最後のまとまりは nbytes から 7p バイト未満はみ出す。
+template <u32 C>
+inline void cross210_cls(u8* seg, u32 nbytes, SievingPrime& s) {
+    const u32 a = s.a, p = 30 * a + WR[C];
+    const u32 o[8] = {0, a * 6 + WOFF[C][1], a * 10 + WOFF[C][2], a * 12 + WOFF[C][3],
+                      a * 16 + WOFF[C][4], a * 18 + WOFF[C][5], a * 22 + WOFF[C][6], a * 28 + WOFF[C][7]};
+    constexpr auto K8 = std::make_integer_sequence<u32, 8>{};
+    u32 base = s.pos;
+    for (; base < nbytes; base += 7 * p) {
+        u8* q = seg + base;
+        row210<C, 0>(q, o, K8), q += p;
+        row210<C, 1>(q, o, K8), q += p;
+        row210<C, 2>(q, o, K8), q += p;
+        row210<C, 3>(q, o, K8), q += p;
+        row210<C, 4>(q, o, K8), q += p;
+        row210<C, 5>(q, o, K8), q += p;
+        row210<C, 6>(q, o, K8);
+    }
+    s.pos = base - nbytes;
+}
+template <u32 C = 0>
+inline void cross210_all(u8* seg, u32 nbytes, SievingPrime* st, const u32* beg) {
+    for (u32 k = beg[C]; k < beg[C + 1]; ++k) cross210_cls<C>(seg, nbytes, st[k]);
+    if constexpr (C < 7) cross210_all<C + 1>(seg, nbytes, st, beg);
 }
 
 // 語のビット b (0 から 63) が表す数の、語の先頭からの差。64 は立っているビットが足りないときの捨てる値。
@@ -200,9 +242,21 @@ struct Presieve {
 
 // SW 語の区画を SWS 語の小区画に分け、小区画ごとに型を書いて PSPLIT 以下の素数で消し、区画全体を PSPLIT より大きい
 // 素数で消す。PMAX 以下の素数は型で消す。
-template <u32 SW = 32768, u32 SWS = 2048, u32 PSPLIT = 1000, u32 PMAX = 163, u32 ASEL = 64>
+// 2 段目: wc[0, n) の各項 (語の番号と、その語より前の個数) で、語の中の k 番目のビットを引いて sel に足す。項 i は区画の
+// 中の番号 t0 + i A。
+inline void select_words(const u64* wc, u32 n, u32 t0, u32 A, u32 low, const u64* seg64, std::vector<u32>& sel) {
+    const size_t z = sel.size();
+    sel.resize(z + n);
+    u32* out = sel.data() + z;
+    for (u32 i = 0; i < n; ++i) {
+        const u32 w = (u32)wc[i], k = t0 + i * A - (u32)(wc[i] >> 32);
+        out[i] = low + 240 * w + BITVAL[kth_bit(seg64[w], k)];
+    }
+}
+
+template <u32 SW = 8192, u32 SWS = 2048, u32 PSPLIT = 1000, u32 PMAX = 163>
 inline std::pair<u32, std::vector<u32>> run(u32 N, u32 A, u32 B) {
-    static_assert(SWS % 4 == 0 && SW % SWS == 0);
+    static_assert(SWS % 4 == 0 && SW % SWS == 0 && 7 * PSPLIT <= 8 * SWS);
     std::vector<u32> sel;
     // π(N) < 1.26 N / ln N (N > 1) から取り出す数の上を見積もって、先に確保する (触らないページは載らない)
     sel.reserve(N < 17 ? 8 : (size_t)(1.26 * N / std::log((double)N)) / A + 8);
@@ -241,35 +295,35 @@ inline std::pair<u32, std::vector<u32>> run(u32 N, u32 A, u32 B) {
         for (u32 c = 0; c < 8; ++c) ps[c] = bs[c], pl[c] = bl[c];
         for (u32 k = 0; k < sp.size(); ++k) {
             const u32 p = sp[k], c = BI[p % 30];
-            st[k < nsmall ? ps[c]++ : pl[c]++] = SievingPrime{p / 30 * (p + 1), p / 30};
+            // 小さい素数は m = 210 floor(p / 210) + 1 のまとまりから、大きい素数は p^2 を含む周から
+            if (k < nsmall) st[ps[c]++] = SievingPrime{7 * p * (p / 210) + p / 30, p / 30};
+            else st[pl[c]++] = SievingPrime{p / 30 * (p + 1), p / 30};
         }
     }
     const Presieve pre(PMAX);
     constexpr u64 SEGN = 240 * (u64)SW;
     // 区画の後ろの余白 (周のはみ出しは p バイト未満) と、次の区画の先頭に AND するはみ出し
-    const u32 SL = (std::max(sq, PSPLIT) + 64) / 64 * 64;
+    const u32 SL = (std::max(sq, 7 * PSPLIT) + 64) / 64 * 64;
     std::vector<u64> seg64(SW + SL / 8 + 8, 0), carry(SL / 8, ~u64(0));
-    constexpr u32 TMPN = SW + 64;
-    const std::unique_ptr<u32[]> tmp(new u32[TMPN]);
+    const std::unique_ptr<u64[]> wc(new u64[4 * SW + 64]);  // 取り出す素数がある語の番号と、その語より前の個数
     u8* seg = reinterpret_cast<u8*>(seg64.data());
     for (u64 low = 0; low <= N; low += SEGN) {
         const u64 high = std::min<u64>(low + SEGN, (u64)N + 1);
         const u32 nbytes = (u32)((high - low + 29) / 30), nw = (nbytes + 7) / 8;
         // 小区画は、次の小区画の型を先に書いてから消す。最後の小区画の後ろは余白を全部 1 にする
         constexpr u32 SB = 8 * SWS;
-        if (!(EPD_SKIP & 1)) pre.fill(seg, std::min(SB, nbytes), low / 30);
+        pre.fill(seg, std::min(SB, nbytes), low / 30);
         for (u32 o = 0; o < nbytes; o += SB) {
-            if (o + SB < nbytes) {
-                if (!(EPD_SKIP & 1)) pre.fill(seg + o + SB, std::min(SB, nbytes - o - SB), low / 30 + o + SB);
-            } else std::memset(seg + nbytes, 0xff, SL);
-            if (!(EPD_SKIP & 2)) cross_all(seg + o, std::min(SB, nbytes - o), st.data(), bs);
+            if (o + SB < nbytes) pre.fill(seg + o + SB, std::min(SB, nbytes - o - SB), low / 30 + o + SB);
+            else std::memset(seg + nbytes, 0xff, SL);
+            cross210_all(seg + o, std::min(SB, nbytes - o), st.data(), bs);
         }
         for (u32 i = 0; i < SL / 8; ++i) seg64[i] &= carry[i];  // 前の区画からのはみ出し
-        if (!(EPD_SKIP & 4)) cross_all(seg, nbytes, st.data(), bl);
+        cross_all(seg, nbytes, st.data(), bl);
         std::memcpy(carry.data(), seg + nbytes, SL);
         if (low == 0) {
             seg[0] &= (u8)~1u;  // 1 は素数でない
-            for (u32 p = 7; p <= PMAX && p <= N; p += 2) {  // 型で消した素数を戻す
+            for (u32 p = 7; p <= std::max(PMAX, 210u) && p <= N; p += 2) {  // 型と 210 の車輪の m = 1 で消した素数を戻す
                 bool pr = p % 3 && p % 5;
                 for (u32 d = 7; d * d <= p; d += 2) pr &= p % d != 0;
                 if (pr) seg[p / 30] |= (u8)(1u << BI[p % 30]);
@@ -283,42 +337,35 @@ inline std::pair<u32, std::vector<u32>> run(u32 N, u32 A, u32 B) {
                 if (30 * k + WR[i] <= last % 240) mlast |= u64(1) << (8 * k + i);
         seg64[last / 240] &= mlast;
         // 数えて、A 個おきに取り出す
-        if (EPD_SKIP & 16) continue;
-        if (EPD_SKIP & 8) {
-            for (u32 w = 0; w < nw; ++w) cnt += (u32)std::popcount(seg64[w]);
-            continue;
-        }
-        if (A >= ASEL)
+        if (A >= 16) {
+            // 1 段目: 取り出す素数がある語の番号と、その語より前の個数を wc に書く (取り出す素数が無い語でも書いて、n を
+            // 進めない)。tn は次に取り出す、区画の中の番号
+            u32 c = 0, tn = (u32)(next - cnt), n = 0;
+            const u32 t0 = tn;
+            u64* const W = wc.get();
+            for (u32 w = 0; w < nw; ++w) {
+                const u32 c1 = c + (u32)std::popcount(seg64[w]);
+                const u64 e = (u64)c << 32 | w;
+                W[n] = e;
+                const u32 hit = (u32)(tn < c1);
+                n += hit, tn += A & (0u - hit);
+                while (tn < c1) W[n++] = e, tn += A;  // 同じ語の 2 個目から (A < 64 のときだけ起こりうる)
+                c = c1;
+            }
+            select_words(W, n, t0, A, (u32)low, seg64.data(), sel);
+            cnt += c, next = cnt - c + tn;
+        } else {
+            u64 cn = cnt, nx = next;
             for (u32 w = 0; w < nw; ++w) {
                 const u64 x = seg64[w];
                 const u32 pc = (u32)std::popcount(x);
-                while (next < cnt + pc) {
-                    sel.push_back((u32)(low + 240 * (u64)w + BITVAL[kth_bit(x, (u32)(next - cnt))]));
-                    next += A;
-                }
-                cnt += pc;
+                for (; nx < cn + pc; nx += A) sel.push_back((u32)low + 240 * w + BITVAL[kth_bit(x, (u32)(nx - cn))]);
+                cn += pc;
             }
-        else {
-            u32 n = 0;  // tmp に溜めた数。tmp[n] は語ごとに書くので、残りの語の数だけ空けておく
-            for (u32 w = 0; w < nw; ++w) {
-                const u64 x = seg64[w];
-                const u32 pc = (u32)std::popcount(x);
-                const u32 base = (u32)(low + 240 * (u64)w);
-                const u64 k = next - cnt;
-                tmp[n] = base + BITVAL[kth_bit(x, (u32)k & 63)];
-                const bool hit = k < pc;
-                n += hit, next += hit ? A : 0;
-                while (next < cnt + pc) {  // 同じ語の 2 個目から
-                    if (n + 1 + (nw - w) > TMPN) sel.insert(sel.end(), tmp.get(), tmp.get() + n), n = 0;
-                    tmp[n++] = base + BITVAL[kth_bit(x, (u32)(next - cnt))];
-                    next += A;
-                }
-                cnt += pc;
-            }
-            sel.insert(sel.end(), tmp.get(), tmp.get() + n);
+            cnt = cn, next = nx;
         }
     }
     return {(u32)cnt, sel};
 }
 
-}  // namespace epd8
+}  // namespace ep11
