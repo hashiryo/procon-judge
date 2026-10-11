@@ -1,0 +1,20 @@
+id = "atcoder-abc223-h"
+title = "Ex - Xor Query"
+url = "https://atcoder.jp/contests/abc223/tasks/abc223_h"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# AtCoder はテストケースを公開していないので、自作する (gen.py と、参照実装の submissions/reference.hpp)。
+[testdata]
+source = "local"
+count = 16
+generator = "gen.py"
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
