@@ -46,7 +46,7 @@ struct Mem {
   return p;
  }
 };
-template <bool AOS= false> struct Solver {
+template <bool AOS= false, bool PF= false, bool D8= false> struct Solver {
  struct R {
   u32 s, e, n0, n1;
  };
@@ -75,12 +75,20 @@ template <bool AOS= false> struct Solver {
    if constexpr(AOS) return dg[2 * v + 1];
    else return xr[v];
   };
-  u32 *q= mem.take(N + 1), *off= mem.take(N + 2), *adj= mem.take(2 * m + 2), *ord= mem.take(N + 1), *st= mem.take(N + 1);
+  u32 *q= mem.take(N + 1), *off= mem.take(N + 10), *adj= mem.take(2 * m + 2), *ord= mem.take(N + 1), *st= mem.take(N + 1);
   bv= mem.take(N + m + 2), bo= mem.take(N + m + 2);
   u32* fs= mem.take(5 * size_t(N));
   if constexpr(AOS) memset(dg, 0, 2 * size_t(N) * sizeof(u32));
   else memset(dg, 0, N * sizeof(u32)), memset(xr, 0, N * sizeof(u32));
-  for(auto& e: es) ++D(e[0]), ++D(e[1]), X(e[0])^= e[1], X(e[1])^= e[0];
+  for(size_t i= 0; i < m; ++i) {
+   if constexpr(PF) {
+    const auto& f= es[std::min(i + 16, m - 1)];
+    __builtin_prefetch(&D(f[0])), __builtin_prefetch(&D(f[1]));
+    if constexpr(!AOS) __builtin_prefetch(&X(f[0])), __builtin_prefetch(&X(f[1]));
+   }
+   const auto& e= es[i];
+   ++D(e[0]), ++D(e[1]), X(e[0])^= e[1], X(e[1])^= e[0];
+  }
   // 辺を持たない頂点は 1 頂点の成分。成分を置くかどうかも分岐にせず、毎回書いて、置くときだけ末尾を進める。
   u32 nv= 0, qt= 0;
   bo[0]= 0;
@@ -107,10 +115,30 @@ template <bool AOS= false> struct Solver {
    const u32 d= D(v), c= -u32(d >= 2);
    id[v]= n2 | ~c, orig[n2]= v, s+= d, off[n2]= s, n2-= c;
   }
-  off[n2]= 2 * m;
-  for(auto& e: es) {
-   const u32 ia= id[e[0]], ib= id[e[1]], sk= -u32((ia == NIL) | (ib == NIL)), a= (ia & ~sk) | (n2 & sk), b= (ib & ~sk) | (n2 & sk);
-   adj[--off[a]]= b, adj[--off[b]]= a;
+  if constexpr(D8) {
+   // 捨てる辺の行き先は番兵の頂点 n2 + 1 から n2 + 8 で、辺の番号で順に回す。番兵の off は減らさず (書く位置は 2-core の辺の
+   // 終わりの 1 つ後ろ)、同じ番地の読み書きが辺ごとに直列につながらないようにする。
+   for(u32 j= 0; j <= 8; ++j) off[n2 + j]= s;
+   for(size_t i= 0; i < m; ++i) {
+    if constexpr(PF) {
+     const auto& f= es[std::min(i + 16, m - 1)];
+     __builtin_prefetch(id + f[0]), __builtin_prefetch(id + f[1]);
+     const auto& g= es[std::min(i + 8, m - 1)];
+     __builtin_prefetch(off + std::min(id[g[0]], n2)), __builtin_prefetch(off + std::min(id[g[1]], n2));
+    }
+    const u32 ia= id[es[i][0]], ib= id[es[i][1]], sk= -u32((ia == NIL) | (ib == NIL)), dm= n2 + 1 + (u32(i) & 7);
+    const u32 a= (ia & ~sk) | (dm & sk), b= (ib & ~sk) | (dm & sk), l= 1 + sk;
+    const u32 pa= off[a] - l;
+    adj[pa]= b, off[a]= pa;
+    const u32 pb= off[b] - l;
+    adj[pb]= a, off[b]= pb;
+   }
+  } else {
+   off[n2]= 2 * m;
+   for(auto& e: es) {
+    const u32 ia= id[e[0]], ib= id[e[1]], sk= -u32((ia == NIL) | (ib == NIL)), a= (ia & ~sk) | (n2 & sk), b= (ib & ~sk) | (n2 & sk);
+    adj[--off[a]]= b, adj[--off[b]]= a;
+   }
   }
   nv0= nv;
   memset(ord, 0, n2 * sizeof(u32));
