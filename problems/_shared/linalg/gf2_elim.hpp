@@ -22,6 +22,26 @@ using u32= unsigned;
 using u64= unsigned long long;
 constexpr int K= 16;
 
+// x[w..W) ^= y[w..W)、x[w..W) ^= y ^ z、x[w..W) = y ^ z、x[w..W) = y。W は 4 の倍数で、w は 4 の倍数とは限らない (端数は 1 語ずつ)。
+// GCC が restrict の付いたループでもベクトル化しないことがあったので、AVX2 で書く。
+inline void xor_in(u64* x, const u64* y, int w, int W) {
+ for(; w & 3; ++w) x[w]^= y[w];
+ for(; w < W; w+= 4) _mm256_storeu_si256((__m256i*)(x + w), _mm256_xor_si256(_mm256_loadu_si256((const __m256i*)(x + w)), _mm256_loadu_si256((const __m256i*)(y + w))));
+}
+inline void xor2_in(u64* x, const u64* y, const u64* z, int w, int W) {
+ for(; w & 3; ++w) x[w]^= y[w] ^ z[w];
+ for(; w < W; w+= 4)
+  _mm256_storeu_si256((__m256i*)(x + w), _mm256_xor_si256(_mm256_loadu_si256((const __m256i*)(x + w)), _mm256_xor_si256(_mm256_loadu_si256((const __m256i*)(y + w)), _mm256_loadu_si256((const __m256i*)(z + w)))));
+}
+inline void xor_to(u64* x, const u64* y, const u64* z, int w, int W) {
+ for(; w & 3; ++w) x[w]= y[w] ^ z[w];
+ for(; w < W; w+= 4) _mm256_storeu_si256((__m256i*)(x + w), _mm256_xor_si256(_mm256_loadu_si256((const __m256i*)(y + w)), _mm256_loadu_si256((const __m256i*)(z + w))));
+}
+inline void copy_to(u64* x, const u64* y, int w, int W) {
+ for(; w & 3; ++w) x[w]= y[w];
+ for(; w < W; w+= 4) _mm256_storeu_si256((__m256i*)(x + w), _mm256_loadu_si256((const __m256i*)(y + w)));
+}
+
 // '0' と '1' の文字列 s (長さ m) を、語 dst に bit で詰める (j 文字目が語 j / 64 の bit j % 64)。
 inline void pack_row(const char* s, int m, u64* dst) {
  int j= 0;
@@ -99,11 +119,8 @@ struct Elim {
     const int p= rem[pi];
     u64* up= &U[prow.size() * W];
     const u64* ap= row(p);
-    for(int w= wi; w < W; ++w) up[w]= ap[w];
-    for(u32 m= f[p]; m; m&= m - 1) {
-     const u64* __restrict us= Ub[__builtin_ctz(m)];
-     for(int w= wi; w < W; ++w) up[w]^= us[w];
-    }
+    copy_to(up, ap, wi, W);
+    for(u32 m= f[p]; m; m&= m - 1) xor_in(up, Ub[__builtin_ctz(m)], wi, W);
     for(int i= pi + 1; i < nr; ++i) {  // pi より前の行は、この列の bit が 0 だった
      const int r= rem[i];
      f[r]|= u32((cw[i] >> b ^ __builtin_parity(f[r] & P)) & 1) << bt;
@@ -129,29 +146,21 @@ struct Elim {
   for(int t1= r; t1 > 0; t1-= K) {
    const int t0= std::max(0, t1 - K), bt= t1 - t0, w0= pcol[t0] >> 6;
    for(int t= t1 - 2; t >= t0; --t) {
-    u64* __restrict x= &U[(size_t)t * W];
+    u64* x= &U[(size_t)t * W];
     for(int s= t + 1; s < t1; ++s)
-     if(bit(x, pcol[s])) {
-      const u64* __restrict y= urow(s);
-      for(int w= pcol[s] >> 6; w < W; ++w) x[w]^= y[w];
-     }
+     if(bit(x, pcol[s])) xor_in(x, urow(s), pcol[s] >> 6, W);
    }
    const u64* Ub[K];
    for(int s= 0; s < bt; ++s) Ub[s]= urow(t0 + s);
    auto build= [&](std::vector<u64>& T, int s0, int cnt) {
     std::fill(&T[w0], &T[W], 0);
-    for(int m= 1; m < (1 << cnt); ++m) {
-     u64* __restrict t= &T[(size_t)m * W];
-     const u64* __restrict prev= &T[(size_t)(m & (m - 1)) * W];
-     const u64* __restrict us= Ub[s0 + __builtin_ctz(m)];
-     for(int w= w0; w < W; ++w) t[w]= prev[w] ^ us[w];
-    }
+    for(int m= 1; m < (1 << cnt); ++m) xor_to(&T[(size_t)m * W], &T[(size_t)(m & (m - 1)) * W], Ub[s0 + __builtin_ctz(m)], w0, W);
    };
    build(T1, 0, std::min(bt, 8));
    if(bt > 8) build(T2, 8, bt - 8);
    const bool consecutive= pcol[t1 - 1] - pcol[t0] == bt - 1;
    for(int t= 0; t < t0; ++t) {
-    u64* __restrict x= &U[(size_t)t * W];
+    u64* x= &U[(size_t)t * W];
     u32 m= 0;
     if(consecutive) {  // 組の要の列が続いているなら、2 語から 16 bit をまとめて取る
      const int j= pcol[t0], wj= j >> 6, b= j & 63;
@@ -161,12 +170,8 @@ struct Elim {
     } else
      for(int s= 0; s < bt; ++s) m|= u32(bit(x, pcol[t0 + s])) << s;
     if(!m) continue;
-    const u64* __restrict a1= &T1[(size_t)(m & 255) * W];
-    if(m >> 8) {
-     const u64* __restrict a2= &T2[(size_t)(m >> 8) * W];
-     for(int w= w0; w < W; ++w) x[w]^= a1[w] ^ a2[w];
-    } else
-     for(int w= w0; w < W; ++w) x[w]^= a1[w];
+    if(m >> 8) xor2_in(x, &T1[(size_t)(m & 255) * W], &T2[(size_t)(m >> 8) * W], w0, W);
+    else xor_in(x, &T1[(size_t)(m & 255) * W], w0, W);
    }
   }
  }
@@ -174,12 +179,7 @@ struct Elim {
  void flush(const u64* const* Ub, int bt, int wb, std::vector<u32>& f, std::vector<u64>& T1, std::vector<u64>& T2) {
   auto build= [&](std::vector<u64>& T, int s0, int cnt) {
    std::fill(&T[wb], &T[W], 0);
-   for(int m= 1; m < (1 << cnt); ++m) {
-    u64* __restrict t= &T[(size_t)m * W];
-    const u64* __restrict prev= &T[(size_t)(m & (m - 1)) * W];
-    const u64* __restrict us= Ub[s0 + __builtin_ctz(m)];
-    for(int w= wb; w < W; ++w) t[w]= prev[w] ^ us[w];
-   }
+   for(int m= 1; m < (1 << cnt); ++m) xor_to(&T[(size_t)m * W], &T[(size_t)(m & (m - 1)) * W], Ub[s0 + __builtin_ctz(m)], wb, W);
   };
   build(T1, 0, std::min(bt, 8));
   if(bt > 8) build(T2, 8, bt - 8);
@@ -187,13 +187,8 @@ struct Elim {
    const u32 m= f[r];
    if(!m) continue;
    f[r]= 0;
-   u64* __restrict x= row(r);
-   const u64* __restrict t1= &T1[(size_t)(m & 255) * W];
-   if(m >> 8) {
-    const u64* __restrict t2= &T2[(size_t)(m >> 8) * W];
-    for(int w= wb; w < W; ++w) x[w]^= t1[w] ^ t2[w];
-   } else
-    for(int w= wb; w < W; ++w) x[w]^= t1[w];
+   if(m >> 8) xor2_in(row(r), &T1[(size_t)(m & 255) * W], &T2[(size_t)(m >> 8) * W], wb, W);
+   else xor_in(row(r), &T1[(size_t)(m & 255) * W], wb, W);
   }
  }
 };
