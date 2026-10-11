@@ -4,7 +4,9 @@
 // FIX & 2: φ(t, 6) の表を 7、11、13 の型から作る (作業用の配列と 30030 の篩を省く)。FIX & 4: P2 を AVX2 で回す (素数を 256 個
 // ずつ書き出し、大きい列を取らない)。FIX & 8: AVX2 のとき、素数での割り算もすべて 1 / p の double で行い、magic を作らない。
 // FIX & 16: 大きい配列は、0 で埋める前にページを MADV_POPULATE_WRITE でまとめて用意させる (CI の VM では page fault が
-// 1 回 2 µs ほどかかる)。
+// 1 回 2 µs ほどかかる)。FIX & 32: 合成数の列を、印のビット列から作る (lpf の表を 0 で埋めず、y 個を走らない)。
+// FIX & 64: hard leaves の合成数の葉を並べるとき、lpf で絞った列を 4 回に 1 回だけ詰める。FIX & 128: hard leaves の
+// 語ごとの累積を 4 語ずつ作る。FIX & 256: easy leaves の表引きを 5 回でなく 2 回の呼び出しにまとめる。
 #if defined(__AVX2__) || defined(__BMI2__)
 #include <immintrin.h>
 #endif
@@ -386,6 +388,29 @@ template <int FIX= 0> inline u64 prime_pi(u64 x) {
  std::vector<u32> cm, clp;
  std::vector<int8_t> cmu;
  {
+  if constexpr((FIX & 32) != 0) {
+   // 合成数の印をビット列に付け、lpf と μ は印のある所だけ書く (表を 0 で埋めず、y 個を走らずに済む)。1 段目は
+   // p_i p_{i+1} ≤ y の素数だけをたどる。
+   std::unique_ptr<uint16_t[]> tag(new uint16_t[y + 1]);
+   std::vector<u64> mark((y >> 6) + 1, 0);
+   size_t cnt= 0;
+   auto dfs= [&](auto& self, u64 m, size_t i, u32 lp, int mu) -> void {
+    for(; i <= a; ++i) {
+     const u64 mm= m * primes[i];
+     if(mm > y) break;
+     tag[mm]= (uint16_t)(lp | (mu > 0 ? 0x8000 : 0)), mark[mm >> 6]|= u64(1) << (mm & 63), ++cnt;  // mu は m の μ で、μ(mm) = -mu
+     self(self, mm, i + 1, lp, -mu);
+    }
+   };
+   for(size_t i= c + 1; i < a && (u64)primes[i] * primes[i + 1] <= y; ++i) dfs(dfs, primes[i], i + 1, primes[i], -1);
+   sized<POP>(cm, cnt), sized<POP>(clp, cnt), sized<POP>(cmu, cnt);
+   size_t k= 0;
+   for(size_t w= 0; w < mark.size(); ++w)
+    for(u64 bits= mark[w]; bits; bits&= bits - 1) {
+     const u32 m= (u32)(64 * w + (u32)std::countr_zero(bits));
+     cm[k]= m, clp[k]= tag[m] & 0x7fff, cmu[k]= (tag[m] & 0x8000) ? -1 : 1, ++k;
+    }
+  } else {
   std::vector<uint16_t> tag;  // lpf | (μ > 0 ? 0x8000 : 0)。合成数の lpf は √y 以下
   sized<POP>(tag, y + 1);
   size_t cnt= 0;
@@ -403,6 +428,7 @@ template <int FIX= 0> inline u64 prime_pi(u64 x) {
   for(u64 m= 1; m <= y; ++m) cm[k]= (u32)m, k+= tag[m] != 0;
   cm.resize(cnt), clp.resize(cnt), cmu.resize(cnt);
   for(size_t i= 0; i < cnt; ++i) clp[i]= tag[cm[i]] & 0x7fff, cmu[i]= (tag[cm[i]] & 0x8000) ? -1 : 1;
+  }
  }
 #if DR9_CUT == 12
  return cm.size() + cm[cm.size() / 2] + (u64)clp[cm.size() / 3] + (u64)cmu[cm.size() / 4];
@@ -468,18 +494,25 @@ template <int FIX= 0> inline u64 prime_pi(u64 x) {
    if(bl <= bt) ++d[bl], --d[bt + 1];
   }
   for(u64 b= c + 1, run= 0; b <= bmax; ++b) hcb[b + 1]= hcb[b] + (u32)(b <= bsq ? run+= d[b] : 0);
-  sized<POP>(ht, hcb[bmax + 1]);
+  sized<POP>(ht, hcb[bmax + 1] + 1);  // 飛ばしながら写すとき、最後に 1 つ先まで書く
   std::vector<u32> alive;
   sized<POP>(alive, cm.size());
   for(size_t i= 0; i < cm.size(); ++i) alive[i]= (u32)i;
   for(u64 b= c + 1; b <= bsq; ++b) {
-   size_t k= 0;
-   for(size_t j= 0; j < alive.size(); ++j) alive[k]= alive[j], k+= clp[alive[j]] > primes[b];
-   alive.resize(k);
+   const u32 p= primes[b];
+   if(!((FIX & 64) != 0) || (b - c) % 4 == 1) {  // 64 のときは 4 回に 1 回だけ詰め、残りは写すときに lpf を見て飛ばす
+    size_t k= 0;
+    for(size_t j= 0; j < alive.size(); ++j) alive[k]= alive[j], k+= clp[alive[j]] > p;
+    alive.resize(k);
+   }
    auto gt= [&](u32 v, u32 i) { return v < cm[i]; };
    const auto i1= std::upper_bound(alive.begin(), alive.end(), (u32)lo[b], gt), i2= std::upper_bound(i1, alive.end(), (u32)hi[b], gt);
    u32* out= ht.data() + hcb[b];
-   for(auto it= i2; it != i1;) --it, *out++= (u32)(i64)((double)N[b] * cinv[*it]) | (cmu[*it] > 0 ? 1u << 31 : 0);
+   if constexpr((FIX & 64) != 0) {
+    for(auto it= i2; it != i1;) --it, *out= (u32)(i64)((double)N[b] * cinv[*it]) | (cmu[*it] > 0 ? 1u << 31 : 0), out+= clp[*it] > p;
+   } else {
+    for(auto it= i2; it != i1;) --it, *out++= (u32)(i64)((double)N[b] * cinv[*it]) | (cmu[*it] > 0 ? 1u << 31 : 0);
+   }
   }
  }
 #if DR9_CUT == 14
@@ -563,8 +596,13 @@ template <int FIX= 0> inline u64 prime_pi(u64 x) {
      pcur[b]= pj, s2h+= wl;  // 診断用: 累積と葉を抜く
 #else
 #if DR9_SEG != 2
-     u32 run= 0;
-     for(u32 w= 0; w <= wl; ++w) pre[w]= run, run+= (u32)std::popcount(seg64[w]);
+     u32 run= 0, w= 0;
+     if constexpr((FIX & 128) != 0)  // 4 語ずつ。足し算の鎖を 4 語に 1 回にする
+      for(; w + 3 <= wl; w+= 4) {
+       const u32 c0= (u32)std::popcount(seg64[w]), c1= (u32)std::popcount(seg64[w + 1]), c2= (u32)std::popcount(seg64[w + 2]), c3= (u32)std::popcount(seg64[w + 3]);
+       pre[w]= run, pre[w + 1]= run + c0, pre[w + 2]= run + c0 + c1, pre[w + 3]= run + c0 + c1 + c2, run+= c0 + c1 + c2 + c3;
+      }
+     for(; w <= wl; ++w) pre[w]= run, run+= (u32)std::popcount(seg64[w]);
 #endif
      i64 sum= 0;
      for(u32 i= pih; i > pj; --i) {
@@ -641,10 +679,18 @@ template <int FIX= 0> inline u64 prime_pi(u64 x) {
    const u64 pal= pt(al), nb= Nb / he, na= Nb / al;
    sum+= (i64)(ihe * pt(nb)) - (i64)(pal * pt(na)) + (i64)(ihe - pal) * (2 - (i64)b), rlo= pt(nb), rhi= pt(na);
   }
-  const u64 o1= std::clamp(rlo, ilo, imid), o2= std::clamp(rhi, o1, imid);
-  sum+= acc(ilo, o1) + 2 * acc(o1, o2) + acc(o2, imid);
-  if(rlo < ilo) sum+= acc(rlo, std::min(rhi, ilo));
-  if(rhi > imid) sum+= acc(std::max(rlo, imid), rhi);
+  if constexpr((FIX & 256) != 0) {
+   // sparse の (ilo, imid] と反転の (rlo, rhi] の和を、つながっていれば合わせた範囲と重なりの 2 回で引く
+   const u64 il= std::max(ilo, rlo), ir= std::min(imid, rhi);
+   if(rlo == rhi) sum+= acc(ilo, imid);
+   else if(il <= ir) sum+= acc(std::min(ilo, rlo), std::max(imid, rhi)) + acc(il, ir);
+   else sum+= acc(ilo, imid) + acc(rlo, rhi);
+  } else {
+   const u64 o1= std::clamp(rlo, ilo, imid), o2= std::clamp(rhi, o1, imid);
+   sum+= acc(ilo, o1) + 2 * acc(o1, o2) + acc(o2, imid);
+   if(rlo < ilo) sum+= acc(rlo, std::min(rhi, ilo));
+   if(rhi > imid) sum+= acc(std::max(rlo, imid), rhi);
+  }
   s2e+= sum;
  }
  // ordinary leaves: m = 1、p_c < q ≤ y の素数、合成数
