@@ -1,0 +1,16 @@
+id = "yosupo-pow-of-matrix"
+title = "Pow of Matrix"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "linear_algebra/pow_of_matrix"
+
+[compare]
+kind = "checker"
