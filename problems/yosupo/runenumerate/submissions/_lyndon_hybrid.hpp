@@ -1,6 +1,6 @@
 #pragma once
-// lyndon_ll と lyndon_ll_w8 が共有する中身。2 つの Lyndon 配列を接尾辞配列から連結リストで求める関数と、文字を直接比べる予算を
-// 使い切ったあとに LCE と LCS を LCP 配列と NeoLibrary の RangeMin で引く道 (lyndon_fs_hybrid2 と同じ)。
+// _lyndon_lean.hpp が使う中身 (もとは、消した lyndon_ll と lyndon_ll_w8 が共有していた)。2 つの Lyndon 配列を接尾辞配列から
+// 連結リストで求める関数と、文字を直接比べる予算を使い切ったあとに LCE と LCS を LCP 配列と NeoLibrary の RangeMin で引く道。
 // run の列挙の実装を比べた記録は algo-notes の notes/runs.md にある。
 #include <algorithm>
 #include <memory>

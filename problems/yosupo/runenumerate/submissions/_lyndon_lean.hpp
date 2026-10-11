@@ -1,5 +1,6 @@
 #pragma once
-// lyndon_lean と lyndon_lean_hp が共有する中身。lyndon_ll_w8 の計算を 1 つの関数にまとめ、確保する配列を減らした形。
+// lyndon_lean_hp の中身で、lyndon_lean_hp2 と lyndon_fused_hp も作業領域と 8 バイトずつの比べに使う。消した lyndon_ll_w8 の
+// 計算を 1 つの関数にまとめ、確保する配列を減らした形。
 // 連結リストから位置 i を外したあと、i の節の次の位置は、外したときの値 (i より後ろで順位が小さい、または大きい最初の位置) のまま
 // 変わらない (外した節が、残っている節の隣になることはない)。そこで 2 つの Lyndon 配列を別に持たず、節から読む。周期 p が n / 2 を
 // 超える根は run にならないので見ず、周期ごとの最後の run の終わりの配列を n / 2 + 1 個にし、並べるときの数え分けにも使い回す。
@@ -114,7 +115,7 @@ template <bool HP> std::vector<std::array<int, 3>> runs(const std::string &s) {
     found.push_back({p, l, r});
     last[p] = r;
   };
-  // 逆の順で根が文字列の終わりまで届く候補は見ない (_lyndon_runs.hpp の collect と同じ)。
+  // 逆の順で根が文字列の終わりまで届く候補は見ない (原始的でない根になりうる。その run は文字の順の側で見つかる)。
   for (int i = 0; i < n; ++i) {
     check(i, l0[i + 1].nx);
     if (const int j = l1[i + 1].nx; j < n) check(i, j);

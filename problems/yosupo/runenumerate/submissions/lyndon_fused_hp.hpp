@@ -98,7 +98,8 @@ inline vector<array<int, 3>> runs(const string &str) {
       const int a = smaller.next(i + 1), c = larger.next(i + 1);
       smaller.insert(i);
       check(i, a < 0 ? n : a);
-      if (c >= 0) check(i, c);  // 逆の順で根が文字列の終わりまで届く候補は見ない (_lyndon_runs.hpp の collect と同じ)
+      // 逆の順で根が文字列の終わりまで届く候補は見ない (原始的でない根になりうる。その run は文字の順の側で見つかる)。
+      if (c >= 0) check(i, c);
     }
   }
   // (周期, 始まり) の昇順に、12 bit ずつの基数ソートで並べる。周期は n / 2 以下、始まりは n 未満。最後の段は返す配列へ書く。
