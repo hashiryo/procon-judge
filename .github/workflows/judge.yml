@@ -114,6 +114,14 @@ jobs:
       - name: CPU の命令
         run: grep -m1 -E '^(flags|Features)' /proc/cpuinfo || true
 
+      # 透過的な huge page の設定とカーネルの版をログに残す。AtCoder の判定機は madvise
+      # (頼んだ領域だけ 2 MB のページ) なので、ランナーが always だと、大きい配列を
+      # ばらばらに読む提出の速さが AtCoder とずれる。値を見るだけで、設定は変えない。
+      - name: huge page の設定
+        run: |
+          uname -r
+          cat /sys/kernel/mm/transparent_hugepage/enabled /sys/kernel/mm/transparent_hugepage/defrag || true
+
       # arm では x86 の intrinsics を SIMDe で動かすので submodule が要る。
       - uses: actions/checkout@v7
         with:
