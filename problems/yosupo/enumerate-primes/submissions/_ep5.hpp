@@ -1,5 +1,8 @@
 #pragma once
-// 素数の列挙の 2 回目。1 回目 (_ep1.hpp) の型で消す素数を PMAX まで増やした。型は素数を 2 つか 3 つずつまとめ (周期は
+// 素数の列挙の 5 回目。3 回目 (_ep3.hpp) の 30 の車輪の形で、倍数を消す素数を 2 つに分ける。PSPLIT 以下の素数は区画を
+// SWS 語の小区画 (L1 に載る大きさ) に分けて小区画ごとに消し、それより大きい素数は SW 語の区画全体で消す。小さい素数は
+// 倍数が多く、区画が L1 に載らないと読み書きが L2 に出る。大きい素数は小区画ごとに出入りすると手間が重い。
+// 以下は 3 回目と 2 回目の説明。型は 1 回目 (_ep1.hpp) の型で消す素数を PMAX まで増やし、1 本のバイト列から非整列で読む。型は素数を 2 つか 3 つずつまとめ (周期は
 // 積のバイト数)、区画の中で周期が途切れない範囲ごとに 8 バイトずつの AND の輪で回す (コンパイラがベクトル化できる)。
 // 以下は 1 回目の説明。素数の個数 (NeoLibrary 7b624cb の prime_pi) の篩を列挙の形にしたもの。30 の車輪のビット列を
 // 区画 (SW 語) ごとに作る。7、11、13 は 1001 バイト周期の型を写し、17 と 19、23 と 29、31 と 37 は 2 つずつまとめた
@@ -10,7 +13,7 @@
 #include <immintrin.h>
 #endif
 
-namespace ep2 {
+namespace ep5 {
 
 inline constexpr u32 WR[8] = {1, 7, 11, 13, 17, 19, 23, 29};
 inline constexpr std::array<u8, 30> BI = [] {
@@ -91,18 +94,15 @@ inline u32 kth_bit(u64 x, u32 k) {
 #endif
 }
 
-// バイト g の型が g mod (素数の積) で決まる、ps の倍数を除く型。区画の途中から 8 バイト単位で読めるように、1 周の先に
-// 8 バイトの区切りまでの余りを足して持つ。
+// バイト g の型が g mod (素数の積) で決まる、ps の倍数を除く型。1 周の先に 8 バイト足して持ち、途中から非整列で読む。
 struct Pattern {
-    std::vector<u64> w;  // 8 バイトの語として読む
-    u32 period;          // バイト
+    std::vector<u8> b;
+    u32 period;  // バイト
     explicit Pattern(std::initializer_list<u32> ps) {
         period = 1;
         for (u32 p : ps) period *= p;
-        // 語の境目は区画ごとにずれるので、8 通りのずれを全部持つ: w[s * L + k] は byte (8k + s) からの 8 バイト
-        const u32 L = (period + 7) / 8 + 1;
-        std::vector<u8> b(period + 16);
-        for (u32 g = 0; g < period + 16; ++g) {
+        b.resize(period + 8);
+        for (u32 g = 0; g < period + 8; ++g) {
             u8 v = 0;
             for (u32 i = 0; i < 8; ++i) {
                 const u64 n = 30 * (u64)(g % period) + WR[i];
@@ -112,26 +112,25 @@ struct Pattern {
             }
             b[g] = v;
         }
-        w.resize(8 * (size_t)L);
-        for (u32 s0 = 0; s0 < 8; ++s0)
-            for (u32 k = 0; k < L; ++k) std::memcpy(&w[s0 * L + k], b.data() + 8 * k + s0, 8);
     }
     // seg64[0, nw) に、区画の先頭のバイトが g0 mod period の型を AND する
     void apply(u64* seg64, u32 nw, u64 g0) const {
-        const u32 L = (period + 7) / 8 + 1;
-        u32 o = (u32)(g0 % period);  // 今のバイトの位置 (周期の中)
+        u32 o = (u32)(g0 % period);
         for (u32 k = 0; k < nw;) {
-            // 周期の中の位置 o から、8 バイトの語を ((period - o) / 8) 個は途切れずに読める
-            const u32 s0 = o % 8, run = std::min<u32>(nw - k, std::max<u32>(1, (period - o) / 8));
-            const u64* src = &w[s0 * L + o / 8];
-            for (u32 j = 0; j < run; ++j) seg64[k + j] &= src[j];
+            const u32 run = std::min<u32>(nw - k, std::max<u32>(1, (period - o) / 8));
+            const u8* src = b.data() + o;
+            for (u32 j = 0; j < run; ++j) {
+                u64 m;
+                std::memcpy(&m, src + 8 * j, 8);
+                seg64[k + j] &= m;
+            }
             k += run, o += 8 * run;
             if (o >= period) o -= period;
         }
     }
 };
 
-template <u32 SW = 4096, u32 PMAX = 101>
+template <u32 SW = 16384, u32 SWS = 4096, u32 PSPLIT = 2000, u32 PMAX = 101>
 inline std::pair<u32, std::vector<u32>> run(u32 N, u32 A, u32 B) {
     std::vector<u32> sel;
     u64 cnt = 0, next = B;  // cnt は数えた素数の個数、next は次に出す素数の番号 (0 始まり)
@@ -155,11 +154,9 @@ inline std::pair<u32, std::vector<u32>> run(u32 N, u32 A, u32 B) {
         for (u32 i = 3; i <= sq / 2; ++i)  // 7 以上
             if (!comp[i] && 2 * i + 1 > PMAX) sp.push_back(2 * i + 1);
     }
-    std::vector<SievingPrime> st(sp.size());
-    for (size_t k = 0; k < sp.size(); ++k) {
-        const u32 p = sp[k];
-        st[k] = SievingPrime{(u32)((u64)p * p / 30), p / 30, BI[p % 30], BI[p % 30]};
-    }
+    std::vector<SievingPrime> st;
+    for (const u32 p : sp) st.push_back(SievingPrime{(u32)((u64)p * p / 30), p / 30, BI[p % 30], BI[p % 30]});  // p^2 から消す
+    const size_t nsmall = (size_t)(std::upper_bound(sp.begin(), sp.end(), PSPLIT) - sp.begin());
     // 7、11、13 の型と、2 つずつまとめた型
     std::vector<u8> pat(1001);
     for (u32 k = 0; k < 1001; ++k)
@@ -194,7 +191,12 @@ inline std::pair<u32, std::vector<u32>> run(u32 N, u32 A, u32 B) {
         }
         std::memset(seg + nbytes, 0, 8 * (SW + 1) - nbytes);
         for (const Pattern& P : pq) P.apply(seg64.data(), nw, low / 30);
-        for (SievingPrime& s : st) cross_off(seg, nbytes, s);
+        // PSPLIT 以下の素数は小区画ごと、それより大きい素数は区画全体で消す
+        for (u32 o = 0; o < nbytes; o += 8 * SWS) {
+            const u32 len = std::min<u32>(8 * SWS, nbytes - o);
+            for (size_t k = 0; k < nsmall; ++k) cross_off(seg + o, len, st[k]);
+        }
+        for (size_t k = nsmall; k < st.size(); ++k) cross_off(seg, nbytes, st[k]);
         if (low == 0) {
             seg[0] &= (u8)~1u;  // 1 は素数でない
             for (u32 p = 7; p <= PMAX && p <= N; p += 2) {  // 型で消した素数を戻す
@@ -226,4 +228,4 @@ inline std::pair<u32, std::vector<u32>> run(u32 N, u32 A, u32 B) {
     return {(u32)cnt, sel};
 }
 
-}  // namespace ep2
+}  // namespace ep5
