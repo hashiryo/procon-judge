@@ -49,7 +49,7 @@ struct Mem {
   return p;
  }
 };
-template <int LOG_S= 5, int LANES= 16> struct Solver {
+template <int LOG_S= 5, int LANES= 16, bool D8= false> struct Solver {
  struct R {
   u32 s, e, n0, n1;
  };
@@ -70,7 +70,7 @@ template <int LOG_S= 5, int LANES= 16> struct Solver {
   mem.reserve(9 * Mem::words(N + 2) + 6 * Mem::words(2 * m + N + 2) + Mem::words(9 * size_t(N)));
   u32 *deg= mem.take(N + 1), *xr= mem.take(N + 1), *q= mem.take(N + 1);
   W= mem.take(N + 1), korig= mem.take(N + 1);
-  u32 *koff= mem.take(N + 2), *kadj= mem.take(2 * m + 2), *sj= mem.take(2 * m + 2), *so= mem.take(2 * m + 2), *sf= mem.take(2 * m + 2), *sr= mem.take(2 * m + 2);
+  u32 *koff= mem.take(N + 10), *kadj= mem.take(2 * m + 2), *sj= mem.take(2 * m + 2), *so= mem.take(2 * m + 2), *sf= mem.take(2 * m + 2), *sr= mem.take(2 * m + 2);
   chlab= mem.take(2 * m + N + 2);
   memset(deg, 0, N * sizeof(u32)), memset(xr, 0, N * sizeof(u32));
   for(auto& e: es) {
@@ -96,13 +96,14 @@ template <int LOG_S= 5, int LANES= 16> struct Solver {
    W[v]= ((KER | nk) & mk) | (xr[v] & mc) | (PEELED & ~(mk | mc));
    korig[nk]= v, tot+= d & mk, koff[nk]= tot, nk-= mk, nc-= mc;
   }
-  koff[nk]= tot;  // 番兵の頂点 nk の書き込み位置 (減らさない)
-  for(auto& e: es) {
-   const u32 a= e[0], b= e[1], wa= W[a], wb= W[b];
+  koff[nk]= tot;  // 番兵の頂点 nk (D8 なら nk + 1 から nk + 8 を辺の番号で回す) の書き込み位置 (減らさない)
+  for(u32 j= 1; j <= 8; ++j) koff[nk + j]= tot;
+  for(size_t i= 0; i < m; ++i) {
+   const u32 a= es[i][0], b= es[i][1], wa= W[a], wb= W[b], dm= D8 ? nk + 1 + (u32(i) & 7) : nk;
    const u32 live= u32((wa >> 29) != 7) & u32((wb >> 29) != 7) & u32(a != b), ka= u32((wa >> 29) == 5), kb= u32((wb >> 29) == 5);
    const u32 da= ka & live, db= kb & live, mka= -ka, mkb= -kb, mda= -da, mdb= -db;
    const u32 va= ((wb & MASK) & mkb) | ((CHAIN | b) & ~mkb), vb= ((wa & MASK) & mka) | ((CHAIN | a) & ~mka);
-   const u32 ta= ((wa & MASK) & mda) | (nk & ~mda), tb= ((wb & MASK) & mdb) | (nk & ~mdb);
+   const u32 ta= ((wa & MASK) & mda) | (dm & ~mda), tb= ((wb & MASK) & mdb) | (dm & ~mdb);
    const u32 pa= koff[ta] - da;
    kadj[pa]= va, koff[ta]= pa;
    const u32 pb= koff[tb] - db;

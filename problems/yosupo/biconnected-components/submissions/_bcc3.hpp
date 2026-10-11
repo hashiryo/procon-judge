@@ -47,7 +47,7 @@ struct Mem {
   return p;
  }
 };
-template <int LOG_S= 5, int LANES= 16> struct Solver {
+template <int LOG_S= 5, int LANES= 16, bool D8= false> struct Solver {
  struct R {
   u32 s, e, n0, n1;
  };
@@ -67,7 +67,7 @@ template <int LOG_S= 5, int LANES= 16> struct Solver {
   const u32 N= n;
   const size_t m= es.size();
   mem.reserve(15 * Mem::words(N + 2) + 6 * Mem::words(2 * m + N + 2) + 3 * Mem::words(2 * (N + m) + 4) + Mem::words(10 * size_t(N)));
-  u32 *deg= mem.take(N + 1), *xr= mem.take(N + 1), *q= mem.take(N + 1), *W= mem.take(N + 1), *korig= mem.take(N + 1), *koff= mem.take(N + 2);
+  u32 *deg= mem.take(N + 1), *xr= mem.take(N + 1), *q= mem.take(N + 1), *W= mem.take(N + 1), *korig= mem.take(N + 1), *koff= mem.take(N + 10);
   u32 *kadj= mem.take(2 * m + 2), *sj= mem.take(2 * m + 2), *so= mem.take(2 * m + 2), *sf= mem.take(2 * m + 2), *sr= mem.take(2 * m + 2), *cblk= mem.take(2 * m + N + 2);
   bv= mem.take(2 * (N + m) + 4), bo= mem.take(2 * (N + m) + 4), co= mem.take(2 * (N + m) + 4), cv= mem.take(N + 1);
   u32* lg= mem.take(N + 1);  // 訪れた鎖の頂点の記録 (訪れた順)
@@ -101,12 +101,13 @@ template <int LOG_S= 5, int LANES= 16> struct Solver {
    korig[nk]= v, tot+= d & mk, koff[nk]= tot, nk-= mk, nc-= mc;
   }
   koff[nk]= tot;
-  for(auto& e: es) {
-   const u32 a= e[0], b= e[1], wa= W[a], wb= W[b];
+  for(u32 j= 1; j <= 8; ++j) koff[nk + j]= tot;
+  for(size_t i= 0; i < m; ++i) {
+   const u32 a= es[i][0], b= es[i][1], wa= W[a], wb= W[b], dm= D8 ? nk + 1 + (u32(i) & 7) : nk;
    const u32 live= u32((wa >> 29) != 7) & u32((wb >> 29) != 7), ka= u32((wa >> 29) == 5), kb= u32((wb >> 29) == 5);
    const u32 da= ka & live, db= kb & live, mka= -ka, mkb= -kb, mda= -da, mdb= -db;
    const u32 va= ((wb & MASK) & mkb) | ((CHAIN | b) & ~mkb), vb= ((wa & MASK) & mka) | ((CHAIN | a) & ~mka);
-   const u32 ta= ((wa & MASK) & mda) | (nk & ~mda), tb= ((wb & MASK) & mdb) | (nk & ~mdb);
+   const u32 ta= ((wa & MASK) & mda) | (dm & ~mda), tb= ((wb & MASK) & mdb) | (dm & ~mdb);
    const u32 pa= koff[ta] - da;
    kadj[pa]= va, koff[ta]= pa;
    const u32 pb= koff[tb] - db;
@@ -247,15 +248,39 @@ template <int LOG_S= 5, int LANES= 16> struct Solver {
     if(cblk[k] == NIL - 1) cblk[k]= cblk[canon(k)];
   // 訪れた鎖の頂点を、記録から成分ごとに並べる (成分 nb0 から後ろだけ)。橋の鎖の頂点は、番兵の成分 nb に数えて末尾に捨てる。
   // co[b - nb0] が成分 b の鎖の分の始まり。
-  memset(co, 0, (nb - nb0 + 2) * sizeof(u32));
-  for(u32 t= 0; t < nvis; ++t) {
-   const u32 b= cblk[W[lg[t]] & MASK];
-   ++co[b == NIL ? nb - nb0 : b - nb0];
-  }
-  for(u32 b= 1; b <= nb - nb0; ++b) co[b]+= co[b - 1];
-  for(u32 t= nvis; t--;) {
-   const u32 v= lg[t], b= cblk[W[v] & MASK];
-   cv[--co[b == NIL ? nb - nb0 : b - nb0]]= v;
+  const u32 nbc= nb - nb0;
+  if constexpr(D8) {
+   // 記録の番号を 4 で割った余りごとに数え口を分け、1 つの成分に鎖の頂点が集まっても、同じ番地への加算が直列につながらない
+   // ようにする。成分 b の鎖の分は、余り 0 から 3 の分をこの順に並べる。c4[4 b + r] が余り r の分の書き込み位置。
+   // 数え口は、使い終わった sj、so、sf、sr の続いた領域に置く。成分は辺を分け合わず、nb0 から後ろの成分はどれも辺を持つので
+   // nbc <= m で、4 (nbc + 1) 語はこの領域 (2 m + 2 語の 4 本分) に収まる。
+   u32* c4= sj;
+   memset(c4, 0, 4 * size_t(nbc + 1) * sizeof(u32));
+   for(u32 t= 0; t < nvis; ++t) {
+    const u32 b= cblk[W[lg[t]] & MASK];
+    ++c4[4 * (b == NIL ? nbc : b - nb0) + (t & 3)];
+   }
+   u32 acc= 0;
+   for(u32 b= 0; b <= nbc; ++b) {
+    co[b]= acc;
+    for(u32 r= 0; r < 4; ++r) acc+= c4[4 * b + r], c4[4 * b + r]= acc;
+   }
+   co[nbc + 1]= acc;
+   for(u32 t= nvis; t--;) {
+    const u32 v= lg[t], b= cblk[W[v] & MASK];
+    cv[--c4[4 * (b == NIL ? nbc : b - nb0) + (t & 3)]]= v;
+   }
+  } else {
+   memset(co, 0, (nbc + 2) * sizeof(u32));
+   for(u32 t= 0; t < nvis; ++t) {
+    const u32 b= cblk[W[lg[t]] & MASK];
+    ++co[b == NIL ? nbc : b - nb0];
+   }
+   for(u32 b= 1; b <= nbc; ++b) co[b]+= co[b - 1];
+   for(u32 t= nvis; t--;) {
+    const u32 v= lg[t], b= cblk[W[v] & MASK];
+    cv[--co[b == NIL ? nbc : b - nb0]]= v;
+   }
   }
  }
  vector<vector<int>> answer() const {
