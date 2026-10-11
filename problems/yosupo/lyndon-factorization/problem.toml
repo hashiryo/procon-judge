@@ -1,0 +1,19 @@
+id = "yosupo-lyndon-factorization"
+title = "Lyndon Factorization"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 256
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "string/lyndon_factorization"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true
