@@ -1,6 +1,6 @@
 #pragma once
-// Deléglise–Rivat の 10 回目 (核は _dr10.hpp)。いつもスカラーの道を通す (比べる用)。
+// Deléglise–Rivat の 10 回目 (核は _dr10.hpp)。いつも車輪の表を 1 つずつ引くスカラーの道 (0) を通す (比べる用)。
 #include "../common.hpp"
 #include "_dr10.hpp"
 
-inline u64 run(u64 N) { return dr10::prime_pi<-1>(N); }
+inline u64 run(u64 N) { return dr10::prime_pi<0>(N); }

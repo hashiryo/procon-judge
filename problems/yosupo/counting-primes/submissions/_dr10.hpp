@@ -247,6 +247,30 @@ template <bool COUNT> inline u32 cross_off(u8* seg, u32 nbytes, SievingPrime& s)
 }
 #if defined(__AVX2__)
 // Σ_{l < i ≤ r} π(floor(n inv[i]))。4 つずつ AVX2 で回し、端は 1 つずつ。
+// sum_pi4 と同じ和を 30 の車輪の表で求める。商と 240 での商と余りを AVX2 で 4 つずつ求め、表は 1 つずつ引く (gather を
+// 使わない)。
+inline i64 sum_pi4w(const PiTable& pt, const double* inv, u64 l, u64 r, double n) {
+ u64 i= l + 1;
+ i64 s= 0;
+ if(i + 3 <= r) {
+  const __m256d vn= _mm256_set1_pd(n);
+  const __m256i mg= _mm256_set1_epi64x(0x88888889), c240= _mm256_set1_epi64x(240);
+  alignas(32) u64 wb[4], rb[4];
+  for(; i + 3 <= r; i+= 4) {
+   const __m256i t= _mm256_cvtepu32_epi64(_mm256_cvttpd_epi32(_mm256_mul_pd(vn, _mm256_loadu_pd(inv + i))));
+   const __m256i w= _mm256_srli_epi64(_mm256_mul_epu32(t, mg), 39);  // t < 2^32 なら t / 240
+   _mm256_store_si256((__m256i*)wb, w);
+   _mm256_store_si256((__m256i*)rb, _mm256_sub_epi64(t, _mm256_mul_epu32(w, c240)));
+   for(u32 k= 0; k < 4; ++k) {
+    const PiTable::E& e= pt.t[wb[k]];
+    s+= (i64)(e.cnt + (u64)std::popcount(e.bits & MASK[rb[k]]));
+   }
+  }
+  s+= 3 * (i64)(i - l - 1);  // 2、3、5 の分
+ }
+ for(; i <= r; ++i) s+= (i64)pt((u64)(i64)(n * inv[i]));
+ return s;
+}
 inline i64 sum_pi4(const PiOdd& pt, const double* inv, u64 l, u64 r, double n) {
  u64 i= l + 1;
  i64 s= 0;
@@ -371,9 +395,10 @@ inline u64 pi_small(u64 n) {
   }
  return cnt;
 }
-// FAST なら奇数だけの π の表を AVX2 の gather で引き、素数での割り算を double で行う。そうでなければ 30 の車輪の
-// π の表を 1 つずつ引き、割り算は magic で行う。
-template <bool FAST> inline u64 count(u64 x) {
+// MODE が 1 なら奇数だけの π の表を AVX2 の gather で引き、素数での割り算を double で行う。0 と 2 なら 30 の車輪の
+// π の表を 1 つずつ引き、割り算は magic で行う。2 では easy leaves の商と表の位置だけ AVX2 で 4 つずつ求める。
+template <int MODE> inline u64 count(u64 x) {
+ constexpr bool FAST= MODE == 1, VS= MODE == 2;
  constexpr bool POP= true;
  constexpr u32 c= 8;
  const double L= std::log((double)x);
@@ -430,10 +455,11 @@ template <bool FAST> inline u64 count(u64 x) {
  // floor(2^64 / p) + 1 との掛け算の上位 (n p < 2^64 で正確)。
  std::vector<double> pinv;
  std::vector<u64> pd;
- if constexpr(FAST) {
+ if constexpr(FAST || VS) {
   sized<POP>(pinv, primes.size());
   for(size_t i= 1; i < primes.size(); ++i) pinv[i]= inv_up(primes[i]);
- } else {
+ }
+ if constexpr(!FAST) {
   sized<POP>(pd, primes.size());
   for(size_t i= 1; i < primes.size(); ++i) pd[i]= magic(primes[i]);
  }
@@ -622,6 +648,7 @@ template <bool FAST> inline u64 count(u64 x) {
   auto acc= [&](u64 l, u64 r) -> i64 {  // π(Nb / q_i) の (l, r] の和
 #if defined(__AVX2__)
    if constexpr(FAST) return sum_pi4(pt, pinv.data(), l, r, (double)Nb);
+   if constexpr(VS) return sum_pi4w(pt, pinv.data(), l, r, (double)Nb);
 #endif
    i64 v= 0;
    for(u64 i= l + 1; i <= r; ++i) v+= (i64)pt(qp(Nb, i));
@@ -686,12 +713,14 @@ template <bool FAST> inline u64 count(u64 x) {
  p2-= n * (i64)a + n * (n - 1) / 2;
  return (u64)(s1 + s2h + s2e + (i64)a - 1 - p2);
 }
-// GATHER が 0 なら CPU を見て選び、1 なら gather を使う道、-1 ならスカラーの道に決める (比べる用)。
-template <int GATHER= 0> inline u64 prime_pi(u64 x) {
+// MODE が -1 なら CPU を見て 1 か 2 を選ぶ。AVX2 が無ければ 0。
+template <int MODE= -1> inline u64 prime_pi(u64 x) {
  if(x < 100000) return pi_small(x);
 #if defined(__AVX2__)
- if(GATHER > 0 || (GATHER == 0 && gather_ok())) return count<true>(x);
+ if constexpr(MODE < 0) return gather_ok() ? count<1>(x) : count<2>(x);
+ else return count<MODE>(x);
+#else
+ return count<0>(x);
 #endif
- return count<false>(x);
 }
 }

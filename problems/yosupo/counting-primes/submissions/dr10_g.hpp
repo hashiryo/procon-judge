@@ -1,5 +1,5 @@
 #pragma once
-// Deléglise–Rivat の 10 回目 (核は _dr10.hpp)。いつも gather の道を通す (比べる用)。
+// Deléglise–Rivat の 10 回目 (核は _dr10.hpp)。いつも gather の道 (1) を通す (比べる用)。
 #include "../common.hpp"
 #include "_dr10.hpp"
 
