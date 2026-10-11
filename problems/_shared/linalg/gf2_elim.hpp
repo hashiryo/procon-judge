@@ -8,6 +8,8 @@
 // 残りの各行に表の行を 1 本ずつ XOR する。行列の読み書きは、要 16 本につき 1 回になる。
 // 要を探す列の語は、残りの行の分を 64 列ごとに 1 本の配列に集めてから読む (行の間隔ごとに飛ぶ読み出しを 64 分の 1 にする)。
 #include <algorithm>
+#include <array>
+#include <cstring>
 #include <string>
 #include <vector>
 #ifdef USE_SIMDE
@@ -30,6 +32,27 @@ inline void pack_row(const char* s, int m, u64* dst) {
  }
  for(; j < m; ++j)
   if(s[j] & 1) dst[j >> 6]|= u64(1) << (j & 63);
+}
+
+// 語 src の bit [b0, b0 + m) を、'0' と '1' の文字 m 個にして dst に書く。
+inline void unpack_bits(const u64* src, int b0, int m, char* dst) {
+ static const auto tbl= [] {  // 8 bit から 8 文字
+  std::array<u64, 256> t{};
+  for(int x= 0; x < 256; ++x)
+   for(int i= 0; i < 8; ++i) t[x]|= u64('0' + (x >> i & 1)) << (8 * i);
+  return t;
+ }();
+ int j= 0;
+ if(!(b0 & 7))
+  for(; j + 8 <= m; j+= 8) {
+   const int p= b0 + j;
+   const u64 v= tbl[src[p >> 6] >> (p & 63) & 255];
+   std::memcpy(dst + j, &v, 8);
+  }
+ for(; j < m; ++j) {
+  const int p= b0 + j;
+  dst[j]= char('0' + (src[p >> 6] >> (p & 63) & 1));
+ }
 }
 
 // n 行、語の数 W (4 の倍数) の行列の前進消去。要は列の順に探し、その列で bit が立っている最初の行を選ぶ。
@@ -94,6 +117,58 @@ struct Elim {
    cwi= -1;
   }
   return true;
+ }
+ static bool bit(const u64* x, int j) { return x[j >> 6] >> (j & 63) & 1; }
+ // 前進消去のあと、要の行を RREF に直す (U の行 t が、要の列 pcol[t] で 1、ほかの要の列で 0 になる)。要の行を下から 16 本ずつ
+ // 組にし、組の中を下から消してから、組の要の行の 2 枚の表で、それより上の要の行の組の要の列を消す。
+ void back() {
+  const int r= prow.size();
+  if(!r) return;
+  const int k1= std::min(r, 8), k2= std::min(std::max(r - 8, 0), 8);
+  std::vector<u64> T1((size_t)W << k1), T2(k2 ? (size_t)W << k2 : 0);
+  for(int t1= r; t1 > 0; t1-= K) {
+   const int t0= std::max(0, t1 - K), bt= t1 - t0, w0= pcol[t0] >> 6;
+   for(int t= t1 - 2; t >= t0; --t) {
+    u64* __restrict x= &U[(size_t)t * W];
+    for(int s= t + 1; s < t1; ++s)
+     if(bit(x, pcol[s])) {
+      const u64* __restrict y= urow(s);
+      for(int w= pcol[s] >> 6; w < W; ++w) x[w]^= y[w];
+     }
+   }
+   const u64* Ub[K];
+   for(int s= 0; s < bt; ++s) Ub[s]= urow(t0 + s);
+   auto build= [&](std::vector<u64>& T, int s0, int cnt) {
+    std::fill(&T[w0], &T[W], 0);
+    for(int m= 1; m < (1 << cnt); ++m) {
+     u64* __restrict t= &T[(size_t)m * W];
+     const u64* __restrict prev= &T[(size_t)(m & (m - 1)) * W];
+     const u64* __restrict us= Ub[s0 + __builtin_ctz(m)];
+     for(int w= w0; w < W; ++w) t[w]= prev[w] ^ us[w];
+    }
+   };
+   build(T1, 0, std::min(bt, 8));
+   if(bt > 8) build(T2, 8, bt - 8);
+   const bool consecutive= pcol[t1 - 1] - pcol[t0] == bt - 1;
+   for(int t= 0; t < t0; ++t) {
+    u64* __restrict x= &U[(size_t)t * W];
+    u32 m= 0;
+    if(consecutive) {  // 組の要の列が続いているなら、2 語から 16 bit をまとめて取る
+     const int j= pcol[t0], wj= j >> 6, b= j & 63;
+     u64 v= x[wj] >> b;
+     if(b && wj + 1 < W) v|= x[wj + 1] << (64 - b);
+     m= u32(v) & ((1u << bt) - 1);
+    } else
+     for(int s= 0; s < bt; ++s) m|= u32(bit(x, pcol[t0 + s])) << s;
+    if(!m) continue;
+    const u64* __restrict a1= &T1[(size_t)(m & 255) * W];
+    if(m >> 8) {
+     const u64* __restrict a2= &T2[(size_t)(m >> 8) * W];
+     for(int w= w0; w < W; ++w) x[w]^= a1[w] ^ a2[w];
+    } else
+     for(int w= w0; w < W; ++w) x[w]^= a1[w];
+   }
+  }
  }
  // 貯めた bt 本の要の更新を、残りの行の語 [wb, W) に足す。
  void flush(const u64* const* Ub, int bt, int wb, std::vector<u32>& f, std::vector<u64>& T1, std::vector<u64>& T2) {
