@@ -21,6 +21,15 @@ struct PrefixBasis {
    x^= b[i];
   }
  }
+ // contains と同じ判定を、分岐なしで書く。位置が l より前の欄は 0 とみなし、上の bit から x = min(x, x ^ b) を当てる。
+ // b の最上位の bit が x に立っているときだけ x が小さくなり、欄が 0 なら x は変わらない。最後に x が 0 なら作れる。
+ bool contains_min(int l, u64 x) const {
+  for(int i= 59; i >= 0; --i) {
+   const u64 m= p[i] >= l ? b[i] : 0;
+   x= min(x, x ^ m);
+  }
+  return x == 0;
+ }
  // 位置が l 以上の元だけで x を消せるか。
  bool contains(int l, u64 x) const {
   while(x) {
