@@ -1,6 +1,6 @@
 #pragma once
-// NeoLibrary の suffix_array で s と t を '$' でつないだ文字列の接尾辞配列を作り、LCP 配列を Φ 配列を経由する方法 (核は
-// _shared/lcp/phi.hpp) で求めて、隣り合う接尾辞が別の文字列から始まる所の LCP の最大を取る。LCP 配列を返す関数の形。
+// NeoLibrary の suffix_array と lcp_array (neo/string/suffix_array.hpp、LCP 配列は Φ 配列を経由する方法) で、s と t を '$' でつないだ
+// 文字列の接尾辞配列と LCP 配列を作り、隣り合う接尾辞が別の文字列から始まる所の LCP の最大を取る。
 // LCP 配列の実装を比べた記録は algo-notes の notes/lcp-array.md にある。
 #include <algorithm>
 #include <array>
@@ -8,7 +8,6 @@
 #include <vector>
 #include "pj.hpp"
 #include "neo/string/suffix_array.hpp"
-#include "_shared/lcp/phi.hpp"
 
 struct Solver {
   string s, t;
@@ -21,7 +20,7 @@ struct Solver {
     const string u = s + "$" + t;
     const int N = int(u.size());
     const vector<int> sa = suffix_array(u);
-    const vector<int> lcp = lcp_phi::lcp_array(u, sa);
+    const vector<int> lcp = lcp_array(u, sa);
     int a = 0, c = 0, len = 0;
     for (int i = 0; i + 1 < N; ++i) {
       int x = sa[i], y = sa[i + 1];
