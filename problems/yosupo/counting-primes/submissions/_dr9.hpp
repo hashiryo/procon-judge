@@ -3,6 +3,8 @@
 // 手間を減らす直し (FIX のビット) を足したもの。FIX & 1: hard leaves の b ごとの配列を a + 1 でなく √z までの素数の個数で取る。
 // FIX & 2: φ(t, 6) の表を 7、11、13 の型から作る (作業用の配列と 30030 の篩を省く)。FIX & 4: P2 を AVX2 で回す (素数を 256 個
 // ずつ書き出し、大きい列を取らない)。FIX & 8: AVX2 のとき、素数での割り算もすべて 1 / p の double で行い、magic を作らない。
+// FIX & 16: 大きい配列は、0 で埋める前にページを MADV_POPULATE_WRITE でまとめて用意させる (CI の VM では page fault が
+// 1 回 2 µs ほどかかる)。
 #if defined(__AVX2__) || defined(__BMI2__)
 #include <immintrin.h>
 #endif
@@ -15,6 +17,9 @@
 #include <cstring>
 #include <memory>
 #include <vector>
+#ifdef __linux__
+#include <sys/mman.h>
+#endif
 // Deléglise–Rivat の方法で n 以下の素数の個数を数える。y = α n^{1/3}、z = n / y、a = π(y)、c = 8 (p_c = 19) とし、
 //   π(n) = S1 + S2 + a - 1 - P2
 //   S1 = Σ_{m ≤ y, 平方因子なし, lpf(m) > p_c} μ(m) φ(n / m, c)                          (ordinary leaves)
@@ -38,6 +43,21 @@
 // double との掛け算の floor で求め (N < 2^50 で正確)、π の表は gather で引く。π(t) は表の値 e の上位 32 bit と、e を
 // 63 - ((t - 1) / 2 mod 32) だけ左にずらした値の popcount (pshufb の 4 bit の表と psadbw) の和に 1 を足したもの。
 namespace dr9 {
+// [p, p + bytes) の中のページを、触る前に MADV_POPULATE_WRITE (Linux 5.14+) でまとめて用意させる。1 ページずつ page fault を
+// 起こさずに済む。古い kernel と Linux 以外では何もしない。
+inline void populate(const void* p, std::size_t bytes) {
+#ifdef __linux__
+ const std::uintptr_t a= (reinterpret_cast<std::uintptr_t>(p) + 4095) & ~std::uintptr_t(4095), e= (reinterpret_cast<std::uintptr_t>(p) + bytes) & ~std::uintptr_t(4095);
+ if(e > a) madvise(reinterpret_cast<void*>(a), e - a, 23);
+#else
+ (void)p, (void)bytes;
+#endif
+}
+// v を n 個にする。POP なら、0 で埋める前に場所を取ってページを用意させる。
+template <bool POP, class V> inline void sized(V& v, std::size_t n) {
+ if constexpr(POP) v.reserve(n), populate(v.data(), n * sizeof(v[0]));
+ v.resize(n);
+}
 using u8= unsigned char;
 using u32= unsigned;
 using u64= unsigned long long;
@@ -167,9 +187,10 @@ struct Phi8 {
  u64 operator()(u64 t) const { return phi6(t) - phi6(t / 17) - phi6(t / 19) + phi6(t / 323); }
 };
 // Phi8 と同じ表を、7、11、13 の倍数を除く型 pat (1001 バイト、車輪の 1 バイトが 30 個の数) から作る。作業用の配列を取らない。
-struct Phi8p {
+template <bool POP> struct Phi8p {
  std::vector<uint16_t> tab;
- explicit Phi8p(const u8* pat): tab(30032) {
+ explicit Phi8p(const u8* pat) {
+  sized<POP>(tab, 30032);
   u32 c= 0;
   for(u32 k= 0; k < 1001; ++k) {
    const u32 b= pat[k];
@@ -337,6 +358,7 @@ inline u64 pi_small(u64 n) {
 }
 template <int FIX= 0> inline u64 prime_pi(u64 x) {
  if(x < 100000) return pi_small(x);
+ constexpr bool POP= (FIX & 16) != 0;
  constexpr u32 c= 8;
  const double L= std::log((double)x);
  const double alpha= std::max(1.0, 1.5 * (((0.00148918 * L - 0.0691909) * L + 1.00165) * L + 0.372253));
@@ -364,7 +386,8 @@ template <int FIX= 0> inline u64 prime_pi(u64 x) {
  std::vector<u32> cm, clp;
  std::vector<int8_t> cmu;
  {
-  std::vector<uint16_t> tag(y + 1, 0);  // lpf | (μ > 0 ? 0x8000 : 0)。合成数の lpf は √y 以下
+  std::vector<uint16_t> tag;  // lpf | (μ > 0 ? 0x8000 : 0)。合成数の lpf は √y 以下
+  sized<POP>(tag, y + 1);
   size_t cnt= 0;
   auto dfs= [&](auto& self, u64 m, size_t i, u32 lp, int mu) -> void {
    for(; i <= a; ++i) {
@@ -384,11 +407,13 @@ template <int FIX= 0> inline u64 prime_pi(u64 x) {
 #if DR9_CUT == 12
  return cm.size() + cm[cm.size() / 2] + (u64)clp[cm.size() / 3] + (u64)cmu[cm.size() / 4];
 #endif
- std::vector<double> cinv(cm.size());  // 1 / m を 1 ulp 上げた値。N < 2^50 なら floor(N cinv) = floor(N / m)
+ std::vector<double> cinv;  // 1 / m を 1 ulp 上げた値。N < 2^50 なら floor(N cinv) = floor(N / m)
+ sized<POP>(cinv, cm.size());
  for(size_t i= 0; i < cm.size(); ++i) cinv[i]= inv_up(cm[i]);
 #if defined(__AVX2__)
  constexpr bool DQ= (FIX & 8) != 0;  // 素数での割り算も pinv で行い、magic を作らない
- std::vector<double> pinv(primes.size());  // 1 / p を 1 ulp 上げた値。N < 2^50 なら floor(N pinv) = floor(N / p)
+ std::vector<double> pinv;  // 1 / p を 1 ulp 上げた値。N < 2^50 なら floor(N pinv) = floor(N / p)
+ sized<POP>(pinv, primes.size());
  for(size_t i= 1; i < primes.size(); ++i) pinv[i]= inv_up(primes[i]);
 #else
  constexpr bool DQ= false;
@@ -443,8 +468,9 @@ template <int FIX= 0> inline u64 prime_pi(u64 x) {
    if(bl <= bt) ++d[bl], --d[bt + 1];
   }
   for(u64 b= c + 1, run= 0; b <= bmax; ++b) hcb[b + 1]= hcb[b] + (u32)(b <= bsq ? run+= d[b] : 0);
-  ht.resize(hcb[bmax + 1]);
-  std::vector<u32> alive(cm.size());
+  sized<POP>(ht, hcb[bmax + 1]);
+  std::vector<u32> alive;
+  sized<POP>(alive, cm.size());
   for(size_t i= 0; i < cm.size(); ++i) alive[i]= (u32)i;
   for(u64 b= c + 1; b <= bsq; ++b) {
    size_t k= 0;
@@ -494,6 +520,7 @@ template <int FIX= 0> inline u64 prime_pi(u64 x) {
  std::vector<u32> pre(SW + 1);
  PiOdd pt;
  pt.t.reset(new u64[z / 64 + 1]);
+ if constexpr(POP) populate(pt.t.get(), 8 * (z / 64 + 1));
  u64 running= 0;
  i64 s2h= 0;
 #if DR9_CUT == 1
@@ -625,7 +652,7 @@ template <int FIX= 0> inline u64 prime_pi(u64 x) {
  return (u64)(s2h + s2e);
 #endif
  auto phic= [&] {
-  if constexpr((FIX & 2) != 0) return Phi8p(pat.data());
+  if constexpr((FIX & 2) != 0) return Phi8p<(FIX & 16) != 0>(pat.data());
   else return Phi8();
  }();
  i64 s1= (i64)phic(x);
