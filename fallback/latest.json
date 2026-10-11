@@ -1,11 +1,11 @@
 {
  "schema": 1,
- "generated_at": "2026-10-11T05:21:32Z",
- "judge_sha": "b2eb60ccc72b0e98e738d27214549ff47790c43a",
+ "generated_at": "2026-10-11T05:38:51Z",
+ "judge_sha": "472addf406f6651c714a3a471cd61005aef6353f",
  "library_sha": "de975dc74d1b49b49660a151230545749ce25fe0",
  "library_shas": {
   "Library": "de975dc74d1b49b49660a151230545749ce25fe0",
-  "NeoLibrary": "ae529163f616d418884c815e5deaa60a8ccdd237"
+  "NeoLibrary": "7b624cb41ea51bc304fe96fc7805039b60dabccb"
  },
  "env": "x64-gcc",
  "cpu": "QEMU Haswell-noTSX (AVX2、BMI2、FMA、pclmul。vpclmulqdq、GFNI、AVX-512 なし)",
@@ -218,6 +218,17 @@
    ],
    "status": "AC",
    "case_count": 51,
+   "failed_cases": [],
+   "failed_case": null
+  },
+  {
+   "problem": "yosupo-counting-primes",
+   "submission": "submissions/lib-neo.hpp",
+   "headers": [
+    "neo/number_theory/prime_pi.hpp"
+   ],
+   "status": "AC",
+   "case_count": 31,
    "failed_cases": [],
    "failed_case": null
   },
