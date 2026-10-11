@@ -37,9 +37,19 @@ struct Mem {
   return p;
  }
 };
-template <bool PEEL> struct Solver {
+template <bool PEEL, bool REC= false> struct Solver {
  struct F {
   u32 v, p, i;
+ };
+ struct R {
+  u32 s, e, n0, n1;
+ };
+ struct FR {
+  u32 v, i, e, par;
+ };
+ // REC の DFS の頂点ごとの状態。in が NIL なら未訪問。
+ struct S {
+  u32 in, out, low, deg, path, par, pad0, pad1;
  };
  int n;
  const vector<array<int, 2>>& es;
@@ -49,7 +59,7 @@ template <bool PEEL> struct Solver {
  void run() {
   const u32 N= n;
   const size_t m= es.size();
-  mem.reserve(12 * Mem::words(N + 10) + Mem::words(2 * m + 2) + Mem::words(3 * size_t(N)));
+  mem.reserve(12 * Mem::words(N + 10) + Mem::words(2 * m + 2) + Mem::words(3 * size_t(N)) + (REC ? Mem::words(16 * size_t(N) + 16) + 3 * Mem::words(N + 1) : 0));
   u32 *dg= mem.take(2 * size_t(N + 1)), *q= mem.take(N + 1), *off= mem.take(N + 10), *adj= mem.take(2 * m + 2);
   u32 n2= N;
   if constexpr(PEEL) {
@@ -108,6 +118,10 @@ template <bool PEEL> struct Solver {
     if(a != b) adj[--off[a]]= b, adj[--off[b]]= a;
    }
   }
+  if constexpr(REC) {
+   dfs_rec(n2, off, adj);
+   return;
+  }
   u32 *in= mem.take(N + 1), *out= mem.take(N + 1), *low= mem.take(N + 1), *deg= mem.take(N + 1), *path= mem.take(N + 1), *par= mem.take(N + 1), *ord= mem.take(N + 1);
   F* fs= reinterpret_cast<F*>(mem.take(3 * size_t(N)));
   memset(in, 0xff, n2 * sizeof(u32));
@@ -155,6 +169,75 @@ template <bool PEEL> struct Solver {
   lab= low;  // low は使い終わった
   for(u32 t= 0; t < cnt; ++t) {
    const u32 x= ord[t], y= par[x];
+   lab[x]= y == x ? x : lab[y];
+  }
+ }
+ // REC の DFS。頂点ごとの状態を 32 byte の S に並べ、下りた頂点の状態の書き込みを 1 本のキャッシュラインで済ませる。DFS は
+ // 記録 {CSR の始まり, 終わり, 最初の隣接, 2 番目の隣接} で回し、次数 2 の頂点に下りたら、親でない方の隣接 n0 ^ n1 ^ 親 だけを
+ // 持つ頂点として扱う (親への木の辺はそこで飛ばしたことになり、2 本とも親への辺なら平行な辺として後ろ向きの辺に扱われる)。
+ // 子から帰ったあとの隣接は adj から読む。
+ void dfs_rec(u32 n2, const u32* off, const u32* adj) {
+  R* rec= reinterpret_cast<R*>(mem.take(4 * size_t(n2) + 4));
+  S* st= reinterpret_cast<S*>(mem.take(8 * size_t(n2) + 8));
+  u32* ord= mem.take(n2 + 1);
+  FR* fs= reinterpret_cast<FR*>(mem.take(4 * size_t(n2) + 4));
+  for(u32 x= 0; x < n2; ++x) {
+   const u32 b= off[x], e= off[x + 1];
+   rec[x]= {b, e, b < e ? adj[b] : NIL, b + 1 < e ? adj[b + 1] : NIL};
+   st[x].in= NIL;
+  }
+  u32 cnt= 0;
+  for(u32 r= 0; r < n2; ++r) {
+   if(st[r].in != NIL) continue;
+   const R c= rec[r];
+   u32 v= r, i= c.s, e= c.e, s0= c.s, n0= c.n0, n1= c.n1, par= NIL;
+   FR* sp= fs;
+   st[v]= {cnt, 0, NIL, 0, NIL, v, 0, 0}, ord[cnt++]= v;
+   for(;;) {
+    if(i != e) {
+     const u32 w= i == s0 ? n0 : i == s0 + 1 ? n1 : adj[i];
+     ++i;
+     if(w == par) {
+      par= NIL;
+      continue;
+     }
+     const u32 iw= st[w].in;
+     if(iw != NIL) {
+      S& sv= st[v];
+      if(iw < sv.in) ++sv.deg, sv.low= std::min(sv.low, iw);
+      else {
+       --sv.deg;
+       u32 u= sv.path;
+       while(u != NIL && st[u].in <= iw && iw < st[u].out) st[u].par= v, sv.deg+= st[u].deg, u= st[u].path;
+       sv.path= u;
+      }
+      continue;
+     }
+     *sp++= {v, i, e, par};
+     const R cw= rec[w];
+     par= v, v= w, i= s0= cw.s, e= cw.e, n0= cw.n0, n1= cw.n1;
+     const u32 m2= -u32(e - i == 2);
+     n0^= (n1 ^ par) & m2, e-= m2 & 1, par|= m2;
+     st[v]= {cnt, 0, NIL, 0, NIL, v, 0, 0}, ord[cnt++]= v;
+    } else {
+     st[v].out= cnt;
+     if(sp == fs) break;
+     u32 w= v;
+     --sp, v= sp->v, i= sp->i, e= sp->e, par= sp->par, s0= NIL - 1;
+     S& sv= st[v];
+     if(st[w].path == NIL && st[w].deg <= 1) {
+      sv.deg+= st[w].deg, sv.low= std::min(sv.low, st[w].low);
+      continue;
+     }
+     if(st[w].deg == 0) w= st[w].path;
+     if(st[w].low < sv.low) sv.low= st[w].low, std::swap(w, sv.path);
+     while(w != NIL) st[w].par= v, sv.deg+= st[w].deg, w= st[w].path;
+    }
+   }
+  }
+  lab= mem.take(n2 + 1);
+  for(u32 t= 0; t < cnt; ++t) {
+   const u32 x= ord[t], y= st[x].par;
    lab[x]= y == x ? x : lab[y];
   }
  }

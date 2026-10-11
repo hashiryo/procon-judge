@@ -10,6 +10,8 @@
 // ALG = 2 は Cooper–Harvey–Kennedy の繰り返しの形。番号は帰りがけ順の逆 (s が 0)。番号の小さい順に、直接支配点の決まった
 // 逆向きの辺の始点どうしの共通の祖先 (番号の大きい方を直接支配点で登る) を取り、変わらなくなるまで繰り返す。最悪は 2 乗だが、
 // 繰り返しの回数が少なければ速い。
+// ALG = 3 は SEMI-NCA で、eval の森の親と最小の値を 1 つの配列に並べたもの。TMP なら、逆向きの CSR を組むときに辺の端の番号を
+// 1 回だけ引く。
 #ifdef __linux__
 #include <sys/mman.h>
 #endif
@@ -38,7 +40,7 @@ struct Mem {
   return p;
  }
 };
-template <int ALG> struct Solver {
+template <int ALG, bool TMP= false> struct Solver {
  int n, s;
  const vector<array<int, 2>>& es;
  Mem mem;
@@ -47,7 +49,7 @@ template <int ALG> struct Solver {
  void run() {
   const u32 N= n;
   const size_t m= es.size();
-  mem.reserve(12 * Mem::words(N + 2) + 2 * Mem::words(m + 1) + Mem::words(2 * size_t(N)));
+  mem.reserve(14 * Mem::words(N + 2) + 2 * Mem::words(m + 1) + Mem::words(2 * size_t(N)) + (TMP ? Mem::words(2 * m + 2) : 0));
   u32 *fo= mem.take(N + 2), *fa= mem.take(m + 1), *ro= mem.take(N + 2), *ra= mem.take(m + 1);
   num= mem.take(N + 1), vert= mem.take(N + 1), idom= mem.take(N + 1);
   u32 *par= mem.take(N + 1), *fs= mem.take(2 * size_t(N));
@@ -83,20 +85,33 @@ template <int ALG> struct Solver {
    for(u32 k= 0; k < R / 2; ++k) std::swap(vert[k], vert[R - 1 - k]);
    for(u32 k= 0; k < R; ++k) num[vert[k]]= k;
   }
-  // 逆向きの CSR を番号の上で組む。届かない頂点が端の辺は捨てる。
+  // 逆向きの CSR を番号の上で組む。届かない頂点が端の辺は捨てる。TMP なら、1 回目の走査で引いた端の番号の組を辺の順に
+  // 並べて残し、2 回目の走査は番号を引き直さずにそれを読む。
   memset(ro, 0, (R + 1) * sizeof(u32));
-  for(auto& e: es) {
-   const u32 a= num[e[0]], b= num[e[1]];
-   if(a != NIL && b != NIL) ++ro[b];
-  }
-  for(u32 k= 1; k <= R; ++k) ro[k]+= ro[k - 1];
-  for(auto& e: es) {
-   const u32 a= num[e[0]], b= num[e[1]];
-   if(a != NIL && b != NIL) ra[--ro[b]]= a;
+  if constexpr(TMP) {
+   u32* tp= mem.take(2 * m + 2);
+   for(size_t j= 0; j < m; ++j) {
+    const u32 a= num[es[j][0]], b= num[es[j][1]], ok= (a != NIL) & (b != NIL);
+    tp[2 * j]= a, tp[2 * j + 1]= ok ? b : R;  // 捨てる辺は番兵 R に数える
+    ++ro[ok ? b : R];
+   }
+   for(u32 k= 1; k <= R; ++k) ro[k]+= ro[k - 1];
+   for(size_t j= m; j--;) ra[--ro[tp[2 * j + 1]]]= tp[2 * j];
+  } else {
+   for(auto& e: es) {
+    const u32 a= num[e[0]], b= num[e[1]];
+    if(a != NIL && b != NIL) ++ro[b];
+   }
+   for(u32 k= 1; k <= R; ++k) ro[k]+= ro[k - 1];
+   for(auto& e: es) {
+    const u32 a= num[e[0]], b= num[e[1]];
+    if(a != NIL && b != NIL) ra[--ro[b]]= a;
+   }
   }
   if constexpr(ALG == 0) lt(R, ro, ra, par);
   else if constexpr(ALG == 1) snca(R, ro, ra, par);
-  else chk(R, ro, ra);
+  else if constexpr(ALG == 2) chk(R, ro, ra);
+  else snca_pk(R, ro, ra, par);
  }
  // 経路圧縮。x から森の根の子まで登り、上から順に lab と anc を直す。LAB が真なら lab は sdom の最小の頂点の番号、偽なら値。
  template <bool VERT> static u32 eval(u32 v, u32* anc, u32* lab, const u32* sdom, u32* path) {
@@ -140,6 +155,38 @@ template <int ALG> struct Solver {
    u32 sw= sdom[w];
    for(u32 j= ro[w]; j < ro[w + 1]; ++j) sw= std::min(sw, eval<false>(ra[j], anc, lab, sdom, path));
    sdom[w]= lab[w]= sw, anc[w]= par[w];
+  }
+  idom[0]= 0;
+  for(u32 w= 1; w < R; ++w) {
+   u32 d= par[w];
+   while(d > sdom[w]) d= idom[d];
+   idom[w]= d;
+  }
+ }
+ // ALG = 3 は SEMI-NCA で、森の親と道の上の sdom の最小の値を 1 つの配列に並べる (経路圧縮で 1 頂点を 1 本のキャッシュラインで
+ // 読み書きする)。森の根 (まだ処理していない頂点と s) の sdom は番号そのものなので、eval は根なら番号を返す。
+ struct AL {
+  u32 anc, lab;
+ };
+ static u32 eval_pk(u32 v, AL* al, u32* path) {
+  if(al[v].anc == NIL) return v;
+  u32 k= 0;
+  for(u32 x= v; al[al[x].anc].anc != NIL; x= al[x].anc) path[k++]= x;
+  while(k--) {
+   const u32 x= path[k], a= al[x].anc;
+   if(al[a].lab < al[x].lab) al[x].lab= al[a].lab;
+   al[x].anc= al[a].anc;
+  }
+  return al[v].lab;
+ }
+ void snca_pk(u32 R, const u32* ro, const u32* ra, const u32* par) {
+  AL* al= reinterpret_cast<AL*>(mem.take(2 * size_t(R) + 2));
+  u32 *sdom= mem.take(R + 1), *path= mem.take(R + 1);
+  for(u32 k= 0; k < R; ++k) al[k]= {NIL, k};
+  for(u32 w= R; --w >= 1;) {
+   u32 sw= w;
+   for(u32 j= ro[w]; j < ro[w + 1]; ++j) sw= std::min(sw, eval_pk(ra[j], al, path));
+   sdom[w]= sw, al[w]= {par[w], sw};
   }
   idom[0]= 0;
   for(u32 w= 1; w < R; ++w) {
