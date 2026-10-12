@@ -1,0 +1,19 @@
+id = "yosupo-palindromes-in-deque"
+title = "Palindromes in Deque"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "string/palindromes_in_deque"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true
