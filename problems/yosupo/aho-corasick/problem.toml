@@ -1,0 +1,19 @@
+id = "yosupo-aho-corasick"
+title = "Aho Corasick"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "string/aho_corasick"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true
