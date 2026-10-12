@@ -1,5 +1,5 @@
 #pragma once
-// ac_mix と同じく文字の種類の数 k で 2 つの作りを選び、中身を ac_goto3 (k が 8 以下) と ac_hybrid3 (k が 9 以上) にした版。
+// 3 回目に置いた ac_mix (7a0760d5、今は消した) と同じく文字の種類の数 k で 2 つの作りを選び、中身を ac_goto3 (k が 8 以下) と ac_hybrid3 (k が 9 以上) にした版。
 // Aho–Corasick の実装を比べた記録は algo-notes の notes/aho-corasick.md にある。
 #include <string>
 #include <vector>
