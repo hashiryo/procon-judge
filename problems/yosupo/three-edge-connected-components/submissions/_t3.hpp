@@ -37,17 +37,14 @@ struct Mem {
   return p;
  }
 };
-template <int D> struct Solver {  // D: 0 は CSR の DFS、1 は記録の形の DFS、2 は 1 に鎖をその場で縮める形を足したもの
- struct F {
-  u32 v, p, i;
- };
+template <int D> struct Solver {  // D: 1 は記録の形の DFS、2 は 1 に鎖をその場で縮める形を足したもの
  struct R {
   u32 s, e, n0, n1;
  };
  struct FR {
   u32 v, i, e, par;
  };
- // REC の DFS の頂点ごとの状態。in が NIL なら未訪問。
+ // DFS の頂点ごとの状態。in が NIL なら未訪問。
  struct S {
   u32 in, out, low, deg, path, par, pad0, pad1;
  };
@@ -59,7 +56,7 @@ template <int D> struct Solver {  // D: 0 は CSR の DFS、1 は記録の形の
  void run() {
   const u32 N= n;
   const size_t m= es.size();
-  mem.reserve(12 * Mem::words(N + 10) + Mem::words(2 * m + 2) + Mem::words(3 * size_t(N)) + (D ? Mem::words(16 * size_t(N) + 16) + 3 * Mem::words(N + 1) : 0));
+  mem.reserve(12 * Mem::words(N + 10) + Mem::words(2 * m + 2) + Mem::words(3 * size_t(N)) + Mem::words(16 * size_t(N) + 16) + 3 * Mem::words(N + 1));
   u32 *dg= mem.take(2 * size_t(N + 1)), *q= mem.take(N + 1), *off= mem.take(N + 10), *adj= mem.take(2 * m + 2);
   id= mem.take(N + 1);
   // dg[2 v] が次数、dg[2 v + 1] が残っている隣接の XOR。
@@ -99,61 +96,9 @@ template <int D> struct Solver {  // D: 0 は CSR の DFS、1 は記録の形の
    const u32 pb= off[b] - l;
    adj[pb]= a, off[b]= pb;
   }
-  if constexpr(D != 0) {
-   dfs_rec(n2, off, adj);
-   return;
-  }
-  u32 *in= mem.take(N + 1), *out= mem.take(N + 1), *low= mem.take(N + 1), *deg= mem.take(N + 1), *path= mem.take(N + 1), *par= mem.take(N + 1), *ord= mem.take(N + 1);
-  F* fs= reinterpret_cast<F*>(mem.take(3 * size_t(N)));
-  memset(in, 0xff, n2 * sizeof(u32));
-  u32 cnt= 0;
-  for(u32 r= 0; r < n2; ++r) {
-   if(in[r] != NIL) continue;
-   u32 v= r, p= NIL, i= off[r];
-   F* sp= fs;
-   in[v]= cnt, ord[cnt++]= v, low[v]= NIL, deg[v]= 0, path[v]= NIL, par[v]= v;
-   for(;;) {
-    if(i != off[v + 1]) {
-     const u32 w= adj[i++];
-     if(w == p) {
-      p= NIL;
-      continue;
-     }
-     const u32 iw= in[w];
-     if(iw != NIL) {
-      if(iw < in[v]) ++deg[v], low[v]= std::min(low[v], iw);
-      else {
-       --deg[v];
-       u32 u= path[v];
-       while(u != NIL && in[u] <= iw && iw < out[u]) par[u]= v, deg[v]+= deg[u], u= path[u];
-       path[v]= u;
-      }
-      continue;
-     }
-     *sp++= {v, p, i}, p= v, v= w, i= off[w];
-     in[v]= cnt, ord[cnt++]= v, low[v]= NIL, deg[v]= 0, path[v]= NIL, par[v]= v;
-    } else {
-     out[v]= cnt;
-     if(sp == fs) break;
-     u32 w= v;
-     --sp, v= sp->v, p= sp->p, i= sp->i;
-     if(path[w] == NIL && deg[w] <= 1) {
-      deg[v]+= deg[w], low[v]= std::min(low[v], low[w]);
-      continue;
-     }
-     if(deg[w] == 0) w= path[w];
-     if(low[w] < low[v]) low[v]= low[w], std::swap(w, path[v]);
-     while(w != NIL) par[w]= v, deg[v]+= deg[w], w= path[w];
-    }
-   }
-  }
-  lab= low;  // low は使い終わった
-  for(u32 t= 0; t < cnt; ++t) {
-   const u32 x= ord[t], y= par[x];
-   lab[x]= y == x ? x : lab[y];
-  }
+  dfs_rec(n2, off, adj);
  }
- // REC の DFS。頂点ごとの状態を 32 byte の S に並べ、下りた頂点の状態の書き込みを 1 本のキャッシュラインで済ませる。DFS は
+ // DFS。頂点ごとの状態を 32 byte の S に並べ、下りた頂点の状態の書き込みを 1 本のキャッシュラインで済ませる。DFS は
  // 記録 {CSR の始まり, 終わり, 最初の隣接, 2 番目の隣接} で回し、次数 2 の頂点に下りたら、親でない方の隣接 n0 ^ n1 ^ 親 だけを
  // 持つ頂点として扱う (親への木の辺はそこで飛ばしたことになり、2 本とも親への辺なら平行な辺として後ろ向きの辺に扱われる)。
  // 子から帰ったあとの隣接は adj から読む。

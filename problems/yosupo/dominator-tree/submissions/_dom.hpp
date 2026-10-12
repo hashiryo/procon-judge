@@ -10,9 +10,9 @@
 // あいだ直接支配点をたどって決める。
 //
 // ALG = 3 は、DFS の隣接を順向きの CSR にする。ALG = 4 は、yosupo-scc の gabow_split と同じく、頂点ごとに最初の出辺の行き先と残りの
-// 出辺の連結リストの先頭を別々の配列に置き、辺の列を 1 回なめて組む (DFS が下りる 1 歩が読み込み 1 段で済む)。ALG = 5 は、ALG = 4 の
-// sdom の走査で、8 個先 (番号の 8 小さい頂点) の逆向きの辺の始点の行を先読みする。ALG = 6 は ALG = 5 の eval を、道を 1 回だけ登る
-// 経路半減にする。
+// 出辺の連結リストの先頭を別々の配列に置き、辺の列を 1 回なめて組む (DFS が下りる 1 歩が読み込み 1 段で済む)。ALG = 7 は ALG = 4 の
+// eval を、道を 1 回だけ登る経路半減にする。ALG = 6 は ALG = 7 に、sdom の走査で 8 個先 (番号の 8 小さい頂点) の逆向きの辺の始点の
+// 行の先読みを足したもの。
 #ifdef __linux__
 #include <sys/mman.h>
 #endif
@@ -150,13 +150,13 @@ template <int ALG> struct Solver {
   u32 *sdom= mem.take(R + 1), *path= mem.take(R + 1);
   for(u32 k= 0; k < R; ++k) al[k]= {NIL, k};
   for(u32 w= R; --w >= 1;) {
-   if constexpr(ALG >= 5) {
+   if constexpr(ALG == 6) {
     const u32 z= w > 8 ? w - 8 : 0;
     for(u32 j= ro[z]; j < ro[z + 1]; ++j) __builtin_prefetch(al + ra[j]);
    }
    u32 sw= w;
    for(u32 j= ro[w]; j < ro[w + 1]; ++j) {
-    if constexpr(ALG == 6) sw= std::min(sw, eval_halve(ra[j], al));
+    if constexpr(ALG >= 6) sw= std::min(sw, eval_halve(ra[j], al));
     else sw= std::min(sw, eval(ra[j], al, path));
    }
    sdom[w]= sw, al[w]= {par[w], sw};
