@@ -1,0 +1,19 @@
+id = "yosupo-number-of-subsequences"
+title = "Number of Subsequences"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "enumerative_combinatorics/number_of_subsequences"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true
