@@ -11,7 +11,8 @@
 //
 // ALG = 3 は、DFS の隣接を順向きの CSR にする。ALG = 4 は、yosupo-scc の gabow_split と同じく、頂点ごとに最初の出辺の行き先と残りの
 // 出辺の連結リストの先頭を別々の配列に置き、辺の列を 1 回なめて組む (DFS が下りる 1 歩が読み込み 1 段で済む)。ALG = 5 は、ALG = 4 の
-// sdom の走査で、8 個先 (番号の 8 小さい頂点) の逆向きの辺の始点の行を先読みする。
+// sdom の走査で、8 個先 (番号の 8 小さい頂点) の逆向きの辺の始点の行を先読みする。ALG = 6 は ALG = 5 の eval を、道を 1 回だけ登る
+// 経路半減にする。
 #ifdef __linux__
 #include <sys/mman.h>
 #endif
@@ -120,6 +121,19 @@ template <int ALG> struct Solver {
   for(size_t j= m; j--;) ra[--ro[tp[2 * j + 1]]]= tp[2 * j];
   snca(R, ro, ra, par);
  }
+ // ALG = 6 の eval。道を 1 回登りながら、各点の親を祖父に付け替え (経路半減)、付け替えた点の値に飛ばした親の値を入れる。各点の値は
+ // 「その点から親の手前までの最小」のままなので、登った点の値の最小が、v から根の手前までの最小になる。スタックが要らない。
+ static u32 eval_halve(u32 v, AL* al) {
+  if(al[v].anc == NIL) return v;
+  u32 x= v, res= NIL;
+  for(;;) {
+   const u32 a= al[x].anc;
+   if(al[a].anc == NIL) return std::min(res, al[x].lab);  // x の親が根なら、x の値が根の手前までを表す
+   if(al[a].lab < al[x].lab) al[x].lab= al[a].lab;
+   al[x].anc= al[a].anc, res= std::min(res, al[x].lab), x= al[x].anc;
+   if(al[x].anc == NIL) return res;  // 祖父が根なら、登った点の値で根の手前まで尽くしている
+  }
+ }
  static u32 eval(u32 v, AL* al, u32* path) {
   if(al[v].anc == NIL) return v;
   u32 k= 0;
@@ -136,12 +150,15 @@ template <int ALG> struct Solver {
   u32 *sdom= mem.take(R + 1), *path= mem.take(R + 1);
   for(u32 k= 0; k < R; ++k) al[k]= {NIL, k};
   for(u32 w= R; --w >= 1;) {
-   if constexpr(ALG == 5) {
+   if constexpr(ALG >= 5) {
     const u32 z= w > 8 ? w - 8 : 0;
     for(u32 j= ro[z]; j < ro[z + 1]; ++j) __builtin_prefetch(al + ra[j]);
    }
    u32 sw= w;
-   for(u32 j= ro[w]; j < ro[w + 1]; ++j) sw= std::min(sw, eval(ra[j], al, path));
+   for(u32 j= ro[w]; j < ro[w + 1]; ++j) {
+    if constexpr(ALG == 6) sw= std::min(sw, eval_halve(ra[j], al));
+    else sw= std::min(sw, eval(ra[j], al, path));
+   }
    sdom[w]= sw, al[w]= {par[w], sw};
   }
   idom[0]= 0;
