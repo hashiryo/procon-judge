@@ -37,7 +37,7 @@ struct Mem {
   return p;
  }
 };
-template <bool REC> struct Solver {
+template <int D> struct Solver {  // D: 0 は CSR の DFS、1 は記録の形の DFS、2 は 1 に鎖をその場で縮める形を足したもの
  struct F {
   u32 v, p, i;
  };
@@ -59,7 +59,7 @@ template <bool REC> struct Solver {
  void run() {
   const u32 N= n;
   const size_t m= es.size();
-  mem.reserve(12 * Mem::words(N + 10) + Mem::words(2 * m + 2) + Mem::words(3 * size_t(N)) + (REC ? Mem::words(16 * size_t(N) + 16) + 3 * Mem::words(N + 1) : 0));
+  mem.reserve(12 * Mem::words(N + 10) + Mem::words(2 * m + 2) + Mem::words(3 * size_t(N)) + (D ? Mem::words(16 * size_t(N) + 16) + 3 * Mem::words(N + 1) : 0));
   u32 *dg= mem.take(2 * size_t(N + 1)), *q= mem.take(N + 1), *off= mem.take(N + 10), *adj= mem.take(2 * m + 2);
   id= mem.take(N + 1);
   // dg[2 v] が次数、dg[2 v + 1] が残っている隣接の XOR。
@@ -99,7 +99,7 @@ template <bool REC> struct Solver {
    const u32 pb= off[b] - l;
    adj[pb]= a, off[b]= pb;
   }
-  if constexpr(REC) {
+  if constexpr(D != 0) {
    dfs_rec(n2, off, adj);
    return;
   }
@@ -157,6 +157,10 @@ template <bool REC> struct Solver {
  // 記録 {CSR の始まり, 終わり, 最初の隣接, 2 番目の隣接} で回し、次数 2 の頂点に下りたら、親でない方の隣接 n0 ^ n1 ^ 親 だけを
  // 持つ頂点として扱う (親への木の辺はそこで飛ばしたことになり、2 本とも親への辺なら平行な辺として後ろ向きの辺に扱われる)。
  // 子から帰ったあとの隣接は adj から読む。
+ // D = 2 では、2-core の次数 2 の頂点 (鎖の頂点) を DFS に載せない。鎖の頂点はどれも 1 頂点の成分で、鎖を 1 本の辺に縮めても (直列の
+ // 縮約) ほかの頂点の成分は変わらない。核の頂点 (次数 3 以上) から鎖の頂点に当たったら、記録の XOR で鎖の向こう端の核の頂点まで歩き、
+ // 鎖の両端の頂点に印 (両端の核の頂点の XOR) を残して、向こう端を隣接とみなす。反対の端から当たったときは印から引く。鎖の頂点は
+ // 1 歩が記録の読み込み 1 回で済み、フレームにも状態にも載らない。
  void dfs_rec(u32 n2, const u32* off, const u32* adj) {
   R* rec= reinterpret_cast<R*>(mem.take(4 * size_t(n2) + 4));
   S* st= reinterpret_cast<S*>(mem.take(8 * size_t(n2) + 8));
@@ -167,22 +171,43 @@ template <bool REC> struct Solver {
    rec[x]= {b, e, b < e ? adj[b] : NIL, b + 1 < e ? adj[b + 1] : NIL};
    st[x].in= NIL;
   }
+  constexpr u32 CM= NIL - 1;  // D = 2 で、歩いた鎖の端の頂点の in。low に鎖の両端の核の頂点の XOR を持つ
   u32 cnt= 0;
   for(u32 r= 0; r < n2; ++r) {
    if(st[r].in != NIL) continue;
    const R c= rec[r];
+   if constexpr(D == 2)
+    if(c.e - c.s == 2) continue;  // 根は核の頂点だけ。核を含まない閉路の頂点はどれも 1 頂点の成分で、触らない
    u32 v= r, i= c.s, e= c.e, s0= c.s, n0= c.n0, n1= c.n1, par= NIL;
    FR* sp= fs;
    st[v]= {cnt, 0, NIL, 0, NIL, v, 0, 0}, ord[cnt++]= v;
    for(;;) {
     if(i != e) {
-     const u32 w= i == s0 ? n0 : i == s0 + 1 ? n1 : adj[i];
+     u32 w= i == s0 ? n0 : i == s0 + 1 ? n1 : adj[i];
      ++i;
+     u32 iw= st[w].in;
+     if constexpr(D == 2) {
+      // 鎖の頂点 (次数 2) に当たったら、鎖の向こう端の核の頂点を隣接とみなす。歩いた鎖なら端の印から引き、まだなら記録の XOR で
+      // 歩いて、両端の頂点に印を付ける。
+      if(iw == CM) w= st[w].low ^ v, iw= st[w].in;
+      else if(iw == NIL) {
+       R rw= rec[w];
+       if(rw.e - rw.s == 2) {
+        u32 prev= v, cur= w;
+        do {
+         const u32 nx= rw.n0 ^ rw.n1 ^ prev;
+         prev= cur, cur= nx, rw= rec[cur];
+        } while(rw.e - rw.s == 2);
+        st[w].in= CM, st[w].low= v ^ cur, st[prev].in= CM, st[prev].low= v ^ cur;
+        w= cur, iw= st[w].in;
+       }
+      }
+      if(w == v) continue;  // 1 つの核の頂点に戻る鎖 (縮めると自己ループ)
+     }
      if(w == par) {
       par= NIL;
       continue;
      }
-     const u32 iw= st[w].in;
      if(iw != NIL) {
       S& sv= st[v];
       if(iw < sv.in) ++sv.deg, sv.low= std::min(sv.low, iw);
@@ -197,8 +222,10 @@ template <bool REC> struct Solver {
      *sp++= {v, i, e, par};
      const R cw= rec[w];
      par= v, v= w, i= s0= cw.s, e= cw.e, n0= cw.n0, n1= cw.n1;
-     const u32 m2= -u32(e - i == 2);
-     n0^= (n1 ^ par) & m2, e-= m2 & 1, par|= m2;
+     if constexpr(D == 1) {
+      const u32 m2= -u32(e - i == 2);
+      n0^= (n1 ^ par) & m2, e-= m2 & 1, par|= m2;
+     }
      st[v]= {cnt, 0, NIL, 0, NIL, v, 0, 0}, ord[cnt++]= v;
     } else {
      st[v].out= cnt;
@@ -217,6 +244,8 @@ template <bool REC> struct Solver {
    }
   }
   lab= mem.take(n2 + 1);
+  if constexpr(D == 2)
+   for(u32 x= 0; x < n2; ++x) lab[x]= x;  // 鎖の頂点は DFS に載らない
   for(u32 t= 0; t < cnt; ++t) {
    const u32 x= ord[t], y= st[x].par;
    lab[x]= y == x ? x : lab[y];
