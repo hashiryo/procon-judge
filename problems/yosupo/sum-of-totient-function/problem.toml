@@ -14,3 +14,6 @@ name = "number_theory/sum_of_totient_function"
 
 [compare]
 kind = "checker"
+
+[record]
+case_times = true
