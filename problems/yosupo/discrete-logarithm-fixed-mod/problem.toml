@@ -14,3 +14,6 @@ name = "number_theory/discrete_logarithm_fixed_mod"
 
 [compare]
 kind = "checker"
+
+[record]
+case_times = true
