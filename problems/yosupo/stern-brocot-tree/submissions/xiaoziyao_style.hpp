@@ -75,43 +75,33 @@ struct SBT {
  }
 };
 
-inline std::string run(const std::string& input) {
- std::istringstream in(input);
- std::ostringstream out;
- int T_; in >> T_;
- while (T_--) {
-  std::string op;
-  in >> op;
-  if (op == "ENCODE_PATH") {
-   i64 x, y; in >> x >> y;
-   auto path = SBT<i64>::get_path(x, y);
-   out << (int) path.size();
-   for (i64 k : path) out << ' ' << (k > 0 ? 'R' : 'L') << ' ' << std::abs(k);
-   out << '\n';
-  } else if (op == "DECODE_PATH") {
-   int k; in >> k;
+inline u32* run(const Input& in, u32* out) {
+ for (const auto& qu : in.qs) {
+  if (qu.type == ENCODE) {
+   auto path = SBT<i64>::get_path(qu.x[0], qu.x[1]);
+   u32* head = out++;
+   if (!path.empty() && path[0] < 0) *out++ = 0;  // 最初の連が L なら、長さ 0 の R の連を置く
+   for (i64 k : path) *out++ = (u32)std::abs(k);
+   *head = (u32)(out - head - 1);
+  } else if (qu.type == DECODE) {
    std::vector<i64> path;
-   for (int i = 0; i < k; ++i) {
-    std::string dir; i64 x;
-    in >> dir >> x;
-    path.push_back(dir == "L" ? -x : x);
+   for (u32 i = 0; i < qu.len; ++i) {
+    const i64 x = in.path[qu.off + i];
+    if (x) path.push_back(i & 1 ? -x : x);
    }
    auto [a, b] = SBT<i64>::from_path(path);
-   out << a << ' ' << b << '\n';
-  } else if (op == "LCA") {
-   i64 a, b, c, d; in >> a >> b >> c >> d;
-   auto [p, q] = SBT<i64>::lca(a, b, c, d);
-   out << p << ' ' << q << '\n';
-  } else if (op == "ANCESTOR") {
-   i64 z, a, b; in >> z >> a >> b;
-   auto [p, q] = SBT<i64>::la(a, b, z);
-   if (p < 0) out << "-1\n";
-   else out << p << ' ' << q << '\n';
+   *out++ = (u32)a, *out++ = (u32)b;
+  } else if (qu.type == LCA) {
+   auto [p, q] = SBT<i64>::lca(qu.x[0], qu.x[1], qu.x[2], qu.x[3]);
+   *out++ = (u32)p, *out++ = (u32)q;
+  } else if (qu.type == ANCESTOR) {
+   auto [p, q] = SBT<i64>::la(qu.x[1], qu.x[2], qu.x[0]);
+   if (p < 0) *out++ = 0, *out++ = 0;
+   else *out++ = (u32)p, *out++ = (u32)q;
   } else {  // RANGE
-   i64 a, b; in >> a >> b;
-   auto [lx, ly, rx, ry] = SBT<i64>::range(a, b);
-   out << lx << ' ' << ly << ' ' << rx << ' ' << ry << '\n';
+   auto [lx, ly, rx, ry] = SBT<i64>::range(qu.x[0], qu.x[1]);
+   *out++ = (u32)lx, *out++ = (u32)ly, *out++ = (u32)rx, *out++ = (u32)ry;
   }
  }
- return std::move(out).str();
+ return out;
 }
