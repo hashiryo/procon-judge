@@ -1,9 +1,9 @@
 #pragma once
-// Stern-Brocot 木の 5 回目。2 回目 (_sb2.hpp) の段の取り方に 4 回目の手 (ANCESTOR を祖先が無いと分かった段で止める、
-// RANGE を逆元で求める) を入れ、r > b/2 で選ぶところを分岐なしにする。gcc 15 は b = f ? b - r : r を分岐に戻し、
-// ループを 2 通りに複製していた (f は 3 割ほどの確率で立つので外れる)。x86 では cmova と seta を asm で書き、鎖は比べと
-// 選びの 2 サイクルにする。近似分数の選びはマスクを空の asm に通して算術で書く。
-#include "_sb2.hpp"
+// Stern-Brocot 木の 5 回目。2 回目の段の取り方 (r > b/2 の段を次の商 1 の段とまとめる) に、4 回目の手 (ANCESTOR を
+// 祖先が無いと分かった段で止める、RANGE を逆元で求める) を入れ、r > b/2 で選ぶところを分岐なしにする。gcc 15 は
+// b = f ? b - r : r を分岐に戻し、ループを 2 通りに複製していた (f は 3 割ほどの確率で立つので外れる)。x86 では
+// cmova と seta を asm で書き、鎖は比べと選びの 2 サイクルにする。近似分数の選びはマスクを空の asm に通して算術で書く。
+#include "_sb1.hpp"
 #include "neo/number_theory/inv_gcd.hpp"
 
 namespace sb5 {
