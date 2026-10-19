@@ -1,7 +1,7 @@
 #pragma once
 #include "../common.hpp"
 // yosupo kth_root_integer 最速提出 (yzlf, https://judge.yosupo.jp/submission/189811)
-// のアルゴリズム部のみを移植 (独自 I/O 部は省略、 ostringstream 経由)。
+// のアルゴリズム部のみを移植したもの。入出力はハーネスの形 (common.hpp) に合わせる。
 //
 // アイデア:
 //   k で分岐:
@@ -60,9 +60,6 @@ inline u64 kth_root(u64 A, int k) {
  return 1 + (A >= (u64(1) << k)) + (A > pw3[k - 32]);
 }
 
-inline std::vector<u64> run(const std::vector<std::pair<u64, int>>& queries) {
- std::vector<u64> ans;
- ans.reserve(queries.size());
- for (auto& [A, k] : queries) ans.push_back(kth_root(A, k));
- return ans;
+inline void run(const std::vector<Query>& qs, u64* out) {
+ for (const auto& q : qs) *out++ = kth_root(q.a, (int)q.k);
 }

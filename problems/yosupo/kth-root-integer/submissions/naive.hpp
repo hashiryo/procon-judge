@@ -25,9 +25,6 @@ inline u64 kth_root(u64 A, int k) {
  }
  return lo;
 }
-inline std::vector<u64> run(const std::vector<std::pair<u64, int>>& queries) {
- std::vector<u64> ans;
- ans.reserve(queries.size());
- for (auto& [A, k] : queries) ans.push_back(kth_root(A, k));
- return ans;
+inline void run(const std::vector<Query>& qs, u64* out) {
+ for (const auto& q : qs) *out++ = kth_root(q.a, (int)q.k);
 }

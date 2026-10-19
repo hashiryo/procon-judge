@@ -75,13 +75,9 @@ using u64 = unsigned long long;
 using u128 = __uint128_t;
 
 // yosupo Kth Root Integer (https://judge.yosupo.jp/problem/kth_root_integer)
-//
-// 入力フォーマット:
-//   T
-//   A_1 k_1
-//   A_2 k_2
-//   ...
-//   A_T k_T
-// 出力: floor(A^{1/k}) を各クエリで出力。
-//
-// 制約: 0 ≤ A ≤ 2^64 - 1, 1 ≤ k ≤ 64
+// T ≤ 5 × 10^5 個の問 (A, k) (0 ≤ A < 2^64、1 ≤ k ≤ 64) に ⌊A^{1/k}⌋ を返す。
+// 入出力は計測の外で行い、提出は run(qs, out) で答えを out から順に u64 で書く。
+struct Query {
+    u64 a;
+    u32 k;
+};
