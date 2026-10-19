@@ -14,3 +14,6 @@ name = "number_theory/rational_approximation"
 
 [compare]
 kind = "checker"
+
+[record]
+case_times = true

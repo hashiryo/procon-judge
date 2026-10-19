@@ -75,7 +75,9 @@ using u64 = unsigned long long;
 using u128 = __uint128_t;
 
 // yosupo Rational Approximation (https://judge.yosupo.jp/problem/rational_approximation)
-//
-// 各クエリで (n, x, y) が与えられ、a/b ≤ x/y ≤ c/d で 1 ≤ a,b,c,d ≤ n、
-// かつ |a/b - x/y|, |c/d - x/y| が最小となる (a, b, c, d) を出力。
-// (Stern-Brocot 木上の二分探索で求まる)
+// T ≤ 10^5 個の問 (N, x, y) (1 ≤ N, x, y ≤ 10^9、x/y は既約とは限らない)。分子と分母がどちらも N 以下の正の整数の既約分数の
+// うち、x/y 以下で最大のもの a/b (無ければ 0/1) と、x/y 以上で最小のもの c/d (無ければ 1/0) を返す。
+// 入出力は計測の外で行い、提出は run(qs, out) で 1 問に (a, b, c, d) の 4 個を out から順に u32 で書く。
+struct Query {
+    u32 n, x, y;
+};

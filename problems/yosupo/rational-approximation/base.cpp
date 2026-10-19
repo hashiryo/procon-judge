@@ -1,5 +1,6 @@
-// harness: 各提出が定義する run(queries) を計測する。
-// I/O 変換は計測外で行う。
+// harness: 各提出が定義する run(qs, out) を計測する。問と答えの形は common.hpp にある。
+// 答えを書く場所はハーネスが確保して 0 で埋めておく (ページに触るのは計測の外)。
+// I/O 変換は計測外で行い、純粋なアルゴリズム時間のみを ALGO_TIME_NS に含める。
 #include "pj.hpp"
 #include "common.hpp"
 
@@ -11,23 +12,27 @@
 signed main() {
  cin.tie(0);
  ios::sync_with_stdio(false);
-
  int T;
- std::cin >> T;
- std::vector<std::tuple<i64, i64, i64>> queries(T);
- for (auto& [n, x, y] : queries) std::cin >> n >> x >> y;
+ cin >> T;
+ vector<Query> qs(T);
+ for(auto& q: qs) cin >> q.n >> q.x >> q.y;
+ vector<u32> buf(4 * (size_t)T);
 
- std::vector<std::tuple<i64, i64, i64, i64>> result;
- uint64_t best_ns = ~uint64_t(0);
- for (int rep = 0; rep < 1; ++rep) {
-  auto t0 = chrono::steady_clock::now();
-  result = run(queries);
-  auto t1 = chrono::steady_clock::now();
-  auto ns = (uint64_t) chrono::duration_cast<chrono::nanoseconds>(t1 - t0).count();
-  if (ns < best_ns) best_ns = ns;
+ auto t0= chrono::steady_clock::now();
+ run(qs, buf.data());
+ auto t1= chrono::steady_clock::now();
+
+ string out;
+ out.reserve(buf.size() * 11);
+ char s[16];
+ for(int i= 0; i < T; ++i) {
+  for(int j= 0; j < 4; ++j) {
+   auto r= to_chars(s, s + 16, buf[4 * i + j]);
+   out.append(s, r.ptr);
+   out+= j < 3 ? ' ' : '\n';
+  }
  }
-
- for (auto& [a, b, c, d] : result) std::cout << a << ' ' << b << ' ' << c << ' ' << d << '\n';
- report_metrics((long long)best_ns);
+ fwrite(out.data(), 1, out.size(), stdout);
+ report_metrics((long long)chrono::duration_cast<chrono::nanoseconds>(t1 - t0).count());
  return 0;
 }

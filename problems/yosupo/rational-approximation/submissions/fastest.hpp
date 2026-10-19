@@ -2,7 +2,7 @@
 #include "../common.hpp"
 // =============================================================================
 // yosupo Rational Approximation の最速提出 (xiaoziyao, https://judge.yosupo.jp/submission/290530)
-// を std::string ベースの harness に移植したもの。
+// を移植したもの。入出力はハーネスの形 (common.hpp) に合わせ、手順はそのまま。
 //
 // アルゴリズム:
 //   Stern-Brocot 木上の二分探索 (SBT::binary_search):
@@ -30,13 +30,11 @@ struct SBT {
  }
 };
 
-inline std::vector<std::tuple<i64, i64, i64, i64>> run(const std::vector<std::tuple<i64, i64, i64>>& queries) {
- std::vector<std::tuple<i64, i64, i64, i64>> ans;
- ans.reserve(queries.size());
- for (auto& [n, x, y] : queries) {
+inline void run(const std::vector<Query>& qs, u32* out) {
+ for (const auto& q : qs) {
+  const i64 n = q.n, x = q.x, y = q.y;
   auto [a, b, c, d] = SBT<i64>::binary_search(n, [&](i64 a_, i64 b_) { return a_ * y <= b_ * x; });
   if (a * y == b * x) { c = a; d = b; }
-  ans.emplace_back(a, b, c, d);
+  *out++ = (u32)a, *out++ = (u32)b, *out++ = (u32)c, *out++ = (u32)d;
  }
- return ans;
 }

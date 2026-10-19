@@ -46,9 +46,9 @@ inline std::tuple<i64, i64, i64, i64> solve_one(i64 n, i64 x, i64 y) {
  return {lx, ly, rx, ry};
 }
 
-inline std::vector<std::tuple<i64, i64, i64, i64>> run(const std::vector<std::tuple<i64, i64, i64>>& queries) {
- std::vector<std::tuple<i64, i64, i64, i64>> ans;
- ans.reserve(queries.size());
- for (auto& [n, x, y] : queries) ans.push_back(solve_one(n, x, y));
- return ans;
+inline void run(const std::vector<Query>& qs, u32* out) {
+ for (const auto& q : qs) {
+  auto [a, b, c, d] = solve_one(q.n, q.x, q.y);
+  *out++ = (u32)a, *out++ = (u32)b, *out++ = (u32)c, *out++ = (u32)d;
+ }
 }
