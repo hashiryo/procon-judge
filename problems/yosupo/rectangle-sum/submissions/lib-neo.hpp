@@ -1,17 +1,19 @@
 #pragma once
 // NeoLibrary の WaveletMatrixSum (neo/data_structure/WaveletMatrixSum.hpp)。点を x の順に並べ、y の列と重みの列から作り、
-// x の範囲を std::lower_bound で位置の範囲に直して count_sum で引く (ドキュメントの使い方のとおり)。
+// x の範囲を std::lower_bound で位置の範囲に直して count_sum で引く (ドキュメントの使い方のとおり)。点の順は NeoLibrary の argsort
+// (neo/sort/argsort.hpp) で x の順に並べる (添字の列を std::sort で並べた形は、7763 の x64-gcc で wm_sep_brtbl より 68 ms ほど遅かった
+// うちの一部と見ている)。
 #include <algorithm>
 #include "pj.hpp"
 #include "neo/data_structure/WaveletMatrixSum.hpp"
+#include "neo/sort/argsort.hpp"
 struct Solver {
  vector<int> xs;
  WaveletMatrixSum<int> wm;
  static vector<int> order(const vector<array<int, 3>>& p) {
-  vector<int> o(p.size());
-  for(size_t i= 0; i < p.size(); ++i) o[i]= i;
-  sort(o.begin(), o.end(), [&](int i, int j) { return p[i][0] < p[j][0]; });
-  return o;
+  vector<int> x(p.size());
+  for(size_t i= 0; i < p.size(); ++i) x[i]= p[i][0];
+  return argsort(x);
  }
  Solver(const vector<array<int, 3>>& p, const vector<int>& o) {
   vector<int> ys(p.size());
