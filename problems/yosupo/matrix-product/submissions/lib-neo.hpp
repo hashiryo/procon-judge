@@ -1,6 +1,6 @@
 #pragma once
-// NeoLibrary の Matrix<ZMod<998244353>> の積 (neo/linalg/Matrix.hpp)。大きさで核を選び、1024 × 1024 は Strassen の再帰
-// (zmod_strassen の法を実行時の奇数に広げたもの)、ほかは 4 行 × 8 列のタイル。値の写しも計測区間に入る。
+// NeoLibrary の Matrix<ZMod<998244353>> の積 (neo/linalg/Matrix.hpp)。大きさで核を選び、1024 × 1024 は Winograd の形の
+// Strassen の再帰 (zmod_winograd_hpo の法を実行時の奇数に広げたもの)、ほかは 4 行 × 8 列のタイル。値の写しも計測区間に入る。
 #include "../common.hpp"
 #include "neo/linalg/Matrix.hpp"
 inline vector<u32> run(int N, int M, int P, const vector<u32>& a, const vector<u32>& b) {

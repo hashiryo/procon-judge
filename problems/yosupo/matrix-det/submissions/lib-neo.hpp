@@ -1,6 +1,7 @@
 #pragma once
 // NeoLibrary の det (neo/linalg/det.hpp)。この問題で書き比べた zmod_det_blk8 を写したもので、法を問わない形 (単元のない列だけ
-// 互除法で消す、yosupo-matrix-det-arbitrary-mod の zmod_det_blk8) にしてある。法が素数なので互除法の道は通らない。
+// 互除法で消す、yosupo-matrix-det-arbitrary-mod の zmod_det_blk8) にしてある。法が奇数の素数なので、zmod_det_hpv と同じ
+// 要を探す列をベクトル化した道を通り、互除法の道は通らない。
 #include "../common.hpp"
 #include "neo/linalg/det.hpp"
 inline u32 run(int n, const vector<vector<u32>>& a) {
