@@ -4,6 +4,9 @@
 // 元提出と同じ手順 (列 i-1 の sub-diagonal pivot 探し → 行/列 swap →
 //   奇数 i で res *= -A[i][i-1] → 行 j を行 i で消去) を行うが、AVX2 を
 //   使わず u64 での add-mul で書く。O((2N)^3)。
+// 消し終えた行列 H = L A は上 Hessenberg で、L A L^T は 3 重対角の交代行列になり、その下の対角は H と同じになる。Pf は
+// 奇数の i の -H[i][i-1] の積なので、偶数の i で列 i-1 に要がなければ、0 を返さずに次の i へ進む (元提出は 0 を返していて、
+// 対角に 2 × 2 の塊を並べた行列で誤る)。
 inline u32 qpow_(u64 x, u64 y) {
  u64 r = 1;
  while (y) { if (y & 1) r = r * x % MOD; x = x * x % MOD; y >>= 1; }
@@ -26,7 +29,10 @@ inline u32 run(int N, const vector<vector<u32>>& M_in) {
     res = (MOD - res) % MOD;
    }
   }
-  if (A[i][i - 1] == 0) return 0;
+  if (A[i][i - 1] == 0) {
+   if (i & 1) return 0;
+   continue;
+  }
   if (i & 1) {
    // res *= -A[i][i-1]
    u32 v = MOD - A[i][i - 1];

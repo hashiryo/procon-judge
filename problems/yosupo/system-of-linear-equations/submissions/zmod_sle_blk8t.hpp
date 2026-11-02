@@ -1,5 +1,5 @@
 #pragma once
-// zmod_sle_blk8 の後退代入を、下から 8 行ずつのブロックで解く形 (lazy_elim::tri_solve_blk) にしたもの。法は 998244353。
+// zmod_sle_blk8 (2026-11-02 に消した提出。git の履歴にある) の後退代入を、下から 8 行ずつのブロックで解く形 (lazy_elim::tri_solve_blk) にしたもの。法は 998244353。
 // [A | b] を前進消去し、要の列が作る上三角の行列で、自由な列と b の列をまとめて後退代入する。
 #include "../common.hpp"
 #include "neo/algebra/ZMod.hpp"

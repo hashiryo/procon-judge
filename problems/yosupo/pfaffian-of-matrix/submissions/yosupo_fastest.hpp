@@ -14,6 +14,8 @@
 //   - Pfaffian::run wrapper で vector<vector<u32>> → matrix<base> に詰めて
 //     元提出 solve() のロジックをそのまま実行
 // ライセンス: cp-algo (元実装に従う)
+// 元提出の誤り: 偶数の i で列 i-1 に要がないと 0 を返すので、対角に 2 × 2 の塊を並べた行列 (Pf が 0 でない) で 0 を返す。
+//   Library Checker のテストデータには当たらない。元提出の写しなので直さずに残す (naive と zmod_pf_blk8 は直した)。
 // =============================================================================
 
 #pragma GCC optimize("Ofast,unroll-loops")

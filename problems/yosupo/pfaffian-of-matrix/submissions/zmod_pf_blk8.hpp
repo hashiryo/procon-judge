@@ -2,7 +2,7 @@
 // 交代行列のパフィアンを、要を 8 本ずつまとめて掃き出す核 (_shared/linalg/lazy_elim.hpp の update_row) で求める。法は 998244353。
 // 手順は naive と同じで、列 c の要を位置 c + 1 の行から選び (行と、同じ番号の列を入れ替えると符号が変わる)、c が偶数なら
 // -(要の値) を掛け、位置 c + 2 以降の行を消す。位置 0 の行は使わない。行の更新は 8 本ずつ貯めて足すので、列を入れ替えるときは、
-// 残りの行と、貯めている要の行の両方で入れ替える。
+// 残りの行と、貯めている要の行の両方で入れ替える。c が奇数の列は積に入らないので、要がなければ 0 を返さずに次の列へ進む。
 #include "../common.hpp"
 #include "neo/algebra/ZMod.hpp"
 #include "_shared/linalg/lazy_elim.hpp"
@@ -44,7 +44,11 @@ inline u32 run(int N, const vector<vector<u32>>& M_in) {
    v[t]= Z(x).val();
    if(sel < 0 && v[t]) sel= t;
   }
-  if(sel < 0) return 0;
+  if(sel < 0) {  // 列 c が消えている。c が奇数なら積に入らないので次の列へ (位置 c + 1 の行はもう使わない)
+   if(!(c & 1)) return 0;
+   first= c + 2;
+   continue;
+  }
   if(sel != c + 1) {
    swap(pos[c + 1], pos[sel]), swap(v[c + 1], v[sel]);
    for(int t= c + 1; t < n; ++t) {
