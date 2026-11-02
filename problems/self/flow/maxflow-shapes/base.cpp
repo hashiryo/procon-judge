@@ -20,6 +20,10 @@
 //   presuf N M           N 人と M 脚の椅子 (ARC 076 F の形)。人 i は L_i 以下か R_i 以上の椅子に座れる (L_i < R_i は
 //                        乱択)。s → 人 (容量 1)、人 → 前の鎖の L_i と後ろの鎖の R_i (容量 N)、前の鎖 k → k - 1 と k → 椅子 k、
 //                        後ろの鎖 k → k + 1 と k → 椅子 k (容量 N)、椅子 → t (容量 1)
+//   presuf2 N M K        presuf の椅子の先に、もう 1 段の累積の鎖を置いたもの。人 → 椅子は presuf と同じで、椅子の入口 →
+//                        出口 (容量 1)、出口 → K 枚の扉の前の鎖の L'_k と後ろの鎖の R'_k (容量 N)、扉の鎖は presuf と同じ形で、
+//                        扉 → t (容量 1)。詰まりは真ん中の椅子にあり、人が椅子より多いと、t に届かない余りが椅子の手前を
+//                        行き来する (highest label では、その間は椅子を通った余りが後回しになる)
 //   segtree N M          N 人と M 脚の椅子。人 i は区間 [l_i, r_i] の椅子に座れる。椅子の上のセグメント木の節で区間を
 //                        まとめ、人 → 区間を覆う節 (容量 N)、節 → 子 (容量 N)、葉 (椅子) → t (容量 1)、s → 人 (容量 1)。
 //                        区間の長さは [1, M / 8] の乱択
@@ -105,6 +109,43 @@ Graph presuf(Rng &rng, int N, int M) {
   return g;
 }
 
+Graph presuf2(Rng &rng, int N, int M, int K) {
+  // 頂点: 人 0..N-1、前の鎖 N..N+M-1、後ろの鎖 N+M..N+2M-1、椅子の入口 N+2M..N+3M-1、椅子の出口 N+3M..N+4M-1、
+  // 扉の前の鎖 B..B+K-1、後ろの鎖 B+K..B+2K-1、扉 B+2K..B+3K-1 (B = N+4M)、s、t
+  Graph g;
+  const int P = N, S = N + M, Ci = N + 2 * M, Co = N + 3 * M, B = N + 4 * M, P2 = B, S2 = B + K, D = B + 2 * K;
+  g.n = B + 3 * K + 2, g.s = B + 3 * K, g.t = B + 3 * K + 1;
+  auto lr = [&](int X, int &l, int &r) {
+    l = (int)rng.range(0, X - 1), r = (int)rng.range(0, X - 1);
+    if (l > r) swap(l, r);
+    if (l == r) { if (r + 1 < X) ++r; else --l; }
+  };
+  for (int i = 0; i < N; ++i) {
+    int l, r;
+    lr(M, l, r);
+    g.e.push_back({g.s, i, 1, 0});
+    if (l >= 0) g.e.push_back({i, P + l, N, 0});
+    g.e.push_back({i, S + r, N, 0});
+  }
+  for (int k = 0; k < M; ++k) {
+    if (k > 0) g.e.push_back({P + k, P + k - 1, N, 0});
+    if (k + 1 < M) g.e.push_back({S + k, S + k + 1, N, 0});
+    g.e.push_back({P + k, Ci + k, N, 0}), g.e.push_back({S + k, Ci + k, N, 0});
+    g.e.push_back({Ci + k, Co + k, 1, 0});
+    int l, r;
+    lr(K, l, r);
+    if (l >= 0) g.e.push_back({Co + k, P2 + l, N, 0});
+    g.e.push_back({Co + k, S2 + r, N, 0});
+  }
+  for (int k = 0; k < K; ++k) {
+    if (k > 0) g.e.push_back({P2 + k, P2 + k - 1, N, 0});
+    if (k + 1 < K) g.e.push_back({S2 + k, S2 + k + 1, N, 0});
+    g.e.push_back({P2 + k, D + k, N, 0}), g.e.push_back({S2 + k, D + k, N, 0});
+    g.e.push_back({D + k, g.t, 1, 0});
+  }
+  return g;
+}
+
 Graph segtree(Rng &rng, int N, int M) {
   // 頂点: 人 0..N-1、セグメント木の節 N + 1 .. N + 2 sz - 1 (節 x は N + x、葉 sz + k が椅子 k)、s、t
   Graph g;
@@ -154,6 +195,7 @@ signed main() {
   if (fam == "cgrid") { auto a = args(3); g = gen::cgrid(rng, a[0], a[1], a[2]); }
   else if (fam == "cgrid_dir") { auto a = args(3); g = gen::cgrid_dir(rng, a[0], a[1], a[2]); }
   else if (fam == "presuf") { auto a = args(2); g = gen::presuf(rng, a[0], a[1]); }
+  else if (fam == "presuf2") { auto a = args(3); g = gen::presuf2(rng, a[0], a[1], a[2]); }
   else if (fam == "segtree") { auto a = args(2); g = gen::segtree(rng, a[0], a[1]); }
   else if (fam == "closure") { auto a = args(4); g = gen::closure(rng, a[0], a[1], a[2], a[3]); }
   else {

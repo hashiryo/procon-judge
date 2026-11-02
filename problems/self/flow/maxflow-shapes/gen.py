@@ -5,7 +5,7 @@
 """最大流 (問題の形の網) の入力を作る。seed を 1 つ受け取り、その番号のケースを stdout に出す。
 
 入力は「族の名前 seed 引数...」の 1 行で、グラフそのものはハーネス (base.cpp) が作る。族と引数の意味は base.cpp の
-冒頭に書いてある。seed 0 から 9 は本番のケースで、頂点が 2400 から 100 万、弧の組が 120 万から 300 万ほど。
+冒頭に書いてある。seed 0 から 10 は本番のケースで、頂点が 2400 から 111 万、弧の組が 120 万から 300 万ほど。
 seed 1000 以上は愚直解 (brute.hpp) と突き合わせる小さい入力で、族を seed で決め、引数を splitmix64 で選ぶ。
 """
 import sys
@@ -23,6 +23,7 @@ CASES = {
     7: "segtree 8 100000 50000",
     8: "closure 9 1200 1200 1000 100000",
     9: "closure 10 2000 500 300 100000",
+    10: "presuf2 11 110000 100000 200000",
 }
 
 
@@ -42,9 +43,9 @@ class SplitMix64:
 
 
 def small_case(seed: int) -> str:
-    """頂点が 30 個ほどまでの入力。族を seed で順に回す。"""
+    """頂点が 40 個ほどまでの入力。族を seed で順に回す。"""
     r = SplitMix64(seed * 1000003 + 23)
-    fam = seed % 5
+    fam = seed % 6
     if fam == 0:
         return f"cgrid {seed} {r.range(1, 5)} {r.range(2, 5)} {r.range(1, 5)}"
     if fam == 1:
@@ -53,6 +54,8 @@ def small_case(seed: int) -> str:
         return f"presuf {seed} {r.range(1, 6)} {r.range(2, 6)}"
     if fam == 3:
         return f"segtree {seed} {r.range(1, 6)} {r.range(1, 8)}"
+    if fam == 5:
+        return f"presuf2 {seed} {r.range(1, 6)} {r.range(2, 5)} {r.range(2, 5)}"
     q = r.range(1, 5)
     return f"closure {seed} {r.range(1, 5)} {q} {r.range(0, q)} {r.range(1, 10)}"
 
