@@ -1,0 +1,21 @@
+id = "self-string-prefix-count"
+title = "接頭辞の個数 (追加と削除つき)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 9
+reference = "reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true

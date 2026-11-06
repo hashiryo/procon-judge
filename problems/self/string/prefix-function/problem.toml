@@ -1,0 +1,21 @@
+id = "self-string-prefix-function"
+title = "接頭辞関数"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 11
+reference = "reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
