@@ -1,0 +1,20 @@
+id = "atcoder-arc076-f"
+title = "F - Exhausted?"
+url = "https://atcoder.jp/contests/arc076/tasks/arc076_d"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# AtCoder はテストケースを公開していないので、自作する (gen.py と、想定解の貪欲の submissions/reference.hpp)。
+[testdata]
+source = "local"
+count = 12
+generator = "gen.py"
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
