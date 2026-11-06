@@ -77,6 +77,55 @@ struct WM8 {
   }
   return res;
  }
+ // kth と同じ値を返す。kth は区間の中の数 D[t] を配列に書いてから読み直し、gcc は 8 個の 32 bit の書き込みを 1 回のベクタで読む
+ // (書き込みからの受け渡しが効かない) ので、ここでは D[t] を配列に書かずに比べ、選んだ記号の数だけを配列から引く。
+ u32 kthp(int l, int r, int k) const {
+  u32 res= 0;
+  for(int d= levels - 1; d >= 0; --d) {
+   const Blk* B= b_(d);
+   int Ll[9], Lr[9];
+   lt_all(B[l >> 6], l, Ll), lt_all(B[r >> 6], r, Lr);
+   const int d1= Lr[1] - Ll[1], d2= Lr[2] - Ll[2], d3= Lr[3] - Ll[3], d4= Lr[4] - Ll[4], d5= Lr[5] - Ll[5], d6= Lr[6] - Ll[6], d7= Lr[7] - Ll[7];
+   const int sy= int(d1 <= k) + int(d2 <= k) + int(d3 <= k) + int(d4 <= k) + int(d5 <= k) + int(d6 <= k) + int(d7 <= k);
+   const std::array<int, 8>& Z= z[d];
+   k-= Lr[sy] - Ll[sy];
+   l= Z[sy] + Ll[sy + 1] - Ll[sy];
+   r= Z[sy] + Lr[sy + 1] - Lr[sy];
+   res= res << 3 | u32(sy);
+  }
+  return res;
+ }
+ // kth と同じ値を返す。段の中の 3 bit を上から 1 bit ずつ選ぶ (段の中で 2 分の wavelet matrix を 3 段下りるのと同じ)。bit ごとに、
+ // 両端でそれまでに選んだ bit の並びに続けて 0 のものの数を popcount 1 回ずつで求めて k と比べ、選んだ側の数 (Sl、Sr) を引き継ぐ。
+ // 段ごとの popcount は 6 回で、スタックの配列を使わない。
+ u32 kth3(int l, int r, int k) const {
+  u32 res= 0;
+  for(int d= levels - 1; d >= 0; --d) {
+   const Blk *B= b_(d), &bl= B[l >> 6], &br= B[r >> 6];
+   const u64 ml= (u64(1) << (l & 63)) - 1, mr= (u64(1) << (r & 63)) - 1;
+   int Ll= int(bl.c[4]) + __builtin_popcountll(~bl.b2 & ml), Lr= int(br.c[4]) + __builtin_popcountll(~br.b2 & mr), cnt= Lr - Ll;
+   const int g2= mask(k >= cnt);
+   k-= cnt & g2;
+   int Sl= sel(g2, l - Ll, Ll), Sr= sel(g2, r - Lr, Lr), p= 4 & g2;
+   const u64 h2= u64(i64(g2));
+   u64 Ml= ~(bl.b2 ^ h2), Mr= ~(br.b2 ^ h2);
+   Ll= int(bl.c[p + 2] - bl.c[p]) + __builtin_popcountll(Ml & ~bl.b1 & ml), Lr= int(br.c[p + 2] - br.c[p]) + __builtin_popcountll(Mr & ~br.b1 & mr);
+   cnt= Lr - Ll;
+   const int g1= mask(k >= cnt);
+   k-= cnt & g1;
+   Sl= sel(g1, Sl - Ll, Ll), Sr= sel(g1, Sr - Lr, Lr), p+= 2 & g1;
+   const u64 h1= u64(i64(g1));
+   Ml&= ~(bl.b1 ^ h1), Mr&= ~(br.b1 ^ h1);
+   Ll= int(bl.c[p + 1] - bl.c[p]) + __builtin_popcountll(Ml & ~bl.b0 & ml), Lr= int(br.c[p + 1] - br.c[p]) + __builtin_popcountll(Mr & ~br.b0 & mr);
+   cnt= Lr - Ll;
+   const int g0= mask(k >= cnt);
+   k-= cnt & g0;
+   Sl= sel(g0, Sl - Ll, Ll), Sr= sel(g0, Sr - Lr, Lr), p+= 1 & g0;
+   l= z[d][p] + Sl, r= z[d][p] + Sr;
+   res= res << 3 | u32(p);
+  }
+  return res;
+ }
  // [l, r) の順位 x 未満の値の数。x は 0 以上 sigma 以下。両端とも段ごとに popcount 2 回 (s 未満の数と s の数)。
  int count_less(int l, int r, u32 x) const {
   if(x >= sigma) return r - l;
