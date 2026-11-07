@@ -1,0 +1,22 @@
+id = "luogu-P4177"
+title = "[CEOI 2008] order"
+url = "https://www.luogu.com.cn/problem/P4177"
+
+# 洛谷の制限は 1 秒と 125 MB と見ている (ページが Cloudflare で読めないので、検索の要約から)。ここでは時間とメモリを測るために
+# 広く取る。
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# テストケースは公開されていないので、自作する (gen.py と、素朴な Dinic の submissions/reference.hpp)。
+[testdata]
+source = "local"
+count = 10
+generator = "gen.py"
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"

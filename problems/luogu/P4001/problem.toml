@@ -1,0 +1,22 @@
+id = "luogu-P4001"
+title = "[ICPC-Beijing 2006] 狼抓兔子"
+url = "https://www.luogu.com.cn/problem/P4001"
+
+# 洛谷の制限時間は 3 秒と見ているが、メモリの制限は確かめられていない (ページが Cloudflare で読めず、元の BZOJ 1001 は
+# 162 MB)。ここでは時間とメモリを測るために広く取る。
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# テストケースは公開されていないので、自作する (gen.py と、想定解の双対グラフの最短路の submissions/reference.hpp)。
+[testdata]
+source = "local"
+count = 10
+generator = "gen.py"
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
