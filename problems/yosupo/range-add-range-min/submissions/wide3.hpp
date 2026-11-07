@@ -55,13 +55,16 @@ inline i64 hmin(__m256i x0, __m256i x1, __m256i x2, __m256i x3) {
   c = _mm_blendv_epi8(c, s, _mm_cmpgt_epi64(c, s));
   return _mm_cvtsi128_si64(c);
 }
-// レーン [lo, hi) を選ぶマスク (16 レーンを 4 本)。
-inline void masks(int lo, int hi, __m256i k[4]) {
+// レーン [lo, hi) を選ぶマスク (16 レーンを 4 本)。gcc は __m256i の配列をスタックへ退避するので、
+// 別々の変数で返し、レーンの番号は定数のベクトルにする。
+inline void masks(int lo, int hi, __m256i &k0, __m256i &k1, __m256i &k2, __m256i &k3) {
   const __m256i L = _mm256_set1_epi64x(lo - 1), R = _mm256_set1_epi64x(hi);
-  for (int q = 0; q < 4; ++q) {
-    const __m256i idx = _mm256_setr_epi64x(4 * q, 4 * q + 1, 4 * q + 2, 4 * q + 3);
-    k[q] = _mm256_and_si256(_mm256_cmpgt_epi64(idx, L), _mm256_cmpgt_epi64(R, idx));
-  }
+  const __m256i i0 = _mm256_setr_epi64x(0, 1, 2, 3), i1 = _mm256_setr_epi64x(4, 5, 6, 7);
+  const __m256i i2 = _mm256_setr_epi64x(8, 9, 10, 11), i3 = _mm256_setr_epi64x(12, 13, 14, 15);
+  k0 = _mm256_and_si256(_mm256_cmpgt_epi64(i0, L), _mm256_cmpgt_epi64(R, i0));
+  k1 = _mm256_and_si256(_mm256_cmpgt_epi64(i1, L), _mm256_cmpgt_epi64(R, i1));
+  k2 = _mm256_and_si256(_mm256_cmpgt_epi64(i2, L), _mm256_cmpgt_epi64(R, i2));
+  k3 = _mm256_and_si256(_mm256_cmpgt_epi64(i3, L), _mm256_cmpgt_epi64(R, i3));
 }
 
 struct alignas(64) Blk {
@@ -76,11 +79,14 @@ class Tree {
   HugeArray<Blk> mem1;
 
   void add_lanes(int h, int b, int lo, int hi, i64 x) {
-    __m256i k[4];
-    masks(lo, hi, k);
+    __m256i k0, k1, k2, k3;
+    masks(lo, hi, k0, k1, k2, k3);
     const __m256i xv = _mm256_set1_epi64x(x);
+    const __m256i x0 = _mm256_and_si256(k0, xv), x1 = _mm256_and_si256(k1, xv);
+    const __m256i x2 = _mm256_and_si256(k2, xv), x3 = _mm256_and_si256(k3, xv);
     auto upd = [&](i64 *p) {
-      for (int q = 0; q < 4; ++q) st(p + 4 * q, _mm256_add_epi64(ld(p + 4 * q), _mm256_and_si256(k[q], xv)));
+      st(p, _mm256_add_epi64(ld(p), x0)), st(p + 4, _mm256_add_epi64(ld(p + 4), x1));
+      st(p + 8, _mm256_add_epi64(ld(p + 8), x2)), st(p + 12, _mm256_add_epi64(ld(p + 12), x3));
     };
     if (h == 0) return upd(v0 + (size_t(b) << 4));
     upd(lv[h][b].s), upd(lv[h][b].t);
@@ -92,11 +98,11 @@ class Tree {
   }
   i64 lanes_min(int h, int b, int lo, int hi) const {
     const i64 *p = row(h, b);
-    __m256i k[4];
-    masks(lo, hi, k);
+    __m256i k0, k1, k2, k3;
+    masks(lo, hi, k0, k1, k2, k3);
     const __m256i inf = _mm256_set1_epi64x(INF);
-    return hmin(_mm256_blendv_epi8(inf, ld(p), k[0]), _mm256_blendv_epi8(inf, ld(p + 4), k[1]),
-                _mm256_blendv_epi8(inf, ld(p + 8), k[2]), _mm256_blendv_epi8(inf, ld(p + 12), k[3]));
+    return hmin(_mm256_blendv_epi8(inf, ld(p), k0), _mm256_blendv_epi8(inf, ld(p + 4), k1),
+                _mm256_blendv_epi8(inf, ld(p + 8), k2), _mm256_blendv_epi8(inf, ld(p + 12), k3));
   }
   void add_rec(int h, int b, int lo, int hi, i64 x) {
     const int sh = 4 * h;
