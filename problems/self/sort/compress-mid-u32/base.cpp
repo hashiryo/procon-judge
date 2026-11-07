@@ -11,6 +11,17 @@
 #endif
 #include SUBMISSION_HPP
 
+// _shared/sort/_common.hpp の分布に、この問題だけの around を足す。around は 2^31 - 引数 から 2^31 + 引数 までの一様な値で、
+// 符号付きの値 [-引数, 引数] の最上位 bit を反転した鍵と同じ並びになる (要素によって違う bit は 32 bit 全部に広がるが、最大値と
+// 最小値の差の幅は狭い)。
+static vector<u32> make(const char *dist, size_t n, unsigned long long seed, unsigned long long arg) {
+  if (strcmp(dist, "around") != 0) return sort_family::make_u32(dist, n, seed, arg);
+  sort_family::SplitMix64 rng(seed);
+  vector<u32> a(n);
+  for (auto &x : a) x = u32((1ull << 31) - arg + rng.below(2 * arg + 1));
+  return a;
+}
+
 signed main() {
   int t;
   must_scan(scanf("%d", &t), 1);
@@ -19,7 +30,7 @@ signed main() {
     char dist[16];
     unsigned long long n, seed, arg;
     must_scan(scanf("%15s %llu %llu %llu", dist, &n, &seed, &arg), 4);
-    a = sort_family::make_u32(dist, (size_t)n, seed, arg);
+    a = make(dist, (size_t)n, seed, arg);
   }
   vector<vector<u32>> xss(t);
 
