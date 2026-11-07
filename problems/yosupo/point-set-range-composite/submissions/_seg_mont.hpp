@@ -47,6 +47,38 @@ struct SegMont {
     return mont::dec(v);
   }
 
+  // 覆う節の番号を分岐なしで集める。左は見つけた順に L へ、右は見つけた順に R へ置き、左右とも
+  // 「その段で取るか」を番号の最下位 bit から足す数で決める (配列への書き込みは毎段する)。
+  // 予測の外れる分岐が無くなる。集めたあとで、L を順に、R を逆順に x へ当てる。
+  i64 query_bl_apply(int l, int r, i64 x) const {
+    int L[32], R[32], nl = 0, nr = 0;
+    for (l += n, r += n; l < r; l >>= 1, r >>= 1) {
+      L[nl] = l, nl += l & 1, l += l & 1;
+      R[nr] = r - 1, nr += r & 1, r -= r & 1;
+    }
+    u32 v = mont::enc(x);
+    for (int i = 0; i < nl; ++i) v = apply(d[L[i]], v);
+    while (nr) v = apply(d[R[--nr]], v);
+    return mont::dec(v);
+  }
+
+  // 集め方は query_bl_apply と同じ。左は x に順に当て、右はそれと並べて 1 つの写像に合成しておき、
+  // 最後に当てる。左右の鎖が並んで進むので、鎖の長さが半分ほどになる。
+  i64 query_bl_split(int l, int r, i64 x) const {
+    int L[32], R[32], nl = 0, nr = 0;
+    for (l += n, r += n; l < r; l >>= 1, r >>= 1) {
+      L[nl] = l, nl += l & 1, l += l & 1;
+      R[nr] = r - 1, nr += r & 1, r -= r & 1;
+    }
+    u32 v = mont::enc(x);
+    F g{mont::R1, 0};
+    const int k = nl < nr ? nl : nr;
+    for (int i = 0; i < k; ++i) v = apply(d[L[i]], v), g = op(d[R[i]], g);
+    for (int i = k; i < nl; ++i) v = apply(d[L[i]], v);
+    for (int i = k; i < nr; ++i) g = op(d[R[i]], g);
+    return mont::dec(apply(g, v));
+  }
+
   // 節を左から順に並べ、隣どうしを合成する段を重ねて 1 つにする。鎖の長さが log になる。
   i64 query_tree(int l, int r, i64 x) const {
     F buf[64];
