@@ -1,6 +1,9 @@
 #pragma once
-// rh61_hp の h の置き方を、512 個ごとに 1 つずらしたもの (h[i] を i + i / 512 番目に置く)。Thue–Morse のケースのクエリは 2^12 の
-// 倍数の位置ばかり読み、8 byte の項では 32 KB おきになって、キャッシュの同じ組に集まる。ずらすと 2^12 個おきの項が組に散らばる。
+// 法 2^61 - 1 のローリングハッシュ (NeoLibrary の RollingHash の写し元)。h[i] は s[0, i) のハッシュ、pw[i] は B^i で、基数は
+// 実行ごとに乱択する。等しいかは h[a + len] - h[b + len] = (h[a] - h[b]) B^len で見る (掛け算 1 回)。表は huge page に置き
+// (_shared/string/_hugealloc.hpp)、h は 512 個ごとに 1 つずらして置く (h[i] を i + i / 512 番目に置く)。Thue–Morse のケースの
+// クエリは 2^12 の倍数の位置ばかり読み、8 byte の項では 32 KB おきになって、キャッシュの同じ組に集まる。ずらすと 2^12 個おきの項が
+// 組に散らばり、h と pw の同じ添字の項が同じ組に入ることも無くなる。
 #include "pj.hpp"
 #include <random>
 #include "_shared/string/_hugealloc.hpp"
