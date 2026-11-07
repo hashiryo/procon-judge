@@ -14,3 +14,6 @@ name = "data_structure/point_add_rectangle_sum"
 
 [compare]
 kind = "checker"
+
+[record]
+case_times = true
