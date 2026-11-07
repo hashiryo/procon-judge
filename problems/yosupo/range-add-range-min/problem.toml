@@ -1,0 +1,19 @@
+id = "yosupo-range-add-range-min"
+title = "Range Add Range Min"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "data_structure/range_add_range_min"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true
