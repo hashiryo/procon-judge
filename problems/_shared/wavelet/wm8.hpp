@@ -59,6 +59,25 @@ struct WM8 {
   L[7]= k.c[7] + __builtin_popcountll(~(k.b2 & a10) & m);
   L[8]= i;
  }
+ // lt_all と同じ値を書く。数を 1 つずつ空の asm に通して、clang が popcount をベクタの表引きに、ブロックの累積との足し算を 4 個
+ // ずつのベクタにまとめないようにする。
+ [[gnu::always_inline]] static int pc(u32 c, u64 x) {
+  int v= int(c) + __builtin_popcountll(x);
+  asm("" : "+r"(v));
+  return v;
+ }
+ [[gnu::always_inline]] static void lt_all_s(const Blk& k, int i, int* L) {
+  const u64 m= (u64(1) << (i & 63)) - 1, n2= ~k.b2, n1= ~k.b1, a10= k.b1 & k.b0, o10= ~(k.b1 | k.b0);
+  L[0]= 0;
+  L[1]= pc(k.c[1], n2 & o10 & m);
+  L[2]= pc(k.c[2], n2 & n1 & m);
+  L[3]= pc(k.c[3], n2 & ~a10 & m);
+  L[4]= pc(k.c[4], n2 & m);
+  L[5]= pc(k.c[5], (n2 | o10) & m);
+  L[6]= pc(k.c[6], (n2 | n1) & m);
+  L[7]= pc(k.c[7], ~(k.b2 & a10) & m);
+  L[8]= i;
+ }
  // [l, r) の小さい方から k 番目の値の順位。0 <= k < r - l。
  u32 kth(int l, int r, int k) const {
   u32 res= 0;
@@ -78,14 +97,17 @@ struct WM8 {
   return res;
  }
  // kth と同じ値を返す。kth は区間の中の数 D[t] を配列に書いてから読み直し、gcc は 8 個の 32 bit の書き込みを 1 回のベクタで読む
- // (書き込みからの受け渡しが効かない) ので、ここでは D[t] を配列に書かずに比べ、選んだ記号の数だけを配列から引く。
+ // (書き込みからの受け渡しが効かない) ので、ここでは D[t] を配列に書かずに比べ、選んだ記号の数だけを配列から引く。popcount と
+ // D[t] は空の asm に通す (通さないと clang が popcount をベクタの表引きに、D[t] の比較をベクタにまとめ、x64-clang で wm4 より
+ // 2 割遅かった)。
  u32 kthp(int l, int r, int k) const {
   u32 res= 0;
   for(int d= levels - 1; d >= 0; --d) {
    const Blk* B= b_(d);
    int Ll[9], Lr[9];
-   lt_all(B[l >> 6], l, Ll), lt_all(B[r >> 6], r, Lr);
-   const int d1= Lr[1] - Ll[1], d2= Lr[2] - Ll[2], d3= Lr[3] - Ll[3], d4= Lr[4] - Ll[4], d5= Lr[5] - Ll[5], d6= Lr[6] - Ll[6], d7= Lr[7] - Ll[7];
+   lt_all_s(B[l >> 6], l, Ll), lt_all_s(B[r >> 6], r, Lr);
+   int d1= Lr[1] - Ll[1], d2= Lr[2] - Ll[2], d3= Lr[3] - Ll[3], d4= Lr[4] - Ll[4], d5= Lr[5] - Ll[5], d6= Lr[6] - Ll[6], d7= Lr[7] - Ll[7];
+   asm("" : "+r"(d1), "+r"(d2), "+r"(d3), "+r"(d4), "+r"(d5), "+r"(d6), "+r"(d7));
    const int sy= int(d1 <= k) + int(d2 <= k) + int(d3 <= k) + int(d4 <= k) + int(d5 <= k) + int(d6 <= k) + int(d7 <= k);
    const std::array<int, 8>& Z= z[d];
    k-= Lr[sy] - Ll[sy];
