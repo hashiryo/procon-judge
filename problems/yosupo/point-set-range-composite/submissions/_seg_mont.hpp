@@ -79,6 +79,25 @@ struct SegMont {
     return mont::dec(apply(g, v));
   }
 
+  // 集め方は query_bl_apply と同じ。当てる順に並べると L[0..nl)、R[nr-1..0] で、これを 4 つに分ける。
+  // L の前半だけを x に当て、L の後半、R の後ろ半分 (先に当てる側)、R の前半分は、それぞれ 1 つの写像に
+  // 合成する。4 本の鎖は互いに待たないので、鎖の長さが 4 分の 1 ほどになる。
+  i64 query_bl_split4(int l, int r, i64 x) const {
+    int L[32], R[32], nl = 0, nr = 0;
+    for (l += n, r += n; l < r; l >>= 1, r >>= 1) {
+      L[nl] = l, nl += l & 1, l += l & 1;
+      R[nr] = r - 1, nr += r & 1, r -= r & 1;
+    }
+    u32 v = mont::enc(x);
+    F g1{mont::R1, 0}, g2{mont::R1, 0}, g3{mont::R1, 0};
+    const int a = nl >> 1, b = nr >> 1;
+    for (int i = 0; i < a; ++i) v = apply(d[L[i]], v);
+    for (int i = a; i < nl; ++i) g1 = op(g1, d[L[i]]);
+    for (int i = nr - 1; i >= b; --i) g2 = op(g2, d[R[i]]);
+    for (int i = b - 1; i >= 0; --i) g3 = op(g3, d[R[i]]);
+    return mont::dec(apply(g3, apply(g2, apply(g1, v))));
+  }
+
   // 節を左から順に並べ、隣どうしを合成する段を重ねて 1 つにする。鎖の長さが log になる。
   i64 query_tree(int l, int r, i64 x) const {
     F buf[64];
