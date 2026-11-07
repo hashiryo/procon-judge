@@ -1,0 +1,20 @@
+id = "cf-147-b"
+title = "Smile House"
+url = "https://codeforces.com/contest/147/problem/B"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# Codeforces のテストケースは取らずに、自作する (gen.py と、参照実装の submissions/reference.hpp)。
+[testdata]
+source = "local"
+count = 18
+generator = "gen.py"
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
