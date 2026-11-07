@@ -1,0 +1,145 @@
+#pragma once
+#include "pj.hpp"
+#include "neo/data_structure/SegmentTree.hpp"
+#ifdef __x86_64__
+#include <immintrin.h>
+#else
+#include <simde/x86/avx2.h>
+#endif
+// NeoLibrary abcba55 の monoid::Sum の核で、元の値の配列を 2 MB 境界から 2112 byte ずらして使う形。
+// x64 でだけ lib-neo が wide8 の 3.4 倍遅かった (run 42371905838) ので、元の値の配列と段 0 の表のアドレスの
+// 下位 12 bit がそろうこと (4K エイリアシング) を疑って比べる。
+namespace segtree_sum_stagger {
+using u64= unsigned long long;
+constexpr int LB= 3, B= 1 << LB;
+// mask[B - 1 - s + j] は j > s のとき全部 1。s 番目より後ろのレーンを選ぶ窓。
+struct Mask {
+ alignas(64) u64 v[2 * B];
+ constexpr Mask(): v{} {
+  for(int j= 0; j < B; ++j) v[B + j]= ~0ull;
+ }
+};
+inline constexpr Mask mask{};
+template <class V> class Wide {
+ int n= 0, H= 0;
+ std::size_t loff[24]= {};  // 段 h の表は mem の loff[h] から (写しても壊れないよう、ポインタでなくずれで持つ)
+ segment_tree_internal::Vec<u64> mem;
+ segment_tree_internal::Vec<V> a;
+ template <class F> void build(const F& init) {
+  const std::size_t N= n;
+  H= 1;
+  while((N >> (H * LB)) != 0) ++H;
+  std::size_t total= 0;
+  for(int h= 0; h < H; ++h) loff[h]= total, total+= ((N >> ((h + 1) * LB)) + 1) << LB;
+  mem.assign(total, 0), a.resize(n + 264);
+  u64* lv[24];
+  for(int h= 0; h < H; ++h) lv[h]= mem.data() + loff[h];
+  for(int i= 0; i < n; ++i) a[264 + i]= init(i);
+  // 段 0 は塊の中の左からの和、段 h + 1 の子の値は段 h の塊の合計。下から順に作る。
+  std::vector<u64> cur(a.begin() + 264, a.end()), nxt;
+  for(int h= 0; h < H; ++h) {
+   const std::size_t m= ((N >> ((h + 1) * LB)) + 1) << LB;
+   nxt.assign(m >> LB, 0);
+   for(std::size_t f= 0; f < m; ++f) {
+    const std::size_t j= f & (B - 1);
+    lv[h][f]= j ? lv[h][f - 1] + (f - 1 < cur.size() ? cur[f - 1] : 0) : 0;
+    if(j == B - 1) nxt[f >> LB]= lv[h][f] + (f < cur.size() ? cur[f] : 0);
+   }
+   cur.swap(nxt);
+  }
+ }
+ const u64* L(int h) const { return mem.data() + loff[h]; }
+ u64* L(int h) { return mem.data() + loff[h]; }
+ [[gnu::always_inline]] u64 prefix(int r) const {
+  u64 s= 0;
+  for(int h= 0; h < H; ++h) s+= L(h)[std::size_t(r) >> (h * LB)];
+  return s;
+ }
+ [[gnu::always_inline]] void add(int p, u64 x) {
+  const __m256i xv= _mm256_set1_epi64x((long long)x);
+  for(int h= 0; h < H; ++h) {
+   const std::size_t c= std::size_t(p) >> (h * LB);
+   u64* blk= L(h) + ((c >> LB) << LB);
+   const u64* m= mask.v + (B - 1 - (c & (B - 1)));
+   const __m256i v0= _mm256_load_si256((const __m256i*)blk), v1= _mm256_load_si256((const __m256i*)(blk + 4));
+   const __m256i m0= _mm256_loadu_si256((const __m256i*)m), m1= _mm256_loadu_si256((const __m256i*)(m + 4));
+   _mm256_store_si256((__m256i*)blk, _mm256_add_epi64(v0, _mm256_and_si256(m0, xv)));
+   _mm256_store_si256((__m256i*)(blk + 4), _mm256_add_epi64(v1, _mm256_and_si256(m1, xv)));
+  }
+ }
+public:
+ Wide()= default;
+ explicit Wide(int n): n(n) {
+  build([](int) { return V(); });
+ }
+ Wide(int n, V x): n(n) {
+  build([&](int) { return x; });
+ }
+ Wide(const std::vector<V>& v): n(v.size()) {
+  build([&](int i) { return v[i]; });
+ }
+ template <class F, std::enable_if_t<std::is_invocable_r_v<V, const F&, int>, int> = 0> Wide(int n, const F& init): n(n) { build(init); }
+ int size() const { return n; }
+ V get(int i) const { return a[264 + i]; }
+ V operator[](int i) const { return get(i); }
+ [[gnu::always_inline]] void set(int i, V x) { add(i, u64(x) - u64(a[264 + i])), a[264 + i]= x; }
+ [[gnu::always_inline]] void mul(int i, V x) { add(i, u64(x)), a[264 + i]+= x; }
+ // [l, r) の和。2 つの接頭辞を同じループで読む。
+ [[gnu::always_inline]] V prod(int l, int r) const {
+  u64 s= 0;
+  for(int h= 0; h < H; ++h) s+= L(h)[std::size_t(r) >> (h * LB)] - L(h)[std::size_t(l) >> (h * LB)];
+  return V(s);
+ }
+ V all_prod() const { return V(prefix(n)); }
+ // check(prod(l, r)) が真になる最大の r。境目 x の真偽 g(x) を「x <= l なら真、x > n なら偽、ほかは
+ // check(prefix(x) - prefix(l))」とすると、真の並びのあとに偽の並びが来るので、各段で塊の中の最後の真の子へ下りる。
+ template <class C> int max_right(int l, const C& check) const {
+  assert(0 <= l && l <= n && check(V()));
+  const u64 base= prefix(l);
+  u64 acc= 0;
+  std::size_t b= 0;
+  for(int h= H - 1;; --h) {
+   const int sh= h * LB;
+   const std::size_t start= b << (sh + LB);
+   int jb= 0;
+   for(int j= 1; j < B; ++j) {
+    const std::size_t x= start + (std::size_t(j) << sh);
+    if(x > std::size_t(n)) break;
+    if(x > std::size_t(l) && !check(V(acc + L(h)[(b << LB) + j] - base))) break;
+    jb= j;
+   }
+   if(h == 0) return int(start + jb);
+   acc+= L(h)[(b << LB) + jb], b= (b << LB) + jb;
+  }
+ }
+ // check(prod(l, r)) が真になる最小の l。g(x) を「x >= r なら真、ほかは check(prefix(r) - prefix(x))」とすると、
+ // 偽の並びのあとに真の並びが来るので、各段で塊の中の最後の偽の子へ下りる。
+ template <class C> int min_left(int r, const C& check) const {
+  assert(0 <= r && r <= n && check(V()));
+  const u64 top= prefix(r);
+  if(check(V(top))) return 0;
+  u64 acc= 0;
+  std::size_t b= 0;
+  for(int h= H - 1;; --h) {
+   const int sh= h * LB;
+   const std::size_t start= b << (sh + LB);
+   int jf= 0;  // 塊の始まり (j = 0) はいつも偽
+   for(int j= B - 1; j >= 1; --j) {
+    const std::size_t x= start + (std::size_t(j) << sh);
+    if(x >= std::size_t(r) || check(V(top - (acc + L(h)[(b << LB) + j])))) continue;
+    jf= j;
+    break;
+   }
+   if(h == 0) return int(start + jf + 1);
+   acc+= L(h)[(b << LB) + jf], b= (b << LB) + jf;
+  }
+ }
+};
+}  // namespace
+
+struct Solver {
+  segtree_sum_stagger::Wide<i64> w;
+  explicit Solver(const vector<i64> &a) : w(a) {}
+  void add(int p, i64 x) { w.mul(p, x); }
+  i64 sum(int l, int r) { return w.prod(l, r); }
+};

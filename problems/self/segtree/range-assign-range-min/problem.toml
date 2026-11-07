@@ -1,0 +1,21 @@
+id = "self-segtree-range-assign-range-min"
+title = "区間代入と区間最小 (N = Q = 5 × 10^5、i64)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 10
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
