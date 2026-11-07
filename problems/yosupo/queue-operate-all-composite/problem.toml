@@ -1,0 +1,19 @@
+id = "yosupo-queue-operate-all-composite"
+title = "Queue Operate All Composite"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "data_structure/queue_operate_all_composite"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true
