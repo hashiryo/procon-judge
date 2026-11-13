@@ -1,0 +1,23 @@
+id = "self-flow-mincostflow-slope"
+title = "s-t の最小費用流の slope (グラフの族)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# 流量の範囲、収支、費用の和と、折れ線の形は、ハーネスが計測のあとに確かめる。期待出力は参照実装 (教科書どおりの
+# 逐次最短路) の折れ点の列のハッシュで、愚直解 (1 単位ずつ流して負閉路を消す) と小さい入力で突き合わせる。
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 12
+reference = "reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
