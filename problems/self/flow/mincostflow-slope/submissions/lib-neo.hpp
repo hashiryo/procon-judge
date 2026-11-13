@@ -1,6 +1,6 @@
 #pragma once
-// NeoLibrary の PrimalDual (neo/flow/PrimalDual.hpp) で流すもの。中身は pd9 と同じ。
-#include "neo/flow/PrimalDual.hpp"
+// NeoLibrary の PrimalDual (neo/combinatorial_optimization/PrimalDual.hpp) で流すもの。中身は pd9 と同じ。
+#include "neo/combinatorial_optimization/PrimalDual.hpp"
 struct Solver {
  PrimalDual<long long, long long> g;
  explicit Solver(int n): g(n) {}

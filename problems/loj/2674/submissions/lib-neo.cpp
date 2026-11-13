@@ -1,9 +1,9 @@
-// NeoLibrary の PrimalDual (neo/flow/PrimalDual.hpp) で、流しながら頂点を足す。料理人 j が後ろから k 番目に作る枠を頂点に
+// NeoLibrary の PrimalDual (neo/combinatorial_optimization/PrimalDual.hpp) で、流しながら頂点を足す。料理人 j が後ろから k 番目に作る枠を頂点に
 // し、料理 i からその枠へ容量 1、費用 k t_ij の辺を張る。料理人ごとにまだ使っていない枠を 1 つだけ置き、1 皿ずつ流して、
 // 使った枠の次の枠 (k + 1 番目) を足す。k 番目の枠は k + 1 番目より安いので、使っていない枠を 1 つ置けば足りる。
 #include <iostream>
 #include <vector>
-#include "neo/flow/PrimalDual.hpp"
+#include "neo/combinatorial_optimization/PrimalDual.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

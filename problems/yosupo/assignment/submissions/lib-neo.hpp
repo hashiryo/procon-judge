@@ -1,7 +1,7 @@
 #pragma once
-// NeoLibrary の assignment (neo/graph/assignment.hpp) で書いたもの。中身は hungarian_avx2_cr と同じで、双対を返す分と、行ごとの
+// NeoLibrary の assignment (neo/combinatorial_optimization/assignment.hpp) で書いたもの。中身は hungarian_avx2_cr と同じで、双対を返す分と、行ごとの
 // 列を返す形が違う。
-#include "neo/graph/assignment.hpp"
+#include "neo/combinatorial_optimization/assignment.hpp"
 struct Solver {
  int n;
  const vector<i64>& a;

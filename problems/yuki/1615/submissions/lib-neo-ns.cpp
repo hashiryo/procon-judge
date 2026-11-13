@@ -1,9 +1,9 @@
-// 重み付き二部マッチング (非想定解)。NeoLibrary の MinCostFlow (neo/flow/MinCostFlow.hpp) を第 3 引数を true にしたネットワーク
+// 重み付き二部マッチング (非想定解)。NeoLibrary の MinCostFlow (neo/combinatorial_optimization/MinCostFlow.hpp) を第 3 引数を true にしたネットワーク
 // 単体法で使い、売り値を負の費用にした最小費用
 // 循環流として解く。s から買い手、商品から t へ容量 1 の辺を張り、t から s へ戻す辺を足して b を 0 にすると、流れが
 // マッチングに当たり、費用の和の符号を反転したものが総売り上げの最大になる。
 #include <iostream>
-#include "neo/flow/MinCostFlow.hpp"
+#include "neo/combinatorial_optimization/MinCostFlow.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

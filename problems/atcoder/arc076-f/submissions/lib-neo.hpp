@@ -1,10 +1,10 @@
 #pragma once
-// NeoLibrary の MaxFlow (neo/flow/MaxFlow.hpp、容量は int) で解く力ずく。椅子の上に左から累積する前の鎖と、右から累積
+// NeoLibrary の MaxFlow (neo/combinatorial_optimization/MaxFlow.hpp、容量は int) で解く力ずく。椅子の上に左から累積する前の鎖と、右から累積
 // する後ろの鎖を置き、s → 人 (容量 1)、人 → 前の鎖の L_i と後ろの鎖の R_i (容量 1)、前の鎖 k → k - 1 と後ろの鎖
 // k → k + 1 (容量 N)、どちらの鎖も k → 椅子 k (容量 1)、椅子 → t (容量 1) と張る。答えは N から最大流を引いたもの。
 // 人が椅子より多いと、t に届かない余りが鎖を行き来する (MaxFlow は途中で増加路へ移る)。右側だけの鎖 (seed 8) は、
 // 増加路が鎖を長く往復するので、push-relabel のまま 5 秒を超える (NeoLibrary 37f7c53 の時点)。
-#include "neo/flow/MaxFlow.hpp"
+#include "neo/combinatorial_optimization/MaxFlow.hpp"
 struct Solver {
  int n, m;
  const vector<array<int, 2>>& lr;

@@ -24,7 +24,7 @@
 #include <cstdlib>
 #include <utility>
 #include <vector>
-#include "neo/flow/MaxFlow.hpp"
+#include "neo/combinatorial_optimization/MaxFlow.hpp"
 namespace mcf_cs3 {
 using i64= long long;
 struct Result {

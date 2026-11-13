@@ -1,9 +1,9 @@
-// NeoLibrary の assignment (neo/graph/assignment.hpp) で書いたもの。長さの和が最小の完全マッチングは交差しないので、距離を
+// NeoLibrary の assignment (neo/combinatorial_optimization/assignment.hpp) で書いたもの。長さの和が最小の完全マッチングは交差しないので、距離を
 // double の行列にして assignment に渡し、行ごとの列をそのまま出す。
 #include <cmath>
 #include <cstdio>
 #include <vector>
-#include "neo/graph/assignment.hpp"
+#include "neo/combinatorial_optimization/assignment.hpp"
 int main() {
  int n;
  if(scanf("%d", &n) != 1) return 1;

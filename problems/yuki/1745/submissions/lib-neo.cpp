@@ -1,9 +1,9 @@
-// NeoLibrary の BipartiteMatching (neo/graph/BipartiteMatching.hpp) で書いたもの。辺 i を使う最大マッチングがあるのは edge_kind(i) != 0 のとき。
+// NeoLibrary の BipartiteMatching (neo/combinatorial_optimization/BipartiteMatching.hpp) で書いたもの。辺 i を使う最大マッチングがあるのは edge_kind(i) != 0 のとき。
 #include <array>
 #include <cstdio>
 #include <string>
 #include <vector>
-#include "neo/graph/BipartiteMatching.hpp"
+#include "neo/combinatorial_optimization/BipartiteMatching.hpp"
 int main() {
  int n, m, l;
  if(scanf("%d %d %d", &n, &m, &l) != 3) return 1;

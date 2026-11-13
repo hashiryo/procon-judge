@@ -1,8 +1,8 @@
 #pragma once
-// NeoLibrary の MaxFlow (neo/flow/MaxFlow.hpp) で書いたもの。解き方は common.hpp と同じで、最小カットに乗る辺を 1 本ずつ
+// NeoLibrary の MaxFlow (neo/combinatorial_optimization/MaxFlow.hpp) で書いたもの。解き方は common.hpp と同じで、最小カットに乗る辺を 1 本ずつ
 // change_cap で上限まで広げて流し直し、増分を見てから元の容量に戻す。容量を下げる change_cap のあとも最大流のまま
 // なので、戻したあとに流し直さなくてよい。
-#include "neo/flow/MaxFlow.hpp"
+#include "neo/combinatorial_optimization/MaxFlow.hpp"
 struct Solver {
  static constexpr i64 INF= 512345;
  int k, n;

@@ -1,9 +1,9 @@
-// NeoLibrary の BipartiteMatching (neo/graph/BipartiteMatching.hpp) で書いたもの。木を bipartite_coloring で塗り分けて 2 つ目の入口に渡す。
+// NeoLibrary の BipartiteMatching (neo/combinatorial_optimization/BipartiteMatching.hpp) で書いたもの。木を bipartite_coloring で塗り分けて 2 つ目の入口に渡す。
 // 頂点 v を除いても最大マッチングの大きさが変わらないのは、v を空ける最大マッチングがあるとき (vertex_kind(v) != 2)。
 #include <array>
 #include <cstdio>
 #include <vector>
-#include "neo/graph/BipartiteMatching.hpp"
+#include "neo/combinatorial_optimization/BipartiteMatching.hpp"
 int main() {
  int n;
  if(scanf("%d", &n) != 1) return 1;

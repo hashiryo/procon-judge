@@ -1,9 +1,9 @@
-// NeoLibrary の MaxFlow (neo/flow/MaxFlow.hpp) で解く。転送装置を容量 1 の辺にして flow(1, n) で流し、decompose(1, n) が
+// NeoLibrary の MaxFlow (neo/combinatorial_optimization/MaxFlow.hpp) で解く。転送装置を容量 1 の辺にして flow(1, n) で流し、decompose(1, n) が
 // 返す道 (辺の番号の列) をそのまま部屋の列に直して出す。容量が 1 なので、どの道の流量も 1 になる。
 #include <array>
 #include <cstdio>
 #include <vector>
-#include "neo/flow/MaxFlow.hpp"
+#include "neo/combinatorial_optimization/MaxFlow.hpp"
 int main() {
  int n, m;
  if(scanf("%d %d", &n, &m) != 2) return 1;

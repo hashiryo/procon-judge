@@ -1,7 +1,7 @@
 #pragma once
-// NeoLibrary の MaxFlow (neo/flow/MaxFlow.hpp、容量は i64) で解くもの。flow だけを呼ぶので、余りを s へ戻す段は回らない。
+// NeoLibrary の MaxFlow (neo/combinatorial_optimization/MaxFlow.hpp、容量は i64) で解くもの。flow だけを呼ぶので、余りを s へ戻す段は回らない。
 // hlpp_fifo との差は、辺を溜めてから CSR に組む形と、容量を i64 にした分の費用になる。
-#include "neo/flow/MaxFlow.hpp"
+#include "neo/combinatorial_optimization/MaxFlow.hpp"
 struct Solver {
  MaxFlow<long long> g;
  int s, t;

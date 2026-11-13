@@ -7,7 +7,7 @@
 // 辺で頂点を全部 (道の長さが奇なら 1 つを除いて) 組ませ、奇閉路は 1 頂点だけ空ける。そこから gm_forest の交互森
 // (RELABEL) で最大にする。二部に近いグラフでは奇閉路が少ないので、長い増加路をたどる探索がほとんど要らない。
 #include "_shared/flow/gm_forest.hpp"
-#include "neo/graph/BipartiteMatching.hpp"
+#include "neo/combinatorial_optimization/BipartiteMatching.hpp"
 namespace gm_dcover {
 inline std::vector<int> general_matching(int n, const std::vector<std::array<int, 2>>& e) {
  std::vector<std::array<int, 2>> be;

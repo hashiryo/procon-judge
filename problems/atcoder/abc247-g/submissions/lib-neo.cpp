@@ -1,9 +1,9 @@
-// NeoLibrary の PrimalDual (neo/flow/PrimalDual.hpp) の slope で解く。大学と分野を頂点にし、人を大学から分野への容量 1、
+// NeoLibrary の PrimalDual (neo/combinatorial_optimization/PrimalDual.hpp) の slope で解く。大学と分野を頂点にし、人を大学から分野への容量 1、
 // 費用 -C の辺にする (負の費用の辺は DAG なので、初めのポテンシャルは位相順に決まる)。s から t への slope の折れ点の間は
 // 傾きが一定なので、i 人のときの費用は折れ点の間を線形に埋めれば求まり、その符号を反転したものが答え。
 #include <iostream>
 #include <vector>
-#include "neo/flow/PrimalDual.hpp"
+#include "neo/combinatorial_optimization/PrimalDual.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

@@ -1,8 +1,8 @@
 #pragma once
-// NeoLibrary の BipartiteMatching (neo/graph/BipartiteMatching.hpp) で書いたもの。マッチングは pr_ks_half_pack と同じ方式で、辺の列を写して
+// NeoLibrary の BipartiteMatching (neo/combinatorial_optimization/BipartiteMatching.hpp) で書いたもの。マッチングは pr_ks_half_pack と同じ方式で、辺の列を写して
 // 持つ分と、相手を入口の番号で引く分だけが違う。
 #include <memory>
-#include "neo/graph/BipartiteMatching.hpp"
+#include "neo/combinatorial_optimization/BipartiteMatching.hpp"
 struct Solver {
  int L, R;
  const vector<array<int, 2>>& e;

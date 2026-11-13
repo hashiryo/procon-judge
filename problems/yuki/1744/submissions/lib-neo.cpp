@@ -1,10 +1,10 @@
-// NeoLibrary の BipartiteMatching (neo/graph/BipartiteMatching.hpp) で書いたもの。辺 i を除いても最大マッチングの大きさが変わらないのは、
+// NeoLibrary の BipartiteMatching (neo/combinatorial_optimization/BipartiteMatching.hpp) で書いたもの。辺 i を除いても最大マッチングの大きさが変わらないのは、
 // i がどの最大マッチングにも入るわけではないとき (edge_kind(i) != 2)。
 #include <array>
 #include <cstdio>
 #include <string>
 #include <vector>
-#include "neo/graph/BipartiteMatching.hpp"
+#include "neo/combinatorial_optimization/BipartiteMatching.hpp"
 int main() {
  int n, m, l;
  if(scanf("%d %d %d", &n, &m, &l) != 3) return 1;

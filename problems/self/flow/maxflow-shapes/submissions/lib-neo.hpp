@@ -1,7 +1,7 @@
 #pragma once
-// NeoLibrary の MaxFlow (neo/flow/MaxFlow.hpp、容量は i64)。逆向きの容量は add_edge の rev_cap に渡す。flow だけを呼ぶので、
+// NeoLibrary の MaxFlow (neo/combinatorial_optimization/MaxFlow.hpp、容量は i64)。逆向きの容量は add_edge の rev_cap に渡す。flow だけを呼ぶので、
 // 余りを s へ戻す段は回らない。
-#include "neo/flow/MaxFlow.hpp"
+#include "neo/combinatorial_optimization/MaxFlow.hpp"
 struct Solver {
  MaxFlow<long long> g;
  int s, t;

@@ -1,11 +1,11 @@
-// NeoLibrary の BipartiteMatching (neo/graph/BipartiteMatching.hpp) で書いたもの。辺の張り方は lib と同じで、答えの向きは matching() が返す
+// NeoLibrary の BipartiteMatching (neo/combinatorial_optimization/BipartiteMatching.hpp) で書いたもの。辺の張り方は lib と同じで、答えの向きは matching() が返す
 // 辺の番号から引く。
 #include <algorithm>
 #include <array>
 #include <cstdio>
 #include <utility>
 #include <vector>
-#include "neo/graph/BipartiteMatching.hpp"
+#include "neo/combinatorial_optimization/BipartiteMatching.hpp"
 int main() {
  constexpr int DX[8]= {1, 1, 0, -1, -1, -1, 0, 1}, DY[8]= {0, 1, 1, 1, 0, -1, -1, -1};
  int n;

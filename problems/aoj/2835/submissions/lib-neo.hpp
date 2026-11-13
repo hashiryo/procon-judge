@@ -1,7 +1,7 @@
 #pragma once
-// NeoLibrary の MaxFlow (neo/flow/MaxFlow.hpp) で書いたもの。解き方は common.hpp と同じで、容量 1 の辺を 1 本ずつ change_cap で
+// NeoLibrary の MaxFlow (neo/combinatorial_optimization/MaxFlow.hpp) で書いたもの。解き方は common.hpp と同じで、容量 1 の辺を 1 本ずつ change_cap で
 // 塞ぎ、流量が減るものがあれば答えを 1 減らす。辺は両向き。
-#include "neo/flow/MaxFlow.hpp"
+#include "neo/combinatorial_optimization/MaxFlow.hpp"
 struct Solver {
  int n;
  const vector<array<i64, 3>>& edges;

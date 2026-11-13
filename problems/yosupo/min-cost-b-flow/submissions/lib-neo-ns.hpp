@@ -1,6 +1,6 @@
 #pragma once
-// NeoLibrary の MinCostFlow (neo/flow/MinCostFlow.hpp) で、第 3 引数を true にしてネットワーク単体法で解くもの。
-#include "neo/flow/MinCostFlow.hpp"
+// NeoLibrary の MinCostFlow (neo/combinatorial_optimization/MinCostFlow.hpp) で、第 3 引数を true にしてネットワーク単体法で解くもの。
+#include "neo/combinatorial_optimization/MinCostFlow.hpp"
 struct Solver {
  int m;
  MinCostFlow<long long, long long, true> g;

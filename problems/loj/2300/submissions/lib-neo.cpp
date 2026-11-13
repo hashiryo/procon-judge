@@ -1,9 +1,9 @@
-// NeoLibrary の MinCostFlow (neo/flow/MinCostFlow.hpp) で、費用を -log(安全度) にした実数の費用の最小費用流として解く。費用が
+// NeoLibrary の MinCostFlow (neo/combinatorial_optimization/MinCostFlow.hpp) で、費用を -log(安全度) にした実数の費用の最小費用流として解く。費用が
 // 浮動小数点数の型なので、中身はネットワーク単体法になる。総部から間諜 j へ容量 AM_j、間諜どうしは両向きに容量 M_ij、ドイツ
 // 軍と連絡する間諜から終点へ容量 K の辺を張り、K 流せれば exp(-費用の和) が答え、流せなければ 0。
 #include <cmath>
 #include <cstdio>
-#include "neo/flow/MinCostFlow.hpp"
+#include "neo/combinatorial_optimization/MinCostFlow.hpp"
 int main() {
  int N, K;
  if(scanf("%d %d", &N, &K) != 2) return 1;

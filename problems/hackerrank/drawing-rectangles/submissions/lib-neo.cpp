@@ -1,10 +1,10 @@
-// NeoLibrary の BipartiteMatching (neo/graph/BipartiteMatching.hpp) で書いたもの。列 x を左、行 y を右に置き、塗られたマスを辺にする。
+// NeoLibrary の BipartiteMatching (neo/combinatorial_optimization/BipartiteMatching.hpp) で書いたもの。列 x を左、行 y を右に置き、塗られたマスを辺にする。
 // 最小点被覆は min_vertex_cover() で、左 (列) の頂点が [0, N)、右 (行) の頂点が [N, 2N) の番号で番号の順に返る。
 #include <algorithm>
 #include <array>
 #include <cstdio>
 #include <vector>
-#include "neo/graph/BipartiteMatching.hpp"
+#include "neo/combinatorial_optimization/BipartiteMatching.hpp"
 int main() {
  constexpr int N= 300'001;
  int n;

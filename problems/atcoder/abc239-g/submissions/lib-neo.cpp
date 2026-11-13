@@ -1,9 +1,9 @@
-// NeoLibrary の MaxFlow (neo/flow/MaxFlow.hpp) で解く。頂点を入口と出口に分けるのは lib-maxflow と同じで、min_cut(s) で
+// NeoLibrary の MaxFlow (neo/combinatorial_optimization/MaxFlow.hpp) で解く。頂点を入口と出口に分けるのは lib-maxflow と同じで、min_cut(s) で
 // s から届く頂点を見て、入口に届いて出口に届かない頂点に壁を置く。
 #include <array>
 #include <cstdio>
 #include <vector>
-#include "neo/flow/MaxFlow.hpp"
+#include "neo/combinatorial_optimization/MaxFlow.hpp"
 int main() {
  int n, m;
  if(scanf("%d %d", &n, &m) != 2) return 1;

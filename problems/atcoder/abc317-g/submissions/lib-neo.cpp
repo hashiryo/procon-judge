@@ -1,10 +1,10 @@
-// NeoLibrary の BipartiteMatching (neo/graph/BipartiteMatching.hpp) で書いたもの。行を左、数を右に置いてマスごとに辺を張り (多重辺になる)、
+// NeoLibrary の BipartiteMatching (neo/combinatorial_optimization/BipartiteMatching.hpp) で書いたもの。行を左、数を右に置いてマスごとに辺を張り (多重辺になる)、
 // 完全マッチングを取っては使った辺を除くことを M 回繰り返す。M 正則の二部多重グラフから完全マッチングを除いても
 // 正則のままなので、毎回完全マッチングが取れる。
 #include <array>
 #include <cstdio>
 #include <vector>
-#include "neo/graph/BipartiteMatching.hpp"
+#include "neo/combinatorial_optimization/BipartiteMatching.hpp"
 int main() {
  int n, m;
  if(scanf("%d %d", &n, &m) != 2) return 1;

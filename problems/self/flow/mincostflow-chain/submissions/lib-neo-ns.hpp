@@ -1,7 +1,7 @@
 #pragma once
-// NeoLibrary の MinCostFlow (neo/flow/MinCostFlow.hpp) で、第 3 引数を true にしてネットワーク単体法で解くもの。鎖や星の形の網では
+// NeoLibrary の MinCostFlow (neo/combinatorial_optimization/MinCostFlow.hpp) で、第 3 引数を true にしてネットワーク単体法で解くもの。鎖や星の形の網では
 // 既定の cost scaling が 2 乗で伸びる (cs3_pa4_et が TLE) ので、この問題にはネットワーク単体法の版だけを置く。
-#include "neo/flow/MinCostFlow.hpp"
+#include "neo/combinatorial_optimization/MinCostFlow.hpp"
 struct Solver {
  int m;
  MinCostFlow<long long, long long, true> g;

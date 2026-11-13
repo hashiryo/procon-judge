@@ -1,6 +1,6 @@
-// NeoLibrary の MinCostFlow (neo/flow/MinCostFlow.hpp) で、頂点 0 から V - 1 へ F 流す b-flow として解く。
+// NeoLibrary の MinCostFlow (neo/combinatorial_optimization/MinCostFlow.hpp) で、頂点 0 から V - 1 へ F 流す b-flow として解く。
 #include <iostream>
-#include "neo/flow/MinCostFlow.hpp"
+#include "neo/combinatorial_optimization/MinCostFlow.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);
