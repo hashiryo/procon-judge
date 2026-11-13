@@ -1,0 +1,16 @@
+id = "loj-102"
+title = "最小费用流"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 256
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "loj"
+name = "102"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,16 @@
+id = "loj-2674"
+title = "「NOI2012」美食节"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "loj"
+name = "2674"
+
+[compare]
+kind = "tokens"

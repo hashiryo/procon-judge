@@ -1,0 +1,21 @@
+id = "atcoder-abc247-g"
+title = "G - Dream Team"
+url = "https://atcoder.jp/contests/abc247/tasks/abc247_g"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+# AtCoder はテストケースを公開していないので、自作する (gen.py と、教科書どおりの逐次最短路の reference.cpp)。答えは 1 つに
+# 決まるので、トークンで比べる。reference.cpp は、部分集合を全部試す愚直解 (brute.cpp) と小さい入力で突き合わせる。
+[testdata]
+source = "local"
+count = 12
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "tokens"
