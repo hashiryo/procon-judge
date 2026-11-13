@@ -1,0 +1,19 @@
+id = "loj-2300"
+title = "「CTSC2001」终极情报网"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 256
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "loj"
+name = "2300"
+
+# 答えは確率で、有効数字 5 桁を求める。LOJ のチェッカは自作 (spj) なので、相対誤差で比べる。
+[compare]
+kind = "float"
+abs_tol = 1e-15
+rel_tol = 1e-04
