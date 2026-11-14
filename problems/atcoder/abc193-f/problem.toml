@@ -1,0 +1,21 @@
+id = "atcoder-abc193-f"
+title = "F - Zebraness"
+url = "https://atcoder.jp/contests/abc193/tasks/abc193_f"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+# AtCoder はテストケースを公開していないので、自作する (gen.py と、市松模様に色を反転して最小カットで解く reference.cpp)。
+# reference.cpp は、? のマスの塗り方を全部試す愚直解 (brute.cpp) と小さい入力で突き合わせる。
+[testdata]
+source = "local"
+count = 14
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,21 @@
+id = "atcoder-arc085-e"
+title = "E - MUL"
+url = "https://atcoder.jp/contests/arc085/tasks/arc085_c"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+# AtCoder はテストケースを公開していないので、自作する (gen.py と、最大重み閉包の最小カットで解く reference.cpp)。
+# reference.cpp は、割る宝石の集合を全部試す愚直解 (brute.cpp) と小さい入力で突き合わせる。
+[testdata]
+source = "local"
+count = 14
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "tokens"
