@@ -1,0 +1,21 @@
+id = "atcoder-abc285-g"
+title = "G - Tatami"
+url = "https://atcoder.jp/contests/abc285/tasks/abc285_g"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+# AtCoder はテストケースを公開していないので、自作する (gen.py と、2 回の二部マッチングで判定する reference.cpp)。
+# reference.cpp は、敷き方を全部試す愚直解 (brute.cpp) と小さい入力で突き合わせる。
+[testdata]
+source = "local"
+count = 16
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "tokens"
