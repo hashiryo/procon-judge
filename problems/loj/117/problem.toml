@@ -1,0 +1,16 @@
+id = "loj-117"
+title = "有源汇有上下界最小流"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 256
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "loj"
+name = "117"
+
+[compare]
+kind = "tokens"

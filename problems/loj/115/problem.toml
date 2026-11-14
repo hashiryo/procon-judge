@@ -1,0 +1,18 @@
+id = "loj-115"
+title = "无源汇有上下界可行流"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 256
+
+[harness]
+kind = "base"
+
+# 流れはどれでもよいので、checker.cpp が、YES と NO が期待出力と一致すること、YES なら辺ごとの流量が下限と上限の間に
+# あり、どの頂点でも釣り合うことを確かめる。
+[testdata]
+source = "loj"
+name = "115"
+
+[compare]
+kind = "checker"
