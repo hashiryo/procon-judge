@@ -1,0 +1,34 @@
+// lib-neo.cpp の DFA を、状態に番号を振る表を密な配列にした写し (problems/_shared/automaton/_DFA_dn.hpp) に替えたもの。
+// 書き比べの記録は algo-notes の notes/automaton-dp.md にある。以下は lib-neo.cpp のまま。
+// lib.cpp と同じ DFA (状態は位置と繰り下がりの組) を NeoLibrary の DFA (neo/counting/DFA.hpp) で組み、最小を求める DP を回す。
+#include <iostream>
+#include <vector>
+#include <string>
+#include <array>
+#include <algorithm>
+#include "_shared/automaton/_DFA_dn.hpp"
+using namespace std;
+signed main() {
+ cin.tie(0);
+ ios::sync_with_stdio(0);
+ vector<int> alp(19);
+ for(int i= 0; i < 19; ++i) alp[i]= i - 9;
+ string N;
+ cin >> N;
+ N= "0" + N;
+ int n= N.length();
+ using state_t= array<int, 2>;
+ auto tr= [&](state_t s, int c) -> state_t {
+  auto [i, b]= s;
+  if(i < 0) return {-1, -1};
+  int d= (N[i] - '0' + b) % 10;
+  if(c == d || 10 + c == d) return {i - 1, (N[i] - '0' + b - c) / 10};
+  return {-1, -1};
+ };
+ auto ac= [&](state_t s) { return s[1] == 0; };
+ DFA dfa(alp, state_t{n - 1, 0}, tr, ac, state_t{-1, -1});
+ auto op= [&](int l, int r) { return min(l, r); };
+ auto f= [&](int x, int c, int) { return x + abs(c); };
+ cout << dfa.dp(n, op, 1 << 30, f, 0) << '\n';
+ return 0;
+}
