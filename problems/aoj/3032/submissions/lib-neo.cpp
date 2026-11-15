@@ -1,0 +1,25 @@
+// NeoLibrary の GeneralMatching (neo/combinatorial_optimization/GeneralMatching.hpp) で解く。
+#include <array>
+#include <cstdlib>
+#include <iostream>
+#include <vector>
+#include "neo/combinatorial_optimization/GeneralMatching.hpp"
+using namespace std;
+signed main() {
+ cin.tie(0);
+ ios::sync_with_stdio(0);
+ int N, A, B;
+ cin >> N >> A >> B;
+ vector<int> a(N), b(N);
+ for(int i= 0; i < N; i++) cin >> a[i] >> b[i];
+ vector<array<int, 2>> es;
+ for(int i= 0; i < N; i++) {
+  if(abs(a[i] - b[i]) <= A || (B <= abs(a[i] - b[i]) && abs(a[i] - b[i]) <= 2 * A)) es.push_back({i, i + N});
+  for(int j= i + 1; j < N; j++) {
+   int tmp= abs(a[i] + a[j] - b[i] - b[j]);
+   if(tmp <= A || (B <= tmp && tmp <= 2 * A)) es.push_back({i, j});
+  }
+ }
+ cout << GeneralMatching(2 * N, es).size() << '\n';
+ return 0;
+}
