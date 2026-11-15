@@ -1,0 +1,22 @@
+id = "cf-1615-g"
+title = "Maximum Adjacent Pairs"
+url = "https://codeforces.com/problemset/problem/1615/G"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+# Codeforces はテストケースを公開していないので、自作する (gen.py と、lib.cpp を固定した reference.cpp)。
+# 答えの配列は 1 つに決まらないので、checker.cpp が入力と提出の出力を確かめ、値を期待出力の値と比べる。
+# 疎で大きい一般グラフのマッチング (頂点 15 万ほど、マッチングの大きさは値の数 600 ほどまで) を確かめるために足した。
+[testdata]
+source = "local"
+count = 20
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "checker"
