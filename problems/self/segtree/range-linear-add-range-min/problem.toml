@@ -1,0 +1,21 @@
+id = "self-segtree-range-linear-add-range-min"
+title = "区間に 1 次関数を足して区間最小 (N = Q = 10^5、時刻を行き来する入力を含む)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 10
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
