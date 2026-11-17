@@ -1,5 +1,14 @@
-// harness: 各提出が定義する run(N, M, a, w) を計測する。
+// harness: 各提出が定義する Solver の run() だけを計測する。
 // yosupo "Power Projection of Set Power Series" 形式の I/O。
+//
+// 提出は次を実装する。
+//   struct Solver {
+//     Solver(int N, int M, const vector<u32> &a, const vector<u32> &w);  // 構築。計測区間の外 (値の型への写しなど)。
+//     void run();                 // power projection を求める。ここだけ測る。
+//     vector<u32> answer() const;  // 答え。計測区間の外。
+//   };
+// 2026-11-17 に、run(...) の呼び出しを測る形から替えた。ライブラリの値の型 (ZMod、ModInt) への写しと戻しが
+// 計測に入らないようにするため (algo-notes の notes/set-power-series.md)。
 #include "pj.hpp"
 #include "common.hpp"
 
@@ -18,18 +27,12 @@ signed main() {
     for (auto& x : a) cin >> x;
     for (auto& x : w) cin >> x;
 
-    constexpr int REPEAT = 1;
-    uint64_t best_ns = ~uint64_t(0);
-    vector<u32> result;
-
-    for (int rep = 0; rep < REPEAT; ++rep) {
-        auto t0 = chrono::steady_clock::now();
-        auto r = run(N, M, a, w);
-        auto t1 = chrono::steady_clock::now();
-        result = std::move(r);
-        auto ns = (uint64_t)chrono::duration_cast<chrono::nanoseconds>(t1 - t0).count();
-        if (ns < best_ns) best_ns = ns;
-    }
+    Solver sol(N, M, a, w);
+    auto t0 = chrono::steady_clock::now();
+    sol.run();
+    auto t1 = chrono::steady_clock::now();
+    const vector<u32> result = sol.answer();
+    const uint64_t best_ns = (uint64_t)chrono::duration_cast<chrono::nanoseconds>(t1 - t0).count();
 
     for (int i = 0; i < M; ++i) {
         cout << result[i];

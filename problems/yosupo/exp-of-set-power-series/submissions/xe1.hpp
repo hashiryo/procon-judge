@@ -281,3 +281,13 @@ inline std::vector<u32> exp(int n, const std::vector<u32>& b) {
 }  // namespace xe1
 
 inline std::vector<xe1::u32> run(int N, const std::vector<xe1::u32>& b) { return xe1::exp(N, b); }
+
+// ハーネスの形 (Solver: 構築 / run / answer) に合わせる。計測するのは上の run の呼び出しだけ。
+struct Solver {
+ int N;
+ const vector<u32>& b;
+ vector<u32> r;
+ Solver(int N_, const vector<u32>& b_): N(N_), b(b_) {}
+ void run() { r= ::run(N, b); }
+ vector<u32> answer() const { return r; }
+};

@@ -942,3 +942,13 @@ inline vector<u32> run(int M, int N, const vector<u32>& f_in, const vector<u32>&
 #undef PJ_CLANG_TARGET_PUSHED
 #pragma clang attribute pop
 #endif
+
+// ハーネスの形 (Solver: 構築 / run / answer) に合わせる。計測するのは上の run の呼び出しだけ。
+struct Solver {
+ int M, N;
+ const vector<u32> &f, &b;
+ vector<u32> r;
+ Solver(int M_, int N_, const vector<u32>& f_, const vector<u32>& b_): M(M_), N(N_), f(f_), b(b_) {}
+ void run() { r= ::run(M, N, f, b); }
+ vector<u32> answer() const { return r; }
+};

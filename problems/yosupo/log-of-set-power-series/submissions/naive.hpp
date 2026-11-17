@@ -98,3 +98,13 @@ inline vector<u32> log_rec(int N, const vector<u32>& g) {
 inline vector<u32> run(int N, const vector<u32>& b_in) {
  return log_rec(N, b_in);
 }
+
+// ハーネスの形 (Solver: 構築 / run / answer) に合わせる。計測するのは上の run の呼び出しだけ。
+struct Solver {
+ int N;
+ const vector<u32>& b;
+ vector<u32> r;
+ Solver(int N_, const vector<u32>& b_): N(N_), b(b_) {}
+ void run() { r= ::run(N, b); }
+ vector<u32> answer() const { return r; }
+};

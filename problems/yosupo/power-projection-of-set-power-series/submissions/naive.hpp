@@ -48,3 +48,13 @@ inline vector<u32> run(int N, int M, const vector<u32>& a, const vector<u32>& w)
  }
  return ans;
 }
+
+// ハーネスの形 (Solver: 構築 / run / answer) に合わせる。計測するのは上の run の呼び出しだけ。
+struct Solver {
+ int N, M;
+ const vector<u32> &a, &w;
+ vector<u32> r;
+ Solver(int N_, int M_, const vector<u32>& a_, const vector<u32>& w_): N(N_), M(M_), a(a_), w(w_) {}
+ void run() { r= ::run(N, M, a, w); }
+ vector<u32> answer() const { return r; }
+};

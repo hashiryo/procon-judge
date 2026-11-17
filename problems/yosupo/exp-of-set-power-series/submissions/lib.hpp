@@ -1,18 +1,20 @@
 #pragma once
-// 自前ライブラリ (judge/lib/mylib) の sps::exp<ModInt<998244353>> を呼ぶラッパー。
-// O(n^2 · 2^n) の subset exp。
-
+// 自前ライブラリ (judge/lib/mylib) の sps::exp<ModInt<998244353>> を呼ぶ。O(n^2 · 2^n) の subset exp。
+// ModInt の列への写しと戻しは、構築と answer で行う (計測の外)。
 #include "../common.hpp"
 #include "mylib/algebra/ModInt.hpp"
 #include "mylib/algebra/set_power_series.hpp"
 
-inline vector<u32> run(int N, const vector<u32>& b_in) {
+struct Solver {
  using Mint = ModInt<998244353>;
- int sz = 1 << N;
- vector<Mint> f(sz);
- for (int i = 0; i < sz; ++i) f[i] = Mint(b_in[i]);
- auto c = sps::exp(f);
- vector<u32> result(sz);
- for (int i = 0; i < sz; ++i) result[i] = (u32) c[i].val();
- return result;
-}
+ vector<Mint> f, c;
+ Solver(int, const vector<u32>& b_in) : f(b_in.size()) {
+  for (size_t i = 0; i < b_in.size(); ++i) f[i] = Mint(b_in[i]);
+ }
+ void run() { c = sps::exp(f); }
+ vector<u32> answer() const {
+  vector<u32> result(c.size());
+  for (size_t i = 0; i < c.size(); ++i) result[i] = (u32)c[i].val();
+  return result;
+ }
+};
