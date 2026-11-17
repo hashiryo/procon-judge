@@ -1,0 +1,16 @@
+id = "yuki-2455"
+title = "Numbers Dictionary"
+
+[limits]
+tle_sec = 2.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "2455"
+
+[compare]
+kind = "tokens"

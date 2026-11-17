@@ -1,0 +1,16 @@
+id = "yuki-3043"
+title = "括弧列の数え上げ"
+
+[limits]
+tle_sec = 2.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "3043"
+
+[compare]
+kind = "tokens"

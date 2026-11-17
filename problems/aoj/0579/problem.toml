@@ -1,0 +1,16 @@
+id = "aoj-0579"
+title = "Hot days"
+
+[limits]
+tle_sec = 8.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "aoj"
+name = "0579"
+
+[compare]
+kind = "tokens"
