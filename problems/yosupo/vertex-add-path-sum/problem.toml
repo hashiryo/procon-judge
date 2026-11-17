@@ -14,3 +14,6 @@ name = "tree/vertex_add_path_sum"
 
 [compare]
 kind = "checker"
+
+[record]
+case_times = true
