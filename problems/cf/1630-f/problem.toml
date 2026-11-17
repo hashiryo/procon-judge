@@ -1,0 +1,23 @@
+id = "cf-1630-f"
+title = "Making It Bipartite"
+url = "https://codeforces.com/problemset/problem/1630/F"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+# Codeforces はテストケースを公開していないので、自作する (gen.py と、lib.cpp を固定した reference.cpp)。参照実装は今の
+# Library の bipartite_matching で解く形。reference.cpp は、残す頂点の部分集合を全部試して 2 色で塗れるかを見る愚直解
+# (brute.cpp) と小さい入力で突き合わせる。NeoLibrary の min_path_cover と max_antichain を、推移的な関係の辺 155 万本で
+# 測るために足した (lib-neo と lib-neo-antichain)。
+[testdata]
+source = "local"
+count = 14
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,22 @@
+id = "cf-1765-a"
+title = "Access Levels"
+url = "https://codeforces.com/problemset/problem/1765/A"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+# Codeforces はテストケースを公開していないので、自作する (gen.py と、lib.cpp を固定した reference.cpp)。組と水準の付け方は
+# 1 つに決まらないので、checker.cpp が、組の数が期待出力と同じことと、どの開発者とどの文書でも見られるかが表と一致すること
+# を確かめる。NeoLibrary の min_chain_cover を、鎖そのものを使う形で確かめるために足した。
+[testdata]
+source = "local"
+count = 17
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "checker"
