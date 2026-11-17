@@ -1,0 +1,22 @@
+id = "cf-1634-e"
+title = "Fair Share"
+url = "https://codeforces.com/problemset/problem/1634/E"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+# Codeforces はテストケースを公開していないので、自作する (gen.py と、lib-neo.cpp を固定した reference.cpp)。
+# 分け方は 1 つに決まらないので、checker.cpp が入力と提出の出力だけで判定する (期待出力は使わない)。
+# NeoLibrary の euler_split を、各頂点の辺をちょうど半分ずつに分ける使い方で確かめるために足した。
+[testdata]
+source = "local"
+count = 14
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "checker"

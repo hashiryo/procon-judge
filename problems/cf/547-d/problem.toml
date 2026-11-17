@@ -1,0 +1,22 @@
+id = "cf-547-d"
+title = "Mike and Fish"
+url = "https://codeforces.com/problemset/problem/547/D"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+# Codeforces はテストケースを公開していないので、自作する (gen.py と、lib-neo.cpp を固定した reference.cpp)。
+# 塗り方は 1 つに決まらないので、checker.cpp が入力と提出の出力だけで判定する (期待出力は使わない)。
+# NeoLibrary の euler_split を、各頂点で 2 色の差を 1 以下にする使い方で確かめるために足した。
+[testdata]
+source = "local"
+count = 12
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "checker"
