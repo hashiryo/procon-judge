@@ -1,0 +1,21 @@
+#include <iostream>
+#include <numeric>
+#include <vector>
+#include "neo/algebra/ZMod.hpp"
+#include "neo/set_power_series/zeta.hpp"
+using namespace std;
+signed main() {
+ cin.tie(0);
+ ios::sync_with_stdio(false);
+ using Z= ZMod<1000000007>;
+ int N, M, K;
+ cin >> N >> M >> K;
+ vector<Z> A(1024), B(1024);
+ A[0]= B[0]= 1;
+ for(int i= 0, x= 0, a; i < N; ++i) cin >> a, A[x^= a]+= 1;
+ for(int i= 0, x= 0, b; i < M; ++i) cin >> b, B[x^= b]+= 1;
+ A= sps::xor_convolve(A, A), B= sps::xor_convolve(B, B);
+ A[0]-= N + 1, B[0]-= M + 1;
+ cout << sps::xor_convolve(A, B)[K] / 4 << '\n';
+ return 0;
+}
