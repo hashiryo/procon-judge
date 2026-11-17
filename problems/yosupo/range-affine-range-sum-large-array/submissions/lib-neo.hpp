@@ -4,8 +4,8 @@
 #include "neo/data_structure/DynamicSegmentTree.hpp"
 #include "neo/data_structure/segtree/Affine.hpp"
 
-// NeoLibrary の DynamicSegmentTree に monoid::AffineSum<ZMod<998244353>> を渡す。作用があるので中身は、子の無い節を
-// 「その下は ti() のまま」とする動的木 (dyn_uniform と同じく、子ができるのは区間の端の道だけ)。
+// NeoLibrary の DynamicSegmentTree に monoid::AffineSum<ZMod<998244353>> を渡す。この標準の構造体のときは中身が
+// dyn_uniform と同じ核 (子の無い節は値のすべて等しい区間、値は Montgomery、区間の長さの表) に替わる (NeoLibrary 710b475)。
 struct Solver {
   using Z = ZMod<998244353>;
   DynamicSegmentTree<monoid::AffineSum<Z>> seg;
