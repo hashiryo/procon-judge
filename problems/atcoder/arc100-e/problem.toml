@@ -1,0 +1,20 @@
+id = "atcoder-arc100-e"
+title = "E - Or Plus Max"
+url = "https://atcoder.jp/contests/arc100/tasks/arc100_c"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+# AtCoder はテストケースを公開していないので、自作する (gen.py と、ライブラリに依存しない reference.cpp)。
+[testdata]
+source = "local"
+count = 12
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "tokens"

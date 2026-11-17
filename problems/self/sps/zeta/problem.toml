@@ -1,0 +1,21 @@
+id = "self-sps-zeta"
+title = "ゼータ変換・メビウス変換・アダマール変換 (n = 20)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 14
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
