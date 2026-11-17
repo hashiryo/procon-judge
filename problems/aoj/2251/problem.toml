@@ -1,0 +1,18 @@
+id = "aoj-2251"
+title = "Merry Christmas"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+# 間に合う依頼の組を辺にした DAG (最短距離の三角不等式で推移的) の最小パス被覆。NeoLibrary の min_path_cover を
+# 確かめるために足した。
+[testdata]
+source = "aoj"
+name = "2251"
+
+[compare]
+kind = "tokens"

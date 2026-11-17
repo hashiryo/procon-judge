@@ -1,0 +1,19 @@
+id = "loj-6002"
+title = "「网络流 24 题」最小路径覆盖"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 256
+
+[harness]
+kind = "raw"
+
+# 道の選び方は 1 つに決まらないので、checker.cpp が、最後の行の本数が期待出力と同じことと、ほかの行がその本数の道で、
+# 隣り合う頂点が辺で結ばれ、どの頂点もちょうど 1 回出てくることを確かめる。NeoLibrary の min_path_cover を確かめる
+# ために足した。
+[testdata]
+source = "loj"
+name = "6002"
+
+[compare]
+kind = "checker"

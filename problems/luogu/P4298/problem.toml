@@ -1,0 +1,22 @@
+id = "luogu-P4298"
+title = "[CTSC2008] 祭祀"
+url = "https://www.luogu.com.cn/problem/P4298"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+# テストケースは公開されていないので、自作する (gen.py と、lib.cpp を固定した reference.cpp)。2 行目の祭祀点の選び方は
+# 1 つに決まらないので、checker.cpp が、1 行目と 3 行目が期待出力と同じことと、2 行目が大きさ K の反鎖であることを確かめる。
+# NeoLibrary の max_antichain を、反鎖そのものを出す使い方で確かめるために足した。
+[testdata]
+source = "local"
+count = 17
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "checker"

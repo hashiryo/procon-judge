@@ -1,0 +1,22 @@
+id = "atcoder-abc374-g"
+title = "G - Only One Product Name"
+url = "https://atcoder.jp/contests/abc374/tasks/abc374_g"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+# AtCoder はテストケースを公開していないので、自作する (gen.py と、lib.cpp を固定した reference.cpp)。参照実装は
+# 推移閉包と二部マッチングで解く今の Library の形で、確かめたい lib-neo (縮めた DAG のまま max_antichain) とは中身が違う。
+# reference.cpp は、1 本で覆える品名の集合を全部出して集合の被覆で数える愚直解 (brute.cpp) と小さい入力で突き合わせる。
+[testdata]
+source = "local"
+count = 18
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "tokens"
