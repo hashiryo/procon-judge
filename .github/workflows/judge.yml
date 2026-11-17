@@ -26,6 +26,9 @@ on:
 # ここと下の group の 2 か所に書く。直すときは両方。
 env:
   MODE: ${{ (github.event_name == 'push' || github.event_name == 'repository_dispatch') && 'cover' || (github.event_name == 'workflow_dispatch' && inputs.mode) || 'all' }}
+  # g++-15 の .deb のキャッシュの版。上げると、次の回が PPA からその時の版を落とし直す (run のジョブの
+  # 「g++-15 の .deb を戻す」の説明を参照)。
+  GCC15_DEBS: v1
 
 # 記録を失いたくないので、実行中のものを打ち切らずに待たせる。group はモードごとに
 # 分ける。push の run (網羅モード、数分) が schedule の run (全モデルモード、数時間)
@@ -151,19 +154,33 @@ jobs:
         with:
           enable-cache: true
 
+      # g++-15 の .deb を前の回から戻す。Launchpad の PPA は遅く (225 kB/s ほどで 1 回 5 分)、
+      # 503 を返して落とせない回もあるので、1 度落とした .deb を arch ごとに使い回す。キーを
+      # 替えるまで g++-15 の版は変わらない。コンパイラの版は記録のキーに入るので、版が
+      # 変わると gcc の記録がすべて測り直しになる。新しい版にするときは、先頭の env の
+      # GCC15_DEBS を上げる。
+      - name: g++-15 の .deb を戻す
+        id: gcc-debs
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/gcc15-debs
+          key: gcc15-debs-${{ runner.arch }}-${{ env.GCC15_DEBS }}
+
       # 組の全コンパイラを入れる。片方が入らなくても止めない。pj run が使えない
       # コンパイラの環境を飛ばして残りで測る。別のコンパイラで代用すると、環境名が
       # 名乗るものと実際に測ったものがずれた記録が残る。取りこぼしは次の実行が拾う。
+      # g++-15 は .github/scripts/install_gcc15.sh が、戻した .deb か PPA から入れる。
       - name: コンパイラを入れる
+        id: cc
         env:
           TOOLCHAINS: ${{ matrix.toolchains }}
         run: |
           set -ux
           for toolchain in ${TOOLCHAINS//,/ }; do
             if [ "$toolchain" = "gcc" ]; then
-              if sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test \
-                && sudo apt-get update && sudo apt-get install -y g++-15; then
+              if bash .github/scripts/install_gcc15.sh ~/gcc15-debs; then
                 g++-15 --version
+                echo "gcc_ok=true" >> "$GITHUB_OUTPUT"
               else
                 echo "::warning::g++-15 を入れられませんでした。gcc の環境は飛ばします"
               fi
@@ -181,6 +198,15 @@ jobs:
               fi
             fi
           done
+
+      # PPA から落とした回だけ、.deb を次の回のために残す。同じ run のほかのジョブと
+      # 同じキーを取り合うが、残せるのは 1 本で、ほかは警告を出して進む。
+      - name: g++-15 の .deb を残す
+        if: steps.gcc-debs.outputs.cache-hit != 'true' && steps.cc.outputs.gcc_ok == 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/gcc15-debs
+          key: gcc15-debs-${{ runner.arch }}-${{ env.GCC15_DEBS }}
 
       # テストデータの actions/cache は置かない。全問題ぶんを 1 つの塊で持つと
       # 10 GB を超えて載らないし、1 問しか要らない回でも塊ごと落とすことになる。
@@ -254,22 +280,45 @@ jobs:
         with:
           enable-cache: true
 
-      # g++-15 は run と同じ PPA から入れる。QEMU は Ubuntu の qemu-user (8.2)。
+      - name: g++-15 の .deb を戻す
+        id: gcc-debs
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/gcc15-debs
+          key: gcc15-debs-${{ runner.arch }}-${{ env.GCC15_DEBS }}
+
+      # g++-15 は run と同じく、戻した .deb か PPA から入れる。QEMU は Ubuntu の qemu-user (8.2)。
+      # g++-15 が入らなければ、代わりの経路の確かめを飛ばす。run 全体を失敗にせず、サイトは
+      # 前の結果を残す。
       - name: コンパイラと QEMU を入れる
+        id: cc
         run: |
-          sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-          sudo apt-get update
-          sudo apt-get install -y g++-15 qemu-user
-          g++-15 --version
+          if bash .github/scripts/install_gcc15.sh ~/gcc15-debs; then
+            g++-15 --version
+            echo "gcc_ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::g++-15 を入れられませんでした。代わりの経路の確かめを飛ばします"
+          fi
+          sudo apt-get update || true
+          sudo apt-get install -y qemu-user
           qemu-x86_64 --version
+
+      - name: g++-15 の .deb を残す
+        if: steps.gcc-debs.outputs.cache-hit != 'true' && steps.cc.outputs.gcc_ok == 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/gcc15-debs
+          key: gcc15-debs-${{ runner.arch }}-${{ env.GCC15_DEBS }}
 
       # run と同じ commit を取る。1 つでも取れなければ対象を選べないので、ここで止める。
       - name: ライブラリを取る
+        if: steps.cc.outputs.gcc_ok == 'true'
         env:
           LIBRARY_SHAS: ${{ needs.plan.outputs.library_shas }}
         run: uv run pj libs fetch --shas "$LIBRARY_SHAS" --strict
 
       - name: 代わりの経路を確かめる
+        if: steps.cc.outputs.gcc_ok == 'true'
         env:
           TESTDATA_TOKEN: ${{ secrets.TESTDATA_TOKEN }}
           YUKICODER_TOKEN: ${{ secrets.YUKICODER_TOKEN }}
