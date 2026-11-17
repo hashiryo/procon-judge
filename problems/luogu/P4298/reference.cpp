@@ -1,6 +1,8 @@
 // 期待出力を作る参照実装。submissions/lib.cpp を pj bundle で 1 ファイルに展開して固定したもの (2026-11-17、Library e4b31786a)。
 // Library を直しても変わらない。推移閉包と König の定理で解く形で、確かめたい lib-neo とは中身が違う。小さい入力では brute.cpp と
 // 突き合わせてある (チェッカに両方の出力を通す形で、gen.py の seed 1000 から 3999。pj testdata crosscheck はチェッカの問題を扱わない)。
+// 固定したあとに 1 か所だけ直した。DulmageMendelsohn::min_vertex_cover の z を char から signed char にした。arm の Linux では char が
+// 符号なしで、-1 で埋めて -1 と比べる判定が働かず、最小点被覆を誤るため (CI の arm で K が 1 や -98 になった。今の Library は直していない)。
 
 #if defined(__x86_64__) && defined(__GNUC__) && !defined(__clang__)
 #include <bits/allocator.h>
@@ -230,7 +232,7 @@ public:
  int operator()(int i) const { return b[i]; }
  std::vector<int> min_vertex_cover(std::vector<int> ord= {}) const {
   if(ord.empty()) ord.resize(b.size()), std::iota(ord.begin(), ord.end(), 0);
-  std::vector<char> z(size(), -1);
+  std::vector<signed char> z(size(), -1);
   std::vector<int> q(size()), vc;
   z[0]= 1, z.back()= 0;
   for(int v: ord) {
