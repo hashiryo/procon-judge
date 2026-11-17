@@ -147,6 +147,57 @@ struct Tree {
   }
   return cat(t, cat(S3{nd[u].va, nd[u].vb, nd[u].vb}, f));
  }
+ // composite と同じ答えを、1 次関数どうしを合成せずに値へ 1 回ずつ当てて求める。u の側は見つけた順に当て、v の側の
+ // 鎖の接頭辞と、最後の同じ鎖の区間の右側の節は、番号を積んでおいて最後に逆順で下りの向きに当てる。最後の区間が
+ // 上りなら、左側の節を積んでおき、真ん中の節を当てたあとに逆順で当てる。
+ u32 applyv(int u, u32 x) const { return mont::mulsum(nd[u].va, x, nd[u].vb, mont::R1); }
+ i64 composite_apply(int a0, int b0, i64 x0) const {
+  int x= pos[a0], y= pos[b0];
+  u64 a= ch[x], b= ch[y];
+  u32 val= mont::enc(x0);
+  int st[256], k= 0;
+  while(comp_hld::head_of(a) != comp_hld::head_of(b)) {
+   if(comp_hld::head_of(a) > comp_hld::head_of(b)) {
+    for(int u= x; u; u= nd[u].p)
+     if(u <= x) val= up(nd[u].t, val);
+    x= comp_hld::up_of(a), a= ch[x];
+   } else {
+    for(int u= y; u; u= nd[u].p)
+     if(u <= y) st[k++]= u;
+    y= comp_hld::up_of(b), b= ch[y];
+   }
+  }
+  if(x >= y) {
+   const int l= y, r= x;
+   int u= l, v= r, ls[64], nl= 0;
+   while(u != v) {
+    if(pr[u] < pr[v]) {
+     if(l <= u) ls[nl++]= u;
+     u= nd[u].p;
+    } else {
+     if(v <= r) val= up(nd[v].t, val);
+     v= nd[v].p;
+    }
+   }
+   val= applyv(u, val);
+   while(nl--) val= applyv(ls[nl], up(nd[nd[ls[nl]].r].s, val));
+  } else {
+   const int l= x, r= y;
+   int u= l, v= r;
+   while(u != v) {
+    if(pr[u] < pr[v]) {
+     if(l <= u) val= down(applyv(u, val), nd[nd[u].r].s);
+     u= nd[u].p;
+    } else {
+     if(v <= r) st[k++]= v;
+     v= nd[v].p;
+    }
+   }
+   val= applyv(u, val);
+  }
+  while(k) val= down(val, nd[st[--k]].t);
+  return mont::dec(val);
+ }
  i64 composite(int a0, int b0, i64 x0) const {
   int x= pos[a0], y= pos[b0];
   u64 a= ch[x], b= ch[y];

@@ -6,6 +6,8 @@
 //   Ord::Peel  (一般の木): 子の数を数えて葉から剥がした順で、部分木の大きさと重い子を決め、逆順で重い子を先にした
 //                          行きがけ順の位置を配る (HLD の位置)。lca の gen_peel と同じ作り方。
 //   Ord::Csr   (一般の木): 子の CSR を組んで根から BFS した順で、Peel と同じ位置を配る。
+//   Ord::Auto  (一般の木): 先に p_i < i (根が 0) かを確かめ、そうなら番号の大きい順をそのまま使って Peel と同じ位置を配る。
+//                          違えば Peel。
 // 頂点ごとに位置と部分木の終わりの組を 8 byte で持ち、問い合わせで 1 回だけ読む。
 #ifdef __linux__
 #include <sys/mman.h>
@@ -29,7 +31,7 @@ inline Buf alloc_huge(size_t n) {
 #endif
  return Buf(static_cast<int*>(p));
 }
-enum class Ord { Index, Peel, Csr };
+enum class Ord { Index, Peel, Csr, Auto };
 // pe[2v] = v の位置、pe[2v + 1] = v の部分木の終わり (半開区間)。
 template <Ord O> inline Buf layout(int n, const vector<int>& par) {
  Buf pe= alloc_huge(2 * size_t(n));
@@ -50,7 +52,15 @@ template <Ord O> inline Buf layout(int n, const vector<int>& par) {
  } else {
   Buf tmp= alloc_huge(5 * size_t(n) + 1);
   int *ord= tmp.get(), *sz= ord + n, *hb= sz + n + 1;  // hb[2v] = 子の部分木の大きさの最大、hb[2v + 1] = その子
-  if constexpr(O == Ord::Peel) {
+  bool ordered= false;
+  if constexpr(O == Ord::Auto) {
+   bool ok= par[0] < 0;
+   for(int i= 1; i < n; ++i) ok&= unsigned(par[i]) < unsigned(i);
+   if((ordered= ok))
+    for(int i= 0; i < n; ++i) ord[i]= n - 1 - i;
+  }
+  if(ordered) {
+  } else if constexpr(O != Ord::Csr) {
    int* cnt= hb;
    std::fill(cnt, cnt + n, 0);
    for(int i= 0; i < n; ++i)

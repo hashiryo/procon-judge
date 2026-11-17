@@ -11,6 +11,7 @@
 #include <sys/mman.h>
 #endif
 
+// point-add-range-sum の _wide.hpp の写しに、接頭辞の和 prefix を足したもの。
 // 節を B = 2^LB 個に広げた接頭辞和の木 (Algorithmica の wide segment tree、Library Checker
 // の首位 nandhagk の提出と同じ考え方)。段 h の表の f 番目には、f と同じ塊 (B 個ずつ) の中で
 // f より前にある子の和を持つ。段 h の子は段 h - 1 の塊で、要素 [g B^h, (g + 1) B^h) を覆う。
@@ -67,6 +68,13 @@ template <int LB> struct WidePrefixSum {
     if (A > 64) madvise(t, bytes, MADV_HUGEPAGE);
 #endif
     return t;
+  }
+
+  // [0, r) の和。
+  i64 prefix(int r) const {
+    u64 s = 0;
+    for (int h = 0; h < H; ++h) s += lv[h][size_t(r) >> (h * LB)];
+    return (i64)s;
   }
 
   // [l, r) の和。2 つの接頭辞を同じループで読む。
