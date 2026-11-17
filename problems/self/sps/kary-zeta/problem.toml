@@ -1,0 +1,21 @@
+id = "self-sps-kary-zeta"
+title = "k 進の桁ごとのゼータ変換とメビウス変換 (長さ 40 万から 160 万)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 12
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
