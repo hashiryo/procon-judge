@@ -1,0 +1,23 @@
+id = "self-flow-gomory-hu"
+title = "Gomory-Hu 木 (グラフの族)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# 提出の木は、ハーネスが計測のあとに確かめる (木の辺で切った頂点集合のカットの容量が辺の重みに等しいこと)。期待出力は
+# 全組の木の道の上の最小の和で、参照実装 (Gusfield の方法と素朴な Dinic) が作る。愚直解は小さい入力でカットを全部試す。
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 10
+reference = "reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
