@@ -1,0 +1,23 @@
+id = "luogu-P4126"
+title = "[AHOI2009] 最小割"
+url = "https://www.luogu.com.cn/problem/P4126"
+
+# 洛谷のページは Cloudflare で読めないので、問題文は GitHub の Run-ux/AutoProblemGen の写しで読んだ (N ≤ 4000、M ≤ 60000、
+# 容量 1 以上 10^5 以下、多重辺あり)。ここでは時間とメモリを測るために広く取る。
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+# テストケースは公開されていないので、自作する (gen.py と、lib.cpp を固定した reference.cpp)。答えは 1 つに決まる。
+# NeoLibrary の MaxFlow::cut_kinds (辺がどれかの最小カットかすべての最小カットに入るか) を確かめるために足した。
+[testdata]
+source = "local"
+count = 10
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "tokens"
