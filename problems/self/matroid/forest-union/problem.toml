@@ -1,0 +1,24 @@
+id = "self-matroid-forest-union"
+title = "グラフ的マトロイドの和 (k 本の森への分解)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# 提出は辺ごとに森の番号 (使わない辺は -1) を返す。ハーネスは森ごとに閉路が無いことを確かめてから、割り当てた辺の数を
+# 出す。期待出力は参照実装 (Edmonds のマトロイドの分割の算法) の辺の数で、愚直解 (辺ごとの割り当てを全部試す) と
+# 小さい入力で突き合わせる。
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 10
+reference = "reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true

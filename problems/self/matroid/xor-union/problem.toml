@@ -1,0 +1,24 @@
+id = "self-matroid-xor-union"
+title = "GF(2) の線形マトロイドの和 (k 組の線形独立な集合への分解)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# 提出はベクトルごとに組の番号 (使わないベクトルは -1) を返す。ハーネスは組ごとに線形独立であることを確かめてから、割り当てた
+# ベクトルの数を出す。期待出力は参照実装 (Edmonds のマトロイドの分割の算法) の数で、愚直解 (割り当てを全部試す) と
+# 小さい入力で突き合わせる。
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 10
+reference = "reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
