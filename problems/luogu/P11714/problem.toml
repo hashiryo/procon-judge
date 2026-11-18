@@ -1,0 +1,27 @@
+id = "luogu-P11714"
+title = "[清华集训 2014] 主旋律"
+url = "https://www.luogu.com.cn/problem/P11714"
+
+# 洛谷のページは Cloudflare で読めないので、問題文は GitHub の Run-ux/AutoProblemGen の写しで読んだ。n 頂点 (n <= 15) の有向
+# グラフ (自己ループと同じ向きの多重辺は無い) で、辺の部分集合のうち、残しても全体が強連結なものの数を 1e9+7 で割った余り。
+# 同じ問題: UOJ 37、bzoj 3812、QOJ 7。
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+# テストケースは公開されていないので、自作する (gen.py と、ライブラリに依存しない 3^n の DP の submissions/reference.hpp)。
+# 小さい入力では、辺の部分集合を全部試す brute.hpp と突き合わせる (pj testdata crosscheck)。
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 12
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
