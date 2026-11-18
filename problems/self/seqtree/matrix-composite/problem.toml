@@ -1,0 +1,21 @@
+id = "self-seqtree-matrix-composite"
+title = "2×2 行列の列の挿入、削除、反転と区間の積 (N = Q = 2 × 10^5)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 9
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
