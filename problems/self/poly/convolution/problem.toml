@@ -16,3 +16,6 @@ reference = "submissions/reference.hpp"
 
 [compare]
 kind = "tokens"
+
+[record]
+case_times = true
