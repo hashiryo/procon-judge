@@ -5,6 +5,8 @@
 //   SB_TRI: 塊より前の分の問いと加算の分け方を、自由な bit (b \ a) をたどる、1 の bit (a) を包除で外して部分集合の和を使う、0 の bit
 //     (b の補集合) を包除で外して上位集合の和を使う、の 3 つのうち少ないものにする (どれも 2^{n/3} 以下)。0 なら前の 2 つ (2^{n/2} 以下)。
 //   SB_SIMD: 塊の中の加算 (a', b', k) を問い (a, b) で足す段 (a ∪ a' ⊆ b ∩ b' なら k 2^{|b ∩ b'| - |a ∪ a'|}) を AVX2 で 8 個ずつ。
+//   SB_BF: SB_ADAPT の作り直しの目安の倍率 (塊の中の加算を足した数の合計が SB_BF n 2^n を超えたら作り直す)。既定は SB_SIMD なら 4、
+//     でなければ 1。
 // 包除の式: [a ⊆ c ⊆ b] = sum_{d ⊆ a} (-1)^{|d|} [c ⊆ b \ d] = sum_{e ⊆ ~b} (-1)^{|e|} [c ⊇ a ∪ e]。
 // 加算は、塊の中の加算として覚えたうえで、同じ 3 つの分け方で「点に足す」「部分集合全部に足す」「上位集合全部に足す」の印に分け、
 // 作り直すときに上位集合の和と部分集合の和で配る。比べ終えたら消す。
@@ -23,6 +25,9 @@
 #endif
 #ifndef SB_SIMD
 #define SB_SIMD 1
+#endif
+#ifndef SB_BF
+#define SB_BF (SB_SIMD ? 4 : 1)
 #endif
 namespace sbk {
 inline void zeta_sub(u32* f, int n) {  // f[y] <- sum_{c ⊆ y} f[c]
@@ -53,7 +58,7 @@ struct IntervalSum {
   for(size_t i= 1; i < N; ++i) pc[i]= pc[i >> 1] + (i & 1);
   // 作り直しは長さ 2^n の変換が 2 回か 4 回。塊の中の加算 1 つを足す手間は、ベクトルなら変換の 1 要素と同じくらいと見る
   const long long N2= (long long)1 << n;
-  budget= SB_ADAPT ? (long long)(SB_SIMD ? 4 : 1) * n * N2 : (long long)max<size_t>(2, size_t(sqrt(double(size_t(n) << n))));
+  budget= SB_ADAPT ? (long long)(SB_BF) * n * N2 : (long long)max<size_t>(2, size_t(sqrt(double(size_t(n) << n))));
   build();
  }
  void build() {
