@@ -1,0 +1,22 @@
+id = "cf-343-e"
+title = "Pumping Stations"
+url = "https://codeforces.com/problemset/problem/343/E"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 256
+
+[harness]
+kind = "raw"
+
+# Codeforces はテストケースを公開していないので、自作する (gen.py と、lib.cpp を固定した reference.cpp)。順列は 1 つに決まら
+# ないので、checker.cpp が、給料の最大が期待出力と同じことと、順列の隣り合う組の最大流の和が給料に等しいことを確かめる。
+# NeoLibrary の gomory_hu を、木の最小の辺で切って順列を組む使い方で確かめるために足した。
+[testdata]
+source = "local"
+count = 12
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "checker"
