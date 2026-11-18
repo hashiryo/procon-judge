@@ -1,0 +1,27 @@
+id = "luogu-P1640"
+title = "[SCOI2010] 连续攻击游戏"
+url = "https://www.luogu.com.cn/problem/P1640"
+
+# 問題文は本人の Chrome で洛谷のページを読んだ (装備 N ≤ 10^6、属性値は 1 以上 10^4 以下)。洛谷の制限 (1 秒、128 MB) より
+# 広く取り、時間とメモリを測る。
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# テストケースは公開されていないので、自作する (gen.py と、マッチングを使わない併査集の解き方の submissions/reference.hpp)。
+# 増加路を 1 本ずつ探す二部マッチングの型 (値を 1, 2, ... の順に足し、初めて増加路が見つからなかったところで止める) を
+# 確かめて測るために足した。
+[testdata]
+source = "local"
+count = 12
+generator = "gen.py"
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true

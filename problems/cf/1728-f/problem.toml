@@ -1,0 +1,27 @@
+id = "cf-1728-f"
+title = "Fishermen"
+url = "https://codeforces.com/problemset/problem/1728/F"
+
+# 問題文は本人の Chrome で codeforces.com のページを読んだ (n ≤ 1000、a_i ≤ 10^6、6 秒、512 MB)。ここでは時間とメモリを
+# 測るために、時間は 5 秒、メモリは広く取る。
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# Codeforces はテストケースを公開していないので、自作する (gen.py と、増加路の探し方を _shared/kuhn と別に書いた
+# submissions/reference.hpp)。答えは 1 つに決まる。増加路を 1 本ずつ探す二部マッチングの型 (候補の値を小さい順に足し、
+# 増加路が見つかった値だけを採る。見つからない探索が大半) を確かめて測るために足した。
+[testdata]
+source = "local"
+count = 12
+generator = "gen.py"
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true

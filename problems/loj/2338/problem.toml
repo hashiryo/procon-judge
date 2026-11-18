@@ -1,0 +1,20 @@
+id = "loj-2338"
+title = "「HNOI2006」超级英雄"
+url = "https://loj.ac/p/2338"
+
+# 問題文は LOJ の API で読んだ (n, m ≤ 1000、1 秒、128 MB)。
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# 増加路を 1 本ずつ探す二部マッチングの型 (問題を順に足し、初めて増加路が見つからなかったところで止める) を確かめるために
+# 足した。どのケースも小さい。
+[testdata]
+source = "loj"
+name = "2338"
+
+[compare]
+kind = "tokens"

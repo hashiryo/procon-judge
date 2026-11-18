@@ -1,0 +1,23 @@
+id = "luogu-P1971"
+title = "[NOI2011] 兔兔与蛋蛋游戏"
+url = "https://www.luogu.com.cn/problem/P1971"
+
+# 問題文は本人の Chrome で洛谷のページを読んだ (n, m ≤ 40、k ≤ 1000)。
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# テストケースは公開されていないので、自作する (gen.py と、増加路の探し方を _shared/kuhn とも今の Library とも別に書いた
+# submissions/reference.hpp)。答えは 1 つに決まる。増加路を 1 本ずつ探す二部マッチングの型 (頂点を消すたびに、残りの
+# グラフで増加路を探し直す) を確かめるために足した。どのケースも小さい。
+[testdata]
+source = "local"
+count = 12
+generator = "gen.py"
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"

@@ -1,0 +1,26 @@
+id = "cf-1139-e"
+title = "Maximize Mex"
+url = "https://codeforces.com/problemset/problem/1139/E"
+
+# 問題文は本人の Chrome で codeforces.com のページを読んだ (1 ≤ m ≤ n ≤ 5000、0 ≤ p_i < 5000、2 秒、256 MB)。
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# Codeforces はテストケースを公開していないので、自作する (gen.py と、今の Library で書いた submissions/lib.hpp を固定した
+# submissions/reference.hpp)。答えは 1 つに決まる。増加路を 1 本ずつ探す二部マッチングの型 (日を逆にたどって辺を足し、
+# mex の値から増加路を探す) を確かめて測るために足した。
+[testdata]
+source = "local"
+count = 12
+generator = "gen.py"
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
