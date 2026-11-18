@@ -17,6 +17,8 @@
 // - 置き場は同じ型の木で共有する。pool_empty() は、前の gc のあとに生きていた節の 2 倍 (少なくとも 2^16 個) まで置き場が
 //   伸びたら真を返す。gc(版の列) は、渡した版から届く節に印を付けて置き場の前へ詰め、版の根を書き換える。版どうしで共有する
 //   節は共有したまま残る。渡さなかった木は使えなくなる。
+// - PERSIST を偽にすると永続しない木になる。子へ遅延を配るときは子をその場で書き換え、split や併合で要らなくなった節は使い回す
+//   (gc は要らず、pool_empty() は偽を返す)。木の値を写すと同じ木を指すだけになる (今の Library の永続でない形と同じ使い方)。
 namespace persistent_seq_internal {
 template <class M, class= void> struct monoid: std::false_type {};
 template <class M> struct monoid<M, std::void_t<typename M::T, decltype(&M::op), decltype(&M::ti)>>: std::true_type {};
@@ -37,7 +39,7 @@ template <class M> struct action_of<M, std::void_t<typename M::E>> {
  using type= typename M::E;
 };
 }  // namespace persistent_seq_internal
-template <class M, bool REV= false> class PersistentSeq {
+template <class M, bool REV= false, bool PERSIST= true> class PersistentSeq {
  using T= typename persistent_seq_internal::value_of<M>::type;
  using E= typename persistent_seq_internal::action_of<M>::type;
  static constexpr bool MO= persistent_seq_internal::monoid<M>::value, AC= persistent_seq_internal::action<M>::value;
@@ -56,6 +58,14 @@ template <class M, bool REV= false> class PersistentSeq {
  static inline std::vector<Node> nd= std::vector<Node>(1);
  static inline std::vector<T> lv= std::vector<T>(1);
  static inline std::size_t gc_at= std::size_t(1) << 16;
+ static inline std::vector<int> free_nd, free_lv;  // 永続しないときに使い回す節と葉
+ // 永続しないとき、もう指されない節 (正) か葉 (負) を使い回しに回す。
+ static void release(int c) {
+  if constexpr(!PERSIST) {
+   if(c > 0) free_nd.push_back(c);
+   else if(c < 0) free_lv.push_back(-c);
+  }
+ }
  static void map1(T& v, const E& e, int len) {
   if constexpr(std::is_invocable_v<decltype(M::mp), T&, const E&, int>) M::mp(v, e, len);
   else M::mp(v, e);
@@ -67,6 +77,13 @@ template <class M, bool REV= false> class PersistentSeq {
   else return sumv(c);
  }
  static int leaf(const T& v) {
+  if constexpr(!PERSIST)
+   if(!free_lv.empty()) {
+    const int i= free_lv.back();
+    free_lv.pop_back();
+    lv[i]= v;
+    return -i;
+   }
   lv.push_back(v);
   return -int(lv.size() - 1);
  }
@@ -76,6 +93,13 @@ template <class M, bool REV= false> class PersistentSeq {
   n.l= a, n.r= b, n.sz= size(a) + size(b), n.rev= n.lz= false;
   if constexpr(MO) n.sum= M::op(sumv(a), sumv(b));
   if constexpr(RS) n.rsum= M::op(rsumv(b), rsumv(a));
+  if constexpr(!PERSIST)
+   if(!free_nd.empty()) {
+    const int i= free_nd.back();
+    free_nd.pop_back();
+    nd[i]= n;
+    return i;
+   }
   nd.push_back(n);
   return int(nd.size() - 1);
  }
@@ -95,8 +119,20 @@ template <class M, bool REV= false> class PersistentSeq {
   if(n.lz) M::cp(n.e, e);
   else n.e= e, n.lz= true;
  }
- // 子 c に反転 (rv) と作用 (lz なら e) を当てたものを返す。c は写して当てる (c 自身は書き換えない)。
+ // 子 c に反転 (rv) と作用 (lz なら e) を当てたものを返す。永続なら c を写して当て (c 自身は書き換えない)、永続しないなら c を
+ // その場で書き換える。
  static int push_to(int c, bool rv, bool lz, const EA& e) {
+  if constexpr(!PERSIST) {
+   if(c < 0) {
+    if constexpr(AC)
+     if(lz) map1(lv[-c], e, 1);
+   } else if(c > 0) {
+    if(rv) tog(c);
+    if constexpr(AC)
+     if(lz) aff(c, e);
+   }
+   return c;
+  }
   if(c < 0) {
    if constexpr(AC)
     if(lz) {
@@ -115,9 +151,10 @@ template <class M, bool REV= false> class PersistentSeq {
    if(lz) aff(y, e);
   return y;
  }
- // 内側の節 c の子を、c の遅延を当てた形で返す (c は書き換えない)。
+ // 内側の節 c の子を、c の遅延を当てた形で返す。c はこのあと使わない節として扱い、永続しないなら使い回しに回す。
  static std::pair<int, int> kids(int c) {
   const Node n= nd[c];
+  release(c);
   if(!n.rev && !n.lz) return {n.l, n.r};
   const int a= push_to(n.l, n.rev, n.lz, n.e);
   const int b= push_to(n.r, n.rev, n.lz, n.e);
@@ -208,7 +245,7 @@ template <class M, bool REV= false> class PersistentSeq {
   return node(x2, y2);
  }
  static int set(int c, int k, const T& v) {
-  if(c < 0) return leaf(v);
+  if(c < 0) return release(c), leaf(v);
   const auto [x, y]= kids(c);
   const int wx= size(x);
   if(k < wx) return node(set(x, k, v), y);
@@ -266,6 +303,7 @@ template <class M, bool REV= false> class PersistentSeq {
   for(std::size_t i= 1; i < lv.size(); ++i)
    if(ml[i]) lv[nl[i]]= lv[i];
   nd.resize(k), lv.resize(kl);
+  free_nd.clear(), free_lv.clear();  // 詰めたので、使い回しの列の番号は古い
   for(int* r: roots) *r= remap(*r);
   gc_at= std::max<std::size_t>(std::size_t(1) << 16, 2 * (nd.size() + lv.size()));
  }
@@ -315,6 +353,7 @@ public:
   int a, b, c;
   split(root, k + 1, b, c);
   split(b, k, a, b);
+  release(b);
   root= merge(a, c);
   return v;
  }
@@ -361,7 +400,7 @@ public:
   return out;
  }
  // 置き場が前の gc のあとに生きていた節の 2 倍まで伸びたら真。
- static bool pool_empty() { return nd.size() + lv.size() >= gc_at; }
+ static bool pool_empty() { return PERSIST && nd.size() + lv.size() >= gc_at; }
  // 渡した版から届く節だけを残して置き場を詰める。渡さなかった木は使えなくなる。
  static void gc(std::vector<PersistentSeq>& vs) {
   std::vector<int*> rs;
@@ -374,7 +413,7 @@ public:
   gc_roots(rs);
  }
  // 置き場の節の数と、木の高さ、重みの比の条件 (試し用)。
- static std::size_t pool_nodes() { return nd.size() + lv.size(); }
+ static std::size_t pool_nodes() { return nd.size() + lv.size() - free_nd.size() - free_lv.size(); }
  int height() const { return height(root); }
  bool balanced() const { return balanced(root); }
 private:
