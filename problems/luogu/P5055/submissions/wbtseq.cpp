@@ -1,0 +1,75 @@
+// https://www.luogu.com.cn/problem/P5055
+// 全永続, insert, erase, prod, reverse, 強制オンラインクエリ
+// 今の Library の WeightBalancedTree の中身を写し、伸びる置き場と gc を足した列の木の試作 (problems/_shared/seqtree/wbt_seq.hpp)
+// で書いたもの。置き場が伸びたら gc で生きている版から届く節だけを詰める。
+#include <sstream>
+#include <string>
+#include <cassert>
+#include "_shared/seqtree/wbt_seq.hpp"
+using namespace std;
+bool test(int (*solve)(stringstream&, stringstream&), string in, string expected) {
+ stringstream scin(in), scout;
+ solve(scin, scout);
+ return scout.str() == expected;
+}
+namespace TEST {
+struct Mono {
+ using T= long long;
+ static T ti() { return T(); }
+ static T op(T l, T r) { return l + r; }
+ using commute= void;
+};
+signed main(stringstream& scin, stringstream& scout) {
+ using WBT= WbtSeq<Mono, true>;
+ int n;
+ scin >> n;
+ vector<WBT> wbt(n + 1);
+ long long lst= 0;
+ for(int i= 1; i <= n; ++i) {
+  int v, opt;
+  scin >> v >> opt;
+  wbt[i]= wbt[v];
+  if(opt == 1) {
+   long long p, x;
+   scin >> p >> x, p^= lst, x^= lst;
+   wbt[i].insert(p, x);
+  } else if(opt == 2) {
+   long long p;
+   scin >> p, p^= lst;
+   --p;
+   wbt[i].erase(p);
+  } else if(opt == 3) {
+   long long l, r;
+   scin >> l >> r, l^= lst, r^= lst;
+   --l;
+   wbt[i].reverse(l, r);
+  } else {
+   long long l, r;
+   scin >> l >> r, l^= lst, r^= lst;
+   --l;
+   scout << (lst= wbt[i].prod(l, r)) << '\n';
+  }
+  if(WBT::pool_empty()) WBT::gc(wbt);
+ }
+ return 0;
+}
+}
+signed main() {
+ assert(test(TEST::main,
+             "10\n"
+             "0 1 0 1\n"
+             "1 1 1 2\n"
+             "2 4 1 2\n"
+             "3 1 2 0\n"
+             "4 4 2 1\n"
+             "5 3 5 7\n"
+             "6 4 5 6\n"
+             "4 1 7 1\n"
+             "8 3 4 6\n"
+             "9 4 4 1\n",
+             "3\n"
+             "4\n"
+             "5\n"
+             "10\n"));
+ return 0;
+}
