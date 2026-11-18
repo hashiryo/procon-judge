@@ -3,7 +3,8 @@
 #include "neo/algebra/ZMod.hpp"
 #include "neo/data_structure/FoldableDeque.hpp"
 
-// NeoLibrary の FoldableDeque に、1 次関数の合成 (左を先に当てる) を自前の構造体で渡す。剰余は NeoLibrary の ZMod。
+// NeoLibrary の FoldableDeque に、1 次関数の合成 (左を先に当てる) を自前の構造体で渡す。剰余は NeoLibrary の ZMod。構築で
+// クエリの数だけ reserve しておく。
 struct Solver {
   using Z = ZMod<998244353>;
   struct M {
@@ -12,7 +13,7 @@ struct Solver {
     static T op(const T &l, const T &r) { return {r[0] * l[0], r[0] * l[1] + r[1]}; }
   };
   FoldableDeque<M> q;
-  explicit Solver(int) {}
+  explicit Solver(int n) { q.reserve(n); }  // 列はクエリの数より長くならない
   void push_front(i64 a, i64 b) { q.push_front({Z(a), Z(b)}); }
   void push_back(i64 a, i64 b) { q.push_back({Z(a), Z(b)}); }
   void pop_front() { q.pop_front(); }
