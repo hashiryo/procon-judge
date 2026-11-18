@@ -1,0 +1,26 @@
+id = "luogu-P6562"
+title = "[SBCOI2020] 归家之路"
+url = "https://www.luogu.com.cn/problem/P6562"
+
+# 長さ 2^n の列に、a ⊆ c ⊆ b の c 全部へ k を足す操作と、a ⊆ c ⊆ b の c 全部の和を問う操作を q 回行う (2^32 で割った余り)。
+# 1 <= n <= 16、1 <= q <= 2e5、時間制限 1 秒。a ⊆ b でない操作は何もしない (問いの答えは 0)。題解はどれも、操作を塊に分けて塊の
+# 終わりに列と部分集合の和を作り直し、塊の中の加算は問いごとに 1 つずつ交わりの大きさで足す形。
+[limits]
+tle_sec = 3.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+# テストケースは公開されていないので、自作する (gen.py と、題解の方針をライブラリに頼らずに書いた submissions/reference.hpp)。
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 14
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
