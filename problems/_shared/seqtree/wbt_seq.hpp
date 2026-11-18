@@ -426,6 +426,8 @@ public:
   std::vector<int*> rs{&v.root, &vs.root...};
   gc_roots(rs);
  }
+ // 置き場を n 個ぶん先に取る (伸びる配列を作り直して写す手間を省く)。
+ static void reserve(std::size_t n) { nm.reserve(n), nl.reserve(n); }
  // 試し用。置き場の節の数、gc を始める大きさ。
  static std::size_t pool_nodes() { return nm.size() + nl.size() - free_nm.size() - free_nl.size(); }
  static void set_gc_at(std::size_t n) { gc_at= n; }
