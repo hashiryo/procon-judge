@@ -4,6 +4,7 @@
 //   bool can_add(int x)                 x が I に無いとき、I + x が独立か
 //   bool can_exchange(int y, int x)     y が I にあり x が I に無いとき、I - y + x が独立か
 //   void circuit(int x, F f)            I + x が独立でないとき、I + x の唯一の閉路に入る I の要素 y ごとに f(y) を呼ぶ
+//   int size()                          要素の数
 #include <algorithm>
 #include <array>
 #include <vector>
@@ -21,6 +22,7 @@ struct Graphic {
 
   Graphic(int n, const std::vector<std::array<int, 2>> &edges)
       : n(n), e(edges), start(n + 1), comp(n), dep(n), pe(n), pv(n), tin(n), tout(n), it(n) {}
+  int size() const { return e.size(); }
 
   void build(const std::vector<int> &I) {
     std::fill(start.begin(), start.end(), 0);
@@ -73,6 +75,7 @@ struct Partition {
 
   Partition(const std::vector<int> &color, const std::vector<int> &cap)
       : color(color), cap(cap), cnt(cap.size()), start(cap.size() + 1) {}
+  int size() const { return color.size(); }
 
   void build(const std::vector<int> &I) {
     std::fill(cnt.begin(), cnt.end(), 0);
@@ -104,6 +107,7 @@ struct Xor64 {
   std::uint32_t now = 0;
 
   explicit Xor64(const std::vector<ull> &vec) : v(vec), idx(vec.size(), -1), memo(vec.size()), stamp(vec.size()) {}
+  int size() const { return v.size(); }
 
   void build(const std::vector<int> &I) {
     for (int y : elem) idx[y] = -1;
