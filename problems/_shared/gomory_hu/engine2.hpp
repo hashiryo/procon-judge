@@ -12,7 +12,13 @@
 // h[u] ≤ h[w] + 1 が崩れない (L 未満の頂点の隣はすべて L 以下で、BFS が付け終えている)。
 // MODE は、0 が Dinic だけ、1 が push-relabel だけ、2 が flow ごとの仕事量 (見た弧の数と頂点の数) の指数移動平均の小さい
 // ほうを選び、R 回に 1 回はもう一方で流して測り直すもの。TOUCH を立てると、flow ごとに全部の弧の容量を写し直さず、容量を
-// 変えた弧だけを覚えて戻す。
+// 変えた弧だけを覚えて戻す。CACHE を立てると、push-relabel の最初の高さに、元のグラフで t から測った距離を使う (t が前の
+// flow と同じなら測り直さない)。s の弧を飽和させて s を高さ n に置くと、残りの残余の弧はどれも元のグラフにある弧なので、
+// 元のグラフの距離は高さの付け方の条件 (残余の弧 u → w について h[u] ≤ h[w] + 1) を満たす。Gusfield の t は、カットが {s}
+// のままなら根のまま続くので、最初の global relabel をほとんど省ける。CACHE が 1 なら t が変わるたびに元のグラフ全体を BFS で
+// 測り、2 なら BFS を途中で止めて状態を残し、余りのある頂点 (s の隣) に距離が付くところまでだけ進める。まだ印の無い頂点の
+// 高さは、待ち行列の先頭の距離 x に 1 を足したもの (取り出し終えたのは距離 x 未満の頂点なので、印の無い頂点の隣の印の
+// ある頂点は距離 x 以上で、印のある頂点は距離 x + 1 以下。どちらの向きの弧でも h[u] ≤ h[w] + 1 が崩れない)。
 #include <algorithm>
 #include <array>
 #include <cstring>
@@ -20,7 +26,7 @@
 #include <vector>
 
 namespace gomory_hu_shared {
-template <int MODE, bool LAZY = true, int R = 16, bool TOUCH = false> struct Engine2 {
+template <int MODE, bool LAZY = true, int R = 16, bool TOUCH = false, int CACHE = 0> struct Engine2 {
   using i64 = long long;
   int n, m2, s_ = 0, t_ = 0, cut_ = 0, amax = -1, bmax = -1;  // cut_: 0 は S* (lv)、1 は {s}、2 は t 以外の全部
   long long work = 0, cnt = 0;
@@ -28,6 +34,8 @@ template <int MODE, bool LAZY = true, int R = 16, bool TOUCH = false> struct Eng
   std::vector<int> st, to, rv, lv, it, h, cur, anext, bnext, bprev, ahead, bhead, q, touched;
   std::vector<i64> cap0, cap, ex, deg;
   std::vector<char> mark;
+  std::vector<int> dist, dq;
+  int dist_t = -1, dqh = 0, dqt = 0;
   void touch(int k) {
     if (TOUCH && !mark[k]) mark[k] = 1, touched.push_back(k);
   }
@@ -147,6 +155,10 @@ template <int MODE, bool LAZY = true, int R = 16, bool TOUCH = false> struct Eng
   // 今の余りを sink へ押し出す (excl には押さない)。sink に届かない余りは残る。
   void discharge(int sink, int excl) {
     global_relabel(sink, excl);
+    discharge_from_heights(sink, excl);
+  }
+  // 今の高さと表のまま、余りを sink へ押し出す。
+  void discharge_from_heights(int sink, int excl) {
     const long long limit = 6LL * n + m2;
     long long w2 = 0;
     while (amax >= 0) {
@@ -195,6 +207,18 @@ template <int MODE, bool LAZY = true, int R = 16, bool TOUCH = false> struct Eng
       }
     }
   }
+  // 元のグラフで t からの距離を dist に測る (届かない頂点は n)。
+  void measure(int t) {
+    dist.assign(n, n);
+    int qh = 0, qt = 0;
+    dist[t] = 0, q[qt++] = t;
+    while (qh < qt) {
+      const int v = q[qh++];
+      for (int k = st[v]; k < st[v + 1]; ++k)
+        if (dist[to[k]] == n) dist[to[k]] = dist[v] + 1, q[qt++] = to[k];
+    }
+    dist_t = t;
+  }
   i64 push_relabel(int s, int t) {
     std::fill(ex.begin(), ex.end(), 0);
     work += n;
@@ -202,7 +226,41 @@ template <int MODE, bool LAZY = true, int R = 16, bool TOUCH = false> struct Eng
       const i64 c = cap[k];
       touch(k), ex[to[k]] += c, cap[rv[k]] += c, cap[k] = 0;
     }
-    discharge(t, s);
+    if constexpr (CACHE != 0) {
+      int rest = n;
+      if constexpr (CACHE == 1) {
+        if (dist_t != t) measure(t);
+      } else {
+        if (dist_t != t) {
+          dist.assign(n, -1), dq.resize(n);
+          dist[t] = 0, dq[0] = t, dqh = 0, dqt = 1, dist_t = t;
+        }
+        // 距離の要る頂点 (s の隣で、まだ印の無いもの) に -2 を付けて数える。
+        int need = 0;
+        for (int k = st[s]; k < st[s + 1]; ++k)
+          if (dist[to[k]] == -1) dist[to[k]] = -2, ++need;
+        while (need > 0 && dqh < dqt) {
+          const int v = dq[dqh++];
+          for (int k = st[v]; k < st[v + 1]; ++k)
+            if (const int w = to[k]; dist[w] < 0) {
+              need -= dist[w] == -2;
+              dist[w] = dist[v] + 1, dq[dqt++] = w;
+            }
+        }
+        if (dqh < dqt) rest = dist[dq[dqh]] + 1;
+      }
+      // 元のグラフの距離を高さにし、高さごとの表を作る (global relabel の代わり)。
+      for (int d = 0; d <= n; ++d) ahead[d] = bhead[d] = -1;
+      amax = bmax = -1;
+      for (int v = 0; v < n; ++v) {
+        h[v] = v == s ? n : dist[v] >= 0 ? dist[v] : rest;
+        if (v != t && h[v] < n) {
+          b_insert(v, h[v]), bmax = std::max(bmax, h[v]), cur[v] = st[v];
+          if (ex[v] > 0) a_push(v, h[v]);
+        }
+      }
+      discharge_from_heights(t, s);
+    } else discharge(t, s);
     const i64 f = ex[t];
     if (f == deg[s]) return cut_ = 1, f;
     if (f == deg[t]) return cut_ = 2, f;
