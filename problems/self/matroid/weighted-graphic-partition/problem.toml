@@ -1,0 +1,24 @@
+id = "self-matroid-weighted-graphic-partition"
+title = "グラフ的マトロイドと分割マトロイドの重み付きの交差"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# 提出は要素数 k ごとの重みの和の最大と、要素数が最大の集合を返す。ハーネスは集合が森で色ごとの上限を守り、重みの和が
+# 最大の値と等しいことを確かめてから、値の列を出す。期待出力は参照実装 (交換グラフの上の Bellman-Ford) の値の列で、
+# 愚直解 (辺の部分集合を全部試す) と小さい入力で突き合わせる。
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 10
+reference = "reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
