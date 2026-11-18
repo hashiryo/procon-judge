@@ -1,0 +1,27 @@
+id = "atcoder-arc198-e"
+title = "E - Monotone OR"
+url = "https://atcoder.jp/contests/arc198/tasks/arc198_e"
+
+# 2^N 未満の相異なる M 個の整数 s_i があり、x = 0 から x を (x OR s_i) + 1 に替える操作を繰り返して、x = 2^N で終わる操作の列の数
+# (998244353 で割った余り) を求める。1 <= N <= 24、1 <= M <= min(2^N, 2e5)。dp[k] を x = k で終わる列の数、dp2[k] を
+# (x OR s_i) = k となる (列, i) の数とすると dp[k] = dp2[k - 1]、dp2[k] = A(k) D(k) - sum_{j ⊊ k} dp2[j] (A と D は a と dp の
+# 部分集合の和) で、添字の小さい順に値を足しながら部分集合の和を問う構造 (オンラインのゼータ) で解ける (公式解説)。
+[limits]
+tle_sec = 7.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# テストケースは公開されていないので、自作する (gen.py と、potato167 さんの解説の O(N 2^N) の漸化式の submissions/reference.hpp)。
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 14
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
