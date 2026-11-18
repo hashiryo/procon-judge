@@ -1,0 +1,27 @@
+id = "uoj-80"
+title = "二分图最大权匹配"
+url = "https://uoj.ac/problem/80"
+
+# 問題文は curl で読んだ (1 ≤ n_l, n_r ≤ 400、1 ≤ m ≤ 160000、1 ≤ w ≤ 10^9、同じ組は 1 本、1 秒、256 MB)。
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# テストケースは公開されていないので、自作する (gen.py と、ライブラリに依存しない submissions/reference.hpp)。重みの和の最大は
+# 1 つに決まるが、組は 1 つに決まらないので、checker.cpp が、和が期待出力と同じことと、組が辺で重ならず、組の重みの和が
+# 答えの和に等しいことを確かめる。完全でなくてよい重み最大の二部マッチング (NeoLibrary の assignment の perfect = false)
+# を確かめて測るために足した。
+[testdata]
+source = "local"
+count = 10
+generator = "gen.py"
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true
