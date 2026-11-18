@@ -1,0 +1,25 @@
+id = "luogu-P3329"
+title = "[ZJOI2011] 最小割"
+url = "https://www.luogu.com.cn/problem/P3329"
+
+# 洛谷のページは Cloudflare で読めないので、問題文は GitHub の Run-ux/AutoProblemGen の写しで読んだ (T ≤ 10、n ≤ 150、
+# m ≤ 3000、q ≤ 30、容量 ≤ 10^6、多重辺あり)。ここでは時間とメモリを測るために広く取る。
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# テストケースは公開されていないので、自作する (gen.py と、Gusfield の方法と素朴な Dinic の submissions/reference.hpp)。
+[testdata]
+source = "local"
+count = 10
+generator = "gen.py"
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true

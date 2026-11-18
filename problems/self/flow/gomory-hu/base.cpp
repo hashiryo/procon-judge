@@ -58,10 +58,11 @@ struct Rng {
   i64 range(i64 lo, i64 hi) { return lo + below((u64)(hi - lo) + 1); }
 };
 
+// 辺は e.push_back({u, v, c}) で足す。波括弧の中は左から順に評価されるので、乱数を引く順がコンパイラによらない
+// (関数の引数の評価の順は決まっておらず、g++ と clang++ で作るグラフが変わった)。
 struct Graph {
   int n = 0;
   vector<array<i64, 3>> e;
-  void add(int u, int v, i64 c) { e.push_back({u, v, c}); }
 };
 
 template <class T> void shuffle(Rng &rng, vector<T> &v) {
@@ -92,7 +93,7 @@ Graph random_graph(Rng &rng, int N, int M, i64 C0, i64 C1) {
   if (N >= 2)
     for (int i = 0; i < M; ++i) {
       const int u = (int)rng.below(N);
-      g.add(u, other(rng, 0, N, u), rng.range(C0, C1));
+      g.e.push_back({u, other(rng, 0, N, u), rng.range(C0, C1)});
     }
   return g;
 }
@@ -101,7 +102,7 @@ Graph dense(Rng &rng, int N, i64 C) {
   Graph g;
   g.n = N;
   for (int u = 0; u < N; ++u)
-    for (int v = u + 1; v < N; ++v) g.add(u, v, rng.range(1, C));
+    for (int v = u + 1; v < N; ++v) g.e.push_back({u, v, rng.range(1, C)});
   return g;
 }
 
@@ -111,8 +112,8 @@ Graph grid(Rng &rng, int H, int W, i64 C) {
   for (int i = 0; i < H; ++i)
     for (int j = 0; j < W; ++j) {
       const int v = i * W + j;
-      if (j + 1 < W) g.add(v, v + 1, rng.range(1, C));
-      if (i + 1 < H) g.add(v, v + W, rng.range(1, C));
+      if (j + 1 < W) g.e.push_back({v, v + 1, rng.range(1, C)});
+      if (i + 1 < H) g.e.push_back({v, v + W, rng.range(1, C)});
     }
   return g;
 }
@@ -123,12 +124,12 @@ Graph cluster(Rng &rng, int K, int S, int D, int X, i64 C) {
   if (S >= 2)
     for (int v = 0; v < g.n; ++v) {
       const int lo = v / S * S;
-      for (int d = 0; d < D; ++d) g.add(v, other(rng, lo, lo + S, v), rng.range(1, C));
+      for (int d = 0; d < D; ++d) g.e.push_back({v, other(rng, lo, lo + S, v), rng.range(1, C)});
     }
   if (K >= 2)
     for (int i = 0; i < X; ++i) {
       const int a = (int)rng.below(K), b = other(rng, 0, K, a);
-      g.add(a * S + (int)rng.below(S), b * S + (int)rng.below(S), rng.range(1, C));
+      g.e.push_back({a * S + (int)rng.below(S), b * S + (int)rng.below(S), rng.range(1, C)});
     }
   return g;
 }
@@ -138,10 +139,10 @@ Graph cycle(Rng &rng, int N, int K, i64 C) {
   g.n = N;
   if (N >= 2) {
     for (int v = 0; v < N; ++v)
-      if (N > 2 || v == 0) g.add(v, (v + 1) % N, rng.range(C, 2 * C));
+      if (N > 2 || v == 0) g.e.push_back({v, (v + 1) % N, rng.range(C, 2 * C)});
     for (int i = 0; i < K; ++i) {
       const int u = (int)rng.below(N);
-      g.add(u, other(rng, 0, N, u), rng.range(1, C));
+      g.e.push_back({u, other(rng, 0, N, u), rng.range(1, C)});
     }
   }
   return g;
@@ -150,11 +151,11 @@ Graph cycle(Rng &rng, int N, int K, i64 C) {
 Graph tree_plus(Rng &rng, int N, int K, i64 C) {
   Graph g;
   g.n = N;
-  for (int v = 1; v < N; ++v) g.add(v, (int)rng.below(v), rng.range(1, C));
+  for (int v = 1; v < N; ++v) g.e.push_back({v, (int)rng.below(v), rng.range(1, C)});
   if (N >= 2)
     for (int i = 0; i < K; ++i) {
       const int u = (int)rng.below(N);
-      g.add(u, other(rng, 0, N, u), rng.range(1, C));
+      g.e.push_back({u, other(rng, 0, N, u), rng.range(1, C)});
     }
   return g;
 }
@@ -164,11 +165,11 @@ Graph hub(Rng &rng, int N, int H, int M, i64 C) {
   g.n = N;
   H = min(H, N);
   for (int h = 0; h < H; ++h)
-    for (int v = H; v < N; ++v) g.add(h, v, rng.range(1, C));
+    for (int v = H; v < N; ++v) g.e.push_back({h, v, rng.range(1, C)});
   if (N - H >= 2)
     for (int i = 0; i < M; ++i) {
       const int u = H + (int)rng.below(N - H);
-      g.add(u, other(rng, H, N, u), rng.range(1, C));
+      g.e.push_back({u, other(rng, H, N, u), rng.range(1, C)});
     }
   return g;
 }
@@ -181,7 +182,7 @@ Graph comps(Rng &rng, int N, int K, int M, i64 C) {
     const int k = (int)rng.below(K), lo = (int)((i64)N * k / K), hi = (int)((i64)N * (k + 1) / K);
     if (hi - lo < 2) continue;
     const int u = lo + (int)rng.below(hi - lo);
-    g.add(u, other(rng, lo, hi, u), rng.range(1, C));
+    g.e.push_back({u, other(rng, lo, hi, u), rng.range(1, C)});
   }
   return g;
 }
@@ -189,7 +190,7 @@ Graph comps(Rng &rng, int N, int K, int M, i64 C) {
 Graph path(Rng &rng, int N, i64 C) {
   Graph g;
   g.n = N;
-  for (int v = 0; v + 1 < N; ++v) g.add(v, v + 1, rng.range(0, C));
+  for (int v = 0; v + 1 < N; ++v) g.e.push_back({v, v + 1, rng.range(0, C)});
   return g;
 }
 }  // namespace gen

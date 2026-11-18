@@ -1,0 +1,26 @@
+id = "luogu-P4897"
+title = "【模板】最小割树（Gomory-Hu Tree）"
+url = "https://www.luogu.com.cn/problem/P4897"
+
+# 洛谷のページは Cloudflare で読めないので、問題文は GitHub の Run-ux/AutoProblemGen の写しで読んだ。制約 (n ≤ 500、
+# m ≤ 1500、Q ≤ 10^5、w ≤ 10^4) は algo-notes の network-flow-problem-list.md の調べのもの。ここでは時間とメモリを測る
+# ために広く取る。
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# テストケースは公開されていないので、自作する (gen.py と、Gusfield の方法と素朴な Dinic の submissions/reference.hpp)。
+[testdata]
+source = "local"
+count = 10
+generator = "gen.py"
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true

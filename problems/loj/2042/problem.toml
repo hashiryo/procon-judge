@@ -1,0 +1,19 @@
+id = "loj-2042"
+title = "「CQOI2016」不同的最小割"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 256
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "loj"
+name = "2042"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
