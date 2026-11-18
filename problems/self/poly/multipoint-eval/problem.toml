@@ -1,0 +1,21 @@
+id = "self-poly-multipoint-eval"
+title = "多項式の多点評価 (mod 998244353、大きさごとのケース)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 15
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
