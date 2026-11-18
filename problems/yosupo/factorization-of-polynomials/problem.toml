@@ -1,0 +1,16 @@
+id = "yosupo-factorization-of-polynomials"
+title = "Factorization of Polynomial (Mod)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "polynomial/factorization_of_polynomials"
+
+[compare]
+kind = "checker"

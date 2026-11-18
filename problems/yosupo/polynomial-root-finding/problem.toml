@@ -1,0 +1,16 @@
+id = "yosupo-polynomial-root-finding"
+title = "Polynomial Root Finding (Mod 998244353)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "polynomial/polynomial_root_finding"
+
+[compare]
+kind = "checker"
