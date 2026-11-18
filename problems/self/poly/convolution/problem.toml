@@ -1,5 +1,5 @@
 id = "self-poly-convolution"
-title = "素朴な畳み込み (mod 998244353、長さ 8192 以下)"
+title = "素朴な畳み込み (mod 998244353、大きさごとのケース)"
 
 [limits]
 tle_sec = 10.0
@@ -11,7 +11,7 @@ kind = "base"
 [testdata]
 source = "local"
 generator = "gen.py"
-count = 10
+count = 17
 reference = "submissions/reference.hpp"
 
 [compare]

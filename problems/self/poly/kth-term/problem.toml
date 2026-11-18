@@ -1,5 +1,5 @@
 id = "self-poly-kth-term"
-title = "定数係数の線形漸化式の第 k 項 (次数 3000 以下、mod 998244353)"
+title = "定数係数の線形漸化式の第 k 項 (mod 998244353、次数ごとのケース)"
 
 [limits]
 tle_sec = 10.0
@@ -11,7 +11,7 @@ kind = "base"
 [testdata]
 source = "local"
 generator = "gen.py"
-count = 10
+count = 12
 reference = "submissions/reference.hpp"
 
 [compare]

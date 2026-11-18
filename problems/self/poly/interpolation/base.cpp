@@ -1,36 +1,44 @@
-// 相異なる n 点 (x_i, y_i) を通る n-1 次以下の多項式の係数 c_0, ..., c_{n-1} (mod 998244353) を、ケースごとに求める。
-// n は 5000 以下で、FFT を使わない O(n^2) で収まる大きさ。点の少ないケースを大量に聞く入力もある。
+// 相異なる n 点 (x_i, y_i) を通る n-1 次以下の多項式の係数 (mod 998244353) を、点の数ごとに分けたケースで測る。各ケースの
+// 入力は「n T seed」の 1 行で、ハーネスが seed から相異なる x と y の組を T 個作り (計測の外)、提出の run を T 回呼ぶ。
+// 計測は T 回の和、出力は答えの係数全部の hash を 1 つ。FFT を使わない素朴な実装と SIMD の実装を、点の数ごとのケースの時間で
+// 比べるための問題。
 //
 // 提出は次を実装する。
 //   vector<u32> run(const vector<u32> &x, const vector<u32> &y);  // 長さ n
-// 計測は全ケースの run の時間の和。
+#include <algorithm>
 #include "pj.hpp"
 #ifndef SUBMISSION_HPP
 #define SUBMISSION_HPP "submissions/reference.hpp"
 #endif
 #include SUBMISSION_HPP
+inline u64 sm_next(u64 &s) {
+  u64 z = (s += 0x9e3779b97f4a7c15ull);
+  z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ull;
+  z = (z ^ (z >> 27)) * 0x94d049bb133111ebull;
+  return z ^ (z >> 31);
+}
 signed main() {
-  int t;
-  must_scan(scanf("%d", &t), 1);
-  vector<vector<u32>> xs(t), ys(t);
+  int n, t;
+  u64 seed;
+  must_scan(scanf("%d %d %llu", &n, &t, &seed), 3);
+  vector<vector<u32>> xs(t, vector<u32>(n)), ys(t, vector<u32>(n)), cs(t);
   for (int q = 0; q < t; ++q) {
-    int n;
-    must_scan(scanf("%d", &n), 1);
-    xs[q].resize(n), ys[q].resize(n);
-    for (auto &v : xs[q]) must_scan(scanf("%u", &v), 1);
-    for (auto &v : ys[q]) must_scan(scanf("%u", &v), 1);
+    while (true) {  // x は相異なる
+      for (auto &v : xs[q]) v = u32(sm_next(seed) % 998244353);
+      vector<u32> s = xs[q];
+      sort(s.begin(), s.end());
+      if (adjacent_find(s.begin(), s.end()) == s.end()) break;
+    }
+    for (auto &v : ys[q]) v = u32(sm_next(seed) % 998244353);
   }
-  vector<vector<u32>> cs(t);
   auto t0 = chrono::steady_clock::now();
   for (int q = 0; q < t; ++q) cs[q] = run(xs[q], ys[q]);
   auto t1 = chrono::steady_clock::now();
-  string out;
+  u64 h = 0;
   for (auto &c : cs) {
-    for (size_t i = 0; i < c.size(); ++i) {
-      out += to_string(c[i]);
-      out += i + 1 == c.size() ? '\n' : ' ';
-    }
+    h = h * 1000003 + c.size();
+    for (u32 v : c) h = h * 0x100000001b3ull + v;
   }
-  fputs(out.c_str(), stdout);
+  printf("%llu\n", h);
   report_metrics((long long)chrono::duration_cast<chrono::nanoseconds>(t1 - t0).count());
 }

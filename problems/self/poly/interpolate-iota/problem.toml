@@ -1,0 +1,18 @@
+id = "self-poly-interpolate-iota"
+title = "連続する点の値からの多項式の 1 点の値 (mod 998244353、点の数ごとのケース)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 23
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
