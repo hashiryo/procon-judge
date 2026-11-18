@@ -1,0 +1,26 @@
+id = "atcoder-codefestival-2015-ex-a"
+title = "A - 高橋王国と青木王国"
+url = "https://atcoder.jp/contests/code-festival-2015-exhibition/tasks/codefestival_2015_ex_a"
+
+# 問題文は curl で読んだ (N ≤ 5000、M ≤ 50000、Q ≤ 10^5、2 秒、256 MB)。
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# テストケースは公開されていないので、自作する (gen.py と、ライブラリに依存しない submissions/reference.hpp)。答えは 1 つに
+# 決まる。最小カットで 2 つの頂点が同じ側か違う側になりうるかの問い (残余グラフの強連結成分と、成分の間で届くか) を
+# 確かめて測るために足した。
+[testdata]
+source = "local"
+count = 12
+generator = "gen.py"
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
