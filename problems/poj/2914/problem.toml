@@ -1,0 +1,26 @@
+id = "poj-2914"
+title = "Minimum Cut"
+url = "http://poj.org/problem?id=2914"
+
+# 問題文は curl で読んだ (複数のテストケース、2 ≤ N ≤ 500、0 ≤ M ≤ N(N - 1)/2、頂点は 0 始まり、辺の重みは本数 C > 0、つながって
+# いなければ 0)。
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# テストケースは公開されていないので、自作する (gen.py と、Stoer-Wagner の方法を _shared/gmincut と別に書いた
+# submissions/reference.hpp)。全域最小カットの書き比べのために足した。
+[testdata]
+source = "local"
+count = 8
+generator = "gen.py"
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true

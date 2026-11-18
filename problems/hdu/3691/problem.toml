@@ -1,0 +1,26 @@
+id = "hdu-3691"
+title = "Nubulsa Expo"
+url = "https://acm.hdu.edu.cn/showproblem.php?pid=3691"
+
+# 問題文は curl で読んだ (複数のテストケースで 0 0 0 で終わる、1 < N ≤ 300、0 < M ≤ 50000、0 < K ≤ 10^6、連結)。入口 S から
+# 出口を選んで最大流を最小にするので、答えは全域最小カット (S を含む側と含まない側に分かれるカットの最小)。
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# テストケースは公開されていないので、自作する (gen.py と、Stoer-Wagner の方法を _shared/gmincut と別に書いた
+# submissions/reference.hpp)。全域最小カットの書き比べのために足した。
+[testdata]
+source = "local"
+count = 8
+generator = "gen.py"
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true

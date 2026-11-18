@@ -1,0 +1,25 @@
+id = "hdu-6081"
+title = "度度熊的王国战略"
+url = "https://acm.hdu.edu.cn/showproblem.php?pid=6081"
+
+# 問題文は curl で読んだ (若干組のテストデータ、2 ≤ n ≤ 3000、1 ≤ m ≤ 10^5、1 ≤ w ≤ 1000、20 秒、132 MB)。
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# テストケースは公開されていないので、自作する (gen.py と、Nagamochi-Ono-Ibaraki の方法を _shared/gmincut と別に書いた
+# submissions/reference.hpp)。全域最小カットの書き比べのうち、頂点が多く疎なグラフを測るために足した。
+[testdata]
+source = "local"
+count = 12
+generator = "gen.py"
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
