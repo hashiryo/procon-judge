@@ -1,0 +1,26 @@
+id = "luogu-P13844"
+title = "【模板】集合幂级数 ln（非素数模数）"
+url = "https://www.luogu.com.cn/problem/P13844"
+
+# 洛谷のページは Cloudflare で読めないので、問題文は GitHub の Run-ux/AutoProblemGen の写しで読んだ。集合冪級数 (積は部分集合
+# 畳み込み) の ln(F) (F[∅] = 1) を 2^64 で割った余りで求める。1 <= n <= 20 で、本番は n = 1 から 20 の 20 ケース。法 2^64 では 1/k が
+# 無いので、割り算を使わない形が要る。
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# テストケースは公開されていないので、自作する (gen.py と、ライブラリに依存しない 3^n の DP の submissions/reference.hpp)。
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 22
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
