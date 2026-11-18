@@ -1,0 +1,23 @@
+id = "self-matroid-graphic-partition"
+title = "グラフ的マトロイドと分割マトロイドの交差"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# 提出の答えは、ハーネスが計測のあとに森であることと色ごとの上限を確かめてから、要素数だけを出す。期待出力は参照実装
+# (今の Library の matroid_intersection の写し) の要素数で、愚直解 (辺の部分集合を全部試す) と小さい入力で突き合わせる。
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 10
+reference = "reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
