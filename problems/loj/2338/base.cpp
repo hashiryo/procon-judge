@@ -12,7 +12,7 @@
 #include "pj.hpp"
 
 #ifndef SUBMISSION_HPP
-#define SUBMISSION_HPP "submissions/keep2_lap.hpp"
+#define SUBMISSION_HPP "submissions/lib-neo.hpp"
 #endif
 #include SUBMISSION_HPP
 
