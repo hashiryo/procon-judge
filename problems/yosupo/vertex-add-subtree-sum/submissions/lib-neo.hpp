@@ -4,16 +4,11 @@
 #include "neo/graph/HeavyLightDecomposition.hpp"
 
 // NeoLibrary の HeavyLightDecomposition を親の列から作り、部分木の位置の区間に SegmentTree<monoid::Sum<i64>> (8 分木の接頭辞和)
-// を載せる。
+// を載せる。区間和の木は、位置ごとの値の列を作らずに init (位置 i の値 = a[to_vertex(i)]) で作る。
 struct Solver {
   HeavyLightDecomposition h;
   SegmentTree<monoid::Sum<i64>> seg;
-  static vector<i64> by_pos(const HeavyLightDecomposition &h, const vector<i64> &a) {
-    vector<i64> v(a.size());
-    for (int u = 0; u < (int)a.size(); ++u) v[h.to_seq(u)] = a[u];
-    return v;
-  }
-  Solver(int, const vector<i64> &a, const vector<int> &par) : h(par), seg(by_pos(h, a)) {}
+  Solver(int n, const vector<i64> &a, const vector<int> &par) : h(par), seg(n, [&](int i) { return a[h.to_vertex(i)]; }) {}
   void add(int u, i64 x) { seg.mul(h.to_seq(u), x); }
   i64 subtree_sum(int u) {
     auto [l, r] = h.subtree(u);
