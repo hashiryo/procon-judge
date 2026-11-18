@@ -1,0 +1,27 @@
+id = "codechef-DANYANUM"
+title = "Danya and Numbers"
+url = "https://www.codechef.com/problems/DANYANUM"
+
+# 2^k 未満の整数の列 A に、数を足す、数を 1 つ消す、長さ x の部分列の AND の最大 f(x, A) を問う、の 3 つの操作を M 回行う。
+# 1 <= N, M <= 75000、1 <= k <= 18、時間制限 2 秒。f(x, A) は、mask を含む要素が x 個以上ある mask の最大なので、上の bit から
+# 決めると、上位集合の個数の問いが k 回で済む。追加と削除があるので、bit を上下の半分に分けて片方だけゼータ変換して持つ形
+# (更新と問いがどちらも O(2^{k/2})) が要る。
+[limits]
+tle_sec = 6.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+# テストケースは公開されていないので、自作する (gen.py と、ライブラリに依存しない submissions/reference.hpp)。
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 12
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
