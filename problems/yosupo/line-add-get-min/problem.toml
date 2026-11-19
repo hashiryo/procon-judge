@@ -14,3 +14,6 @@ name = "data_structure/line_add_get_min"
 
 [compare]
 kind = "checker"
+
+[record]
+case_times = true

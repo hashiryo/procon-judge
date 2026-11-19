@@ -36,17 +36,18 @@ struct LiChaoRange {
     return (int)t.size() - 1;
   }
 
-  // 節 k (左端 l、幅 2^d) の下に直線を足す。
+  // 節 k (左端 l、幅 2^d) の下に直線を足す。節の両端で新しい直線が両方勝てば置き換え、両方負ければ止める (直線の無い
+  // 節には勝つので、直線の無い印を下へ押し下げない)。
   void descend(int k, long long l, int d, long long a, long long b) {
     for (;;) {
       Node &nd = t[k];
-      if (d == 0) {
-        const long long x = lo + l;
-        if (a * x + b < nd.a * x + nd.b) nd.a = a, nd.b = b;
+      const long long xl = lo + l, xr = xl + (1LL << d) - 1;
+      const bool bl = a * xl + b < nd.a * xl + nd.b, br = a * xr + b < nd.a * xr + nd.b;
+      if (bl == br) {
+        if (bl) nd.a = a, nd.b = b;
         return;
       }
-      const long long xl = lo + l, m = l + (1LL << (d - 1)), xm = lo + m;
-      const bool bl = a * xl + b < nd.a * xl + nd.b;
+      const long long m = l + (1LL << (d - 1)), xm = lo + m;
       const bool bm = a * xm + b < nd.a * xm + nd.b;
       if (bm) std::swap(nd.a, a), std::swap(nd.b, b);
       const int dir = bl == bm;  // 負けた直線が左端で勝つなら左 (0)、そうでなければ右 (1)
@@ -159,6 +160,49 @@ struct LiChaoPoints {
   }
 
   void add_line(long long a, long long b) { descend(1, 0, n, a, b); }
+
+  // 分岐を使わずに葉まで下る追加。節 k (葉の添字の区間 [l, l + w)) から下る。比べた結果は条件の選択でなくマスクの算術で
+  // 使い、マスクを空の asm に通して、コンパイラが分岐に戻さないようにする。
+  void descend_full(int k, int l, int w, long long a, long long b) {
+    for (w >>= 1; w >= 1; w >>= 1) {
+      Line &e = t[k];
+      const long long xl = xs[l], xm = xs[l + w], ea = e.a, eb = e.b;
+      const bool bl = a * xl + b < ea * xl + eb, bm = a * xm + b < ea * xm + eb;
+      long long msk = -(long long)bm;
+      asm("" : "+r"(msk));
+      e.a = (a & msk) | (ea & ~msk), e.b = (b & msk) | (eb & ~msk);
+      a = (ea & msk) | (a & ~msk), b = (eb & msk) | (b & ~msk);
+      const int dir = bl == bm;
+      k = 2 * k + dir, l += w & -dir;
+    }
+    Line &e = t[k];
+    const long long x = xs[l];
+    if (a * x + b < e.a * x + e.b) e = {a, b};
+  }
+
+  void add_line_full(long long a, long long b) { descend_full(1, 0, n, a, b); }
+
+  void add_segment_index_full(int l, int r, long long a, long long b) {
+    if (l >= r) return;
+    int lk = l + n, rk = r + n, w = 1;
+    for (; lk < rk; lk >>= 1, rk >>= 1, w <<= 1) {
+      if (lk & 1) descend_full(lk, (lk * w) - n, w, a, b), ++lk;
+      if (rk & 1) --rk, descend_full(rk, (rk * w) - n, w, a, b);
+    }
+  }
+
+  // 分岐のない二分探索で、x 以上の最初の点の添字 (xs は長さ n の 2 の冪で、末尾を最後の値で埋めてある)。
+  int index_bl(long long x) const {
+    const long long *base = xs.data();
+    for (int len = n; len > 1; len >>= 1) base += (base[(len >> 1) - 1] < x) * (len >> 1);
+    return (int)(base - xs.data()) + (*base < x);
+  }
+
+  void add_segment_full(long long xl, long long xr, long long a, long long b) {
+    add_segment_index_full(index_bl(xl), index_bl(xr), a, b);
+  }
+
+  long long query_bl(long long x) const { return query_index(index_bl(x)); }
 
   // 葉の添字の区間 [l, r) にだけ載る線分。
   void add_segment_index(int l, int r, long long a, long long b) {
