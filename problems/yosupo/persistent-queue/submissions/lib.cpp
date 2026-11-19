@@ -5,7 +5,7 @@
 #include "mylib/data_structure/WeightBalancedTree.hpp"
 using namespace std;
 signed main() {
- cin.tie(0);
+ cin.tie(nullptr);
  ios::sync_with_stdio(0);
  int Q;
  cin >> Q;
