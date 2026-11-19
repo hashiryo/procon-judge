@@ -3,9 +3,18 @@
 // 比べたいのは直線の集合の最小値を取る道具。
 #include "pj.hpp"
 
+template <class Lines, class Gen> Lines make_lines(Gen gen) {
+  if constexpr (std::is_constructible_v<Lines, const vector<i64> &>) return Lines(gen());
+  else return Lines();
+}
+
 // Lines は次を実装する (最小化)。
 //   void insert(i64 a, i64 b);  // 直線 y = a x + b を足す
 //   i64 query(i64 x) const;     // x での最小値
+//
+// 問いの x を先に使う Lines (座標を詰めた Li Chao 木など) は、x の列を受けるコンストラクタ
+// Lines(const vector<i64> &xs) を持てる。持っていれば、run() の中で問いの x の列を作って渡す。
+// 持っていなければ列は作らない。
 //
 // 島を左から順に区間に切り、各区間を 1 人の職人に任せる。区間の左端を決める遷移
 // と右端を決める遷移をそれぞれ直線の集合の最小値として持ち、職人 i を見るごとに
@@ -20,7 +29,17 @@ template <class Lines> struct StatueSolver {
   StatueSolver(int n, i64 c, const vector<array<i64, 2>> &ab) : n(n), c(c), ab(ab) {}
 
   void run() {
-    Lines left, right;
+    // 左の集合は x = -2 a_i - 2 c i で、右の集合は x = i で問う。
+    Lines left = make_lines<Lines>([&] {
+      vector<i64> xs(n);
+      for (i64 i = 1; i <= n; ++i) xs[i - 1] = -2 * ab[i - 1][0] - 2 * c * i;
+      return xs;
+    });
+    Lines right = make_lines<Lines>([&] {
+      vector<i64> xs(n);
+      for (i64 i = 1; i <= n; ++i) xs[i - 1] = i;
+      return xs;
+    });
     left.insert(0, 0);
     for (i64 i = 1;; ++i) {
       const i64 a = 2 * ab[i - 1][0], b = 2 * ab[i - 1][1], cc = 2 * c * i;

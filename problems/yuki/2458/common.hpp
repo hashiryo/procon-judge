@@ -4,11 +4,20 @@
 #include <algorithm>
 #include "pj.hpp"
 
+template <class Lines, class Gen> Lines make_lines(Gen gen) {
+  if constexpr (std::is_constructible_v<Lines, const vector<i64> &>) return Lines(gen());
+  else return Lines();
+}
+
 constexpr i64 INF = 1e18;
 
 // Lines は次を実装する (最大化)。
 //   void insert(i64 a, i64 b);  // 直線 y = a x + b を足す
 //   i64 query(i64 x) const;     // x での最大値
+//
+// 問いの x を先に使う Lines (座標を詰めた Li Chao 木など) は、x の列を受けるコンストラクタ
+// Lines(const vector<i64> &xs) を持てる。持っていれば、run() の中で問いの x の列を作って渡す。
+// 持っていなければ列は作らない。
 //
 // 残すボールを左から順に決める。1 つ前に残したボール j の次に i を残すとエネルギー
 // が Q_j Q_i 増えるので、dp[i] = max_j dp[j] + Q_j Q_i は傾き Q_j 切片 dp[j] の直線
@@ -22,7 +31,7 @@ template <class Lines> struct BallSolver {
 
   void run() {
     const int n = (int)q.size();
-    Lines lines;
+    Lines lines = make_lines<Lines>([&] { return q; });  // x = Q_i で問う
     lines.insert(0, 0);
     ans = -INF;
     for (int i = 0;;) {
