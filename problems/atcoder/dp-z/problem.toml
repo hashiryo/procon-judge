@@ -1,0 +1,24 @@
+id = "atcoder-dp-z"
+title = "Z - Frog 3"
+url = "https://atcoder.jp/contests/dp/tasks/dp_z"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# AtCoder はテストケースを公開していないので、自作する (gen.py と、_shared/lines と別に書いた submissions/reference.hpp)。
+# 傾きも問いの x も単調な Convex Hull Trick の代表として、直線の最小の書き比べのために足した。
+[testdata]
+source = "local"
+count = 12
+generator = "gen.py"
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
