@@ -1,6 +1,6 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/graph/FunctionalGraph.hpp"
+#include "neo/base/ds/tree/FunctionalGraph.hpp"
 
 // 直前 4 項 (mod 17) を状態にした写像を、状態を 17 進の数 (17^4 = 83521 通り) にして NeoLibrary の FunctionalGraph に渡す。
 // lib-period は今の Library の Period で、始めの状態から訪れた状態だけをライブラリの中で番号付けする (状態が int でないので

@@ -2,7 +2,7 @@
 // NeoLibrary の stern_brocot.hpp を呼ぶ。中身は 20 回目 (sb20.hpp) と同じ手順 (ENCODE は r > b/2 の段をまとめる互除法、
 // DECODE は vpmuludq、LCA と ANCESTOR は普通の互除法、RANGE は Kaliski の形の逆元)。
 #include "../common.hpp"
-#include "neo/number_theory/stern_brocot.hpp"
+#include "neo/base/core/nt/stern_brocot.hpp"
 
 inline u32* run(const Input& in, u32* out) {
     for (const auto& q : in.qs) {

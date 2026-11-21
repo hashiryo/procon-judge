@@ -13,9 +13,9 @@
 // 4n 未満のまま補正しない (4n 未満どうしの積の還元は 2n 未満に収まる)。n >= 2^60 は 128 bit の剰余で回す遅い rho に回す
 // (Library Checker の入力は 10^18 以下なので使わない)。
 #include "../common.hpp"
-#include "neo/number_theory/gcd.hpp"
-#include "neo/number_theory/inv_gcd.hpp"
-#include "neo/number_theory/is_prime.hpp"
+#include "neo/base/core/nt/gcd.hpp"
+#include "neo/base/core/nt/inv_gcd.hpp"
+#include "neo/base/core/nt/is_prime.hpp"
 
 namespace ecm_fact {
 using u64 = unsigned long long;

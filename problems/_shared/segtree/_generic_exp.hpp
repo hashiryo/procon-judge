@@ -1,4 +1,4 @@
-// NeoLibrary 1a83046 の neo/data_structure/SegmentTree.hpp (汎用の二分木) の写しで、Xeon 6 (6975P-C と 6973P-C) で
+// NeoLibrary 1a83046 の neo/base/ds/range/SegmentTree.hpp (汎用の二分木) の写しで、Xeon 6 (6975P-C と 6973P-C) で
 // 今の Library より遅い理由を切り分けるため、次の 2 つをマクロで替えられるようにしたもの。どちらも 0 なら写し元と同じ。
 //   GENERIC_EXP_ALLOC: 1 なら 1 MB 以上の配列も 64 byte 境界の operator new で取り、huge page を頼まない (今の Library と
 //                      同じく 4 KB のページ)。2 なら写し元と同じく 2 MB 境界に置いて huge page を頼み、lz と fl の先頭だけを

@@ -3,7 +3,7 @@
 // 元のランプ 1 つの z^X (z + 1)^Y に等しい。原始元 a と b で log をとると X + sY と X + tY (mod 2^64 - 1) が分かるので、連立して解く
 #include <iostream>
 #include <vector>
-#include "neo/algebra/GF2p64.hpp"
+#include "neo/base/core/algebra/GF2p64.hpp"
 using namespace std;
 using u64= unsigned long long;
 using i128= __int128;

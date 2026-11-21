@@ -1,8 +1,8 @@
 #pragma once
 #include "common.hpp"
-#include "neo/data_structure/WeightBalancedTree.hpp"
+#include "neo/base/ds/seq/WeightBalancedTree.hpp"
 
-// NeoLibrary の neo/data_structure/WeightBalancedTree.hpp (永続しない形)。op が重く可換でないので、塊の形の Sequence でなく、
+// NeoLibrary の neo/base/ds/seq/WeightBalancedTree.hpp (永続しない形)。op が重く可換でないので、塊の形の Sequence でなく、
 // 1 節に 1 値の重み平衡木を使う。
 struct Solver {
   WeightBalancedTree<MatMul, true> t;

@@ -1,7 +1,7 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/polynomial/linear_recurrence.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/algo/compute/poly/linear_recurrence.hpp"
 // NeoLibrary の linear_recurrence (Bostan-Mori) を ZMod<10> で使う。法 10 は素数ではないが、割るのは分母の定数項 1
 // だけなので成り立つ。O(d^2 log K)。
 struct Solver {

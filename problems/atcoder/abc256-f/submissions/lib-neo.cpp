@@ -1,10 +1,10 @@
 // 双対 の verify
-// NeoLibrary の neo/data_structure/Sequence.hpp (塊の形) で書いたもの。
+// NeoLibrary の neo/base/ds/seq/Sequence.hpp (塊の形) で書いたもの。
 
 #include <iostream>
 #include <array>
 #include "mylib/algebra/ModInt.hpp"
-#include "neo/data_structure/Sequence.hpp"
+#include "neo/base/ds/seq/Sequence.hpp"
 using namespace std;
 
 using Mint= ModInt<998244353>;

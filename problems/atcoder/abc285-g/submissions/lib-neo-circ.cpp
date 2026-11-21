@@ -3,7 +3,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "neo/combinatorial_optimization/MaxFlowLowerBound.hpp"
+#include "neo/algo/optimize/flow/MaxFlowLowerBound.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

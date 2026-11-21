@@ -1,6 +1,6 @@
-// NeoLibrary の linear_recurrence (neo/polynomial/linear_recurrence.hpp)。型は int のまま。
+// NeoLibrary の linear_recurrence (neo/algo/compute/poly/linear_recurrence.hpp)。型は int のまま。
 #include <iostream>
-#include "neo/polynomial/linear_recurrence.hpp"
+#include "neo/algo/compute/poly/linear_recurrence.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

@@ -1,5 +1,5 @@
 #pragma once
-// msd16_net32_ai の作業用の配列の取り方だけを、NeoLibrary の neo/sort/sort.hpp の Buf と同じ形 (2^19 byte 以上は 2 MB 境界の mmap、
+// msd16_net32_ai の作業用の配列の取り方だけを、NeoLibrary の neo/base/core/util/sort.hpp の Buf と同じ形 (2^19 byte 以上は 2 MB 境界の mmap、
 // 終わったら munmap) に替えたもの。lib-neo (msd16_net32_ai を写したもの) が 9V45 と 8370C で写し元より遅く出たケースがあり、
 // 取り方の違いから来るかを見るために置く。ほかは msd16_net32_ai と同じ。
 #ifdef USE_SIMDE

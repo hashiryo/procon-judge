@@ -7,7 +7,7 @@
 // j 個より多く持つ行だけを順に回るので、内側のループに行の終わりの分岐がない。積は u64 にため、8 段ごとに 2^32 の位を畳む。
 #include <chrono>
 #include "../common.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 inline u32 run(int N, int K, const vector<int>& a, const vector<int>& b, const vector<u32>& c) {
  using Z= ZMod<MOD>;
  mt19937_64 rng(chrono::steady_clock::now().time_since_epoch().count());

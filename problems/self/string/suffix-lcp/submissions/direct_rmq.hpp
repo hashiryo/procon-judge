@@ -4,8 +4,8 @@
 // 足した写しで読む (英小文字は 0 でないので、短い方の接尾辞の終わりで必ず食い違う)。
 #include "pj.hpp"
 #include <cstring>
-#include "neo/data_structure/RangeMin.hpp"
-#include "neo/string/suffix_array.hpp"
+#include "neo/base/ds/range/RangeMin.hpp"
+#include "neo/base/ds/string/suffix_array.hpp"
 
 struct Solver {
   int n;

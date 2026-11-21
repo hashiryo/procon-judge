@@ -1,8 +1,8 @@
 #pragma once
-// NeoLibrary の RangeMin (neo/data_structure/RangeMin.hpp)。この問題で書き比べた block16_fused を写したもので、
+// NeoLibrary の RangeMin (neo/base/ds/range/RangeMin.hpp)。この問題で書き比べた block16_fused を写したもので、
 // 表が 1 MB 未満のときは huge page を頼まない分だけが違う。
 #include "pj.hpp"
-#include "neo/data_structure/RangeMin.hpp"
+#include "neo/base/ds/range/RangeMin.hpp"
 struct Solver {
  RangeMin rm;
  explicit Solver(const vector<u32>& a): rm(a) {}

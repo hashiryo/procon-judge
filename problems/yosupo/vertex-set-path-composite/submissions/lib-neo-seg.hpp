@@ -1,8 +1,8 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/data_structure/segtree/Composite.hpp"
-#include "neo/graph/HeavyLightDecomposition.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/ds/range/segtree/Composite.hpp"
+#include "neo/base/ds/tree/HeavyLightDecomposition.hpp"
 
 // NeoLibrary の HeavyLightDecomposition と、SegmentTree<monoid::Composite<ZMod<998244353>>> 2 本 (位置の順と、その逆順) で
 // 道の合成を求める (今の Library と同じ書き方)。上る区間は逆順の木、下りる区間は位置の順の木の積を、道の順に掛ける。

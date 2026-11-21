@@ -1,7 +1,7 @@
 #pragma once
 #include <algorithm>
 #include "pj.hpp"
-#include "neo/data_structure/SegmentTree.hpp"
+#include "neo/base/ds/range/SegmentTree.hpp"
 
 // NeoLibrary の SegmentTree に lib-segtree-beats と同じ構造体を渡す (中身は二分木の汎用の形で、mp が偽なら子へ下りる)。
 // 標準の構造体 monoid::ChminChmaxAddSum を渡す lib-neo と比べるために置く。

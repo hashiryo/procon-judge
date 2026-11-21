@@ -1,8 +1,8 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/polynomial/berlekamp_massey.hpp"
-#include "neo/polynomial/linear_recurrence.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/algo/compute/poly/berlekamp_massey.hpp"
+#include "neo/algo/compute/poly/linear_recurrence.hpp"
 // 求めるのは (A^T)[0][0] = e0^T A^T e0。数列 s_i = e0^T A^i e0 (i < 2N) を隣接リストで 1 ずつ回して作り、NeoLibrary の
 // berlekamp_massey で線形漸化式にして、linear_recurrence で第 T 項を出す。
 struct Solver {

@@ -1,10 +1,10 @@
 // https://atcoder.jp/contests/s8pc-3/tasks/s8pc_3_g
 // NeoLibrary の ZMod、sparse_fps (div、pow、pow_of_div)、interpolate_iota、div_at。長さは今の Library の N に 1 足して渡す。
 #include <iostream>
-#include "neo/algebra/ZMod.hpp"
-#include "neo/polynomial/sparse_fps.hpp"
-#include "neo/polynomial/lagrange.hpp"
-#include "neo/polynomial/linear_recurrence.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/core/poly/sparse_fps.hpp"
+#include "neo/algo/compute/poly/lagrange.hpp"
+#include "neo/algo/compute/poly/linear_recurrence.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

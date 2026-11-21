@@ -1,6 +1,6 @@
 #pragma once
 #include "../common.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 // 逆元をまとめて求める関数の試作 (Montgomery の方法)。T は * と inv() を持つ型で、a のどの値も逆元を持つこと。
 // 前から積を取り、全体の積の逆元を 1 回だけ求めて、後ろから 1 つずつの逆元を取り出す。掛け算は 1 要素あたり 3 回。
 // 積の鎖を K 本に分け (添字を K で割った余りで分ける)、交互に進めて、掛け算の latency を待たずに次を始められるようにする。

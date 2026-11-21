@@ -1,8 +1,8 @@
 #pragma once
-// NeoLibrary の max_weight_matching (neo/combinatorial_optimization/weighted_matching.hpp)。中身は persist_i32 と同じで、重みの
+// NeoLibrary の max_weight_matching (neo/algo/optimize/matching/weighted_matching.hpp)。中身は persist_i32 と同じで、重みの
 // 最大 W が 8W < 2^30 なら int32 の核、そうでなければ persist_avx2 の核で解く。
 #include <tuple>
-#include "neo/combinatorial_optimization/weighted_matching.hpp"
+#include "neo/algo/optimize/matching/weighted_matching.hpp"
 struct Solver {
  int n;
  const vector<array<int, 3>>& e;

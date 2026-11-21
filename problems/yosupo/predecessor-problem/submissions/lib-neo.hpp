@@ -1,7 +1,7 @@
 #pragma once
-// NeoLibrary の FastSet (neo/data_structure/FastSet.hpp)。この問題で書き比べた fs_td を写したもので、huge page は頼まない。
+// NeoLibrary の FastSet (neo/base/ds/set/FastSet.hpp)。この問題で書き比べた fs_td を写したもので、huge page は頼まない。
 #include "pj.hpp"
-#include "neo/data_structure/FastSet.hpp"
+#include "neo/base/ds/set/FastSet.hpp"
 struct Solver {
  FastSet s;
  Solver(int n, const vector<u64>& bits): s(n, bits) {}

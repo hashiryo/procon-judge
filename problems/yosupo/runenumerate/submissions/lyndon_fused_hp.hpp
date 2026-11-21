@@ -14,9 +14,9 @@
 #include <utility>
 #include <vector>
 #include "pj.hpp"
-#include "neo/string/suffix_array.hpp"
-#include "neo/data_structure/FastSet.hpp"
-#include "neo/data_structure/RangeMin.hpp"
+#include "neo/base/ds/string/suffix_array.hpp"
+#include "neo/base/ds/set/FastSet.hpp"
+#include "neo/base/ds/range/RangeMin.hpp"
 #include "_lyndon_lean.hpp"
 
 namespace lyndon_fused_hp {

@@ -1,9 +1,9 @@
 // 融合永続, split, split3
-// NeoLibrary の neo/data_structure/WeightBalancedTree.hpp (永続の形) で書いたもの。置き場が伸びたら gc で今の列から届く節だけを詰める。
+// NeoLibrary の neo/base/ds/seq/WeightBalancedTree.hpp (永続の形) で書いたもの。置き場が伸びたら gc で今の列から届く節だけを詰める。
 #include <iostream>
 #include <string>
 #include <tuple>
-#include "neo/data_structure/WeightBalancedTree.hpp"
+#include "neo/base/ds/seq/WeightBalancedTree.hpp"
 using namespace std;
 signed main() {
   cin.tie(0);

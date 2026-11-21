@@ -1,4 +1,4 @@
-// NeoLibrary の neo/data_structure/SegmentTree.hpp (汎用の二分木を直した形) の写しで、子に作用を当てるときの印の書き込み
+// NeoLibrary の neo/base/ds/range/SegmentTree.hpp (汎用の二分木を直した形) の写しで、子に作用を当てるときの印の書き込み
 // だけを直す前の形 (子の印で分岐して、無いときだけ印を書く) に戻したもの。直した 4 つのうち分岐の分を切り分けるために置く。
 #pragma once
 #include <algorithm>

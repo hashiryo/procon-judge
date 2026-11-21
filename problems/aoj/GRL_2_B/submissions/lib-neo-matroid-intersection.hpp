@@ -1,7 +1,7 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/combinatorial_optimization/matroid_intersection.hpp"
-#include "neo/combinatorial_optimization/matroids.hpp"
+#include "neo/algo/optimize/matroid/matroid_intersection.hpp"
+#include "neo/algo/optimize/matroid/matroids.hpp"
 
 // 重み付きマトロイド交叉に落とす。辺の集合について「閉路を作らない」条件がグラフ的マトロイド、「各頂点への入辺が高々
 // 1 本 (根へは 0 本)」が分割マトロイドで、その共通部分の要素数 n - 1 の最小重みが求める有向木になる。NeoLibrary の

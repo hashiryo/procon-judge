@@ -3,7 +3,7 @@
 // 掛ける係数は 0 か 1 なので、A_i をそのまま GF2p64 の元とみて計算してよい
 #include <iostream>
 #include <vector>
-#include "neo/fft/convolve_GF2p64.hpp"
+#include "neo/base/core/poly/convolve_GF2p64.hpp"
 using namespace std;
 using u64= unsigned long long;
 signed main() {

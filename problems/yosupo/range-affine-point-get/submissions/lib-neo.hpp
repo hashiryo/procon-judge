@@ -1,6 +1,6 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/data_structure/segtree/Affine.hpp"
+#include "neo/base/ds/range/segtree/Affine.hpp"
 
 // NeoLibrary の SegmentTree に monoid::Affine<ZMod<998244353>> を渡す。中身は 16 分木の双対セグ木 (wide_dual2_pf と同じ)。
 struct Solver {

@@ -1,10 +1,10 @@
-// 先頭が 0 でない数字の列の、NeoLibrary の DFA (neo/counting/DFA.hpp) の ranker を 1 回作り、テストケースごとに長さごとの
+// 先頭が 0 でない数字の列の、NeoLibrary の DFA (neo/algo/count/automata/DFA.hpp) の ranker を 1 回作り、テストケースごとに長さごとの
 // count_leq と count_less で、辞書順で K 以下かつ値が N 以下の数を数える。
 #include <iostream>
 #include <vector>
 #include <string>
 #include <algorithm>
-#include "neo/counting/DFA.hpp"
+#include "neo/algo/count/automata/DFA.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

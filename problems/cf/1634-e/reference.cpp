@@ -7,7 +7,7 @@
 #pragma GCC target("sse3,ssse3,sse4.1,sse4.2,popcnt,cx16,sahf,avx,avx2,bmi,bmi2,fma,f16c,lzcnt,movbe,pclmul,vpclmulqdq")
 #endif
 
-// NeoLibrary の euler_split (neo/graph/euler_split.hpp) で解く。配列を左、値を右の頂点にして、要素ごとに辺を張る。どの値も全体で
+// NeoLibrary の euler_split (neo/algo/decide/graph/euler_split.hpp) で解く。配列を左、値を右の頂点にして、要素ごとに辺を張る。どの値も全体で
 // 偶数回出てくれば、二部グラフで次数が全部偶数なので、Euler 分割で配列ごとにも値ごとにも辺がちょうど半分ずつに分かれる。色 0 を
 // L、1 を R にする。奇数回の値があれば NO。
 #include <algorithm>

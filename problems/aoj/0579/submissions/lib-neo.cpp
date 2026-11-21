@@ -1,11 +1,11 @@
-// 記号を服、状態を (日, 前の日の服) にした NeoLibrary の DFA (neo/counting/DFA.hpp) で、派手さの差の和の最大を求める。
+// 記号を服、状態を (日, 前の日の服) にした NeoLibrary の DFA (neo/algo/count/automata/DFA.hpp) で、派手さの差の和の最大を求める。
 // 足す量が前の服で決まるので、dp の f に遷移の前後の状態 (Step) を受けさせ、移る前の状態から前の服を引く。
 #include <iostream>
 #include <vector>
 #include <utility>
 #include <climits>
 #include <cstdlib>
-#include "neo/counting/DFA.hpp"
+#include "neo/algo/count/automata/DFA.hpp"
 using namespace std;
 signed main() {
  int D, N;

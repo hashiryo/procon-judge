@@ -1,7 +1,7 @@
 // lib.cpp を NeoLibrary の FunctionalGraph で書いたもの。値を位置の順に並べた累積和を作り、path が渡す区間と回数で足す。
 #include <iostream>
 #include <vector>
-#include "neo/graph/FunctionalGraph.hpp"
+#include "neo/base/ds/tree/FunctionalGraph.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

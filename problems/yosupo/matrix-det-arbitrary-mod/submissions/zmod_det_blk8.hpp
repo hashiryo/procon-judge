@@ -4,7 +4,7 @@
 // 更新を先に足してから、その列の値が 0 でない行どうしに互除法の 2×2 の変換 (行列式 1) をかけて 1 行に集め、その行を
 // 要にする (要の値は単元でなくてよい)。値が 1 つだけの列は、変換なしでそのまま要にする。
 #include "../common.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 #include "_shared/linalg/lazy_elim.hpp"
 inline u32 run(int n, u32 mod, const vector<vector<u32>>& a) {
  if(mod == 1) return 0;

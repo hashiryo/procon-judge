@@ -1,9 +1,9 @@
-// NeoLibrary の GeneralMatching (neo/combinatorial_optimization/GeneralMatching.hpp) で解く。
+// NeoLibrary の GeneralMatching (neo/algo/optimize/matching/GeneralMatching.hpp) で解く。
 #include <array>
 #include <cstdlib>
 #include <iostream>
 #include <vector>
-#include "neo/combinatorial_optimization/GeneralMatching.hpp"
+#include "neo/algo/optimize/matching/GeneralMatching.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

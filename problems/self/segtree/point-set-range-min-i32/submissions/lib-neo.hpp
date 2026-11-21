@@ -1,6 +1,6 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/data_structure/segtree/Min.hpp"
+#include "neo/base/ds/range/segtree/Min.hpp"
 
 // NeoLibrary の SegmentTree に monoid::Min<long long> を渡す。中身は子を 16 個持つ最小の木。
 struct Solver {

@@ -1,11 +1,11 @@
 #pragma once
-// NeoLibrary の sps のゼータ (neo/set_power_series/zeta.hpp)。t = 0 から 2 は標準の構造体 (monoid::Max、Min、Sum) を渡す
+// NeoLibrary の sps のゼータ (neo/base/core/set_fps/zeta.hpp)。t = 0 から 2 は標準の構造体 (monoid::Max、Min、Sum) を渡す
 // モノイドのゼータ、3 から 5 は ZMod の環の変換で、どれも AVX2 の核に回る。
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/data_structure/segtree/Min.hpp"
-#include "neo/data_structure/segtree/Sum.hpp"
-#include "neo/set_power_series/zeta.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/ds/range/segtree/Min.hpp"
+#include "neo/base/ds/range/segtree/Sum.hpp"
+#include "neo/base/core/set_fps/zeta.hpp"
 struct Solver {
   using Z = ZMod<998244353>;
   int t;

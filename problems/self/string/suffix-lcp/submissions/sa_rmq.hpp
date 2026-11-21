@@ -1,9 +1,9 @@
 #pragma once
-// NeoLibrary の接尾辞配列と LCP 配列 (neo/string/suffix_array.hpp) と区間最小 (neo/data_structure/RangeMin.hpp) をつないだもの。
+// NeoLibrary の接尾辞配列と LCP 配列 (neo/base/ds/string/suffix_array.hpp) と区間最小 (neo/base/ds/range/RangeMin.hpp) をつないだもの。
 // lcp(i, j) は 2 つの接尾辞の順位の間の LCP 配列の最小。
 #include "pj.hpp"
-#include "neo/data_structure/RangeMin.hpp"
-#include "neo/string/suffix_array.hpp"
+#include "neo/base/ds/range/RangeMin.hpp"
+#include "neo/base/ds/string/suffix_array.hpp"
 
 struct Solver {
   int n;

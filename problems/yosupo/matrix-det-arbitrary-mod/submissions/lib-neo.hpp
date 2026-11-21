@@ -1,7 +1,7 @@
 #pragma once
-// NeoLibrary の det (neo/linalg/det.hpp) を ZMod<0> で。この問題で書き比べた zmod_det_blk8 を写したもの。
+// NeoLibrary の det (neo/algo/compute/linalg/det.hpp) を ZMod<0> で。この問題で書き比べた zmod_det_blk8 を写したもの。
 #include "../common.hpp"
-#include "neo/linalg/det.hpp"
+#include "neo/algo/compute/linalg/det.hpp"
 inline u32 run(int n, u32 mod, const vector<vector<u32>>& a) {
  using Z= ZMod<0>;
  Z::set_mod(mod);

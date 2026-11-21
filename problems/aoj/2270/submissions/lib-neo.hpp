@@ -1,7 +1,7 @@
 #pragma once
 #include "pj.hpp"
 #include "mylib/data_structure/SegmentTree_Patricia.hpp"
-#include "neo/graph/HeavyLightDecomposition.hpp"
+#include "neo/base/ds/tree/HeavyLightDecomposition.hpp"
 
 // common.hpp の PathSolver と同じ解き方を、木を NeoLibrary の HeavyLightDecomposition にして書いたもの。根から各頂点までに現れた
 // 値の個数は、今の Library の永続なパトリシア木で持つ (NeoLibrary に永続な木はまだ無い)。根から順に版を作るところは、再帰の

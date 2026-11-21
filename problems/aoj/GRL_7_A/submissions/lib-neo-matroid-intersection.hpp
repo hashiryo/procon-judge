@@ -1,7 +1,7 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/combinatorial_optimization/matroid_intersection.hpp"
-#include "neo/combinatorial_optimization/matroids.hpp"
+#include "neo/algo/optimize/matroid/matroid_intersection.hpp"
+#include "neo/algo/optimize/matroid/matroids.hpp"
 
 // マトロイド交叉に落とす。「左の各頂点から出る辺が高々 1 本」と「右の各頂点へ入る辺が高々 1 本」がどちらも分割マトロイド
 // で、その共通部分の最大がマッチングになる。NeoLibrary の matroid_intersection と PartitionMatroid を使う。

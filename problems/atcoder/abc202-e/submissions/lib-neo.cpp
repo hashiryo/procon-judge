@@ -2,8 +2,8 @@
 // D の頂点の個数を数える。
 #include <iostream>
 #include <vector>
-#include "neo/data_structure/WaveletMatrix.hpp"
-#include "neo/graph/HeavyLightDecomposition.hpp"
+#include "neo/base/ds/range/WaveletMatrix.hpp"
+#include "neo/base/ds/tree/HeavyLightDecomposition.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

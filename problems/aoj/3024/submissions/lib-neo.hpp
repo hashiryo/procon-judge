@@ -1,8 +1,8 @@
 #pragma once
 #include "common.hpp"
-#include "neo/data_structure/WeightBalancedTree.hpp"
+#include "neo/base/ds/seq/WeightBalancedTree.hpp"
 
-// NeoLibrary の neo/data_structure/WeightBalancedTree.hpp (永続の形)。列を丸ごと写す操作は根の写しで済む。構築の前に置き場を
+// NeoLibrary の neo/base/ds/seq/WeightBalancedTree.hpp (永続の形)。列を丸ごと写す操作は根の写しで済む。構築の前に置き場を
 // 2^22 個ぶん先に取り (操作のたびに節を新しく作るので、配列を作り直して写す分を省く)、置き場が伸びたら 2 本の列から届く節だけを
 // gc で詰める。
 struct Solver {

@@ -1,11 +1,11 @@
 // メモリプールが汚れた状態で WeightBalancedTree を使っても正しく動作するかテストする。
-// NeoLibrary の neo/data_structure/WeightBalancedTree.hpp で書いたもの。永続しない形と永続の形のどちらも、置き場が汚れたまま同じ
+// NeoLibrary の neo/base/ds/seq/WeightBalancedTree.hpp で書いたもの。永続しない形と永続の形のどちらも、置き場が汚れたまま同じ
 // 問い合わせを 2 回解いて答えが同じかを見る (永続の形は、置き場が伸びたら gc で詰める)。
 #include <cstdlib>
 #include <cassert>
 #include <vector>
 #include <tuple>
-#include "neo/data_structure/WeightBalancedTree.hpp"
+#include "neo/base/ds/seq/WeightBalancedTree.hpp"
 using namespace std;
 namespace test1 {
 struct Mono {

@@ -3,7 +3,7 @@
 // 形 (_shared/linalg/lazy_elim_vk.hpp の ElimK) にしたもの。要の行と要の値は 2^{-32} 倍で持つが、上三角の行列の各行と右辺が
 // 同じ倍率なので、後退代入 (tri_solve_blk) の解は変わらない。法は 998244353。
 #include "../common.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 #include "_shared/linalg/lazy_elim_vk.hpp"
 inline SolveResult run(int n, int m, const vector<vector<u32>>& A, const vector<u32>& b) {
  using Z= ZMod<MOD>;

@@ -11,7 +11,7 @@
 // Hessenberg の形からは、左上 k × k の特性多項式 p_k を p_{k+1} = (x - H[k][k]) p_k - sum_{i<k} H[i][k] (prod H[j][j-1]) p_i
 // で順に求め、和は lazy_elim::update_row で 8 本ずつ足す。
 #include "../common.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 #include "_shared/linalg/lazy_elim.hpp"
 namespace hess32 {
 using Z= ZMod<MOD>;

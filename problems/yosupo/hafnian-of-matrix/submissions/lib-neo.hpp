@@ -1,7 +1,7 @@
 #pragma once
-// NeoLibrary の hafnian (neo/set_power_series/hafnian.hpp)。この問題で書き比べた zmod_layer_h の法を実行時の奇数に広げたもの。
+// NeoLibrary の hafnian (neo/algo/compute/set_fps/hafnian.hpp)。この問題で書き比べた zmod_layer_h の法を実行時の奇数に広げたもの。
 #include "../common.hpp"
-#include "neo/set_power_series/hafnian.hpp"
+#include "neo/algo/compute/set_fps/hafnian.hpp"
 inline u32 run(int N, const vector<vector<u32>>& a) {
  using Z= ZMod<MOD>;
  Matrix<Z> A(N, N);

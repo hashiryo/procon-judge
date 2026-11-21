@@ -2,8 +2,8 @@
 // 入るまでと閉路 1 周) は、path(x, dist_to_cycle(x) + cycle_length(x) - 1) で取る。
 #include <iostream>
 #include <vector>
-#include "neo/data_structure/segtree/AddSum.hpp"
-#include "neo/graph/FunctionalGraph.hpp"
+#include "neo/base/ds/range/segtree/AddSum.hpp"
+#include "neo/base/ds/tree/FunctionalGraph.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

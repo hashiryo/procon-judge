@@ -1,8 +1,8 @@
-// NeoLibrary の sps::subset_zeta(f, 10) (neo/set_power_series/zeta.hpp、k 進の桁ごとの累積和) で、値ごとの個数を桁ごとに x 以下の
+// NeoLibrary の sps::subset_zeta(f, 10) (neo/base/core/set_fps/zeta.hpp、k 進の桁ごとの累積和) で、値ごとの個数を桁ごとに x 以下の
 // 個数にする。A_i ごとに c[999999 - A_i] を足し、自分自身との組 (どの桁も 4 以下) を引いて 2 で割る。
 #include <cstdio>
 #include <vector>
-#include "neo/set_power_series/zeta.hpp"
+#include "neo/base/core/set_fps/zeta.hpp"
 int main() {
  int n;
  if(scanf("%d", &n) != 1) return 1;

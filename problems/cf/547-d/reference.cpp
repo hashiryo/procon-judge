@@ -7,7 +7,7 @@
 #pragma GCC target("sse3,ssse3,sse4.1,sse4.2,popcnt,cx16,sahf,avx,avx2,bmi,bmi2,fma,f16c,lzcnt,movbe,pclmul,vpclmulqdq")
 #endif
 
-// NeoLibrary の euler_split (neo/graph/euler_split.hpp) で解く。x 座標を左、y 座標を右の頂点にして、点ごとに辺を張る。二部グラフ
+// NeoLibrary の euler_split (neo/algo/decide/graph/euler_split.hpp) で解く。x 座標を左、y 座標を右の頂点にして、点ごとに辺を張る。二部グラフ
 // なので、Euler 分割でどの頂点でも 2 色の辺の数の差が 1 以下になり、どの縦の線と横の線でも r と b の数の差が 1 以下になる。
 #include <array>
 #include <cstdio>

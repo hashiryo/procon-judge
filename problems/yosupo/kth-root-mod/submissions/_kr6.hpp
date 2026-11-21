@@ -28,8 +28,8 @@
 //
 // 剰余の掛け算は R = 2^32 の Montgomery で、値は [0, 2P) のまま持つ (P < 2^30)。
 #include "../common.hpp"
-#include "neo/number_theory/factorize.hpp"
-#include "neo/number_theory/inv_gcd.hpp"
+#include "neo/algo/compute/nt/factorize.hpp"
+#include "neo/base/core/nt/inv_gcd.hpp"
 
 namespace kr6 {
 

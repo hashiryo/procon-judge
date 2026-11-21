@@ -1,7 +1,7 @@
 #pragma once
 #include "common.hpp"
-#include "neo/combinatorial_optimization/matroid_intersection.hpp"
-#include "neo/combinatorial_optimization/matroids.hpp"
+#include "neo/algo/optimize/matroid/matroid_intersection.hpp"
+#include "neo/algo/optimize/matroid/matroids.hpp"
 
 // 2 部マッチングを、辺の集合の上の 2 つの分割マトロイド (左端点ごと 1 本、右端点ごと 1 本) の共通独立集合として取る。
 // NeoLibrary の matroid_intersection と PartitionMatroid を使う。

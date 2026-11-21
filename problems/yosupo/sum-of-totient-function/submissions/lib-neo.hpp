@@ -2,7 +2,7 @@
 // NeoLibrary の totient_sum を呼ぶ。中身は 7 回目 (_tot7.hpp) の tot7_l16c40g と同じ手順で、Φ(N) を __int128 で丸めずに
 // 求めてから 998244353 で割る。
 #include "common.hpp"
-#include "neo/number_theory/totient_sum.hpp"
+#include "neo/algo/count/nt/totient_sum.hpp"
 
 struct Solver {
     i64 n;

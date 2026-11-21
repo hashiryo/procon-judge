@@ -1,7 +1,7 @@
-// lib.cpp と同じ DP を NeoLibrary の DFA (neo/counting/DFA.hpp) で回す。A 以上 B 以下は、上の桁から読む 40 桁の geq_digits と leq_digits にする。
+// lib.cpp と同じ DP を NeoLibrary の DFA (neo/algo/count/automata/DFA.hpp) で回す。A 以上 B 以下は、上の桁から読む 40 桁の geq_digits と leq_digits にする。
 #include <iostream>
 #include <vector>
-#include "neo/counting/DFA.hpp"
+#include "neo/algo/count/automata/DFA.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

@@ -1,6 +1,6 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/data_structure/segtree/Affine.hpp"
+#include "neo/base/ds/range/segtree/Affine.hpp"
 
 // NeoLibrary の SegmentTree に monoid::AffineSum<ZMod<998244353>> を渡す。中身は 16 分木の遅延セグ木 (wide_lazy3 と同じ)。
 struct Solver {

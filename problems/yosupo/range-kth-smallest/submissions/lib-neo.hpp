@@ -1,7 +1,7 @@
 #pragma once
-// NeoLibrary の WaveletMatrix (neo/data_structure/WaveletMatrix.hpp) の kth_smallest。この問題で書き比べた wm4 を写したもの。
+// NeoLibrary の WaveletMatrix (neo/base/ds/range/WaveletMatrix.hpp) の kth_smallest。この問題で書き比べた wm4 を写したもの。
 #include "pj.hpp"
-#include "neo/data_structure/WaveletMatrix.hpp"
+#include "neo/base/ds/range/WaveletMatrix.hpp"
 struct Solver {
  WaveletMatrix<int> wm;
  explicit Solver(const vector<int>& a): wm(a) {}

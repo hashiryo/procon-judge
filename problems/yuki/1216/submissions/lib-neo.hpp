@@ -3,8 +3,8 @@
 #include <limits>
 #include <set>
 #include "pj.hpp"
-#include "neo/data_structure/PointAddRectangleSum.hpp"
-#include "neo/graph/HeavyLightDecomposition.hpp"
+#include "neo/base/ds/2d/PointAddRectangleSum.hpp"
+#include "neo/base/ds/tree/HeavyLightDecomposition.hpp"
 
 // common.hpp の LanternSolver と同じ解き方を、NeoLibrary で書いたもの。木は HeavyLightDecomposition で列に潰し、2 次元の点への
 // 1 点の加算と長方形の総和は PointAddRectangleSum (点の座標を先に渡しておく wavelet matrix と BIT)。common.hpp は今の Library の

@@ -1,8 +1,8 @@
 #pragma once
-// NeoLibrary の poly_divmod (neo/polynomial/poly_divmod.hpp)。答えは末尾の 0 を落とすので、決まった長さに延ばして返す。
+// NeoLibrary の poly_divmod (neo/base/core/poly/poly_divmod.hpp)。答えは末尾の 0 を落とすので、決まった長さに延ばして返す。
 #include <utility>
-#include "neo/algebra/ZMod.hpp"
-#include "neo/polynomial/poly_divmod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/core/poly/poly_divmod.hpp"
 inline pair<vector<u32>, vector<u32>> run(const vector<u32>& a, const vector<u32>& b) {
  using Z= ZMod<998244353>;
  vector<Z> A(a.size()), B(b.size());

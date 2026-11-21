@@ -1,7 +1,7 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/data_structure/SegmentTree.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/ds/range/SegmentTree.hpp"
 
 // NeoLibrary の SegmentTree に、1 次関数の合成と代入の作用を自前の構造体で渡す (中身は二分木の汎用の遅延セグ木)。長さ len の
 // 区間の g^len は、作用を当てるたびに二分累乗で求める (今の Library の lib と同じ書き方)。標準の構造体 monoid::AssignProd を

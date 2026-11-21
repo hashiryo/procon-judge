@@ -1,10 +1,10 @@
 #pragma once
-// NeoLibrary の suffix_array と lcp_array (neo/string/suffix_array.hpp、LCP 配列は Φ 配列を経由する方法) で数える。
+// NeoLibrary の suffix_array と lcp_array (neo/base/ds/string/suffix_array.hpp、LCP 配列は Φ 配列を経由する方法) で数える。
 // LCP 配列の実装を比べた記録は algo-notes の notes/lcp-array.md にある。
 #include <string>
 #include <vector>
 #include "pj.hpp"
-#include "neo/string/suffix_array.hpp"
+#include "neo/base/ds/string/suffix_array.hpp"
 
 struct Solver {
   string s;

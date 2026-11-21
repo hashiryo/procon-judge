@@ -1,6 +1,6 @@
 #pragma once
 // NeoLibrary の assignment を、完全でなくてよい形 (perfect = false) の最大化で呼ぶ。組めない組は 0 の行列にする。
-#include "neo/combinatorial_optimization/assignment.hpp"
+#include "neo/algo/optimize/matching/assignment.hpp"
 
 struct Solver {
   int nl, nr;

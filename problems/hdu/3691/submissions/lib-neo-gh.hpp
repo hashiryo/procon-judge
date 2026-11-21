@@ -2,7 +2,7 @@
 // 全域最小カットの口は NeoLibrary に無いので、NeoLibrary の gomory_hu で Gomory-Hu 木を作り、木の辺の重みの最小を答える
 // (全域最小カットは、どこかの 2 頂点の最小カットなので、木のどこかの辺の重みに等しい)。
 #include <tuple>
-#include "neo/combinatorial_optimization/gomory_hu.hpp"
+#include "neo/algo/optimize/flow/gomory_hu.hpp"
 
 struct Solver {
   int n;

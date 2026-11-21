@@ -1,6 +1,6 @@
-// NeoLibrary の det (neo/linalg/det.hpp) で行列木定理。ラプラシアンから行 0 と列 0 を除いた行列式。
+// NeoLibrary の det (neo/algo/compute/linalg/det.hpp) で行列木定理。ラプラシアンから行 0 と列 0 を除いた行列式。
 #include <cstdio>
-#include "neo/linalg/det.hpp"
+#include "neo/algo/compute/linalg/det.hpp"
 int main() {
  using Z= ZMod<998244353>;
  int N, M;

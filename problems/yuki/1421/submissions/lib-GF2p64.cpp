@@ -2,7 +2,7 @@
 // あえて GF2p64 の体の上で掃き出す。係数は 0 か 1 なので、Y をそのまま GF2p64 の元とみてよく、解も 2^30 未満に収まる
 #include <iostream>
 #include <vector>
-#include "neo/algebra/GF2p64.hpp"
+#include "neo/base/core/algebra/GF2p64.hpp"
 using namespace std;
 using u64= unsigned long long;
 signed main() {

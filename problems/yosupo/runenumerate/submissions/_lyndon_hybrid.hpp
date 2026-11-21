@@ -7,8 +7,8 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "neo/string/suffix_array.hpp"
-#include "neo/data_structure/RangeMin.hpp"
+#include "neo/base/ds/string/suffix_array.hpp"
+#include "neo/base/ds/range/RangeMin.hpp"
 
 namespace lyndon_hybrid {
 // nxt0[i] と nxt1[i] は、i より後ろで順位が i より小さい (大きい) 最初の位置。無ければ n。位置を並べた双方向の連結リストから、

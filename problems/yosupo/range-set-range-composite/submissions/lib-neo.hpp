@@ -1,8 +1,8 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/data_structure/segtree/AssignProd.hpp"
-#include "neo/data_structure/segtree/Composite.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/ds/range/segtree/AssignProd.hpp"
+#include "neo/base/ds/range/segtree/Composite.hpp"
 
 // NeoLibrary の SegmentTree に monoid::AssignProd<monoid::Composite<ZMod<998244353>>> を渡す。中身は、代入した値の
 // 2 の冪乗の表を持つ二分木の遅延セグ木 (lazy_pow と同じ形)。

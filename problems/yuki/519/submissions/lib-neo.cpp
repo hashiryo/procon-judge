@@ -1,9 +1,9 @@
-// NeoLibrary の max_weight_matching (neo/combinatorial_optimization/weighted_matching.hpp) で解く。行列の成分をそのまま辺に
+// NeoLibrary の max_weight_matching (neo/algo/optimize/matching/weighted_matching.hpp) で解く。行列の成分をそのまま辺に
 // して渡す (多重辺は重い方を使い、自己ループは使わない)。
 #include <iostream>
 #include <tuple>
 #include <vector>
-#include "neo/combinatorial_optimization/weighted_matching.hpp"
+#include "neo/algo/optimize/matching/weighted_matching.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

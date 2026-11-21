@@ -1,7 +1,7 @@
-// ぞい文字列の DFA を NeoLibrary の DFA (neo/counting/DFA.hpp) で組み、長さ N (≤ 10^18) の数を count_large で求める。
+// ぞい文字列の DFA を NeoLibrary の DFA (neo/algo/count/automata/DFA.hpp) で組み、長さ N (≤ 10^18) の数を count_large で求める。
 #include <iostream>
-#include "neo/counting/DFA.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/algo/count/automata/DFA.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 using namespace std;
 signed main() {
  unsigned long long N;

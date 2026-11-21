@@ -2,8 +2,8 @@
 // 累積和にする。
 #include <iostream>
 #include <vector>
-#include "neo/algebra/ZMod.hpp"
-#include "neo/graph/FunctionalGraph.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/ds/tree/FunctionalGraph.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

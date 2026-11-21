@@ -2,7 +2,7 @@
 // zmod_rank_hp の、要を探す列、要の行、行ごとの掛ける数を AVX2 で 4 個ずつ求める版 (_shared/linalg/lazy_elim_v.hpp の ElimV)。
 // 行が長くなる向き (行の数が min(N, M)) に置く。選ぶ要は zmod_rank_blk8 と同じ。法は 998244353。
 #include "../common.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 #include "_shared/linalg/lazy_elim_v.hpp"
 inline int run(int n, int m, const vector<vector<u32>>& a) {
  using Z= ZMod<MOD>;

@@ -1,10 +1,10 @@
 #pragma once
-// NeoLibrary の suffix_array (neo/string/suffix_array.hpp、sais_lr13 と同じ中身) を呼ぶ。
+// NeoLibrary の suffix_array (neo/base/ds/string/suffix_array.hpp、sais_lr13 と同じ中身) を呼ぶ。
 // lib-suffix-array.hpp は今の Library (mylib) の SuffixArray。
 #include <string>
 #include <vector>
 #include "pj.hpp"
-#include "neo/string/suffix_array.hpp"
+#include "neo/base/ds/string/suffix_array.hpp"
 
 struct Solver {
   string s;

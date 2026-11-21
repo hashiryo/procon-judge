@@ -1,6 +1,6 @@
 #pragma once
-// NeoLibrary の bipartite_edge_coloring (neo/combinatorial_optimization/bipartite_edge_coloring.hpp)。中身は mult_pair と同じ。
-#include "neo/combinatorial_optimization/bipartite_edge_coloring.hpp"
+// NeoLibrary の bipartite_edge_coloring (neo/algo/optimize/matching/bipartite_edge_coloring.hpp)。中身は mult_pair と同じ。
+#include "neo/algo/optimize/matching/bipartite_edge_coloring.hpp"
 struct Solver {
  int l, r;
  const vector<array<int, 2>>& e;

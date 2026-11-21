@@ -11,7 +11,7 @@
 #include <algorithm>
 #include <array>
 #include <vector>
-#include "neo/combinatorial_optimization/BipartiteMatching.hpp"
+#include "neo/algo/optimize/matching/BipartiteMatching.hpp"
 namespace bec_mult {
 struct CE {
  int l, r, k, id;  // 左の組、右の組 (K + 番号)、重複度、まとめた辺の番号

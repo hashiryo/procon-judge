@@ -1,11 +1,11 @@
-// NeoLibrary の MaxFlowLowerBound (neo/combinatorial_optimization/MaxFlowLowerBound.hpp) で解く。マスを (i + j) の偶奇で
+// NeoLibrary の MaxFlowLowerBound (neo/algo/optimize/flow/MaxFlowLowerBound.hpp) で解く。マスを (i + j) の偶奇で
 // 黒と白に分け、s から黒のマスへ、白のマスから t へ、2 のマスは下限 1、? のマスは下限 0 で上限 1 の辺を張り、1 でない
 // 隣り合う黒から白へ上限 1 の辺を張る。2 のマスを全部覆うマッチングは、この網で s から t へ流す流れと同じなので、
 // max_flow が値を返すかで判定する。
 #include <iostream>
 #include <string>
 #include <vector>
-#include "neo/combinatorial_optimization/MaxFlowLowerBound.hpp"
+#include "neo/algo/optimize/flow/MaxFlowLowerBound.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

@@ -1,8 +1,8 @@
 #include <iostream>
 #include <numeric>
 #include <vector>
-#include "neo/algebra/ZMod.hpp"
-#include "neo/set_power_series/exp.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/core/set_fps/exp.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

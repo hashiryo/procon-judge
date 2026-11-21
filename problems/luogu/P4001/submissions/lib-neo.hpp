@@ -1,7 +1,7 @@
 #pragma once
-// NeoLibrary の MaxFlow (neo/combinatorial_optimization/MaxFlow.hpp、容量は int) で解く力ずく。格子の無向の道を、両向きの容量が等しい辺として
+// NeoLibrary の MaxFlow (neo/algo/optimize/flow/MaxFlow.hpp、容量は int) で解く力ずく。格子の無向の道を、両向きの容量が等しい辺として
 // 足し、左上から右下への最大流を求める。頂点 10^6、辺 3 × 10^6 で、MaxFlow の弧は 12 byte。
-#include "neo/combinatorial_optimization/MaxFlow.hpp"
+#include "neo/algo/optimize/flow/MaxFlow.hpp"
 struct Solver {
  int n, m;
  const vector<int>&h, &v, &d;

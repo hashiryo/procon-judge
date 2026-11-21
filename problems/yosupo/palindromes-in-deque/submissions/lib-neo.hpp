@@ -10,7 +10,7 @@
 #include <sys/mman.h>
 #endif
 #include "pj.hpp"
-#include "neo/string/PalindromeDeque.hpp"
+#include "neo/base/ds/string/PalindromeDeque.hpp"
 
 namespace pdq_lib_neo {
 // v に n 個分の領域を取り (中身はまだ書かない)、Linux ではその領域のページに huge page を頼む。

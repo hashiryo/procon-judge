@@ -1,6 +1,6 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/data_structure/segtree/Sum.hpp"
+#include "neo/base/ds/range/segtree/Sum.hpp"
 
 // NeoLibrary の SegmentTree<monoid::Sum<i64>> (segtree/Sum.hpp の Wide) の写しで、作る段と prod を替えて比べるためのもの。
 //   作る段: NeoLibrary は値の vector と u64 の vector を 1 本ずつ作って写してから段を作り、表を 0 で埋めてから書く。ここでは

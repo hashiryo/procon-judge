@@ -1,7 +1,7 @@
 #pragma once
 // 要を 8 本ずつまとめて掃き出す核 (_shared/linalg/lazy_elim.hpp) で行列式を求める。法は 998244353。
 #include "../common.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 #include "_shared/linalg/lazy_elim.hpp"
 inline u32 run(int n, const vector<vector<u32>>& a) {
  using Z= ZMod<MOD>;

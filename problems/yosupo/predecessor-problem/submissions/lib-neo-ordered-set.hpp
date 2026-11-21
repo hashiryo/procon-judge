@@ -1,9 +1,9 @@
 #pragma once
-// NeoLibrary の OrderedSet<false> (neo/data_structure/OrderedSet.hpp)。B+ 木で、k 番目と個数のための子の個数を持たない形。
+// NeoLibrary の OrderedSet<false> (neo/base/ds/set/OrderedSet.hpp)。B+ 木で、k 番目と個数のための子の個数を持たない形。
 // 個数を持つかどうかで入れる・除くの手間がどれだけ変わるかを、この問題で lib-neo-ordered-set-counted と比べる。
 // 初期集合はビットの列から昇順の要素の列を作ってから組む。
 #include "pj.hpp"
-#include "neo/data_structure/OrderedSet.hpp"
+#include "neo/base/ds/set/OrderedSet.hpp"
 struct Solver {
  OrderedSet<false> s;
  static vector<int> elements(const vector<u64>& bits) {

@@ -1,9 +1,9 @@
 #pragma once
-// NeoLibrary の MaxFlowLowerBound (neo/combinatorial_optimization/MaxFlowLowerBound.hpp) で、common.hpp の FlowSolver と
+// NeoLibrary の MaxFlowLowerBound (neo/algo/optimize/flow/MaxFlowLowerBound.hpp) で、common.hpp の FlowSolver と
 // 同じ手順を踏む。幅 d を 0 から増やし、同じ幅の中では下限 l が大きい方から試して、max_flow が辺の数 m になるかを見る。
 // 頂点と辺の並びも FlowSolver と同じにする。容量は FlowSolver と同じく 64 bit。
 #include "pj.hpp"
-#include "neo/combinatorial_optimization/MaxFlowLowerBound.hpp"
+#include "neo/algo/optimize/flow/MaxFlowLowerBound.hpp"
 struct Solver {
  int n;
  const vector<array<int, 2>>& edges;

@@ -1,6 +1,6 @@
 #pragma once
-// NeoLibrary の MaxFlowLowerBound (neo/combinatorial_optimization/MaxFlowLowerBound.hpp) の max_flow。
-#include "neo/combinatorial_optimization/MaxFlowLowerBound.hpp"
+// NeoLibrary の MaxFlowLowerBound (neo/algo/optimize/flow/MaxFlowLowerBound.hpp) の max_flow。
+#include "neo/algo/optimize/flow/MaxFlowLowerBound.hpp"
 struct Solver {
  MaxFlowLowerBound<long long> g;
  int s, t;

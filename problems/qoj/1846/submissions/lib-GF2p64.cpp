@@ -4,7 +4,7 @@
 // 標数 2 では多項式の 2 乗は係数ごとの 2 乗 (フロベニウス写像) なので、2 乗は GF2p64 の square と疎な P での剰余だけで済む
 #include <iostream>
 #include <vector>
-#include "neo/algebra/GF2p64.hpp"
+#include "neo/base/core/algebra/GF2p64.hpp"
 using namespace std;
 using u64= unsigned long long;
 signed main() {

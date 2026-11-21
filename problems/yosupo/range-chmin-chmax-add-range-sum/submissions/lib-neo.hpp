@@ -1,6 +1,6 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/data_structure/segtree/ChminChmaxAddSum.hpp"
+#include "neo/base/ds/range/segtree/ChminChmaxAddSum.hpp"
 
 // NeoLibrary の SegmentTree に monoid::ChminChmaxAddSum<long long> を渡す。中身はこの 3 つの操作に特化した Beats (beats と同じ形)。
 struct Solver {

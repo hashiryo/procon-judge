@@ -3,7 +3,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "neo/graph/FunctionalGraph.hpp"
+#include "neo/base/ds/tree/FunctionalGraph.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

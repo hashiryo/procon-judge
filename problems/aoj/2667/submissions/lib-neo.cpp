@@ -3,8 +3,8 @@
 #include <iostream>
 #include <array>
 #include <vector>
-#include "neo/data_structure/segtree/AddSum.hpp"
-#include "neo/graph/HeavyLightDecomposition.hpp"
+#include "neo/base/ds/range/segtree/AddSum.hpp"
+#include "neo/base/ds/tree/HeavyLightDecomposition.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

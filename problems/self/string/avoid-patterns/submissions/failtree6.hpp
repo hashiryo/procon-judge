@@ -21,9 +21,9 @@
 // (3) 幅優先の順に F'(x) = F(x の親) - (足し上げた値) を求める、で行う。配列は生きた状態だけを幅優先の順に詰めたもので、死んだ状態は
 // (親、suffix link の先) の組の列にだけ残る。答えは n 歩後の F(根)。
 //
-// トライと suffix link は NeoLibrary の aho_corasick (neo/string/aho_corasick.hpp) で求め、親ごとの子の列で幅優先の順に並べ直す。
+// トライと suffix link は NeoLibrary の aho_corasick (neo/base/ds/string/aho_corasick.hpp) で求め、親ごとの子の列で幅優先の順に並べ直す。
 #include "pj.hpp"
-#include "neo/string/aho_corasick.hpp"
+#include "neo/base/ds/string/aho_corasick.hpp"
 
 struct Solver {
   const vector<string> &ps;

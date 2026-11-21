@@ -1,9 +1,9 @@
-// NeoLibrary の ZMod、sparse_fps (pow_of_div、div)、interpolate_iota (neo/polynomial/lagrange.hpp)。長さは 72 を渡す。
+// NeoLibrary の ZMod、sparse_fps (pow_of_div、div)、interpolate_iota (neo/algo/compute/poly/lagrange.hpp)。長さは 72 を渡す。
 #include <iostream>
 #include <vector>
-#include "neo/algebra/ZMod.hpp"
-#include "neo/polynomial/sparse_fps.hpp"
-#include "neo/polynomial/lagrange.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/core/poly/sparse_fps.hpp"
+#include "neo/algo/compute/poly/lagrange.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

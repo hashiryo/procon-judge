@@ -1,7 +1,7 @@
-// NeoLibrary の b-flow の型 MinCostFlow (neo/combinatorial_optimization/MinCostFlow.hpp、cost scaling) の flow(s, t) で、頂点 1 から n へ
+// NeoLibrary の b-flow の型 MinCostFlow (neo/algo/optimize/flow/MinCostFlow.hpp、cost scaling) の flow(s, t) で、頂点 1 から n へ
 // 流せるだけ流す (最小費用最大流)。
 #include <iostream>
-#include "neo/combinatorial_optimization/MinCostFlow.hpp"
+#include "neo/algo/optimize/flow/MinCostFlow.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

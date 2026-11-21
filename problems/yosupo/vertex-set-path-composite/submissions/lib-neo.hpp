@@ -1,8 +1,8 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/data_structure/segtree/Composite.hpp"
-#include "neo/graph/PathProduct.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/ds/range/segtree/Composite.hpp"
+#include "neo/base/ds/tree/PathProduct.hpp"
 
 // NeoLibrary の HeavyLightDecomposition を辺の列から作り、PathProduct<monoid::Composite<ZMod<998244353>>> (鎖ごとの二分木、
 // 1 回の更新と問い合わせが O(log N)) で道の合成を求める。

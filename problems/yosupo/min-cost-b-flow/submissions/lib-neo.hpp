@@ -1,6 +1,6 @@
 #pragma once
-// NeoLibrary の MinCostFlow (neo/combinatorial_optimization/MinCostFlow.hpp) の既定の中身 (cost scaling) で解くもの。
-#include "neo/combinatorial_optimization/MinCostFlow.hpp"
+// NeoLibrary の MinCostFlow (neo/algo/optimize/flow/MinCostFlow.hpp) の既定の中身 (cost scaling) で解くもの。
+#include "neo/algo/optimize/flow/MinCostFlow.hpp"
 struct Solver {
  int m;
  MinCostFlow<long long, long long> g;

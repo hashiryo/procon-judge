@@ -3,7 +3,7 @@
 // 標数 2 ではパーマネントは行列式に等しい。from_nimber で GF2p64 に移しても体の同型なので行列式が 0 かどうかは変わらず、掃き出して調べる
 #include <iostream>
 #include <vector>
-#include "neo/algebra/GF2p64.hpp"
+#include "neo/base/core/algebra/GF2p64.hpp"
 using namespace std;
 using u64= unsigned long long;
 signed main() {

@@ -4,8 +4,8 @@
 #include "pj.hpp"
 #include "mylib/data_structure/SegmentTree_2D.hpp"
 #include "mylib/data_structure/UnionFind.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/graph/HeavyLightDecomposition.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/ds/tree/HeavyLightDecomposition.hpp"
 
 // common.hpp の DetourSolver と同じ解き方を、木を NeoLibrary の HeavyLightDecomposition に、剰余を ZMod にして書いたもの。最小
 // 全域木の Kruskal は今の Library の UnionFind、木に無い辺の点の長方形の最小は lib-segtree-2d と同じ今の Library の 2 次元

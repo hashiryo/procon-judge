@@ -5,7 +5,7 @@
 // g^((p-1)/q) を求め、1 になったらその g をやめる。累乗は R = 2^64 の Montgomery で、値は [0, 2p) のまま持つ
 // (p < 2^62)。指数は 4 bit ずつ上から見て、g^0 から g^15 の表を引く (分岐なし)。
 #include "../common.hpp"
-#include "neo/number_theory/factorize.hpp"
+#include "neo/algo/compute/nt/factorize.hpp"
 
 namespace pr1 {
 using u128 = unsigned __int128;

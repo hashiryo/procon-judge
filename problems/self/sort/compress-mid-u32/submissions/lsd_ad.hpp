@@ -4,7 +4,7 @@
 // ほぼ等しい幅の桁 ceil(w / 11) 個に分ける (10^9 までの値なら 10 bit × 3 回、16 bit だけ違うなら 8 bit × 2 回)。ヒストグラムは
 // a を 1 回なめて全部の桁の分をまとめて作り、最初の振り分けは a を直接読んでその場で詰める。全要素が同じ値なら振り分けない。
 // 作業用の配列 (u64 を 2 本) と返す xs は、2^19 byte 以上なら Linux では 2 MB 境界の mmap に置いて huge page を頼む (NeoLibrary の
-// neo/sort/compress.hpp の Buf と alloc_xs と同じ取り方)。aoj-2674 で、10^5 個の値なら AMD の 7763 では 11 bit ずつ 3 回の LSD が
+// neo/base/core/util/compress.hpp の Buf と alloc_xs と同じ取り方)。aoj-2674 で、10^5 個の値なら AMD の 7763 では 11 bit ずつ 3 回の LSD が
 // compress (塊をネットワークで並べる形) より速かったので、長さごとに比べるために置く。
 #ifdef __linux__
 #include <sys/mman.h>

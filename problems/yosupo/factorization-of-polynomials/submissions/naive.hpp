@@ -7,7 +7,7 @@
 #include <random>
 #include <utility>
 #include <vector>
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 namespace fz1 {
 using Z= ZMod<0>;
 using poly= std::vector<Z>;

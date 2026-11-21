@@ -1,9 +1,9 @@
 #pragma once
 // NeoLibrary の ZMod<0> (法を実行時に決める型) をそのまま使い、使う側が書く形のまま演算子で計算する。
 // ハーネスが呼ぶ口 (set、get、plus、mul、pow、fix、mul_fix、from_i64、dot) をまとめて持ち、問題ごとに使うものだけが呼ばれる。
-// neo/algebra/ZMod.hpp が変わると測り直される。
+// neo/base/core/algebra/ZMod.hpp が変わると測り直される。
 #include "_shared/modulo-test/_common.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 struct MP {
  using Z= ZMod<0>;
  MP(u32 m) { Z::set_mod(m); }

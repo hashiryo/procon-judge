@@ -4,7 +4,7 @@
 #include <utility>
 #include <vector>
 #include "pj.hpp"
-#include "neo/string/aho_corasick.hpp"
+#include "neo/base/ds/string/aho_corasick.hpp"
 
 struct Solver {
   vector<string> ss;

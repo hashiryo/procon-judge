@@ -1,7 +1,7 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/data_structure/segtree/Composite.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/ds/range/segtree/Composite.hpp"
 
 // NeoLibrary の SegmentTree に、1 次関数の合成のモノイド monoid::Composite<ZMod<998244353>> を渡す。中身は二分木の汎用の形。
 struct Solver {

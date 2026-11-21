@@ -1,6 +1,6 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/data_structure/SegmentTree.hpp"
+#include "neo/base/ds/range/SegmentTree.hpp"
 
 // NeoLibrary の SegmentTree に自前の和と加算を渡す。標準の構造体ではないので、中身は二分木の汎用の遅延セグ木。
 // 標準の構造体 monoid::AddSum を渡す lib-neo と比べるための提出。

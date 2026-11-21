@@ -3,8 +3,8 @@
 #include <iomanip>
 #include <iostream>
 #include <vector>
-#include "neo/algebra/ZMod.hpp"
-#include "neo/set_power_series/graph.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/algo/count/graph/graph.hpp"
 using namespace std;
 using Z= ZMod<998244353>;
 signed main() {

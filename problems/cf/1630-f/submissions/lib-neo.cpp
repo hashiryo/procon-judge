@@ -1,4 +1,4 @@
-// NeoLibrary の min_path_cover (neo/combinatorial_optimization/path_cover.hpp) で解く。頂点を 2 つに分けた順序 (common.hpp)
+// NeoLibrary の min_path_cover (neo/algo/optimize/dp/path_cover.hpp) で解く。頂点を 2 つに分けた順序 (common.hpp)
 // の最大反鎖の大きさ w を求め、答えは n - w。関係は推移的なので、頂点を共有しない道の本数が w と等しく、推移的な関係を全部の
 // 組で渡すときは min_path_cover が速い。
 #include <array>
@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 #include "common.hpp"
-#include "neo/combinatorial_optimization/path_cover.hpp"
+#include "neo/algo/optimize/dp/path_cover.hpp"
 int main() {
  int t;
  if(scanf("%d", &t) != 1) return 1;

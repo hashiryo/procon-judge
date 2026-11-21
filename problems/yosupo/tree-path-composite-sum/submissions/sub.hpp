@@ -1,6 +1,6 @@
 #pragma once
 #include "_reroot.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 
 // 比べるための特化した形。Library Checker の首位 (nandhagk の 346214) と同じく、和が引き算できることを使う。葉から剥がした順
 // (_reroot.hpp の peel) で下から部分木の和 dp と大きさを集め、逆順で親の側の値を、親の全体から自分の寄与を引いて作る。

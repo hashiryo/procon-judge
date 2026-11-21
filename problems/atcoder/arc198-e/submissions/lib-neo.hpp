@@ -1,11 +1,11 @@
 #pragma once
-// NeoLibrary の sps::online_subset_zeta (neo/set_power_series/relaxed.hpp) で解く。値は (dp, dp2) の組で、A (s の部分集合の数) は
-// sps::subset_zeta (neo/set_power_series/zeta.hpp) で求める。
+// NeoLibrary の sps::online_subset_zeta (neo/base/core/set_fps/relaxed.hpp) で解く。値は (dp, dp2) の組で、A (s の部分集合の数) は
+// sps::subset_zeta (neo/base/core/set_fps/zeta.hpp) で求める。
 // dp[k] = dp2[k - 1] (dp[0] = 1)、dp2[k] = A(k) (sum_{j ⊊ k} dp[j] + dp[k]) - sum_{j ⊊ k} dp2[j]。答えは dp2[2^N - 1]。
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/set_power_series/relaxed.hpp"
-#include "neo/set_power_series/zeta.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/core/set_fps/relaxed.hpp"
+#include "neo/base/core/set_fps/zeta.hpp"
 struct Solver {
  using Z= ZMod<998244353>;
  struct Pair {

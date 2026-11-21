@@ -1,11 +1,11 @@
 // https://www.luogu.com.cn/problem/P5350
 // 融合永続, split3, apply, prod, reverse, ML厳しめ
-// NeoLibrary の neo/data_structure/WeightBalancedTree.hpp (永続の形) で書いたもの。置き場が伸びたら gc で生きている版から届く節だけを詰める。
+// NeoLibrary の neo/base/ds/seq/WeightBalancedTree.hpp (永続の形) で書いたもの。置き場が伸びたら gc で生きている版から届く節だけを詰める。
 #include <sstream>
 #include <string>
 #include <cassert>
 #include "mylib/algebra/ModInt.hpp"
-#include "neo/data_structure/WeightBalancedTree.hpp"
+#include "neo/base/ds/seq/WeightBalancedTree.hpp"
 using namespace std;
 bool test(int (*solve)(stringstream&, stringstream&), string in, string expected) {
  stringstream scin(in), scout;

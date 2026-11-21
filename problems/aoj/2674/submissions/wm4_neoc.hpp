@@ -1,9 +1,9 @@
 #pragma once
-// wm4 の値の詰め方だけを NeoLibrary の compress (neo/sort/compress.hpp) に替えたもの。lib-neo が wm4 より 1 割ほど遅い理由が、
+// wm4 の値の詰め方だけを NeoLibrary の compress (neo/base/core/util/compress.hpp) に替えたもの。lib-neo が wm4 より 1 割ほど遅い理由が、
 // 構築の圧縮か、問い合わせの道かを分けるために置く (問い合わせは wm4 と同じ)。
 #include "pj.hpp"
 #include "_shared/wavelet/wm4.hpp"
-#include "neo/sort/compress.hpp"
+#include "neo/base/core/util/compress.hpp"
 struct Solver {
  vector<int> vals;
  vector<unsigned> id;

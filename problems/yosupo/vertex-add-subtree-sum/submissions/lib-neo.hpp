@@ -1,7 +1,7 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/data_structure/segtree/Sum.hpp"
-#include "neo/graph/HeavyLightDecomposition.hpp"
+#include "neo/base/ds/range/segtree/Sum.hpp"
+#include "neo/base/ds/tree/HeavyLightDecomposition.hpp"
 
 // NeoLibrary の HeavyLightDecomposition を親の列から作り、部分木の位置の区間に SegmentTree<monoid::Sum<i64>> (8 分木の接頭辞和)
 // を載せる。区間和の木は、位置ごとの値の列を作らずに init (位置 i の値 = a[to_vertex(i)]) で作る。

@@ -10,7 +10,7 @@
 //   - 値は Montgomery の還元で M 未満に直し、要の行を 2^{-32} 倍、掛ける数を 2^32 倍で持つ。偶数の列で掛ける要の値も 2^{-32}
 //     倍なので、最後に掛けた数だけ 2^32 を掛けて戻す。
 #include "../common.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 #include "_shared/linalg/lazy_elim_v.hpp"
 inline u32 run(int N, const vector<vector<u32>>& M_in) {
  using Z= ZMod<MOD>;

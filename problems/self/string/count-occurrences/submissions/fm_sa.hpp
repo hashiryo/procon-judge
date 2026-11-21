@@ -7,7 +7,7 @@
 #include "pj.hpp"
 #include <algorithm>
 #include <cstring>
-#include "neo/string/suffix_array.hpp"
+#include "neo/base/ds/string/suffix_array.hpp"
 
 struct Solver {
   struct Ent {

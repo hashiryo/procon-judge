@@ -6,7 +6,7 @@
 #include <iostream>
 #include <unordered_map>
 #include <vector>
-#include "neo/graph/FunctionalGraph.hpp"
+#include "neo/base/ds/tree/FunctionalGraph.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

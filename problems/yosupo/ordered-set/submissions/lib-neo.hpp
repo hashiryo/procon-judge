@@ -1,7 +1,7 @@
 #pragma once
-// NeoLibrary の OrderedSet<true> (neo/data_structure/OrderedSet.hpp)。この問題で書き比べた bptree_c8b を写したもの。
+// NeoLibrary の OrderedSet<true> (neo/base/ds/set/OrderedSet.hpp)。この問題で書き比べた bptree_c8b を写したもの。
 #include "pj.hpp"
-#include "neo/data_structure/OrderedSet.hpp"
+#include "neo/base/ds/set/OrderedSet.hpp"
 struct Solver {
  OrderedSet<true> s;
  explicit Solver(const vector<int>& a): s(a) {}

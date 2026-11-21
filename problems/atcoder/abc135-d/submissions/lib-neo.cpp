@@ -1,9 +1,9 @@
-// lib.cpp と同じ 2 つの DFA の積を NeoLibrary の DFA (neo/counting/DFA.hpp) で数える。積は表にしない。
+// lib.cpp と同じ 2 つの DFA の積を NeoLibrary の DFA (neo/algo/count/automata/DFA.hpp) で数える。積は表にしない。
 #include <iostream>
 #include <vector>
 #include <string>
-#include "neo/counting/DFA.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/algo/count/automata/DFA.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

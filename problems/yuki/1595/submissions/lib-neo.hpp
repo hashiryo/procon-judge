@@ -1,6 +1,6 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/graph/FunctionalGraph.hpp"
+#include "neo/base/ds/tree/FunctionalGraph.hpp"
 
 // 直前 3 項の 1 の位を状態にした写像を、状態を 10 進の 3 桁 (1000 通り) にして NeoLibrary の FunctionalGraph に渡す。
 // lib-period は今の Library の Period で、状態の組をライブラリの中で番号付けする。

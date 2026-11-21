@@ -1,6 +1,6 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/data_structure/segtree/AddMin.hpp"
+#include "neo/base/ds/range/segtree/AddMin.hpp"
 
 // NeoLibrary の SegmentTree に monoid::AddMin<long long> を渡す。中身は作用を配らない 16 分木 (wide3 と同じ)。
 struct Solver {

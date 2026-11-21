@@ -3,8 +3,8 @@
 // 汎用の道に回し、3 から 5 は sps_generic (今の Library の写し) を呼ぶ。AVX2 の核 (lib-neo) との差を見るための提出。
 #include <climits>
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/set_power_series/zeta.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/core/set_fps/zeta.hpp"
 struct MyMax {
   using T = int;
   static T ti() { return INT_MIN; }

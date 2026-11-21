@@ -1,8 +1,8 @@
 #pragma once
-// NeoLibrary の SubsetSum (neo/data_structure/SubsetSum.hpp) で解く。値 v の補集合 ~v を数え、m を含む要素の数を ~m の部分集合の数として
+// NeoLibrary の SubsetSum (neo/base/ds/range/SubsetSum.hpp) で解く。値 v の補集合 ~v を数え、m を含む要素の数を ~m の部分集合の数として
 // 問う。問いが加算の k 倍あるので、下の bit を 2k / 3 個にする (書き比べの ds2 と同じ分け方)。
 #include "pj.hpp"
-#include "neo/data_structure/SubsetSum.hpp"
+#include "neo/base/ds/range/SubsetSum.hpp"
 struct Solver {
  int k;
  vector<int> a;

@@ -1,7 +1,7 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/data_structure/FoldableQueue.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/ds/seq/FoldableQueue.hpp"
 
 // NeoLibrary の FoldableQueue に、1 次関数の合成 (左を先に当てる) を自前の構造体で渡す。剰余は NeoLibrary の ZMod。構築で
 // クエリの数だけ reserve しておく。

@@ -1,9 +1,9 @@
-// lib.cpp と同じ 3 つの DFA の積を NeoLibrary の DFA (neo/counting/DFA.hpp) で数える。桁が -2 から 2 の 5 進なので、
+// lib.cpp と同じ 3 つの DFA の積を NeoLibrary の DFA (neo/algo/count/automata/DFA.hpp) で数える。桁が -2 から 2 の 5 進なので、
 // N 以下の DFA は手で書いたまま。
 #include <iostream>
 #include <vector>
 #include <cstdlib>
-#include "neo/counting/DFA.hpp"
+#include "neo/algo/count/automata/DFA.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

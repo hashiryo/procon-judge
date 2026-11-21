@@ -1,9 +1,9 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/data_structure/Sequence.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/ds/seq/Sequence.hpp"
 
-// NeoLibrary の neo/data_structure/Sequence.hpp (塊の形)。monoid::AffineSum<ZMod<P>> を渡すと、塊の大きさが 256 になり、塊の中の
+// NeoLibrary の neo/base/ds/seq/Sequence.hpp (塊の形)。monoid::AffineSum<ZMod<P>> を渡すと、塊の大きさが 256 になり、塊の中の
 // 和と作用を AVX2 で回す。
 struct Solver {
   using Z = ZMod<998244353>;

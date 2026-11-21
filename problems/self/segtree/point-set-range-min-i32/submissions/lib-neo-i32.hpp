@@ -1,6 +1,6 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/data_structure/segtree/Min.hpp"
+#include "neo/base/ds/range/segtree/Min.hpp"
 
 // NeoLibrary の SegmentTree に monoid::Min<int> を渡す。中身は子を 16 個持つ最小の木で、値を i32 で持ち、16 個の塊が
 // キャッシュの 1 行に収まる。i64 で持つ lib-neo と比べる。

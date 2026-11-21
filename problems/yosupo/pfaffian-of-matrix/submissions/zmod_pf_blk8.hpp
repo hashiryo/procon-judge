@@ -4,7 +4,7 @@
 // -(要の値) を掛け、位置 c + 2 以降の行を消す。位置 0 の行は使わない。行の更新は 8 本ずつ貯めて足すので、列を入れ替えるときは、
 // 残りの行と、貯めている要の行の両方で入れ替える。c が奇数の列は積に入らないので、要がなければ 0 を返さずに次の列へ進む。
 #include "../common.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 #include "_shared/linalg/lazy_elim.hpp"
 inline u32 run(int N, const vector<vector<u32>>& M_in) {
  using Z= ZMod<MOD>;

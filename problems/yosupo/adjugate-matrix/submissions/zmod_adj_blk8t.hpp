@@ -5,7 +5,7 @@
 // 逆行列と行列式は、要を 8 本ずつまとめて掃き出す核 (_shared/linalg/lazy_elim.hpp) で [B | I] を前進消去し、後退代入はブロックで解く。
 #include <chrono>
 #include "../common.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 #include "_shared/linalg/lazy_elim.hpp"
 inline vector<vector<u32>> run(int n, const vector<vector<u32>>& a) {
  using Z= ZMod<MOD>;

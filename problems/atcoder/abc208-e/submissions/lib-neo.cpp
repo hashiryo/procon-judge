@@ -1,10 +1,10 @@
-// lib.cpp と同じ数え上げを NeoLibrary の DFA (neo/counting/DFA.hpp) で行う。N 以下の DFA は leq_digits にし、桁の数が
+// lib.cpp と同じ数え上げを NeoLibrary の DFA (neo/algo/count/automata/DFA.hpp) で行う。N 以下の DFA は leq_digits にし、桁の数が
 // N より少ない数は count_all の 1 回でまとめて数える。
 #include <iostream>
 #include <vector>
 #include <string>
 #include <algorithm>
-#include "neo/counting/DFA.hpp"
+#include "neo/algo/count/automata/DFA.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

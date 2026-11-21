@@ -1,7 +1,7 @@
 #pragma once
 #include "common.hpp"
-#include "neo/data_structure/SegmentTree.hpp"
-#include "neo/graph/HeavyLightDecomposition.hpp"
+#include "neo/base/ds/range/SegmentTree.hpp"
+#include "neo/base/ds/tree/HeavyLightDecomposition.hpp"
 
 // NeoLibrary の HeavyLightDecomposition と SegmentTree (作用だけの双対の形) で、lib-hld-segtree と同じ形に書いたもの。最小全域木を
 // 作るところは common.hpp の共通の関数 (今の Library の UnionFind)。木に入らなかった辺ごとに、その両端を結ぶ道の辺 (子の側の

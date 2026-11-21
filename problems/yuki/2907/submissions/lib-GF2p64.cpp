@@ -2,7 +2,7 @@
 // GF2p64 の逆元で掃き出す。nimber の行列を from_nimber で GF2p64 に移しても体の同型なので、選んだ列の階数は変わらない
 #include <iostream>
 #include <vector>
-#include "neo/algebra/GF2p64.hpp"
+#include "neo/base/core/algebra/GF2p64.hpp"
 using namespace std;
 using u64= unsigned long long;
 constexpr u64 MOD= 998244353;

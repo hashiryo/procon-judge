@@ -1,11 +1,11 @@
 // https://atcoder.jp/contests/soundhound2018-summer-final-open/tasks/soundhound2018_summer_final_e
 // split3, prod
-// NeoLibrary の neo/data_structure/Sequence.hpp (塊の形) で書いたもの。
+// NeoLibrary の neo/base/ds/seq/Sequence.hpp (塊の形) で書いたもの。
 #include <sstream>
 #include <string>
 #include <cassert>
 #include "mylib/algebra/ModInt.hpp"
-#include "neo/data_structure/Sequence.hpp"
+#include "neo/base/ds/seq/Sequence.hpp"
 using namespace std;
 bool test(int (*solve)(stringstream&, stringstream&), string in, string expected) {
  stringstream scin(in), scout;

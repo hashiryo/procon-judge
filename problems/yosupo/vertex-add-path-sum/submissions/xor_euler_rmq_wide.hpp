@@ -1,6 +1,6 @@
 #pragma once
 #include "_wide_sum.hpp"
-#include "neo/data_structure/RangeMin.hpp"
+#include "neo/base/ds/range/RangeMin.hpp"
 
 // xor_euler_rmq の BIT を、節を 8 個に広げた接頭辞和の木に替えたもの (_wide_sum.hpp)。根からの和の差分を持ち、
 // u と v の道の和を S(u) + S(v) - 2 S(w) + a_w で求める。lca は親の位置の列の区間最小 (NeoLibrary の RangeMin) で O(1)。

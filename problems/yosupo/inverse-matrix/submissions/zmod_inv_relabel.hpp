@@ -5,7 +5,7 @@
 // 以下にしか値がなく、残りの行の更新は列 [今の列, n + 要の数) で済む。前進消去の手間は 5n^3/6 から n^3/2 に減る。
 // 後退代入は tri_solve_blk で、X の位置 q の列は A^{-1} の列 (位置 q に 1 を持っていた元の行) になる。
 #include "../common.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 #include "_shared/linalg/lazy_elim.hpp"
 inline InverseResult run(int n, const vector<vector<u32>>& a) {
  using Z= ZMod<MOD>;

@@ -1,7 +1,7 @@
 #pragma once
 // NeoLibrary の matroid_intersection と、GraphicMatroid、PartitionMatroid を使う。
-#include "neo/combinatorial_optimization/matroid_intersection.hpp"
-#include "neo/combinatorial_optimization/matroids.hpp"
+#include "neo/algo/optimize/matroid/matroid_intersection.hpp"
+#include "neo/algo/optimize/matroid/matroids.hpp"
 
 struct Solver {
   int n;

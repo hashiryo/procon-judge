@@ -1,10 +1,10 @@
 #pragma once
-// NeoLibrary の Matrix<ZMod<998244353>> の積 (neo/linalg/Matrix.hpp)。大きさで核を選び、1024 × 1024 は Winograd の形の
+// NeoLibrary の Matrix<ZMod<998244353>> の積 (neo/base/core/linalg/Matrix.hpp)。大きさで核を選び、1024 × 1024 は Winograd の形の
 // Strassen の再帰 (zmod_winograd_hpo の法を実行時の奇数に広げたもの)、ほかは 4 行 × 8 列のタイル。値の写しも計測区間に入る。
 // 答えの vector<u32> は、判定の形に合わせるためだけに作るので、首位の提出と同じく huge page を頼んでから 0 で埋める
 // (_strassen_hp.hpp の out_vector)。素直な vector を 4 KB のページに置くと、EPYC 9V45 で 9〜20 ms かかっていた。
 #include "../common.hpp"
-#include "neo/linalg/Matrix.hpp"
+#include "neo/base/core/linalg/Matrix.hpp"
 #include "_strassen_hp.hpp"
 inline vector<u32> run(int N, int M, int P, const vector<u32>& a, const vector<u32>& b) {
  using Z= ZMod<998244353>;

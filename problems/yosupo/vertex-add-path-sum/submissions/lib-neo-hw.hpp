@@ -1,6 +1,6 @@
 #pragma once
 #include "_wide.hpp"
-#include "neo/graph/HeavyLightDecomposition.hpp"
+#include "neo/base/ds/tree/HeavyLightDecomposition.hpp"
 
 // lib-neo の切り分け。NeoLibrary の HeavyLightDecomposition はそのままで、区間和の木を xor_wide と同じ手書きの
 // WidePrefixSum<3> (_wide.hpp) に替える。xor_wide との差が HLD の分、lib-neo-mm との差が区間和の木の分になる。

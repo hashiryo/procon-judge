@@ -1,9 +1,9 @@
-// lib.cpp と同じ ε 遷移のある NFA を NeoLibrary の DFA (neo/counting/DFA.hpp) で組む。長さ N から 2N までの数は count_all の 1 回で求める。
+// lib.cpp と同じ ε 遷移のある NFA を NeoLibrary の DFA (neo/algo/count/automata/DFA.hpp) で組む。長さ N から 2N までの数は count_all の 1 回で求める。
 #include <iostream>
 #include <vector>
 #include <set>
 #include <array>
-#include "neo/counting/DFA.hpp"
+#include "neo/algo/count/automata/DFA.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

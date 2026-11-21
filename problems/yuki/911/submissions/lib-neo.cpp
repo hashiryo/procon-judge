@@ -1,9 +1,9 @@
-// lib.cpp と同じ 3 つの DFA の積を NeoLibrary の DFA (neo/counting/DFA.hpp) で数える。L 以上 R 以下は、上の桁から読む
+// lib.cpp と同じ 3 つの DFA の積を NeoLibrary の DFA (neo/algo/count/automata/DFA.hpp) で数える。L 以上 R 以下は、上の桁から読む
 // 61 桁の geq_digits と leq_digits にする。
 #include <iostream>
 #include <vector>
 #include <algorithm>
-#include "neo/counting/DFA.hpp"
+#include "neo/algo/count/automata/DFA.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

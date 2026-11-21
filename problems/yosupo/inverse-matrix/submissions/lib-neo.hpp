@@ -1,7 +1,7 @@
 #pragma once
-// NeoLibrary の inverse (neo/linalg/inverse.hpp)。この問題で書き比べた zmod_inv_relabel を写したもの。
+// NeoLibrary の inverse (neo/algo/compute/linalg/inverse.hpp)。この問題で書き比べた zmod_inv_relabel を写したもの。
 #include "../common.hpp"
-#include "neo/linalg/inverse.hpp"
+#include "neo/algo/compute/linalg/inverse.hpp"
 inline InverseResult run(int n, const vector<vector<u32>>& a) {
  using Z= ZMod<MOD>;
  Matrix<Z> A(n, n);

@@ -1,6 +1,6 @@
 #pragma once
 #include "_sum_exp.hpp"
-#include "neo/graph/HeavyLightDecomposition.hpp"
+#include "neo/base/ds/tree/HeavyLightDecomposition.hpp"
 
 // lib-neo-mm の区間和の木を、作る段で一時の配列を作らず、prod を l と r が同じ子に入った段で止める写し (_sum_exp.hpp の
 // SumExp<true>) に替える。乱択の木の道は短い区間に分かれるので、上の段を読まずに済む区間が多い。

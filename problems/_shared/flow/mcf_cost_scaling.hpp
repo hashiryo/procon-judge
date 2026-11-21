@@ -13,7 +13,7 @@
 #include <queue>
 #include <utility>
 #include <vector>
-#include "neo/combinatorial_optimization/MaxFlow.hpp"
+#include "neo/algo/optimize/flow/MaxFlow.hpp"
 namespace mcf_cost_scaling {
 using i64= long long;
 struct Result {

@@ -1,8 +1,8 @@
 #pragma once
 #include <algorithm>
 #include "pj.hpp"
-#include "neo/data_structure/SegmentTree.hpp"
-#include "neo/graph/HeavyLightDecomposition.hpp"
+#include "neo/base/ds/range/SegmentTree.hpp"
+#include "neo/base/ds/tree/HeavyLightDecomposition.hpp"
 
 // NeoLibrary の HeavyLightDecomposition と SegmentTree で、lib-hld-segtree と同じ形に書いたもの。和の最大は左右の向きを区別
 // するので、位置を逆に並べたセグメント木をもう 1 本持ち、上る区間 (l > r) は逆の木で取る。

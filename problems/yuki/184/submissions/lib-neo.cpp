@@ -1,6 +1,6 @@
-// NeoLibrary の XorBasis (neo/linalg/XorBasis.hpp) で書いたもの。作れる値の数は、張る空間の元の数 2^(基底の大きさ)。
+// NeoLibrary の XorBasis (neo/base/core/linalg/XorBasis.hpp) で書いたもの。作れる値の数は、張る空間の元の数 2^(基底の大きさ)。
 #include <cstdio>
-#include "neo/linalg/XorBasis.hpp"
+#include "neo/base/core/linalg/XorBasis.hpp"
 int main() {
  int n;
  if(scanf("%d", &n) != 1) return 1;

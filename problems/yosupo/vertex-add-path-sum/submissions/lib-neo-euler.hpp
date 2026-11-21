@@ -1,7 +1,7 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/data_structure/segtree/Sum.hpp"
-#include "neo/graph/LCA.hpp"
+#include "neo/base/ds/range/segtree/Sum.hpp"
+#include "neo/base/ds/tree/LCA.hpp"
 
 // NeoLibrary で xor_euler_rmq_wide と同じ形を書いたもの。根から各頂点までの和 S を、行きがけ順の位置の差分の列として
 // SegmentTree<monoid::Sum<i64>> (8 分木の接頭辞和) に持ち、頂点 k への加算は部分木の区間の両端の 2 点に足す。u と v の

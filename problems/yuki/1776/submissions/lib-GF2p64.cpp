@@ -7,7 +7,7 @@
 #include <vector>
 #include <random>
 #include <chrono>
-#include "neo/algebra/GF2p64.hpp"
+#include "neo/base/core/algebra/GF2p64.hpp"
 using namespace std;
 mt19937_64 rng(chrono::steady_clock::now().time_since_epoch().count());
 // s から t への道で need の頂点をすべて通るものの最小の長さと、s の次の頂点 (辞書順で最小のもの)。無ければ {-1, -1}。s = t でもよい

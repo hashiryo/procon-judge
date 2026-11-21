@@ -1,9 +1,9 @@
 #pragma once
-// 乱択を使わない形。NeoLibrary の接尾辞配列と LCP 配列 (neo/string/suffix_array.hpp) と区間最小 (neo/data_structure/RangeMin.hpp) で、
+// 乱択を使わない形。NeoLibrary の接尾辞配列と LCP 配列 (neo/base/ds/string/suffix_array.hpp) と区間最小 (neo/base/ds/range/RangeMin.hpp) で、
 // s[a, n) と s[b, n) の LCP が len 以上かを見る。LCP は 2 つの接尾辞の順位の間の LCP 配列の最小。
 #include "pj.hpp"
-#include "neo/data_structure/RangeMin.hpp"
-#include "neo/string/suffix_array.hpp"
+#include "neo/base/ds/range/RangeMin.hpp"
+#include "neo/base/ds/string/suffix_array.hpp"
 
 struct Solver {
   vector<int> rnk;

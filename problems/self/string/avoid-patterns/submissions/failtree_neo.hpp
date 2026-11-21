@@ -1,9 +1,9 @@
 #pragma once
-// failtree の DP を、トライと suffix link を NeoLibrary の aho_corasick (neo/string/aho_corasick.hpp) で求めて行うもの。aho_corasick の
+// failtree の DP を、トライと suffix link を NeoLibrary の aho_corasick (neo/base/ds/string/aho_corasick.hpp) で求めて行うもの。aho_corasick の
 // 頂点の番号は文字列を入れた順なので、親ごとの子の列を作って幅優先の順 (同じ親の子が並ぶ順) に並べ直す。トライはパターンに当たった状態の先も持つので、死んだ状態の
 // 子孫を落として詰め直す (死んだ状態そのものは引く側に要るので残す)。DP は failtree と同じ 3 回の走査。
 #include "pj.hpp"
-#include "neo/string/aho_corasick.hpp"
+#include "neo/base/ds/string/aho_corasick.hpp"
 
 struct Solver {
   const vector<string> &ps;

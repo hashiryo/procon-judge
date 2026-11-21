@@ -1,8 +1,8 @@
 #pragma once
-// NeoLibrary の PointAddRectangleSum (neo/data_structure/PointAddRectangleSum.hpp)。最初の点と後から足される点を全部まとめて作り
+// NeoLibrary の PointAddRectangleSum (neo/base/ds/2d/PointAddRectangleSum.hpp)。最初の点と後から足される点を全部まとめて作り
 // (後から足す点は重み 0)、k 番目の add は、構築で受け取った k 番目の座標の点の添字に足す。この問題で書き比べた wm_bit を写したもの。
 #include "pj.hpp"
-#include "neo/data_structure/PointAddRectangleSum.hpp"
+#include "neo/base/ds/2d/PointAddRectangleSum.hpp"
 struct Solver {
  int base= 0, adds= 0;
  PointAddRectangleSum<int> ps;

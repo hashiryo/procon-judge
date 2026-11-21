@@ -4,7 +4,7 @@
 // 係数は次数 31 以下の F_2[x] の元で、その積は次数 62 以下なので x^64 + ... で割ることが起きず、GF2p64 の積がそのまま F_2[x] の積になる
 #include <cstdio>
 #include <vector>
-#include "neo/algebra/GF2p64.hpp"
+#include "neo/base/core/algebra/GF2p64.hpp"
 using namespace std;
 using u64= unsigned long long;
 static char ibuf[1 << 25];

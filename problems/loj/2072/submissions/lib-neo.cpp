@@ -7,7 +7,7 @@
 #include "mylib/algebra/ModInt.hpp"
 #include "mylib/misc/Pointwise.hpp"
 #include "mylib/misc/rng.hpp"
-#include "neo/graph/Rerooting.hpp"
+#include "neo/base/engine/tree/Rerooting.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

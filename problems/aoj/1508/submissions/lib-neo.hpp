@@ -1,8 +1,8 @@
 #pragma once
 #include "common.hpp"
-#include "neo/data_structure/Sequence.hpp"
+#include "neo/base/ds/seq/Sequence.hpp"
 
-// NeoLibrary の neo/data_structure/Sequence.hpp (塊の形)。区間を回すのは、末尾を消して先頭に入れる。
+// NeoLibrary の neo/base/ds/seq/Sequence.hpp (塊の形)。区間を回すのは、末尾を消して先頭に入れる。
 struct Solver {
   struct M {
     using T = int;

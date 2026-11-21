@@ -3,7 +3,7 @@
 // (linalg_internal::zmat::strassen_mul<32>)。再帰が 1 段深くなる (zmod_winograd_hpo に対する zmod_winograd32_hpo と同じ変え方)。
 // ほかの大きさは lib-neo-core と同じ zmat::mul。
 #include "../common.hpp"
-#include "neo/linalg/Matrix.hpp"
+#include "neo/base/core/linalg/Matrix.hpp"
 #include "_strassen_hp.hpp"
 inline vector<u32> run(int N, int M, int P, const vector<u32>& a, const vector<u32>& b) {
  using Z= ZMod<998244353>;

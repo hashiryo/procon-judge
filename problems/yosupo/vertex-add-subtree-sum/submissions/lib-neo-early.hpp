@@ -1,6 +1,6 @@
 #pragma once
 #include "_sum_exp.hpp"
-#include "neo/graph/HeavyLightDecomposition.hpp"
+#include "neo/base/ds/tree/HeavyLightDecomposition.hpp"
 
 // lib-neo-lean の prod を、l と r が同じ子に入った段で止める形 (SumExp<true>) にしたもの。部分木は小さいものが多く、
 // 上の段を読まずに済む。

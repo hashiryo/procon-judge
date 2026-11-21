@@ -1,8 +1,8 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/number_theory/sqrt_mod.hpp"
-#include "neo/polynomial/sparse_fps.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/core/nt/sqrt_mod.hpp"
+#include "neo/base/core/poly/sparse_fps.hpp"
 // NeoLibrary の sparse_fps::exp_of_div。g = 4x + 9x^2 + ... を有理関数 f/g で書いて、exp(f/g) の係数を漸化式で
 // O(N * 次数) で出す。長さ n + 1 を渡す。虚数単位は NeoLibrary の sqrt_mod。
 struct Solver {

@@ -4,7 +4,7 @@
 #include <string>
 #include "mylib/algebra/ModInt.hpp"
 #include "mylib/algebra/bostan_mori.hpp"
-#include "neo/graph/FunctionalGraph.hpp"
+#include "neo/base/ds/tree/FunctionalGraph.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

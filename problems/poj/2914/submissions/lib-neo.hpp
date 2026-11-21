@@ -1,7 +1,7 @@
 #pragma once
 // NeoLibrary の global_min_cut で答える。
 #include <tuple>
-#include "neo/combinatorial_optimization/global_min_cut.hpp"
+#include "neo/algo/optimize/cut/global_min_cut.hpp"
 
 struct Solver {
   int n;

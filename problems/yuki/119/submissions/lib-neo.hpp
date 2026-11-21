@@ -1,8 +1,8 @@
 #pragma once
-// NeoLibrary の KaryOptimization (neo/combinatorial_optimization/KaryOptimization.hpp) で書いたもの。国 i の選び方を
+// NeoLibrary の KaryOptimization (neo/algo/optimize/dp/KaryOptimization.hpp) で書いたもの。国 i の選び方を
 // x_i in {0: 行くがツアーは無し, 1: 行かない, 2: ツアーも行く} とし、満足度の符号を変えた費用を最小にする (common.hpp と
 // 同じ帰着)。条件 (D, E) は x_D = 2 かつ x_E = 0 を禁じる 2 変数の項で、禁止の費用も common.hpp と同じ 2^62 にする。
-#include "neo/combinatorial_optimization/KaryOptimization.hpp"
+#include "neo/algo/optimize/dp/KaryOptimization.hpp"
 struct Solver {
  vector<array<i64, 2>> bc;
  vector<array<int, 2>> de;

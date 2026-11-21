@@ -3,7 +3,7 @@
 // 満たして組み合わせる) で、p - 1 は NeoLibrary の factorize_pairs (2048 未満の試し割り、rho、ECM) で分解する。
 // lib.hpp は今の Library の OrderFp。
 #include "../common.hpp"
-#include "neo/number_theory/primitive_root.hpp"
+#include "neo/algo/compute/nt/primitive_root.hpp"
 
 inline vector<u64> run(const vector<u64>& qs) {
     vector<u64> ans;

@@ -1,8 +1,8 @@
 #pragma once
 #include "common.hpp"
-#include "neo/data_structure/Sequence.hpp"
+#include "neo/base/ds/seq/Sequence.hpp"
 
-// NeoLibrary の neo/data_structure/Sequence.hpp (塊の形)。
+// NeoLibrary の neo/base/ds/seq/Sequence.hpp (塊の形)。
 struct Solver {
   Sequence<int> t;
   explicit Solver(const vector<i64> &a) : t(to_int(a)) {}

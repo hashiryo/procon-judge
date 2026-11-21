@@ -10,7 +10,7 @@
 // α の部分。最後の 2 回の積は _tile.hpp の核。割り切れなければ乱数を変えてやり直し、4 回駄目なら二分累乗にする。
 #include <chrono>
 #include "_tile.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 #ifndef USE_SIMDE
 #include <immintrin.h>
 #endif

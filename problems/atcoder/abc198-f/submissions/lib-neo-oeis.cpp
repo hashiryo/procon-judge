@@ -2,9 +2,9 @@
 // NeoLibrary の ZMod、berlekamp_massey、linear_recurrence。
 #include <iostream>
 #include <vector>
-#include "neo/algebra/ZMod.hpp"
-#include "neo/polynomial/berlekamp_massey.hpp"
-#include "neo/polynomial/linear_recurrence.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/algo/compute/poly/berlekamp_massey.hpp"
+#include "neo/algo/compute/poly/linear_recurrence.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

@@ -3,9 +3,9 @@
 #include <array>
 #include <iostream>
 #include <vector>
-#include "neo/algebra/ZMod.hpp"
-#include "neo/graph/HeavyLightDecomposition.hpp"
-#include "neo/graph/Rerooting.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/ds/tree/HeavyLightDecomposition.hpp"
+#include "neo/base/engine/tree/Rerooting.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

@@ -1,8 +1,8 @@
 #pragma once
-// NeoLibrary の GeneralMatching (neo/combinatorial_optimization/GeneralMatching.hpp)。中身は self-flow-general-matching の
+// NeoLibrary の GeneralMatching (neo/algo/optimize/matching/GeneralMatching.hpp)。中身は self-flow-general-matching の
 // hybrid2 と同じ。マッチングを run で求め、辺の番号は answer で取り出す。
 #include <optional>
-#include "neo/combinatorial_optimization/GeneralMatching.hpp"
+#include "neo/algo/optimize/matching/GeneralMatching.hpp"
 struct Solver {
  int n;
  const vector<array<int, 2>>& e;

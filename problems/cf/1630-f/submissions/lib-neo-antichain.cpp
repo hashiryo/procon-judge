@@ -1,4 +1,4 @@
-// NeoLibrary の max_antichain (neo/combinatorial_optimization/path_cover.hpp) で解く。lib-neo.cpp と同じ辺を、推移閉包を
+// NeoLibrary の max_antichain (neo/algo/optimize/dp/path_cover.hpp) で解く。lib-neo.cpp と同じ辺を、推移閉包を
 // 前提にしない max_antichain に渡す。推移的な関係を全部の組で渡すときに、min_path_cover (BipartiteMatching) と
 // max_antichain (頂点を通り抜ける辺を足した網の MaxFlow) がどれだけ違うかを CI で見るために置いた。
 #include <array>
@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 #include "common.hpp"
-#include "neo/combinatorial_optimization/path_cover.hpp"
+#include "neo/algo/optimize/dp/path_cover.hpp"
 int main() {
  int t;
  if(scanf("%d", &t) != 1) return 1;

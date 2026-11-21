@@ -1,9 +1,9 @@
-// NeoLibrary の min_path_cover (neo/combinatorial_optimization/path_cover.hpp) で解く。返す道をそのまま出す。
+// NeoLibrary の min_path_cover (neo/algo/optimize/dp/path_cover.hpp) で解く。返す道をそのまま出す。
 #include <array>
 #include <cstdio>
 #include <string>
 #include <vector>
-#include "neo/combinatorial_optimization/path_cover.hpp"
+#include "neo/algo/optimize/dp/path_cover.hpp"
 int main() {
  int n, m;
  if(scanf("%d %d", &n, &m) != 2) return 1;

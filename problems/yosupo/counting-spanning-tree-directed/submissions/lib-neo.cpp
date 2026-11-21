@@ -1,7 +1,7 @@
-// NeoLibrary の det (neo/linalg/det.hpp) で行列木定理。根 r から出る全域有向木の数は、入次数のラプラシアン (対角に入次数、
+// NeoLibrary の det (neo/algo/compute/linalg/det.hpp) で行列木定理。根 r から出る全域有向木の数は、入次数のラプラシアン (対角に入次数、
 // u → v の辺で (u, v) に -1) から行 r と列 r を除いた行列式。
 #include <cstdio>
-#include "neo/linalg/det.hpp"
+#include "neo/algo/compute/linalg/det.hpp"
 int main() {
  using Z= ZMod<998244353>;
  int N, M, r;

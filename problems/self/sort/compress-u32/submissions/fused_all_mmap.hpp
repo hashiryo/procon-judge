@@ -1,5 +1,5 @@
 #pragma once
-// pack_msd16_net32_fused_all の作業用の配列の取り方だけを、NeoLibrary の neo/sort/compress.hpp の Buf と同じ形 (2^19 byte 以上は
+// pack_msd16_net32_fused_all の作業用の配列の取り方だけを、NeoLibrary の neo/base/core/util/compress.hpp の Buf と同じ形 (2^19 byte 以上は
 // 2 MB 境界の mmap、終わったら munmap) に替えたもの。lib-neo (pack_msd16_net32_fused_all を写したもの) がどの CPU でも写し元より
 // 2〜7 % 遅く、取り方の違いから来るかを見るために置く。ほかは pack_msd16_net32_fused_all と同じ。
 #ifdef USE_SIMDE

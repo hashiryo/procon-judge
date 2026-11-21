@@ -4,7 +4,7 @@
 #include <array>
 #include <vector>
 #include "mylib/data_structure/SegmentTree_Patricia.hpp"
-#include "neo/graph/HeavyLightDecomposition.hpp"
+#include "neo/base/ds/tree/HeavyLightDecomposition.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

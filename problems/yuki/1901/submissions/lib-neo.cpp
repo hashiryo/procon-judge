@@ -1,6 +1,6 @@
 #include <iostream>
 #include <vector>
-#include "neo/set_power_series/zeta.hpp"
+#include "neo/base/core/set_fps/zeta.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

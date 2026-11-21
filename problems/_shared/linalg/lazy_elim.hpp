@@ -40,7 +40,7 @@ constexpr int K= 8;
  }
 }
 
-// n 行 w 列 (w は 4 の倍数) の行列の前進消去。Z は neo/algebra/ZMod.hpp の ZMod。
+// n 行 w 列 (w は 4 の倍数) の行列の前進消去。Z は neo/base/core/algebra/ZMod.hpp の ZMod。
 // 要は列の順に探し、その列で値が 0 でない最初の行を選ぶ (残りの行の並びは、要を抜くたびに末尾の行で埋める)。
 template <class Z> struct Elim {
  int n, w;

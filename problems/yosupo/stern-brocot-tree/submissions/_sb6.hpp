@@ -2,7 +2,7 @@
 // Stern-Brocot 木の 6 回目。1 回目 (_sb1.hpp) の普通の互除法のまま、4 回目の 2 つの手 (ANCESTOR を祖先が無いと分かった段で止める、
 // RANGE を逆元で求める) だけを入れる。5 回目 (r > b/2 の段をまとめる) と比べて、まとめる手の効き目を分けて見る。
 #include "_sb1.hpp"
-#include "neo/number_theory/inv_gcd.hpp"
+#include "neo/base/core/nt/inv_gcd.hpp"
 
 namespace sb6 {
 

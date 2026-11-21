@@ -1,10 +1,10 @@
-// 括弧列の深さを状態にした NeoLibrary の DFA (neo/counting/DFA.hpp) で、値を (個数, f の和) の組にし、) を読んだら移った先の
+// 括弧列の深さを状態にした NeoLibrary の DFA (neo/algo/count/automata/DFA.hpp) で、値を (個数, f の和) の組にし、) を読んだら移った先の
 // 深さを足す。足す量が状態で決まるので、dp の f に遷移の前後の状態 (Step) を受けさせる。
 #include <iostream>
 #include <vector>
 #include <utility>
-#include "neo/counting/DFA.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/algo/count/automata/DFA.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 using namespace std;
 signed main() {
  using Z= ZMod<998244353>;

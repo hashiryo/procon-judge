@@ -1,8 +1,8 @@
-// NeoLibrary の neo/data_structure/WeightBalancedTree.hpp (永続の形) で書いたもの。版を vector に持ち、置き場が伸びたら gc で詰める
+// NeoLibrary の neo/base/ds/seq/WeightBalancedTree.hpp (永続の形) で書いたもの。版を vector に持ち、置き場が伸びたら gc で詰める
 // (この問題は版を全部残すので、詰めても減らない)。
 #include <iostream>
 #include <vector>
-#include "neo/data_structure/WeightBalancedTree.hpp"
+#include "neo/base/ds/seq/WeightBalancedTree.hpp"
 using namespace std;
 signed main() {
   cin.tie(0);

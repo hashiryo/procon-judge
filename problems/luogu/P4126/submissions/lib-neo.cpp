@@ -1,8 +1,8 @@
-// NeoLibrary の MaxFlow (neo/combinatorial_optimization/MaxFlow.hpp) で s から t へ流し、cut_kinds(s, t) で辺ごとに、どれかの
+// NeoLibrary の MaxFlow (neo/algo/optimize/flow/MaxFlow.hpp) で s から t へ流し、cut_kinds(s, t) で辺ごとに、どれかの
 // 最小カットに入るか (1 以上) と、すべての最小カットに入るか (2) を答える。
 #include <cstdio>
 #include <string>
-#include "neo/combinatorial_optimization/MaxFlow.hpp"
+#include "neo/algo/optimize/flow/MaxFlow.hpp"
 int main() {
  int n, m, s, t;
  if(scanf("%d %d %d %d", &n, &m, &s, &t) != 4) return 1;

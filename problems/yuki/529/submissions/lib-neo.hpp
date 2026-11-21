@@ -2,9 +2,9 @@
 #include <queue>
 #include <utility>
 #include "pj.hpp"
-#include "neo/data_structure/SegmentTree.hpp"
-#include "neo/graph/HeavyLightDecomposition.hpp"
-#include "neo/graph/two_edge_connected_components.hpp"
+#include "neo/base/ds/range/SegmentTree.hpp"
+#include "neo/base/ds/tree/HeavyLightDecomposition.hpp"
+#include "neo/algo/decide/graph/two_edge_connected_components.hpp"
 
 // NeoLibrary で lib-hld-segtree と同じ形に書いたもの。二重辺連結成分への縮約は two_edge_connected_components、橋だけの木の上の
 // 道の最大は HeavyLightDecomposition と SegmentTree。成分ごとの獲物の持ち方は common.hpp と同じ (優先度付きキュー)。

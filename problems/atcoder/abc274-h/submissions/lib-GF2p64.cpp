@@ -5,7 +5,7 @@
 #include <vector>
 #include <random>
 #include <chrono>
-#include "neo/algebra/GF2p64.hpp"
+#include "neo/base/core/algebra/GF2p64.hpp"
 using namespace std;
 using u64= unsigned long long;
 int main() {

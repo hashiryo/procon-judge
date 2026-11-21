@@ -5,7 +5,7 @@
 // 異なる部分列の数え上げの実装を比べた記録は algo-notes の notes/number-of-subsequences.md にある。
 #include <vector>
 #include "pj.hpp"
-#include "neo/data_structure/HashMap.hpp"
+#include "neo/base/ds/hash/HashMap.hpp"
 
 struct Solver {
   vector<unsigned> a;

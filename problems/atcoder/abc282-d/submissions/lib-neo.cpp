@@ -1,10 +1,10 @@
-// NeoLibrary の bipartite_coloring (neo/graph/bipartite_coloring.hpp) で解く。二部グラフでなければ 0。二部なら、頂点 u と
+// NeoLibrary の bipartite_coloring (neo/algo/decide/graph/bipartite_coloring.hpp) で解く。二部グラフでなければ 0。二部なら、頂点 u と
 // 結んでも二部のままの相手は、u と同じ連結成分で同じ色の頂点 (u を含む) 以外なので、成分と色ごとの頂点の数 c について
 // Σ c (N - c) / 2 から、もとからある辺の数 M を引く。連結成分は BFS で番号を振る。
 #include <array>
 #include <cstdio>
 #include <vector>
-#include "neo/graph/bipartite_coloring.hpp"
+#include "neo/algo/decide/graph/bipartite_coloring.hpp"
 int main() {
  int n, m;
  if(scanf("%d %d", &n, &m) != 2) return 1;

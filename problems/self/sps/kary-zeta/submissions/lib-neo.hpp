@@ -1,10 +1,10 @@
 #pragma once
-// NeoLibrary の sps の k 進のゼータ変換とメビウス変換 (neo/set_power_series/zeta.hpp)。t = 0、2、3 は環の形 (long long、ZMod、u64)、
+// NeoLibrary の sps の k 進のゼータ変換とメビウス変換 (neo/base/core/set_fps/zeta.hpp)。t = 0、2、3 は環の形 (long long、ZMod、u64)、
 // 1 と 4 は標準の構造体 (monoid::Max、Min) のモノイドの形で、どれも AVX2 の核に回る。
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/data_structure/segtree/Min.hpp"
-#include "neo/set_power_series/zeta.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/ds/range/segtree/Min.hpp"
+#include "neo/base/core/set_fps/zeta.hpp"
 struct Solver {
   using Z = ZMod<998244353>;
   int t;

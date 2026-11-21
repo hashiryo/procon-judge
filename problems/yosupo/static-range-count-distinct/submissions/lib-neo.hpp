@@ -1,11 +1,11 @@
 #pragma once
-// NeoLibrary の WaveletMatrix<int, false> (neo/data_structure/WaveletMatrix.hpp、値を詰め直さずにそのまま順位として使う形) を、
+// NeoLibrary の WaveletMatrix<int, false> (neo/base/ds/range/WaveletMatrix.hpp、値を詰め直さずにそのまま順位として使う形) を、
 // 同じ値が前に出た位置 + 1 の列 (0 以上 N 以下) の上に作り、[l, r) のうち l + 1 未満のものを count_lt で数える。前に出た位置は、
-// NeoLibrary の compress (neo/sort/compress.hpp) で値を順位に詰めてから、順位ごとの最後の位置の配列で引く (wm4 の _prev.hpp と
+// NeoLibrary の compress (neo/base/core/util/compress.hpp) で値を順位に詰めてから、順位ごとの最後の位置の配列で引く (wm4 の _prev.hpp と
 // 同じ形)。値を詰め直す WaveletMatrix<int> の形は、7763 の x64-gcc で wm4 より 2 割ほど遅かった (run 40482922246)。
 #include "pj.hpp"
-#include "neo/data_structure/WaveletMatrix.hpp"
-#include "neo/sort/compress.hpp"
+#include "neo/base/ds/range/WaveletMatrix.hpp"
+#include "neo/base/core/util/compress.hpp"
 struct Solver {
  WaveletMatrix<int, false> wm;
  static vector<int> prev_plus_one(const vector<int>& a) {

@@ -1,11 +1,11 @@
-// NeoLibrary の sps::subset_zeta<M> (neo/set_power_series/zeta.hpp) に、値の上位 2 個を持つモノイドの構造体を渡す。
+// NeoLibrary の sps::subset_zeta<M> (neo/base/core/set_fps/zeta.hpp) に、値の上位 2 個を持つモノイドの構造体を渡す。
 // f[S] は S の部分集合の添字の値の上位 2 個になり、K ごとの答えは K 以下の S での 2 個の和の最大。
 #include <algorithm>
 #include <cstdio>
 #include <string>
 #include <utility>
 #include <vector>
-#include "neo/set_power_series/zeta.hpp"
+#include "neo/base/core/set_fps/zeta.hpp"
 struct Top2 {
  using T= std::pair<int, int>;  // 大きい順の 2 個 (A_i >= 1 なので、無い値は 0)
  static T ti() { return {0, 0}; }

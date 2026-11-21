@@ -2,7 +2,7 @@
 // zmod_det_hp の、要を探す列、要の行、行ごとの掛ける数を AVX2 で 4 個ずつ求める版 (_shared/linalg/lazy_elim_v.hpp の ElimV)。
 // 選ぶ要は zmod_det_blk8 と同じ。要の値は 2^{-32} 倍で返るので、最後に 2^{32n} を掛ける。法は 998244353。
 #include "../common.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 #include "_shared/linalg/lazy_elim_v.hpp"
 inline u32 run(int n, const vector<vector<u32>>& a) {
  using Z= ZMod<MOD>;

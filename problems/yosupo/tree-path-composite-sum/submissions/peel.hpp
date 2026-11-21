@@ -1,6 +1,6 @@
 #pragma once
 #include "_reroot.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 
 // _reroot.hpp の RerootPeel (隣接を組まず葉から剥がした順で回す形)。部分木の値は lib と同じ (関数を当てた和, 頂点の数) の組で、値は NeoLibrary の ZMod。
 struct Solver {

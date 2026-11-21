@@ -1,8 +1,8 @@
-// NeoLibrary の ZMod、pow_table (neo/number_theory/pow_table.hpp)、interpolate_iota (neo/polynomial/lagrange.hpp)。
+// NeoLibrary の ZMod、pow_table (neo/base/core/nt/pow_table.hpp)、interpolate_iota (neo/algo/compute/poly/lagrange.hpp)。
 #include <iostream>
-#include "neo/algebra/ZMod.hpp"
-#include "neo/number_theory/pow_table.hpp"
-#include "neo/polynomial/lagrange.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/core/nt/pow_table.hpp"
+#include "neo/algo/compute/poly/lagrange.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

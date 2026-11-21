@@ -1,8 +1,8 @@
 #pragma once
-// NeoLibrary の characteristic_polynomial (neo/linalg/characteristic_polynomial.hpp)。この問題で書き比べた zmod_hess32 を、
+// NeoLibrary の characteristic_polynomial (neo/algo/compute/linalg/characteristic_polynomial.hpp)。この問題で書き比べた zmod_hess32 を、
 // 法を定数にしない形で写したもの。
 #include "../common.hpp"
-#include "neo/linalg/characteristic_polynomial.hpp"
+#include "neo/algo/compute/linalg/characteristic_polynomial.hpp"
 inline vector<u32> run(int n, const vector<vector<u32>>& M) {
  using Z= ZMod<MOD>;
  Matrix<Z> A(n, n);

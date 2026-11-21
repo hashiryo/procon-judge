@@ -1,9 +1,9 @@
-// NeoLibrary の bipartite_edge_coloring (neo/combinatorial_optimization/bipartite_edge_coloring.hpp) で解く。行を左、数を右に
+// NeoLibrary の bipartite_edge_coloring (neo/algo/optimize/matching/bipartite_edge_coloring.hpp) で解く。行を左、数を右に
 // 置き、マスごとに辺を張る。M 正則なので M 色で塗れて、色をそのまま列の番号にする。
 #include <array>
 #include <cstdio>
 #include <vector>
-#include "neo/combinatorial_optimization/bipartite_edge_coloring.hpp"
+#include "neo/algo/optimize/matching/bipartite_edge_coloring.hpp"
 int main() {
  int n, m;
  if(scanf("%d %d", &n, &m) != 2) return 1;

@@ -1,9 +1,9 @@
 #pragma once
-// NeoLibrary の sps::power_projection (neo/set_power_series/power_projection.hpp)。xp1 の法を実行時の奇数に広げ、
+// NeoLibrary の sps::power_projection (neo/algo/count/set_fps/power_projection.hpp)。xp1 の法を実行時の奇数に広げ、
 // 答えの段を割り算を使わない漸化式にしたもの。ZMod の列への写しと戻しは、構築と answer で行う (計測の外)。
 #include "../common.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/set_power_series/power_projection.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/algo/count/set_fps/power_projection.hpp"
 struct Solver {
  using Z= ZMod<MOD>;
  int M;

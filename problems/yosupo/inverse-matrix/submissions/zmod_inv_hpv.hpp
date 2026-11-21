@@ -5,7 +5,7 @@
 // 付け替えの影響を受けない (n の近くで写した右半分の列は読まない)。要の行と要の値は 2^{-32} 倍で持つが、上三角の行列の各行と
 // 右辺が同じ倍率なので、後退代入の解は変わらない。
 #include "../common.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 #include "_shared/linalg/lazy_elim_vk.hpp"
 inline InverseResult run(int n, const vector<vector<u32>>& a) {
  using Z= ZMod<MOD>;

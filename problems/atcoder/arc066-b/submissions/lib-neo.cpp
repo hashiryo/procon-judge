@@ -1,12 +1,12 @@
-// lib.cpp と同じ NFA と 2 つの DFA の積を NeoLibrary の DFA (neo/counting/DFA.hpp) で数える。u ≤ N と v ≤ N は、下の桁から
+// lib.cpp と同じ NFA と 2 つの DFA の積を NeoLibrary の DFA (neo/algo/count/automata/DFA.hpp) で数える。u ≤ N と v ≤ N は、下の桁から
 // 読む leq_digits_lsb を、記号 (u の桁, v の桁) の片方を読む map_symbols で写して表す。
 // https://atcoder.jp/contests/arc066/tasks/arc066_b
 #include <iostream>
 #include <vector>
 #include <array>
 #include <set>
-#include "neo/counting/DFA.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/algo/count/automata/DFA.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

@@ -1,10 +1,10 @@
-// 門松数の DFA と「先頭が 0 でない」DFA の積を上の桁から読み、NeoLibrary の DFA (neo/counting/DFA.hpp) の ranker を 1 回作る。
+// 門松数の DFA と「先頭が 0 でない」DFA の積を上の桁から読み、NeoLibrary の DFA (neo/algo/count/automata/DFA.hpp) の ranker を 1 回作る。
 // クエリごとに 3 桁から長さごとの数を引いて長さを決め、kth で K 番目を作る (lib-neo の二分探索と count の代わり)。
 #include <iostream>
 #include <vector>
 #include <array>
 #include <algorithm>
-#include "neo/counting/DFA.hpp"
+#include "neo/algo/count/automata/DFA.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

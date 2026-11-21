@@ -3,8 +3,8 @@
 // 値を 1 つずつ合わせる道に回す。AVX2 の核 (lib-neo) との差を見るための提出。
 #include <climits>
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/set_power_series/zeta.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/core/set_fps/zeta.hpp"
 template <class V> struct Wrap {
   V v;
   Wrap &operator+=(const Wrap &o) { return v += o.v, *this; }

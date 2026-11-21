@@ -1,8 +1,8 @@
 #pragma once
-// NeoLibrary の SquareMatrix<ZMod<998244353>, 3> (neo/linalg/SquareMatrix.hpp) を、点更新のセグメント木に載せる。積は成分ごとに
+// NeoLibrary の SquareMatrix<ZMod<998244353>, 3> (neo/base/core/linalg/SquareMatrix.hpp) を、点更新のセグメント木に載せる。積は成分ごとに
 // 3 個の積を u64 にためて 1 回で還元する (zmod_fixed_acc と同じ形)。セグメント木は _seg.hpp と同じ形をこの中に書く。
 #include "_gen_mat.hpp"
-#include "neo/linalg/SquareMatrix.hpp"
+#include "neo/base/core/linalg/SquareMatrix.hpp"
 struct Solver {
  using Z= ZMod<998244353>;
  using Mat= SquareMatrix<Z, 3>;

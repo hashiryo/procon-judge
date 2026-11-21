@@ -5,7 +5,7 @@
 #include <utility>
 #include <vector>
 #include "pj.hpp"
-#include "neo/string/eertree.hpp"
+#include "neo/base/ds/string/eertree.hpp"
 
 struct Solver {
   string s;

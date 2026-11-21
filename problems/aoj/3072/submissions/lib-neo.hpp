@@ -1,7 +1,7 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/polynomial/sparse_fps.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/core/poly/sparse_fps.hpp"
 // NeoLibrary の sparse_fps::div。分母の 0 でない項が 3 つしかないことを使って、漸化式を直接回す O(K)。長さ k を渡す。
 struct Solver {
  int n, k, p;

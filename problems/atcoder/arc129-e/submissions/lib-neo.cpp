@@ -1,9 +1,9 @@
-// NeoLibrary の KaryOptimization (neo/combinatorial_optimization/KaryOptimization.hpp) で解く。x_i を候補の番号 (M 値) にし、
+// NeoLibrary の KaryOptimization (neo/algo/optimize/dp/KaryOptimization.hpp) で解く。x_i を候補の番号 (M 値) にし、
 // 1 変数の項を C、2 変数の項を W_{i,j} |A_{i,a} - A_{j,b}| にする。A は候補ごとに昇順なので、2 変数の項は Monge。
 #include <cstdlib>
 #include <iostream>
 #include <vector>
-#include "neo/combinatorial_optimization/KaryOptimization.hpp"
+#include "neo/algo/optimize/dp/KaryOptimization.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

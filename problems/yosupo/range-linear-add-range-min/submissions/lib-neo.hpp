@@ -1,6 +1,6 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/data_structure/RangeLinearAddRangeMin.hpp"
+#include "neo/base/ds/range/RangeLinearAddRangeMin.hpp"
 
 // NeoLibrary の RangeLinearAddRangeMin。kinetic_bridge を写したもので、橋を探し直すときの外積をすべて 128 bit で取る。
 struct Solver {

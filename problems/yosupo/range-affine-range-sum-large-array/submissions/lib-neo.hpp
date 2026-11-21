@@ -1,8 +1,8 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/data_structure/DynamicSegmentTree.hpp"
-#include "neo/data_structure/segtree/Affine.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/ds/range/DynamicSegmentTree.hpp"
+#include "neo/base/ds/range/segtree/Affine.hpp"
 
 // NeoLibrary の DynamicSegmentTree に monoid::AffineSum<ZMod<998244353>> を渡す。この標準の構造体のときは中身が
 // dyn_uniform と同じ核 (子の無い節は値のすべて等しい区間、値は Montgomery、区間の長さの表) に替わる (NeoLibrary 710b475)。

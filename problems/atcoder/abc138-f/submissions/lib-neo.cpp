@@ -1,10 +1,10 @@
-// lib.cpp と同じ 3 つの DFA の積を NeoLibrary の DFA (neo/counting/DFA.hpp) で数える。y ≤ R と x ≥ L は、下の桁から読む
+// lib.cpp と同じ 3 つの DFA の積を NeoLibrary の DFA (neo/algo/count/automata/DFA.hpp) で数える。y ≤ R と x ≥ L は、下の桁から読む
 // leq_digits_lsb と geq_digits_lsb を、記号 (x の桁, y の桁) の片方を読む map_symbols で写して表す。
 #include <iostream>
 #include <vector>
 #include <array>
-#include "neo/counting/DFA.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/algo/count/automata/DFA.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

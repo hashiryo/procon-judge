@@ -1,10 +1,10 @@
-// lib.cpp と同じ二分探索と数え上げを NeoLibrary の DFA (neo/counting/DFA.hpp) で行う。X 以下の DFA は、下の桁から読む
+// lib.cpp と同じ二分探索と数え上げを NeoLibrary の DFA (neo/algo/count/automata/DFA.hpp) で行う。X 以下の DFA は、下の桁から読む
 // leq_digits_lsb にする。桁の数が X より少ない門松数の数は、二分探索の前に count_all の 1 回で求めておく。
 #include <iostream>
 #include <vector>
 #include <array>
 #include <algorithm>
-#include "neo/counting/DFA.hpp"
+#include "neo/algo/count/automata/DFA.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

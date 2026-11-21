@@ -20,8 +20,8 @@
 #include <array>
 #include <vector>
 
-#include "neo/combinatorial_optimization/matroid_intersection.hpp"
-#include "neo/combinatorial_optimization/matroids.hpp"
+#include "neo/algo/optimize/matroid/matroid_intersection.hpp"
+#include "neo/algo/optimize/matroid/matroids.hpp"
 
 namespace mu {
 // グラフ的マトロイド。NeoLibrary の GraphicMatroid (e1f86af) に add、fresh_reset、circuit_fresh を足したもの。

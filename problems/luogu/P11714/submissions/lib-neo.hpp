@@ -1,9 +1,9 @@
 #pragma once
-// NeoLibrary の sps::strongly_connected_digraph (neo/set_power_series/graph.hpp)。3^n の和を AVX2 で求め (法が奇数の ZMod)、
+// NeoLibrary の sps::strongly_connected_digraph (neo/algo/count/graph/graph.hpp)。3^n の和を AVX2 で求め (法が奇数の ZMod)、
 // f = -log(1 - g) を sps::log で出す。
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/set_power_series/graph.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/algo/count/graph/graph.hpp"
 struct Solver {
  using Z= ZMod<1000000007>;
  int n;

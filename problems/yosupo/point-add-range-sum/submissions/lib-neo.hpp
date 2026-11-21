@@ -1,6 +1,6 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/data_structure/segtree/Sum.hpp"
+#include "neo/base/ds/range/segtree/Sum.hpp"
 
 // NeoLibrary の SegmentTree に monoid::Sum<long long> を渡す。中身は 8 分木の接頭辞和 (wide8 と同じ)。
 struct Solver {

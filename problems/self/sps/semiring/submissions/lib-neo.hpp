@@ -1,10 +1,10 @@
 #pragma once
-// NeoLibrary の sps::convolve と sps::exp に、MinPlus<int>、MaxPlus<long long>、MaxMin<int> (neo/algebra/semiring.hpp) を渡す。
-// どれも添字の下の bit を AVX2 のレーンに置く 3^n の核 (neo/set_power_series/semiring_simd.hpp) に回る。
+// NeoLibrary の sps::convolve と sps::exp に、MinPlus<int>、MaxPlus<long long>、MaxMin<int> (neo/base/core/algebra/semiring.hpp) を渡す。
+// どれも添字の下の bit を AVX2 のレーンに置く 3^n の核 (neo/base/core/set_fps/semiring_simd.hpp) に回る。
 #include "pj.hpp"
-#include "neo/algebra/semiring.hpp"
-#include "neo/set_power_series/convolve.hpp"
-#include "neo/set_power_series/exp.hpp"
+#include "neo/base/core/algebra/semiring.hpp"
+#include "neo/base/core/set_fps/convolve.hpp"
+#include "neo/base/core/set_fps/exp.hpp"
 struct Solver {
   using A = MinPlus<int>;
   using B = MaxPlus<long long>;

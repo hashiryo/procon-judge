@@ -1,10 +1,10 @@
-// lib.cpp と同じオートマトンを NeoLibrary の DFA (neo/counting/DFA.hpp) で組む。A 以上と B 以下は geq_digits と leq_digits にする。
+// lib.cpp と同じオートマトンを NeoLibrary の DFA (neo/algo/count/automata/DFA.hpp) で組む。A 以上と B 以下は geq_digits と leq_digits にする。
 #include <iostream>
 #include <vector>
 #include <string>
 #include <array>
-#include "neo/counting/DFA.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/algo/count/automata/DFA.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

@@ -4,7 +4,7 @@
 //   SquareMatrixAcc<N>: SquareMatrix<ZMod, N> の積を、N 個の積を u64 にためてから 1 回で還元する形にしたもの。
 //   DynMatrix<T>: 大きさを実行時に決める。vector に持つので、積のたびに確保する。
 #include "../common.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 template <class T, int N> struct SquareMatrix {
  array<T, N * N> a{};
  static SquareMatrix identity() {

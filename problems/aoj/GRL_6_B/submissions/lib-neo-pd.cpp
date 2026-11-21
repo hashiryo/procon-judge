@@ -1,6 +1,6 @@
-// NeoLibrary の PrimalDual (neo/combinatorial_optimization/PrimalDual.hpp) で、頂点 0 から V - 1 へ F まで流す。F 流せなければ -1。
+// NeoLibrary の PrimalDual (neo/algo/optimize/flow/PrimalDual.hpp) で、頂点 0 から V - 1 へ F まで流す。F 流せなければ -1。
 #include <iostream>
-#include "neo/combinatorial_optimization/PrimalDual.hpp"
+#include "neo/algo/optimize/flow/PrimalDual.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

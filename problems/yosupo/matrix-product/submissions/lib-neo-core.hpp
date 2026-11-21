@@ -3,7 +3,7 @@
 // _strassen_hp.hpp の out_vector (huge page を頼んでから 0 で埋める) に書く。lib-neo との差は Matrix に写す分と答えを写す分で、
 // zmod_winograd_hpo との差は核の中の違い (実行時の法、還元の前の畳み込み)。
 #include "../common.hpp"
-#include "neo/linalg/Matrix.hpp"
+#include "neo/base/core/linalg/Matrix.hpp"
 #include "_strassen_hp.hpp"
 inline vector<u32> run(int N, int M, int P, const vector<u32>& a, const vector<u32>& b) {
  using Z= ZMod<998244353>;

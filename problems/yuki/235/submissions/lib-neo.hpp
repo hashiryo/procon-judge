@@ -1,8 +1,8 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/data_structure/SegmentTree.hpp"
-#include "neo/graph/HeavyLightDecomposition.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/ds/range/SegmentTree.hpp"
+#include "neo/base/ds/tree/HeavyLightDecomposition.hpp"
 
 // NeoLibrary の HeavyLightDecomposition と遅延の SegmentTree で、lib-hld-segtree と同じ形に書いたもの。作用素は common.hpp の
 // Inflation と同じで、剰余を NeoLibrary の ZMod にした。和は可換なので、区間の向きは見ない。

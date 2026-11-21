@@ -1,10 +1,10 @@
-// lib.cpp と同じ DP を NeoLibrary の DFA (neo/counting/DFA.hpp) で回す。N 以下の DFA は leq_digits にする。
+// lib.cpp と同じ DP を NeoLibrary の DFA (neo/algo/count/automata/DFA.hpp) で回す。N 以下の DFA は leq_digits にする。
 #include <iostream>
 #include <vector>
 #include <string>
 #include <array>
-#include "neo/counting/DFA.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/algo/count/automata/DFA.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

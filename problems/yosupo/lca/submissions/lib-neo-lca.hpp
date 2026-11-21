@@ -1,6 +1,6 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/graph/LCA.hpp"
+#include "neo/base/ds/tree/LCA.hpp"
 
 // NeoLibrary の HeavyLightDecomposition を親の列から作り、LCA (行きがけ順の区間最小、O(1)) で答える。
 struct Solver {

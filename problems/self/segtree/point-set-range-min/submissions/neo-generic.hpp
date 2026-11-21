@@ -1,7 +1,7 @@
 #pragma once
 #include "pj.hpp"
 #include <limits>
-#include "neo/data_structure/SegmentTree.hpp"
+#include "neo/base/ds/range/SegmentTree.hpp"
 
 // NeoLibrary の SegmentTree に自前の最小のモノイドを渡す。標準の構造体ではないので、中身は二分木の汎用の形。
 // 標準の構造体 monoid::Min を渡す lib-neo と比べるための提出。

@@ -1,8 +1,8 @@
-// 3 と 5 だけからなり 15 の倍数の数を、NeoLibrary の DFA (neo/counting/DFA.hpp) の ranker で長さごとに数え、kth で作る。
+// 3 と 5 だけからなり 15 の倍数の数を、NeoLibrary の DFA (neo/algo/count/automata/DFA.hpp) の ranker で長さごとに数え、kth で作る。
 #include <iostream>
 #include <vector>
 #include <utility>
-#include "neo/counting/DFA.hpp"
+#include "neo/algo/count/automata/DFA.hpp"
 using namespace std;
 signed main() {
  unsigned long long N;

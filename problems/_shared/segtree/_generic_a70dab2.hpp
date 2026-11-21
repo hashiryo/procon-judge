@@ -1,4 +1,4 @@
-// NeoLibrary a70dab2 の neo/data_structure/SegmentTree.hpp の写し (汎用の二分木を直す前の形)。印を unsigned char で持ち、
+// NeoLibrary a70dab2 の neo/base/ds/range/SegmentTree.hpp の写し (汎用の二分木を直す前の形)。印を unsigned char で持ち、
 // 子に作用を当てるときに子の印で分岐し、作用を参照で渡し、push_ends を展開させない。直した形と同じ回で比べるために置く。
 #pragma once
 #include <algorithm>

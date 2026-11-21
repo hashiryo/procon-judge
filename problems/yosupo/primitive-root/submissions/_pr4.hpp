@@ -19,7 +19,7 @@
 // 満たされたら、q を満たす候補ごとに q^e の積 A_i を作り、Π g_i^(n / A_i) を返す (g_i^(n / A_i) の位数は A_i ちょうどで、
 // A_i どうしは互いに素なので、積の位数は n)。最小の原始根が大きい p でも、小さい q はそれぞれ小さい候補で満たされる。
 #include "../common.hpp"
-#include "neo/number_theory/factorize.hpp"
+#include "neo/algo/compute/nt/factorize.hpp"
 
 namespace pr4 {
 using u128 = unsigned __int128;

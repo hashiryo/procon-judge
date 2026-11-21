@@ -1,7 +1,7 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/graph/Rerooting.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/engine/tree/Rerooting.hpp"
 
 // NeoLibrary の Rerooting (csr と同じく、隣接の CSR を組んで BFS の順に並べ直してから 2 つの段を位置の順に回す形)。部分木の値は
 // lib と同じ (関数を当てた和, 頂点の数) の組で、値は ZMod。

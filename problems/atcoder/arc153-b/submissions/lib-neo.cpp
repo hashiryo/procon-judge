@@ -1,10 +1,10 @@
 // reverse の verify
-// NeoLibrary の neo/data_structure/Sequence.hpp (塊の形) で書いたもの。
+// NeoLibrary の neo/base/ds/seq/Sequence.hpp (塊の形) で書いたもの。
 
 #include <iostream>
 #include <vector>
 #include <numeric>
-#include "neo/data_structure/Sequence.hpp"
+#include "neo/base/ds/seq/Sequence.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

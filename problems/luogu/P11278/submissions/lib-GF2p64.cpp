@@ -4,7 +4,7 @@
 // の xor と和を s = 0, ..., 31 について持つ。区間の平方は、その区間の節の s を 1 つずらすだけになる
 #include <cstdio>
 #include <vector>
-#include "neo/algebra/GF2p64.hpp"
+#include "neo/base/core/algebra/GF2p64.hpp"
 using namespace std;
 using u32= unsigned;
 using u64= unsigned long long;

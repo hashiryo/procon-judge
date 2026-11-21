@@ -2,7 +2,7 @@
 // zmod_det_blk8 の行列を huge page の領域に置き、要の行を組の 8 本分だけ持つ版 (_shared/linalg/lazy_elim_v.hpp の ElimH)。
 // 手順と選ぶ要は zmod_det_blk8 と同じ。法は 998244353。
 #include "../common.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 #include "_shared/linalg/lazy_elim_v.hpp"
 inline u32 run(int n, const vector<vector<u32>>& a) {
  using Z= ZMod<MOD>;

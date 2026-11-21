@@ -1,10 +1,10 @@
 // https://www.luogu.com.cn/problem/P5055
 // 全永続, insert, erase, prod, reverse, 強制オンラインクエリ
-// NeoLibrary の neo/data_structure/WeightBalancedTree.hpp (永続の形) で書いたもの。置き場が伸びたら gc で生きている版から届く節だけを詰める。
+// NeoLibrary の neo/base/ds/seq/WeightBalancedTree.hpp (永続の形) で書いたもの。置き場が伸びたら gc で生きている版から届く節だけを詰める。
 #include <sstream>
 #include <string>
 #include <cassert>
-#include "neo/data_structure/WeightBalancedTree.hpp"
+#include "neo/base/ds/seq/WeightBalancedTree.hpp"
 using namespace std;
 bool test(int (*solve)(stringstream&, stringstream&), string in, string expected) {
  stringstream scin(in), scout;

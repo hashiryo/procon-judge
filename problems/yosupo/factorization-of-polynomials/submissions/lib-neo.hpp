@@ -1,7 +1,7 @@
 #pragma once
-// NeoLibrary の poly_factorize (neo/polynomial/poly_factorize.hpp)。この問題で書き比べた naive を、法の型を引数にしたもの。
-#include "neo/algebra/ZMod.hpp"
-#include "neo/polynomial/poly_factorize.hpp"
+// NeoLibrary の poly_factorize (neo/algo/compute/poly/poly_factorize.hpp)。この問題で書き比べた naive を、法の型を引数にしたもの。
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/algo/compute/poly/poly_factorize.hpp"
 inline vector<pair<int, vector<u32>>> run(u32 p, const vector<u32>& a) {
  using Z= ZMod<0>;
  Z::set_mod(p);

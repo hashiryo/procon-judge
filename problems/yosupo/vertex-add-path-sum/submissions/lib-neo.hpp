@@ -1,7 +1,7 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/data_structure/segtree/Sum.hpp"
-#include "neo/graph/HeavyLightDecomposition.hpp"
+#include "neo/base/ds/range/segtree/Sum.hpp"
+#include "neo/base/ds/tree/HeavyLightDecomposition.hpp"
 
 // NeoLibrary の HeavyLightDecomposition を辺の列から作り、道を位置の区間に分けて SegmentTree<monoid::Sum<i64>> (8 分木の
 // 接頭辞和) の和を足す。区間和の木は init (位置 i の値 = a[to_vertex(i)]) で作り、和は向きによらないので区間を min と max で渡す。

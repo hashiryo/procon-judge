@@ -1,8 +1,8 @@
 #pragma once
-// NeoLibrary の linear_recurrence (neo/polynomial/linear_recurrence.hpp)。この問題で書き比べた bmo を、法を定数にしない形で
+// NeoLibrary の linear_recurrence (neo/algo/compute/poly/linear_recurrence.hpp)。この問題で書き比べた bmo を、法を定数にしない形で
 // 写したもの。
-#include "neo/algebra/ZMod.hpp"
-#include "neo/polynomial/linear_recurrence.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/algo/compute/poly/linear_recurrence.hpp"
 inline u32 run(const vector<u32>& a, const vector<u32>& c, u64 k) {
  using Z= ZMod<998244353>;
  vector<Z> A(a.size()), C(c.size());

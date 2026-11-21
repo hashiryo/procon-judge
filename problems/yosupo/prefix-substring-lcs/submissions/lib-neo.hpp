@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include "pj.hpp"
-#include "neo/string/PrefixSubstringLCS.hpp"
+#include "neo/algo/count/string/PrefixSubstringLCS.hpp"
 
 struct Solver {
   string s, t;

@@ -1,8 +1,8 @@
 #pragma once
-// NeoLibrary の prefix_function (neo/string/prefix_function.hpp) を呼ぶ提出。中身は、この問題で書き比べた kmp_tab2 を写したもの。
+// NeoLibrary の prefix_function (neo/base/ds/string/prefix_function.hpp) を呼ぶ提出。中身は、この問題で書き比べた kmp_tab2 を写したもの。
 // 文字列の基本の道具を比べた記録は algo-notes の notes/string-basics.md にある。
 #include "pj.hpp"
-#include "neo/string/prefix_function.hpp"
+#include "neo/base/ds/string/prefix_function.hpp"
 
 struct Solver {
   const string &s;

@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 #include "pj.hpp"
-#include "neo/string/suffix_array.hpp"
+#include "neo/base/ds/string/suffix_array.hpp"
 #include "_shared/lcp/kasai.hpp"
 
 struct Solver {

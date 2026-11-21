@@ -13,7 +13,7 @@
 #else
 #include <simde/x86/avx2.h>
 #endif
-#include "neo/string/suffix_array.hpp"
+#include "neo/base/ds/string/suffix_array.hpp"
 
 struct Solver {
   struct alignas(64) Block {

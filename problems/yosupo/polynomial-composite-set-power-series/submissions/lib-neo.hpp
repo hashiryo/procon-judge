@@ -1,9 +1,9 @@
 #pragma once
-// NeoLibrary の sps::poly_comp (neo/set_power_series/composite.hpp)。xc1 の法を実行時の奇数に広げたもの。
+// NeoLibrary の sps::poly_comp (neo/base/core/set_fps/composite.hpp)。xc1 の法を実行時の奇数に広げたもの。
 // ZMod の列への写しと戻しは、構築と answer で行う (計測の外)。
 #include "../common.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/set_power_series/composite.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/core/set_fps/composite.hpp"
 struct Solver {
  using Z= ZMod<MOD>;
  vector<Z> P, g, h;

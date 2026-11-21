@@ -1,9 +1,9 @@
 #pragma once
-// NeoLibrary の two_sat (neo/graph/two_sat.hpp)。この問題で書き比べた occ_gabow_trim_hp を写したもので、作業領域が 2 MB 未満なら
+// NeoLibrary の two_sat (neo/algo/decide/graph/two_sat.hpp)。この問題で書き比べた occ_gabow_trim_hp を写したもので、作業領域が 2 MB 未満なら
 // huge page を頼まない分と、リテラルを NeoLibrary の書き方 (変数 i の否定が ~i) に直した節の列を run() の中で作る分が違う。
 // 入力の否定 -k は ~(k - 1) と同じ値なので、直すのは肯定のリテラルだけ。
 #include "pj.hpp"
-#include "neo/graph/two_sat.hpp"
+#include "neo/algo/decide/graph/two_sat.hpp"
 struct Solver {
  int n;
  const vector<array<int, 2>>& cs;

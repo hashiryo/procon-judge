@@ -1,8 +1,8 @@
 #pragma once
-// NeoLibrary の sps::convolve (neo/set_power_series/convolve.hpp)。xw1 の法を実行時の奇数に広げたもの。
+// NeoLibrary の sps::convolve (neo/base/core/set_fps/convolve.hpp)。xw1 の法を実行時の奇数に広げたもの。
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/set_power_series/convolve.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/core/set_fps/convolve.hpp"
 struct Solver {
  using Z= ZMod<998244353>;
  vector<Z> a, b, c;

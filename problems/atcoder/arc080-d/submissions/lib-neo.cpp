@@ -1,10 +1,10 @@
 // https://atcoder.jp/contests/arc080/tasks/arc080_d
-// NeoLibrary の min_weight_perfect_matching (neo/combinatorial_optimization/weighted_matching.hpp) で解く。
+// NeoLibrary の min_weight_perfect_matching (neo/algo/optimize/matching/weighted_matching.hpp) で解く。
 #include <iostream>
 #include <tuple>
 #include <vector>
-#include "neo/combinatorial_optimization/weighted_matching.hpp"
-#include "neo/number_theory/is_prime.hpp"
+#include "neo/algo/optimize/matching/weighted_matching.hpp"
+#include "neo/base/core/nt/is_prime.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

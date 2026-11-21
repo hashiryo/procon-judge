@@ -1,9 +1,9 @@
-// lib.cpp と同じ DP を NeoLibrary の DFA (neo/counting/DFA.hpp) で回す。N 以下の DFA は、下の桁から読む leq_digits_lsb に
+// lib.cpp と同じ DP を NeoLibrary の DFA (neo/algo/count/automata/DFA.hpp) で回す。N 以下の DFA は、下の桁から読む leq_digits_lsb に
 // し、長さ 1 から 60 の答えは dp_all の 1 回でまとめて求める。
 #include <iostream>
 #include <vector>
 #include <array>
-#include "neo/counting/DFA.hpp"
+#include "neo/algo/count/automata/DFA.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

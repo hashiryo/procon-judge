@@ -1,10 +1,10 @@
 #pragma once
 #include <random>
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/polynomial/berlekamp_massey.hpp"
-#include "neo/polynomial/convolve_naive.hpp"
-#include "neo/polynomial/poly_divmod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/algo/compute/poly/berlekamp_massey.hpp"
+#include "neo/base/core/poly/convolve_naive.hpp"
+#include "neo/base/core/poly/poly_divmod.hpp"
 // 行列とベクトルの組 (A, b) の最小多項式を、ランダムな u の数列 u^T A^i b に berlekamp_massey をかけて求める。A^k b は
 // x^k を最小多項式で割った余り (convolve_naive の 2 乗と poly_divmod の剰余で O(W^2 log k)) の係数で、クリロフ列を足し合わせる。
 struct Solver {

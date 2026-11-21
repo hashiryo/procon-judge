@@ -1,11 +1,11 @@
-// lib.cpp と同じ数え上げを NeoLibrary の DFA (neo/counting/DFA.hpp) で行う。a + b = a xor b が L 以下であることは、2 進の
+// lib.cpp と同じ数え上げを NeoLibrary の DFA (neo/algo/count/automata/DFA.hpp) で行う。a + b = a xor b が L 以下であることは、2 進の
 // leq_digits を、記号 (a の桁, b の桁) を a xor b の桁と読む map_symbols で写して表す。
 #include <iostream>
 #include <string>
 #include <vector>
 #include <array>
-#include "neo/counting/DFA.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/algo/count/automata/DFA.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

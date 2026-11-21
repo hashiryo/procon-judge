@@ -5,7 +5,7 @@
 #include <cstdio>
 #include <vector>
 #include <algorithm>
-#include "neo/algebra/GF2p64.hpp"
+#include "neo/base/core/algebra/GF2p64.hpp"
 using namespace std;
 using u64= unsigned long long;
 static char ibuf[1 << 25];

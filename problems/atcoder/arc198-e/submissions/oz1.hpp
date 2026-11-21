@@ -5,7 +5,7 @@
 //   push(v): 大きさ 1 の区画を足し、末尾の 2 つの区画の大きさが等しい間、上の区画に下の区画の値を足して 1 つにする。均して O(n)。
 // dp[k] = dp2[k - 1] (dp[0] = 1)、D(k) = sum_{j ⊆ k} dp[j]、dp2[k] = A(k) D(k) - sum_{j ⊊ k} dp2[j]。答えは dp2[2^N - 1]。
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 template <class T> struct OnlineSubsetSum {
  int n;
  vector<T> y;

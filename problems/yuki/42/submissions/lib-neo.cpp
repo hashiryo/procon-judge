@@ -1,8 +1,8 @@
-// NeoLibrary の ZMod と interpolate_iota (neo/polynomial/lagrange.hpp)。
+// NeoLibrary の ZMod と interpolate_iota (neo/algo/compute/poly/lagrange.hpp)。
 #include <iostream>
 #include <vector>
-#include "neo/algebra/ZMod.hpp"
-#include "neo/polynomial/lagrange.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/algo/compute/poly/lagrange.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

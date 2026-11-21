@@ -1,7 +1,7 @@
 #pragma once
-// NeoLibrary の MaxFlowLowerBound (neo/combinatorial_optimization/MaxFlowLowerBound.hpp) の solve で流れを求め、edges で
+// NeoLibrary の MaxFlowLowerBound (neo/algo/optimize/flow/MaxFlowLowerBound.hpp) の solve で流れを求め、edges で
 // 辺ごとの流量を読む。
-#include "neo/combinatorial_optimization/MaxFlowLowerBound.hpp"
+#include "neo/algo/optimize/flow/MaxFlowLowerBound.hpp"
 struct Solver {
  MaxFlowLowerBound<long long> g;
  bool ok= false;

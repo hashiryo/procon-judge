@@ -3,7 +3,7 @@
 // compress_s) と表 (Lookup) を組み合わせたもの。wm4_neoc と合わせて、lib-neo と wm4 の差が構築と問い合わせのどちらから来るかを分ける。
 #include "pj.hpp"
 #include "_shared/wavelet/wm.hpp"
-#include "neo/data_structure/WaveletMatrix.hpp"
+#include "neo/base/ds/range/WaveletMatrix.hpp"
 struct Solver {
  wavelet::Compressed c;
  WaveletMatrix<unsigned, false> wm;

@@ -1,8 +1,8 @@
 #pragma once
 #include "common.hpp"
-#include "neo/data_structure/Sequence.hpp"
+#include "neo/base/ds/seq/Sequence.hpp"
 
-// NeoLibrary の neo/data_structure/Sequence.hpp (塊の形)。値を並べるだけの列で、n 本が同じ置き場を共有する。
+// NeoLibrary の neo/base/ds/seq/Sequence.hpp (塊の形)。値を並べるだけの列で、n 本が同じ置き場を共有する。
 struct Solver {
   using Tree = Sequence<int>;
   vector<Tree> ts;

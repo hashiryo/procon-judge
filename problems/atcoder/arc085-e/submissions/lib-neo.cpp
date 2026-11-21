@@ -1,9 +1,9 @@
-// NeoLibrary の BinaryOptimization (neo/combinatorial_optimization/BinaryOptimization.hpp) で解く。宝石 i を割るなら x_i = 1 と
+// NeoLibrary の BinaryOptimization (neo/algo/optimize/dp/BinaryOptimization.hpp) で解く。宝石 i を割るなら x_i = 1 と
 // し、残すと a_i 円もらえることを、x_i = 0 の費用 -a_i にする。割る宝石の集合は倍数について閉じているので、i の倍数 j に
 // ついて、x_i = 1 かつ x_j = 0 の組に大きな費用を置いて禁じる。
 #include <iostream>
 #include <vector>
-#include "neo/combinatorial_optimization/BinaryOptimization.hpp"
+#include "neo/algo/optimize/dp/BinaryOptimization.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

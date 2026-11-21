@@ -1,7 +1,7 @@
 // NeoLibrary の ZMod と sparse_fps (pow、div)。長さは今の Library の lim に 1 足して渡す (F[lim - 1] までしか使わないので lim)。
 #include <iostream>
-#include "neo/algebra/ZMod.hpp"
-#include "neo/polynomial/sparse_fps.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/core/poly/sparse_fps.hpp"
 using namespace std;
 int main() {
  cin.tie(0);

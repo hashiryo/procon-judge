@@ -2,9 +2,9 @@
 // NeoLibrary の sps_generic の 3^n の道 (semiring_convolve と semiring_exp) に、lib-neo と同じ型を渡す。AVX2 の核に替える前の
 // sps::convolve と sps::exp の中身で、lib-neo との差を見るための提出。
 #include "pj.hpp"
-#include "neo/algebra/semiring.hpp"
-#include "neo/set_power_series/convolve.hpp"
-#include "neo/set_power_series/exp.hpp"
+#include "neo/base/core/algebra/semiring.hpp"
+#include "neo/base/core/set_fps/convolve.hpp"
+#include "neo/base/core/set_fps/exp.hpp"
 struct Solver {
   using A = MinPlus<int>;
   using B = MaxPlus<long long>;

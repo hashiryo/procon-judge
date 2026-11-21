@@ -4,8 +4,8 @@
 #include <vector>
 #include <numeric>
 #include <algorithm>
-#include "neo/combinatorial_optimization/matroid_intersection.hpp"
-#include "neo/combinatorial_optimization/matroids.hpp"
+#include "neo/algo/optimize/matroid/matroid_intersection.hpp"
+#include "neo/algo/optimize/matroid/matroids.hpp"
 using namespace std;
 int main() {
  cin.tie(0);

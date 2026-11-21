@@ -3,8 +3,8 @@
 #include <iostream>
 #include <array>
 #include <vector>
-#include "neo/graph/HeavyLightDecomposition.hpp"
-#include "neo/graph/biconnected_components.hpp"
+#include "neo/base/ds/tree/HeavyLightDecomposition.hpp"
+#include "neo/algo/decide/graph/biconnected_components.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

@@ -1,7 +1,7 @@
 #pragma once
-// NeoLibrary の interpolate_iota (neo/polynomial/lagrange.hpp)。
-#include "neo/algebra/ZMod.hpp"
-#include "neo/polynomial/lagrange.hpp"
+// NeoLibrary の interpolate_iota (neo/algo/compute/poly/lagrange.hpp)。
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/algo/compute/poly/lagrange.hpp"
 inline u32 run(const vector<u32>& y, u64 x) {
  using Z= ZMod<998244353>;
  vector<Z> Y(y.size());

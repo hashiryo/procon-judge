@@ -1,11 +1,11 @@
 // https://atcoder.jp/contests/arc033/tasks/arc033_4
-// NeoLibrary の ZMod と interpolate_iota (neo/polynomial/lagrange.hpp)。
+// NeoLibrary の ZMod と interpolate_iota (neo/algo/compute/poly/lagrange.hpp)。
 #include <sstream>
 #include <string>
 #include <cassert>
 #include <vector>
-#include "neo/algebra/ZMod.hpp"
-#include "neo/polynomial/lagrange.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/algo/compute/poly/lagrange.hpp"
 using namespace std;
 bool test(int (*solve)(stringstream&, stringstream&), string in, string expected) {
  stringstream scin(in), scout;

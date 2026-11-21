@@ -18,7 +18,7 @@
 #ifdef __linux__
 #include <sys/mman.h>
 #endif
-#include "neo/string/suffix_array.hpp"
+#include "neo/base/ds/string/suffix_array.hpp"
 #include "_lyndon_hybrid.hpp"
 
 namespace lyndon_lean {

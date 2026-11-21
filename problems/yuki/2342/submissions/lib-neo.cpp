@@ -5,8 +5,8 @@
 #include <tuple>
 #include <vector>
 #include "mylib/data_structure/KDTree.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/graph/HeavyLightDecomposition.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/ds/tree/HeavyLightDecomposition.hpp"
 using namespace std;
 using Mint= ZMod<998244353>;
 struct RaffineQ {

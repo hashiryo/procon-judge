@@ -1,9 +1,9 @@
 // lib-neo の FunctionalGraph に加えて、to を作る線形漸化式 (法 10000) も NeoLibrary の ZMod と linear_recurrence にしたもの。
 #include <iostream>
 #include <string>
-#include "neo/algebra/ZMod.hpp"
-#include "neo/polynomial/linear_recurrence.hpp"
-#include "neo/graph/FunctionalGraph.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/algo/compute/poly/linear_recurrence.hpp"
+#include "neo/base/ds/tree/FunctionalGraph.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

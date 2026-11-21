@@ -1,7 +1,7 @@
 #pragma once
 // NeoLibrary の stern_brocot.hpp の sb_approx を呼ぶ。中身は 11 回目 (ra11.hpp) と同じ手順。
 #include "../common.hpp"
-#include "neo/number_theory/stern_brocot.hpp"
+#include "neo/base/core/nt/stern_brocot.hpp"
 
 inline void run(const std::vector<Query>& qs, u32* out) {
     for (const auto& q : qs) {

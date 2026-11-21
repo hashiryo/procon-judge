@@ -1,9 +1,9 @@
-// lib.cpp と同じ二分探索と DP を NeoLibrary の DFA (neo/counting/DFA.hpp) で回す。N 以下の DFA は leq_digits にする。
+// lib.cpp と同じ二分探索と DP を NeoLibrary の DFA (neo/algo/count/automata/DFA.hpp) で回す。N 以下の DFA は leq_digits にする。
 #include <iostream>
 #include <string>
 #include <vector>
 #include <array>
-#include "neo/counting/DFA.hpp"
+#include "neo/algo/count/automata/DFA.hpp"
 using namespace std;
 constexpr int CIRC[10]= {1, 0, 0, 0, 1, 0, 1, 0, 2, 1};
 

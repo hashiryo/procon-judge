@@ -30,8 +30,8 @@
 //
 // 剰余の掛け算は Barrett (m は偶数でもよい、m ≤ 10^9 なので積は 2^60 未満)。
 #include "../common.hpp"
-#include "neo/number_theory/factorize.hpp"
-#include "neo/number_theory/inv_gcd.hpp"
+#include "neo/algo/compute/nt/factorize.hpp"
+#include "neo/base/core/nt/inv_gcd.hpp"
 
 namespace dl5 {
 

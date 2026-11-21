@@ -1,11 +1,11 @@
 #pragma once
-// NeoLibrary の runs (neo/string/runs.hpp) を呼ぶ提出。中身は、この問題で書き比べた lyndon_fs_hp2 を写したもの。
+// NeoLibrary の runs (neo/base/ds/string/runs.hpp) を呼ぶ提出。中身は、この問題で書き比べた lyndon_fs_hp2 を写したもの。
 // run の列挙の実装を比べた記録は algo-notes の notes/runs.md にある。
 #include <array>
 #include <string>
 #include <vector>
 #include "pj.hpp"
-#include "neo/string/runs.hpp"
+#include "neo/base/ds/string/runs.hpp"
 
 struct Solver {
   string s;

@@ -1,7 +1,7 @@
 #pragma once
-// NeoLibrary の z_algorithm (neo/string/z_algorithm.hpp) で、P と T を区切り文字で繋いだ文字列の Z 配列を作る。
+// NeoLibrary の z_algorithm (neo/base/ds/string/z_algorithm.hpp) で、P と T を区切り文字で繋いだ文字列の Z 配列を作る。
 #include "pj.hpp"
-#include "neo/string/z_algorithm.hpp"
+#include "neo/base/ds/string/z_algorithm.hpp"
 
 struct Solver {
   const string &t, &p;

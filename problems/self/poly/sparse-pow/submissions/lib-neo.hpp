@@ -1,7 +1,7 @@
 #pragma once
-// NeoLibrary の sparse_fps::pow (neo/polynomial/sparse_fps.hpp)。この問題で書き比べた sp1 を、法を定数にしない形で写したもの。
-#include "neo/algebra/ZMod.hpp"
-#include "neo/polynomial/sparse_fps.hpp"
+// NeoLibrary の sparse_fps::pow (neo/base/core/poly/sparse_fps.hpp)。この問題で書き比べた sp1 を、法を定数にしない形で写したもの。
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/core/poly/sparse_fps.hpp"
 inline vector<u32> run(int n, u64 m, const vector<pair<int, u32>>& f) {
  using Z= ZMod<998244353>;
  vector<Z> a(n);

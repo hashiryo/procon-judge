@@ -1,8 +1,8 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/data_structure/DynamicSegmentTree.hpp"
-#include "neo/data_structure/segtree/Composite.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/ds/range/DynamicSegmentTree.hpp"
+#include "neo/base/ds/range/segtree/Composite.hpp"
 
 // NeoLibrary の DynamicSegmentTree に monoid::Composite<ZMod<998244353>> を渡す。モノイドだけなので中身はパトリシア木
 // (patricia と同じ形で、区間の積は x に当てずに 1 次関数を畳む)。

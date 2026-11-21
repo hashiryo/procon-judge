@@ -1,9 +1,9 @@
 #pragma once
-// NeoLibrary の SquareMatrix<MinPlus<int>, 3> (neo/linalg/SquareMatrix.hpp と neo/algebra/semiring.hpp) を、点更新のセグメント木に
+// NeoLibrary の SquareMatrix<MinPlus<int>, 3> (neo/base/core/linalg/SquareMatrix.hpp と neo/base/core/algebra/semiring.hpp) を、点更新のセグメント木に
 // 載せる。minplus_fixed と同じ形で、半環は NeoLibrary の MinPlus (INF は int の最大の半分で、積は片方が INF なら INF のまま)。
 #include "_char_mat.hpp"
-#include "neo/algebra/semiring.hpp"
-#include "neo/linalg/SquareMatrix.hpp"
+#include "neo/base/core/algebra/semiring.hpp"
+#include "neo/base/core/linalg/SquareMatrix.hpp"
 struct Solver {
  using R= MinPlus<int>;
  using Mat= SquareMatrix<R, 3>;

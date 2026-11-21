@@ -1,9 +1,9 @@
 #pragma once
-// NeoLibrary の MaxFlow (neo/combinatorial_optimization/MaxFlow.hpp) を組ごとに作り直して、Gusfield の方法を書く。
+// NeoLibrary の MaxFlow (neo/algo/optimize/flow/MaxFlow.hpp) を組ごとに作り直して、Gusfield の方法を書く。
 // algo-notes の network-flow-api.md の案 (MaxFlow を n - 1 回使う薄い層) をそのまま書いた形。無向辺は rev_cap に同じ容量を
 // 渡し、最小カットは min_cut(s)。手順は reference.hpp と同じ。
 #include "pj.hpp"
-#include "neo/combinatorial_optimization/MaxFlow.hpp"
+#include "neo/algo/optimize/flow/MaxFlow.hpp"
 struct Solver {
   int n;
   const vector<array<i64, 3>> &edges;

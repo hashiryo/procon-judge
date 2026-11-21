@@ -1,6 +1,6 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/graph/HeavyLightDecomposition.hpp"
+#include "neo/base/ds/tree/HeavyLightDecomposition.hpp"
 
 // NeoLibrary の HeavyLightDecomposition を親の列から作り、lca は鎖を上がって求める (O(log N))。
 struct Solver {

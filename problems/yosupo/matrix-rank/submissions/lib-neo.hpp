@@ -1,7 +1,7 @@
 #pragma once
-// NeoLibrary の matrix_rank (neo/linalg/rank.hpp)。この問題で書き比べた zmod_rank_blk8 を写したもの。
+// NeoLibrary の matrix_rank (neo/algo/compute/linalg/rank.hpp)。この問題で書き比べた zmod_rank_blk8 を写したもの。
 #include "../common.hpp"
-#include "neo/linalg/rank.hpp"
+#include "neo/algo/compute/linalg/rank.hpp"
 inline int run(int n, int m, const vector<vector<u32>>& a) {
  using Z= ZMod<MOD>;
  Matrix<Z> A(n, m);

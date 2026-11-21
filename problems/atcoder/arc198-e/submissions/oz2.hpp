@@ -5,7 +5,7 @@
 // もう一度足すと全体のゼータになる。足し算はどれも連続した配列どうしで、全体で n 2^n 回。大きさ 8 の区画は素朴に求める。
 // dp[k] = dp2[k - 1] (dp[0] = 1)、dp2[k] = A(k) (sum_{j ⊊ k} dp[j] + dp[k]) - sum_{j ⊊ k} dp2[j]。答えは dp2[2^N - 1]。
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 template <class T, class P> void ozeta_rec(T* Y, size_t lo, int b, const P& phi) {
  if(b <= 3) {
   const int w= 1 << b;

@@ -1,4 +1,4 @@
-#include "neo/algebra/GF2p64.hpp"
+#include "neo/base/core/algebra/GF2p64.hpp"
 #include <vector>
 using namespace std;
 using u64= unsigned long long;

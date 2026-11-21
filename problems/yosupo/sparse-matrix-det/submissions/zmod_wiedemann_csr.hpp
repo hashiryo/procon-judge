@@ -9,7 +9,7 @@
 // 選び直す (前は 0 を返していて、3000 × 3000 の単位行列で 1 回あたり 0.45% ほど誤った)。
 #include <chrono>
 #include "../common.hpp"
-#include "neo/algebra/ZMod.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
 #ifndef USE_SIMDE
 #include <immintrin.h>
 #endif

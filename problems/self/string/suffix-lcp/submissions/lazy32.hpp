@@ -9,8 +9,8 @@
 #include <simde/x86/avx2.h>
 #endif
 #include "_shared/string/_hugealloc.hpp"
-#include "neo/data_structure/RangeMin.hpp"
-#include "neo/string/suffix_array.hpp"
+#include "neo/base/ds/range/RangeMin.hpp"
+#include "neo/base/ds/string/suffix_array.hpp"
 
 struct Solver {
   const string &s;

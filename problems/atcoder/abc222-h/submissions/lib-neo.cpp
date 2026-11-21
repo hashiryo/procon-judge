@@ -1,7 +1,7 @@
-// NeoLibrary の ZMod と sparse_fps::pow (neo/polynomial/sparse_fps.hpp)。長さ N を渡す。
+// NeoLibrary の ZMod と sparse_fps::pow (neo/base/core/poly/sparse_fps.hpp)。長さ N を渡す。
 #include <iostream>
-#include "neo/algebra/ZMod.hpp"
-#include "neo/polynomial/sparse_fps.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/core/poly/sparse_fps.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

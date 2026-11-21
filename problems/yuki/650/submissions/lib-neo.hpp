@@ -1,7 +1,7 @@
 #pragma once
 #include "pj.hpp"
-#include "neo/algebra/ZMod.hpp"
-#include "neo/graph/PathProduct.hpp"
+#include "neo/base/core/algebra/ZMod.hpp"
+#include "neo/base/ds/tree/PathProduct.hpp"
 
 // NeoLibrary の HeavyLightDecomposition と PathProduct (鎖ごとの二分木、1 点の代入と道の積が O(log N)) で解く。辺の行列は子の側の
 // 頂点に置く。u は v の先祖なので、u から v への道の辺は、u の v の側の子 c から v までの頂点で、PathProduct の c から v への積が

@@ -4,7 +4,7 @@
 // b = f ? b - r : r を分岐に戻し、ループを 2 通りに複製していた (f は 3 割ほどの確率で立つので外れる)。x86 では
 // cmova と seta を asm で書き、鎖は比べと選びの 2 サイクルにする。近似分数の選びはマスクを空の asm に通して算術で書く。
 #include "_sb1.hpp"
-#include "neo/number_theory/inv_gcd.hpp"
+#include "neo/base/core/nt/inv_gcd.hpp"
 
 namespace sb5 {
 

@@ -4,7 +4,7 @@
 // nl + b)、空きマスの頂点 v を消すたびに、v に付いた辺を erase_edge で全部抜いてから augment() を 1 回呼ぶ。
 #include <string>
 #include <vector>
-#include "neo/combinatorial_optimization/IncrementalBipartiteMatching.hpp"
+#include "neo/algo/optimize/matching/IncrementalBipartiteMatching.hpp"
 
 struct Solver {
   int n, m;

@@ -6,7 +6,7 @@
 #include <vector>
 #include "mylib/algebra/ModInt.hpp"
 #include "mylib/number_theory/ArrayOnDivisors.hpp"
-#include "neo/graph/Rerooting.hpp"
+#include "neo/base/engine/tree/Rerooting.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

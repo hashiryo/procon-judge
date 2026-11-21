@@ -1,7 +1,7 @@
 #pragma once
-// NeoLibrary の gomory_hu (neo/combinatorial_optimization/gomory_hu.hpp) で木を作り、親と重みの列を木の辺の列にする。
+// NeoLibrary の gomory_hu (neo/algo/optimize/flow/gomory_hu.hpp) で木を作り、親と重みの列を木の辺の列にする。
 #include "pj.hpp"
-#include "neo/combinatorial_optimization/gomory_hu.hpp"
+#include "neo/algo/optimize/flow/gomory_hu.hpp"
 struct Solver {
   int n;
   const vector<array<i64, 3>> &edges;

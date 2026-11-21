@@ -4,7 +4,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "neo/graph/Rerooting.hpp"
+#include "neo/base/engine/tree/Rerooting.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

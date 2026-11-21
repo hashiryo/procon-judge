@@ -1,9 +1,9 @@
-// NeoLibrary の sps::exp に MaxPlus<long long> を渡す (neo/set_power_series/exp.hpp)。塊の得点 w[T] の exp の全体の値が答え
+// NeoLibrary の sps::exp に MaxPlus<long long> を渡す (neo/base/core/set_fps/exp.hpp)。塊の得点 w[T] の exp の全体の値が答え
 // (集合を塊に分けて、塊の得点の和の最大)。添字の下の bit を AVX2 のレーンに置く 3^n の核 (semiring_simd.hpp) に回る。
 #include <cstdio>
 #include <vector>
-#include "neo/algebra/semiring.hpp"
-#include "neo/set_power_series/exp.hpp"
+#include "neo/base/core/algebra/semiring.hpp"
+#include "neo/base/core/set_fps/exp.hpp"
 int main() {
  int n;
  if(scanf("%d", &n) != 1) return 1;

@@ -2,8 +2,8 @@
 // NeoLibrary の MaxFlow で 1 から N へ流し、edges() の流量から残余グラフの弧を作って strongly_connected_components (成分の
 // 番号はトポロジカル順) で成分に分ける。問いには common.hpp で答える。
 #include "common.hpp"
-#include "neo/combinatorial_optimization/MaxFlow.hpp"
-#include "neo/graph/strongly_connected_components.hpp"
+#include "neo/algo/optimize/flow/MaxFlow.hpp"
+#include "neo/algo/decide/graph/strongly_connected_components.hpp"
 
 struct Solver {
   int n;

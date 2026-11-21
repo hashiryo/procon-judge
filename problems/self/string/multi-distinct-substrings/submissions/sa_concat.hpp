@@ -1,8 +1,8 @@
 #pragma once
-// 文字列を区切り文字 '{' でつなぎ、NeoLibrary の接尾辞配列と LCP 配列 (neo/string/suffix_array.hpp) で数える (参照実装と同じ数え方)。
+// 文字列を区切り文字 '{' でつなぎ、NeoLibrary の接尾辞配列と LCP 配列 (neo/base/ds/string/suffix_array.hpp) で数える (参照実装と同じ数え方)。
 // 接尾辞配列の順に、位置 i から始まる接尾辞は、次の区切り文字までの長さ b(i) のうち 1 つ前の接尾辞との LCP を超える分を足す。
 #include "pj.hpp"
-#include "neo/string/suffix_array.hpp"
+#include "neo/base/ds/string/suffix_array.hpp"
 
 struct Solver {
   const vector<string> &ss;

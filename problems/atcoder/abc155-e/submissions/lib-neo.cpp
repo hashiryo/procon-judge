@@ -1,10 +1,10 @@
-// lib.cpp と同じ DFA (状態は位置と繰り下がりの組) を NeoLibrary の DFA (neo/counting/DFA.hpp) で組み、最小を求める DP を回す。
+// lib.cpp と同じ DFA (状態は位置と繰り下がりの組) を NeoLibrary の DFA (neo/algo/count/automata/DFA.hpp) で組み、最小を求める DP を回す。
 #include <iostream>
 #include <vector>
 #include <string>
 #include <array>
 #include <algorithm>
-#include "neo/counting/DFA.hpp"
+#include "neo/algo/count/automata/DFA.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

@@ -2,7 +2,7 @@
 // NeoLibrary の DiscreteLogTable を呼ぶ。中身は 5 回目 (_dlf5.hpp) の dlf5 と同じ手順。答えの列は dlf5 と同じく reserve
 // してから huge page を頼み、0 で埋めてから添字で書く。
 #include "../common.hpp"
-#include "neo/number_theory/DiscreteLogTable.hpp"
+#include "neo/algo/compute/nt/DiscreteLogTable.hpp"
 #ifdef __linux__
 #include <sys/mman.h>
 #endif
