@@ -1,11 +1,11 @@
 {
  "schema": 1,
- "generated_at": "2026-11-20T14:57:54Z",
- "judge_sha": "50cce79b75ce69cb40ad20c7aa17864f2ff26019",
+ "generated_at": "2026-11-21T11:56:05Z",
+ "judge_sha": "74427603ae7d9324365e5e733f09cd462d7bd792",
  "library_sha": "597d8f64e4944212aee6b8742c9e1c0130d71635",
  "library_shas": {
   "Library": "597d8f64e4944212aee6b8742c9e1c0130d71635",
-  "NeoLibrary": "fe2ed165e00ccfe7e6c82035f77d1088ab956b48"
+  "NeoLibrary": "49cb037dc4aab11e0768de6afbde76a9e366f4ec"
  },
  "env": "x64-gcc",
  "cpu": "QEMU Haswell-noTSX (AVX2、BMI2、FMA、pclmul。vpclmulqdq、GFNI、AVX-512 なし)",
@@ -15,7 +15,7 @@
    "problem": "atcoder-abc150-f",
    "submission": "submissions/lib-GF2p64.cpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 25,
@@ -26,7 +26,7 @@
    "problem": "atcoder-abc274-h",
    "submission": "submissions/lib-GF2p64.cpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 21,
@@ -37,7 +37,7 @@
    "problem": "atcoder-wtf19-c2",
    "submission": "submissions/lib-GF2p64.cpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 22,
@@ -48,7 +48,7 @@
    "problem": "cf-1310-f",
    "submission": "submissions/lib-GF2p64.cpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 9,
@@ -59,7 +59,7 @@
    "problem": "cf-gym102341-l",
    "submission": "submissions/lib-GF2p64.cpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 14,
@@ -70,7 +70,7 @@
    "problem": "hdu-6173",
    "submission": "submissions/lib-GF2p64.cpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 8,
@@ -81,7 +81,7 @@
    "problem": "loj-179",
    "submission": "submissions/lib-GF2p64.cpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 4,
@@ -92,7 +92,7 @@
    "problem": "luogu-P11278",
    "submission": "submissions/lib-GF2p64.cpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 13,
@@ -103,7 +103,7 @@
    "problem": "qoj-1846",
    "submission": "submissions/lib-GF2p64.cpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 15,
@@ -114,7 +114,7 @@
    "problem": "self-gf2-64-div",
    "submission": "submissions/lib-GF2p64.hpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 6,
@@ -125,7 +125,7 @@
    "problem": "self-gf2-64-io",
    "submission": "submissions/lib.cpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 1,
@@ -136,7 +136,7 @@
    "problem": "self-gf2-64-log",
    "submission": "submissions/lib-GF2p64.hpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 5,
@@ -147,7 +147,7 @@
    "problem": "self-gf2-64-log-any",
    "submission": "submissions/lib-GF2p64.hpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 6,
@@ -158,7 +158,7 @@
    "problem": "self-gf2-64-mul",
    "submission": "submissions/lib-GF2p64.hpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 7,
@@ -169,7 +169,7 @@
    "problem": "self-gf2-64-ord",
    "submission": "submissions/lib-GF2p64.hpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 6,
@@ -180,7 +180,7 @@
    "problem": "self-gf2-64-pow",
    "submission": "submissions/lib-GF2p64.hpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 7,
@@ -191,7 +191,7 @@
    "problem": "self-gf2-64-sq",
    "submission": "submissions/lib-GF2p64.hpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 7,
@@ -202,7 +202,7 @@
    "problem": "self-gf2-64-sqrt",
    "submission": "submissions/lib-GF2p64.hpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 6,
@@ -213,8 +213,8 @@
    "problem": "yosupo-convolution-f2-64",
    "submission": "submissions/lib-convolve_GF2p64.hpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp",
-    "neo/fft/convolve_GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp",
+    "neo/base/core/poly/convolve_GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 51,
@@ -225,7 +225,7 @@
    "problem": "yosupo-counting-primes",
    "submission": "submissions/lib-neo.hpp",
    "headers": [
-    "neo/number_theory/prime_pi.hpp"
+    "neo/algo/count/nt/prime_pi.hpp"
    ],
    "status": "AC",
    "case_count": 31,
@@ -236,7 +236,7 @@
    "problem": "yosupo-nim-product-64",
    "submission": "submissions/lib-GF2p64.hpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 10,
@@ -247,7 +247,7 @@
    "problem": "yuki-1421",
    "submission": "submissions/lib-GF2p64.cpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 32,
@@ -258,8 +258,8 @@
    "problem": "yuki-1569",
    "submission": "submissions/lib-convolve_GF2p64.cpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp",
-    "neo/fft/convolve_GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp",
+    "neo/base/core/poly/convolve_GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 24,
@@ -270,7 +270,7 @@
    "problem": "yuki-1775",
    "submission": "submissions/lib-GF2p64.cpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 90,
@@ -281,7 +281,7 @@
    "problem": "yuki-1776",
    "submission": "submissions/lib-GF2p64.cpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 176,
@@ -292,7 +292,7 @@
    "problem": "yuki-1901",
    "submission": "submissions/lib-GF2p64.cpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 10,
@@ -303,7 +303,7 @@
    "problem": "yuki-2907",
    "submission": "submissions/lib-GF2p64.cpp",
    "headers": [
-    "neo/algebra/GF2p64.hpp"
+    "neo/base/core/algebra/GF2p64.hpp"
    ],
    "status": "AC",
    "case_count": 60,
