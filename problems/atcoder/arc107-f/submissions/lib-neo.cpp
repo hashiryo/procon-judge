@@ -1,10 +1,10 @@
-// NeoLibrary の KaryOptimization (neo/algo/optimize/dp/KaryOptimization.hpp) で解く。頂点ごとに x = 0 (B を引く)、
+// NeoLibrary の KaryOptimization (neo/algo/optimize/burn_bury/KaryOptimization.hpp) で解く。頂点ごとに x = 0 (B を引く)、
 // 1 (A を払って消す)、2 (B を足す) の 3 値を選び、得点の符号を反転した費用を最小にする。残した頂点どうしを結ぶ辺の両端で
 // 0 と 2 に分かれる組は禁じる。禁止は辺ごとの 2 変数の項として足すので、今の Library の monge_mincut のように全組を
 // 呼ばない。
 #include <iostream>
 #include <vector>
-#include "neo/algo/optimize/dp/KaryOptimization.hpp"
+#include "neo/algo/optimize/burn_bury/KaryOptimization.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

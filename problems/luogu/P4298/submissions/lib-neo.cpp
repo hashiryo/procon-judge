@@ -1,4 +1,4 @@
-// NeoLibrary の max_antichain と min_path_cover (neo/algo/optimize/dp/path_cover.hpp) で解く。水の流れる向きの
+// NeoLibrary の max_antichain と min_path_cover (neo/algo/optimize/cover/path_cover.hpp) で解く。水の流れる向きの
 // 到達可能性の順序で、祭祀点の集合は反鎖になる。1 行目と 2 行目は、入力の辺をそのまま max_antichain に渡して出す (推移閉包は
 // 作らない)。3 行目は、頂点 v と比べられる頂点 (v から届くか v に届く頂点) と v 自身を除いた残りで、最大反鎖の大きさが
 // K - 1 なら 1。残りの順序は元の順序を制限したものなので、推移閉包を作って残りの頂点の間の組を渡す。関係が推移的なので、
@@ -8,7 +8,7 @@
 #include <cstdio>
 #include <string>
 #include <vector>
-#include "neo/algo/optimize/dp/path_cover.hpp"
+#include "neo/algo/optimize/cover/path_cover.hpp"
 int main() {
  int n, m;
  if(scanf("%d %d", &n, &m) != 2) return 1;

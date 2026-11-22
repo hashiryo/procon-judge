@@ -1,10 +1,10 @@
-// NeoLibrary の BinaryOptimization (neo/algo/optimize/dp/BinaryOptimization.hpp) で解く。行 r を選ぶなら x_r = 1、
+// NeoLibrary の BinaryOptimization (neo/algo/optimize/burn_bury/BinaryOptimization.hpp) で解く。行 r を選ぶなら x_r = 1、
 // 列 c を選ぶなら y_c = 1 とし、得点の符号を反転した費用を最小にする。1 変数の項は行と列の和、2 変数の項は両方で選んだ
 // マスの差し引き A_{r,c} (負なら禁止の大きな費用)。この項は劣モジュラでないが、行と列が二部に分かれているので、
 // BinaryOptimization が列の側を反転して直す。
 #include <iostream>
 #include <vector>
-#include "neo/algo/optimize/dp/BinaryOptimization.hpp"
+#include "neo/algo/optimize/burn_bury/BinaryOptimization.hpp"
 using namespace std;
 signed main() {
  cin.tie(0);

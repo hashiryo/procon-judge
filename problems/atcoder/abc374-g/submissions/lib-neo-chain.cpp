@@ -1,10 +1,10 @@
-// NeoLibrary の strongly_connected_components と min_chain_cover (neo/algo/optimize/dp/path_cover.hpp) で解く。
+// NeoLibrary の strongly_connected_components と min_chain_cover (neo/algo/optimize/cover/path_cover.hpp) で解く。
 // lib-neo.cpp と同じ帰着で、縮めた DAG の到達可能性の順序を最小の数の鎖に分け、その本数を出す。min_chain_cover が流れから
 // 鎖を取り出す分も CI の 4 つの環境で確かめるために、lib-neo.cpp と別に置いた。
 #include <array>
 #include <cstdio>
 #include <vector>
-#include "neo/algo/optimize/dp/path_cover.hpp"
+#include "neo/algo/optimize/cover/path_cover.hpp"
 #include "neo/algo/decide/graph/strongly_connected_components.hpp"
 int main() {
  int n;
