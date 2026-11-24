@@ -1,14 +1,16 @@
 #pragma once
 // lichao.hpp の 2 つの Li Chao 木を、載せる関数の型 F をテンプレートで受ける形にしたもの。F は x (long long) を受けて値を返す
 // operator() を持ち、どの 2 つも高々 1 回しか交わらない族 (擬直線) であること。直線は LineFn。最小を求める。
-// 関数の載っていない節は、節ごとの印 has で見分ける (lichao.hpp は傾き 0、切片 LICHAO_INF の直線で表していた)。関数が 1 つも
-// 載っていない点の答えは、値の型の最大値。
+// 関数の載っていない節は、F が「どこでも値の型の最大値を返す関数」を static の none() で出せるならそれを置き (LineFn は
+// 傾き 0、切片が最大値の直線)、出せないなら節ごとの印で見分ける。印を持たない形は、節が小さく、問いに判定が要らない。
+// 関数が 1 つも載っていない点の答えは、値の型の最大値。
 //
 // LiChaoRangeFn<F>: x の範囲 [lo, hi) を渡し、節を使う所だけ作る形。
 // LiChaoPointsFn<F>: 問いの x を全部先に渡し、座標を詰めた完全二分木を配列に置く形。問いは葉から根へ上る。
 // 追加はどちらも、節の両端で新しい関数が両方勝てば置き換え、両方負ければ止める。交わりが高々 1 回なので、両端で勝てば
 // 節の区間の全体で勝つ。
 #include <algorithm>
+#include <concepts>
 #include <limits>
 #include <type_traits>
 #include <utility>
@@ -17,7 +19,28 @@
 struct LineFn {
   long long a, b;
   long long operator()(long long x) const { return a * x + b; }
+  static LineFn none() { return {0, std::numeric_limits<long long>::max()}; }
 };
+
+namespace lichao_fn_internal {
+template <class F> concept HasNone = requires { { F::none() } -> std::convertible_to<F>; };
+// 節に関数が載っているかの印。none() を持つ F では空の型になり、いつも「載っている」と答える。
+struct Flag {
+  bool v;
+  bool get() const { return v; }
+  void set() { v = true; }
+};
+struct NoFlag {
+  NoFlag(bool = true) {}
+  static constexpr bool get() { return true; }
+  static constexpr void set() {}
+};
+template <class F> using FlagOf = std::conditional_t<HasNone<F>, NoFlag, Flag>;
+template <class F> F empty_fn(const F &f) {
+  if constexpr (HasNone<F>) return F::none();
+  else return f;
+}
+}  // namespace lichao_fn_internal
 
 template <class F = LineFn> struct LiChaoRangeFn {
   using V = std::invoke_result_t<const F &, long long>;
@@ -25,7 +48,7 @@ template <class F = LineFn> struct LiChaoRangeFn {
   struct Node {
     F f;
     int c[2];
-    bool has;
+    [[no_unique_address]] lichao_fn_internal::FlagOf<F> has;
   };
   long long lo;
   int depth;  // 根が覆う幅は 2^depth
@@ -38,7 +61,7 @@ template <class F = LineFn> struct LiChaoRangeFn {
   }
 
   int make(const F &f, bool has) {
-    t.push_back({f, {-1, -1}, has});
+    t.push_back({has ? f : lichao_fn_internal::empty_fn(f), {-1, -1}, {has}});
     return (int)t.size() - 1;
   }
 
@@ -46,8 +69,8 @@ template <class F = LineFn> struct LiChaoRangeFn {
   void descend(int k, long long l, int d, F f) {
     for (;;) {
       Node &nd = t[k];
-      if (!nd.has) {
-        nd.f = f, nd.has = true;
+      if (!nd.has.get()) {
+        nd.f = f, nd.has.set();
         return;
       }
       const long long xl = lo + l, xr = xl + (1LL << d) - 1;
@@ -110,7 +133,7 @@ template <class F = LineFn> struct LiChaoRangeFn {
     int k = root, d = depth;
     while (k >= 0) {
       const Node &nd = t[k];
-      if (nd.has) res = std::min(res, nd.f(x));
+      if (nd.has.get()) res = std::min(res, nd.f(x));
       if (d == 0) break;
       --d;
       k = nd.c[off >> d & 1];
@@ -124,7 +147,7 @@ template <class F = LineFn> struct LiChaoPointsFn {
   static constexpr V INF = std::numeric_limits<V>::max();
   struct Slot {
     F f;
-    bool has;
+    [[no_unique_address]] lichao_fn_internal::FlagOf<F> has;
   };
   int n = 1;                  // 葉の数 (2 の冪)
   std::vector<long long> xs;  // 長さ n。重複を除いて並べ、末尾を最後の値で埋める
@@ -145,15 +168,15 @@ template <class F = LineFn> struct LiChaoPointsFn {
     while (n < m) n <<= 1;
     xs = std::move(pts);
     xs.resize(n, m ? xs.back() : 0);
-    t.assign(2 * n, Slot{F{}, false});
+    t.assign(2 * n, Slot{lichao_fn_internal::empty_fn(F{}), {false}});
   }
 
   // 節 k (葉の添字の区間 [l, r)) の下に関数を足す。
   void descend(int k, int l, int r, F f) {
     for (;;) {
       Slot &e = t[k];
-      if (!e.has) {
-        e.f = f, e.has = true;
+      if (!e.has.get()) {
+        e.f = f, e.has.set();
         return;
       }
       const long long xl = xs[l], xr = xs[r - 1];
@@ -193,7 +216,7 @@ template <class F = LineFn> struct LiChaoPointsFn {
     const long long x = xs[i];
     V res = INF;
     for (int k = i + n; k >= 1; k >>= 1)
-      if (t[k].has) res = std::min(res, t[k].f(x));
+      if (t[k].has.get()) res = std::min(res, t[k].f(x));
     return res;
   }
 
