@@ -1,0 +1,26 @@
+id = "dmoj-dmopc19c3p6"
+title = "Triple Spanning Tree"
+url = "https://dmoj.ca/problem/dmopc19c3p6"
+
+# 問題文は本人が DMOJ から読んだ (2 ≤ N ≤ 500、1 ≤ M ≤ 1500、多重辺あり、連結とは限らない、0.75 秒、64 MB)。
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# テストケースは公開されていないので、自作する (gen.py と、ライブラリに依存しない submissions/reference.hpp)。取れるかどうかは
+# 1 つに決まるが、解は何でもよいので、checker.cpp が、取れないときは -1、取れるときは 1、2、3 の辺がそれぞれ全域木になって
+# いることを確かめる。マトロイドの和 (NeoLibrary の matroid_union) を、実際の問題で確かめて測るために足した。
+[testdata]
+source = "local"
+count = 14
+generator = "gen.py"
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true
