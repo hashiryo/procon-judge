@@ -1,0 +1,29 @@
+id = "cf-1773-g"
+title = "G. Game of Questions"
+url = "https://codeforces.com/problemset/problem/1773/G"
+
+# n 問 (n <= 2e5) をランダムな順に m 人 (m <= 17、1 人目が Genie) に出し、1 問ごとに、まだ残っている人が全員正解か全員不正解なら何も起きず、
+# それ以外は不正解の人が抜ける。Genie が最後まで残る確率を求める (絶対誤差か相対誤差 1e-9)。残る人の集合 S から見て、集合を変える質問
+# (S との共通部分が空でも S でもない) のうち次に来るものは一様なので、S → S ∩ q の遷移の確率は cnt[q] / eff(S)。遷移を足し込む
+# 添字は S の補集合の小さい順で、重なりを許す OR 畳み込みのオンライン (真の部分集合の和) になる。
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# テストケースは公開されていないので、自作する (gen.py と、ライブラリに依存しない submissions/reference.hpp)。
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 12
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "float"
+abs_tol = 1e-9
+rel_tol = 1e-9
+
+[record]
+case_times = true
