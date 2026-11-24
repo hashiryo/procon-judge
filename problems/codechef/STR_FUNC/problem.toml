@@ -1,0 +1,26 @@
+id = "codechef-STR_FUNC"
+title = "Strange Functions"
+url = "https://www.codechef.com/problems/STR_FUNC"
+
+# 長さ N の列 A (1 <= N <= 6e5、1 <= A[i] <= 1e9) から F と G を、F[i] = A[i]^2 + (sum_{j ⊊ i} G[j])^2、G[i] = sum_{j ⊆ i} F[j]^2
+# (j は i の部分集合の添字、j = i も含む) で決め、sum_i i F[i] G[i] を 1e9 + 7 で割った余りで求める。添字の小さい順に、真の部分集合の
+# G の和と F^2 の和を使うオンラインの部分集合のゼータ。時間制限 2.5 秒。
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+# テストケースは公開されていないので、自作する (gen.py と、ライブラリに依存しない submissions/reference.hpp)。
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 8
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true

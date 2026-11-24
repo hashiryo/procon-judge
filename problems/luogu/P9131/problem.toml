@@ -1,0 +1,27 @@
+id = "luogu-P9131"
+title = "[USACO23FEB] Problem Setting P"
+url = "https://www.luogu.com.cn/problem/P9131"
+
+# N 問 (N <= 1e5) を M 人 (M <= 20) が easy か hard かで評価する。どの人から見ても、後ろの問題が easy で前の問題が hard の組が無いように
+# 問題を選んで並べた列の数を 1e9 + 7 で割った余りで求める (順序も区別する、空は除く)。各問題の hard の人の集合 S で数えると、列は S が真に
+# 増える向きに並ぶので、同じ S の問題 c 個の並べ方 f(c) = c (f(c - 1) + 1) を掛けた dp[S] = f(c_S) (1 + sum_{T ⊊ S} dp[T]) の和 (USACO 1309 と同じ
+# 問題)。オンラインの部分集合のゼータ (S の小さい順に真の部分集合の dp の和を使う) になる。
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+# テストケースは公開されていないので、自作する (gen.py と、ライブラリに依存しない submissions/reference.hpp)。
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 12
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
