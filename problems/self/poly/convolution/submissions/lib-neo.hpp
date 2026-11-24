@@ -1,7 +1,7 @@
 #pragma once
-// NeoLibrary の convolve_naive (neo/base/core/poly/convolve_naive.hpp)。
+// NeoLibrary の convolve_naive (neo/base/core/convolve/naive.hpp)。
 #include "neo/base/core/algebra/ZMod.hpp"
-#include "neo/base/core/poly/convolve_naive.hpp"
+#include "neo/base/core/convolve/naive.hpp"
 inline vector<u32> run(const vector<u32>& a, const vector<u32>& b) {
  using Z= ZMod<998244353>;
  vector<Z> A(a.size()), B(b.size());
