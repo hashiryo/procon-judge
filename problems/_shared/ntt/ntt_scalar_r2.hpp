@@ -12,10 +12,7 @@
 #include <vector>
 #include "neo/base/core/algebra/ZMod.hpp"
 #include "neo/base/core/convolve/naive.hpp"
-#include "neo/base/core/nt/is_prime.hpp"
-
-// 単独の NTT の核を既定にしてよい素数か。2^20 までの変換を約束する (工具の大きさは後で決める)。
-template <unsigned P> constexpr bool ntt_friendly= P > 2 && is_prime(P) && (P - 1) % (1u << 20) == 0;
+#include "_shared/ntt/_kernel_base.hpp"
 
 namespace ntt_scalar_r2_internal {
 using u32= unsigned;
