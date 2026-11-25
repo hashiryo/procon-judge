@@ -124,15 +124,34 @@ template <unsigned P> const u32& primitive_root() {
  return g;
 }
 
+// 1 の原始 4 乗根 (順) とその逆。段ごとに作り直さない。
+template <unsigned P> const V& im_vec() {
+ static const V v= vsplat<P>(smont<P>(spow<P>(primitive_root<P>(), u64(P - 1) / 4)));
+ return v;
+}
+template <unsigned P> const V& ii_vec() {
+ static const V v= vsplat<P>(smont<P>(spow<P>(primitive_root<P>(), u64(P - 1) - u64(P - 1) / 4)));
+ return v;
+}
+// n^{-1} mod P。n = 2^e ごとに残す。
+template <unsigned P> u32 inv_n_scalar(int n) {
+ static u32 tab[26]= {};
+ const int e= __builtin_ctz(unsigned(n));
+ if (!tab[e]) tab[e]= spow<P>(unsigned(n), u64(P - 2));
+ return tab[e];
+}
+
 // 段のひねりの表。長さ len の段では h = len/4 として、tw[j] = ω_len^j、tw[h + j] = ω_len^{2j}、tw[2h + j] = ω_len^{3j}。
 // 同じ段のすべてのブロックで使い回す。ベクトルで作る (率を掛けて 8 個ずつ進める)。
+// 長さと向きごとに 1 回だけ作って残す (小さい n を何度も変換するときの作り直しを避ける)。
 template <unsigned P> struct scratch {
- static inline std::vector<u32> tw;
+ static inline std::vector<u32> tw[2][26];
 };
 // inv = false で順変換 (ω_len^j)、true で逆変換 (ω_len^{-j})。
 template <unsigned P> const u32* build_tw(int len, int h, bool inv) {
- auto& tab= scratch<P>::tw;
- if ((int)tab.size() < 3 * h) tab.resize(3 * h);
+ auto& tab= scratch<P>::tw[inv ? 1 : 0][__builtin_ctz(unsigned(len))];
+ if ((int)tab.size() == 3 * h) return tab.data();
+ tab.assign(3 * h, 0);
  const u32 g= primitive_root<P>();
  const u32 wl= smont<P>(spow<P>(g, inv ? u64(P - 1) - u64(P - 1) / unsigned(len) : u64(P - 1) / unsigned(len)));
  const u32 c2= smul<P>(wl, wl), c3= smul<P>(c2, wl);
@@ -160,7 +179,7 @@ template <unsigned P> void dft_stage_vec(u32* d, int n, int len) {
  const u32* t1= tab;
  const u32* t2= tab + h;
  const u32* t3= tab + 2 * h;
- const V im= vsplat<P>(smont<P>(spow<P>(primitive_root<P>(), u64(P - 1) / 4)));
+ const V& im= im_vec<P>();
  for (int b= 0; b < n; b+= len) {
   u32* q= d + b;
   for (int jv= 0; jv < hv; ++jv) {
@@ -188,7 +207,7 @@ template <unsigned P> void idft_stage_vec(u32* d, int n, int len) {
  const u32* t1= tab;
  const u32* t2= tab + h;
  const u32* t3= tab + 2 * h;
- const V ii= vsplat<P>(smont<P>(spow<P>(primitive_root<P>(), u64(P - 1) - u64(P - 1) / 4)));
+ const V& ii= ii_vec<P>();
  for (int b= 0; b < n; b+= len) {
   u32* q= d + b;
   for (int jv= 0; jv < hv; ++jv) {
@@ -229,7 +248,7 @@ template <unsigned P> void dft_stage_r2(u32* d, int n) {
 // s = [u0+u2, u1+u3]、dd = [u0-u2, u1-u3] として、out0 = s0+s1、out2 = s0-s1、out1 = dd0+i dd1、out3 = dd0-i dd1 (ひねりは 1)。
 // 値はレーン 0 か全レーンにできるので、最後にレーン 0〜3 へ並べ直す。順変換。
 template <unsigned P> void dft_stage_h1(u32* d, int n) {
- const V im= vsplat<P>(smont<P>(spow<P>(primitive_root<P>(), u64(P - 1) / 4)));
+ const V& im= im_vec<P>();
  for (int b= 0; b < n; b+= 8) {
   const V v= vload<P>(d + b);
   const V sw= _mm256_shuffle_epi32(v, _MM_SHUFFLE(1, 0, 3, 2));  // [e2,e3,e0,e1]
@@ -248,7 +267,7 @@ template <unsigned P> void dft_stage_h1(u32* d, int n) {
 
 // len = 4 の段 (h = 1)。逆変換。
 template <unsigned P> void idft_stage_h1(u32* d, int n) {
- const V ii= vsplat<P>(smont<P>(spow<P>(primitive_root<P>(), u64(P - 1) - u64(P - 1) / 4)));
+ const V& ii= ii_vec<P>();
  for (int b= 0; b < n; b+= 8) {
   const V v= vload<P>(d + b);
   const V sw= _mm256_shuffle_epi32(v, _MM_SHUFFLE(1, 0, 3, 2));  // [e2,e3,e0,e1]
@@ -265,16 +284,50 @@ template <unsigned P> void idft_stage_h1(u32* d, int n) {
  }
 }
 
+// 小さい段 (h <= 4) のひねり (Montgomery) と、i / i^{-1} のスカラー版。長さと向きごとに 1 回だけ作る。
+template <unsigned P> struct small_cache {
+ static inline u32 a[2][6][3][4]= {};
+ static inline bool built[2][6]= {};
+ static inline u32 i4[2]= {0, 0};
+ static inline bool built_i= false;
+};
+template <unsigned P> const u32* small_tw(int len, int h, bool inv) {
+ using C= small_cache<P>;
+ const int e= __builtin_ctz(unsigned(len));
+ if (!C::built[inv ? 1 : 0][e]) {
+  const u32 g= primitive_root<P>();
+  const u32 wl= smont<P>(spow<P>(g, inv ? u64(P - 1) - u64(P - 1) / unsigned(len) : u64(P - 1) / unsigned(len)));
+  const u32 c2= smul<P>(wl, wl), c3= smul<P>(c2, wl);
+  u32* t= &C::a[inv ? 1 : 0][e][0][0];
+  u32* a1= t;
+  u32* a2= t + 4;
+  u32* a3= t + 8;
+  a1[0]= a2[0]= a3[0]= mc<P>::r;
+  for (int j= 1; j < 4; ++j) a1[j]= smul<P>(a1[j - 1], wl), a2[j]= smul<P>(a2[j - 1], c2), a3[j]= smul<P>(a3[j - 1], c3);
+  C::built[inv ? 1 : 0][e]= true;
+ }
+ (void)h;
+ return &C::a[inv ? 1 : 0][e][0][0];
+}
+template <unsigned P> u32 small_i(bool inv_i) {
+ using C= small_cache<P>;
+ if (!C::built_i) {
+  const u32 g= primitive_root<P>();
+  C::i4[0]= smont<P>(spow<P>(g, u64(P - 1) / 4));
+  C::i4[1]= smont<P>(spow<P>(g, u64(P - 1) - u64(P - 1) / 4));
+  C::built_i= true;
+ }
+ return C::i4[inv_i ? 1 : 0];
+}
+
 // h = len/4 が 4 以下の段 (スカラー)。順変換。
 template <unsigned P> void dft_stage_small(u32* d, int n, int len) {
  const int h= len>> 2;
- const u32 g= primitive_root<P>();
- const u32 wl= smont<P>(spow<P>(g, u64(P - 1) / unsigned(len)));
- const u32 c2= smul<P>(wl, wl), c3= smul<P>(c2, wl);
- u32 a1[4], a2[4], a3[4];
- a1[0]= a2[0]= a3[0]= mc<P>::r;
- for (int j= 1; j < h; ++j) a1[j]= smul<P>(a1[j - 1], wl), a2[j]= smul<P>(a2[j - 1], c2), a3[j]= smul<P>(a3[j - 1], c3);
- const u32 im= smont<P>(spow<P>(g, u64(P - 1) / 4));
+ const u32* tw= small_tw<P>(len, h, false);
+ const u32* a1= tw;
+ const u32* a2= tw + 4;
+ const u32* a3= tw + 8;
+ const u32 im= small_i<P>(false);
  for (int b= 0; b < n; b+= len) {
   u32* q= d + b;
   for (int j= 0; j < h; ++j) {
@@ -295,13 +348,11 @@ template <unsigned P> void dft_stage_small(u32* d, int n, int len) {
 // h = len/4 が 4 以下の段 (スカラー)。逆変換。
 template <unsigned P> void idft_stage_small(u32* d, int n, int len) {
  const int h= len>> 2;
- const u32 g= primitive_root<P>();
- const u32 wl= smont<P>(spow<P>(g, u64(P - 1) - u64(P - 1) / unsigned(len)));
- const u32 c2= smul<P>(wl, wl), c3= smul<P>(c2, wl);
- u32 a1[4], a2[4], a3[4];
- a1[0]= a2[0]= a3[0]= mc<P>::r;
- for (int j= 1; j < h; ++j) a1[j]= smul<P>(a1[j - 1], wl), a2[j]= smul<P>(a2[j - 1], c2), a3[j]= smul<P>(a3[j - 1], c3);
- const u32 ii= smont<P>(spow<P>(g, u64(P - 1) - u64(P - 1) / 4));
+ const u32* tw= small_tw<P>(len, h, true);
+ const u32* a1= tw;
+ const u32* a2= tw + 4;
+ const u32* a3= tw + 8;
+ const u32 ii= small_i<P>(true);
  for (int b= 0; b < n; b+= len) {
   u32* q= d + b;
   for (int j= 0; j < h; ++j) {
@@ -366,11 +417,13 @@ template <unsigned P> void idft_impl(ZMod<P>* a, int n) {
   for (int len= 64; len <= n; len<<= 2) idft_stage_vec<P>(d, n, len);
  }
  // 1/n を掛けると、Montgomery のままの値がふつうの値に戻る。
- const u32 inv_n= spow<P>(unsigned(n), u64(P - 2));
- const V cv= vsplat<P>(inv_n);
+ const V cv= vsplat<P>(inv_n_scalar<P>(n));
  int i= 0;
  for (; i + 8 <= n; i+= 8) vstore<P>(d + i, vmuls<P>(vload<P>(d + i), cv));
- for (; i < n; ++i) d[i]= smul<P>(d[i], inv_n);
+ if (i < n) {
+  const u32 iv= inv_n_scalar<P>(n);
+  for (; i < n; ++i) d[i]= smul<P>(d[i], iv);
+ }
 }
 
 // a[0..n) は長さ n の変換。係数に戻して 0 を詰め、長さ 2n の変換を a[0..2n) に作る (2 本目と同じ素直な形)。
