@@ -26,6 +26,9 @@
 
 namespace ntt_avx2_internal {
 using u32= unsigned;
+
+// 小さい段をまとめて回すタイルの長さ (2 の冪)。4 KB から 8 KB くらい。
+constexpr int dft_tile= 2048;
 using u64= unsigned long long;
 using V= __m256i;
 
@@ -368,6 +371,34 @@ template <unsigned P> void idft_stage_small(u32* d, int n, int len) {
  }
 }
 
+// タイル (dft_tile 以下) の残りの段をまとめて回す。順変換。
+template <unsigned P> void dft_stages_small(u32* d, int n) {
+ int len= n;
+ for (; len >= 32; len>>= 2) dft_stage_vec<P>(d, n, len);
+ if (len == 16) dft_stage_small<P>(d, n, 16), len= 4;
+ if (len == 8) dft_stage_small<P>(d, n, 8), len= 2;
+ if (len == 4) {
+  if (n >= 8) dft_stage_h1<P>(d, n);
+  else dft_stage_small<P>(d, n, 4);
+  len= 1;
+ }
+ if (len == 2) dft_stage_r2<P>(d, n);
+}
+// タイル (dft_tile 以下) の段を、小さい方から順に回す。逆変換。
+template <unsigned P> void idft_stages_small(u32* d, int n) {
+ const bool odd_e= __builtin_ctz(unsigned(n)) & 1;
+ if (odd_e) {
+  dft_stage_r2<P>(d, n);
+  if (n >= 8) idft_stage_small<P>(d, n, 8);
+  for (int len= 32; len <= n; len<<= 2) idft_stage_vec<P>(d, n, len);
+ } else {
+  if (n >= 8) idft_stage_h1<P>(d, n);
+  else idft_stage_small<P>(d, n, 4);
+  if (n >= 16) idft_stage_small<P>(d, n, 16);
+  for (int len= 64; len <= n; len<<= 2) idft_stage_vec<P>(d, n, len);
+ }
+}
+
 // DIF。a[i] に Σ_j a[j] ω^{j k} が入る。k は位置 i の 4 進の桁を逆にした数 (2 の指数が奇数なら最後の基数 2 の段で最上位の桁が最下位に来る)。
 template <unsigned P> void to_mont(u32* d, int n) {
  const V r2v= vsplat<P>(mc<P>::r2);
@@ -386,16 +417,12 @@ template <unsigned P> void dft_impl(ZMod<P>* a, int n) {
  assert((n & (n - 1)) == 0 && (P - 1) % unsigned(n) == 0);
  u32* d= reinterpret_cast<u32*>(a);
  to_mont<P>(d, n);
- int len= n;
- for (; len >= 32; len>>= 2) dft_stage_vec<P>(d, n, len);
- if (len == 16) dft_stage_small<P>(d, n, 16), len= 4;
- if (len == 8) dft_stage_small<P>(d, n, 8), len= 2;
- if (len == 4) {
-  if (n >= 8) dft_stage_h1<P>(d, n);
-  else dft_stage_small<P>(d, n, 4);
-  len= 1;
- }
- if (len == 2) dft_stage_r2<P>(d, n);
+ // 大きい段 (タイルより長い段) は配列全体をなめる。タイルは段の長さに合わせて 4 で割って決める。
+ int tile= n;
+ while (tile > dft_tile) tile>>= 2;
+ for (int len= n; len > tile; len>>= 2) dft_stage_vec<P>(d, n, len);
+ // 残りの段はタイルごとに、タイルを L1 に載せたまま回す。
+ for (int b= 0; b < n; b+= tile) dft_stages_small<P>(d + b, tile);
  from_mont<P>(d, n);
 }
 
@@ -405,17 +432,11 @@ template <unsigned P> void idft_impl(ZMod<P>* a, int n) {
  assert((n & (n - 1)) == 0 && (P - 1) % unsigned(n) == 0);
  u32* d= reinterpret_cast<u32*>(a);
  to_mont<P>(d, n);
- const bool odd_e= __builtin_ctz(unsigned(n)) & 1;
- if (odd_e) {
-  dft_stage_r2<P>(d, n);
-  if (n >= 8) idft_stage_small<P>(d, n, 8);
-  for (int len= 32; len <= n; len<<= 2) idft_stage_vec<P>(d, n, len);
- } else {
-  if (n >= 8) idft_stage_h1<P>(d, n);
-  else idft_stage_small<P>(d, n, 4);
-  if (n >= 16) idft_stage_small<P>(d, n, 16);
-  for (int len= 64; len <= n; len<<= 2) idft_stage_vec<P>(d, n, len);
- }
+ // 小さい段はタイルごとに、大きい段は配列全体をなめる。タイルは段の長さに合わせて 4 で割って決める。
+ int tile= n;
+ while (tile > dft_tile) tile>>= 2;
+ for (int b= 0; b < n; b+= tile) idft_stages_small<P>(d + b, tile);
+ for (int len= tile<< 2; len <= n; len<<= 2) idft_stage_vec<P>(d, n, len);
  // 1/n を掛けると、Montgomery のままの値がふつうの値に戻る。
  const V cv= vsplat<P>(inv_n_scalar<P>(n));
  int i= 0;
