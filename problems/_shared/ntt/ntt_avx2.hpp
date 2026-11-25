@@ -209,6 +209,62 @@ template <unsigned P> void idft_stage_vec(u32* d, int n, int len) {
  }
 }
 
+// 最後の基数 2 の段 (h = 1)。8 個 (4 対) ずつ。順変換にも逆変換にも使える (1/2 は掛けない)。
+template <unsigned P> void dft_stage_r2(u32* d, int n) {
+ int i= 0;
+ for (; i + 8 <= n; i+= 8) {
+  const V v= vload<P>(d + i);
+  const V w= _mm256_shuffle_epi32(v, _MM_SHUFFLE(2, 3, 0, 1));  // [a1,a0,a3,a2]
+  const V s= vlow<P>(vplus<P>(v, w));                          // 偶数レーン: a+b
+  const V t= vlow<P>(vdiff<P>(w, v));                          // 奇数レーン: a-b
+  vstore<P>(d + i, _mm256_blend_epi32(s, t, 0xAA));
+ }
+ for (; i < n; i+= 2) {
+  const u32 u= d[i], v= d[i + 1];
+  d[i]= slow<P>(u + v), d[i + 1]= slow<P>(sdiff<P>(u, v));
+ }
+}
+
+// len = 4 の段 (h = 1)。2 ブロック (8 個) ずつ。128 bit レーンの中の 4 個で DFT4 をする。
+// s = [u0+u2, u1+u3]、dd = [u0-u2, u1-u3] として、out0 = s0+s1、out2 = s0-s1、out1 = dd0+i dd1、out3 = dd0-i dd1 (ひねりは 1)。
+// 値はレーン 0 か全レーンにできるので、最後にレーン 0〜3 へ並べ直す。順変換。
+template <unsigned P> void dft_stage_h1(u32* d, int n) {
+ const V im= vsplat<P>(smont<P>(spow<P>(primitive_root<P>(), u64(P - 1) / 4)));
+ for (int b= 0; b < n; b+= 8) {
+  const V v= vload<P>(d + b);
+  const V sw= _mm256_shuffle_epi32(v, _MM_SHUFFLE(1, 0, 3, 2));  // [e2,e3,e0,e1]
+  const V s= vlow<P>(vplus<P>(v, sw));                          // [t0,t1,t0,t1] (t0 = e0+e2、t1 = e1+e3)
+  const V dd= vlow<P>(vdiff<P>(v, sw));                         // [t2,t3,-t2,-t3] (t2 = e0-e2、t3 = e1-e3)
+  const V p= _mm256_shuffle_epi32(s, _MM_SHUFFLE(2, 3, 0, 1));   // [t1,t0,t1,t0]
+  const V q= _mm256_shuffle_epi32(dd, _MM_SHUFFLE(2, 3, 0, 1));  // [t3,t2,t3,t2]
+  const V iq= vmuls<P>(q, im);                                  // [i t3, i t2, ..]
+  const V a0= vlow<P>(vplus<P>(s, p));                          // 全レーン out0 = t0+t1
+  const V a1= _mm256_shuffle_epi32(vlow<P>(vplus<P>(dd, iq)), _MM_SHUFFLE(0, 0, 0, 0));   // out1 = t2+i t3
+  const V a2= _mm256_shuffle_epi32(vlow<P>(vdiff<P>(s, p)), _MM_SHUFFLE(0, 0, 0, 0));      // out2 = t0-t1
+  const V a3= _mm256_shuffle_epi32(vlow<P>(vdiff<P>(dd, iq)), _MM_SHUFFLE(0, 0, 0, 0));    // out3 = t2-i t3
+  vstore<P>(d + b, _mm256_blend_epi32(_mm256_blend_epi32(a0, a1, 0x22), _mm256_blend_epi32(a2, a3, 0x88), 0xCC));
+ }
+}
+
+// len = 4 の段 (h = 1)。逆変換。
+template <unsigned P> void idft_stage_h1(u32* d, int n) {
+ const V ii= vsplat<P>(smont<P>(spow<P>(primitive_root<P>(), u64(P - 1) - u64(P - 1) / 4)));
+ for (int b= 0; b < n; b+= 8) {
+  const V v= vload<P>(d + b);
+  const V sw= _mm256_shuffle_epi32(v, _MM_SHUFFLE(1, 0, 3, 2));  // [e2,e3,e0,e1]
+  const V s= vlow<P>(vplus<P>(v, sw));                          // [t0,t1,t0,t1]
+  const V dd= vlow<P>(vdiff<P>(v, sw));                         // [t2,t3,-t2,-t3]
+  const V p= _mm256_shuffle_epi32(s, _MM_SHUFFLE(2, 3, 0, 1));   // [t1,t0,t1,t0]
+  const V q= _mm256_shuffle_epi32(dd, _MM_SHUFFLE(2, 3, 0, 1));  // [t3,t2,t3,t2]
+  const V iq= vmuls<P>(q, ii);                                  // [ii t3, ii t2, ..]
+  const V a0= vlow<P>(vplus<P>(s, p));                          // 全レーン x0 = t0+t1
+  const V a1= _mm256_shuffle_epi32(vlow<P>(vplus<P>(dd, iq)), _MM_SHUFFLE(0, 0, 0, 0));   // x1 = t2+ii t3
+  const V a2= _mm256_shuffle_epi32(vlow<P>(vdiff<P>(s, p)), _MM_SHUFFLE(0, 0, 0, 0));      // x2 = t0-t1
+  const V a3= _mm256_shuffle_epi32(vlow<P>(vdiff<P>(dd, iq)), _MM_SHUFFLE(0, 0, 0, 0));    // x3 = t2-ii t3
+  vstore<P>(d + b, _mm256_blend_epi32(_mm256_blend_epi32(a0, a1, 0x22), _mm256_blend_epi32(a2, a3, 0x88), 0xCC));
+ }
+}
+
 // h = len/4 が 4 以下の段 (スカラー)。順変換。
 template <unsigned P> void dft_stage_small(u32* d, int n, int len) {
  const int h= len>> 2;
@@ -281,12 +337,14 @@ template <unsigned P> void dft_impl(ZMod<P>* a, int n) {
  to_mont<P>(d, n);
  int len= n;
  for (; len >= 32; len>>= 2) dft_stage_vec<P>(d, n, len);
- for (; len >= 4; len>>= 2) dft_stage_small<P>(d, n, len);
- if (len == 2)
-  for (int b= 0; b < n; b+= 2) {
-   const u32 u= d[b], v= d[b + 1];
-   d[b]= slow<P>(u + v), d[b + 1]= slow<P>(sdiff<P>(u, v));
-  }
+ if (len == 16) dft_stage_small<P>(d, n, 16), len= 4;
+ if (len == 8) dft_stage_small<P>(d, n, 8), len= 2;
+ if (len == 4) {
+  if (n >= 8) dft_stage_h1<P>(d, n);
+  else dft_stage_small<P>(d, n, 4);
+  len= 1;
+ }
+ if (len == 2) dft_stage_r2<P>(d, n);
  from_mont<P>(d, n);
 }
 
@@ -297,14 +355,15 @@ template <unsigned P> void idft_impl(ZMod<P>* a, int n) {
  u32* d= reinterpret_cast<u32*>(a);
  to_mont<P>(d, n);
  const bool odd_e= __builtin_ctz(unsigned(n)) & 1;
- if (odd_e)
-  for (int b= 0; b < n; b+= 2) {
-   const u32 u= d[b], v= d[b + 1];
-   d[b]= slow<P>(u + v), d[b + 1]= slow<P>(sdiff<P>(u, v));
-  }
- for (int len= odd_e ? 8 : 4; len <= n; len<<= 2) {
-  if (len >= 32) idft_stage_vec<P>(d, n, len);
-  else idft_stage_small<P>(d, n, len);
+ if (odd_e) {
+  dft_stage_r2<P>(d, n);
+  if (n >= 8) idft_stage_small<P>(d, n, 8);
+  for (int len= 32; len <= n; len<<= 2) idft_stage_vec<P>(d, n, len);
+ } else {
+  if (n >= 8) idft_stage_h1<P>(d, n);
+  else idft_stage_small<P>(d, n, 4);
+  if (n >= 16) idft_stage_small<P>(d, n, 16);
+  for (int len= 64; len <= n; len<<= 2) idft_stage_vec<P>(d, n, len);
  }
  // 1/n を掛けると、Montgomery のままの値がふつうの値に戻る。
  const u32 inv_n= spow<P>(unsigned(n), u64(P - 2));
