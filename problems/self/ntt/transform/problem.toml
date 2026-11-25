@@ -1,0 +1,21 @@
+id = "self-ntt-transform"
+title = "NTT の順変換と逆変換 (mod 998244353、大きさごとのケース)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 23
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
