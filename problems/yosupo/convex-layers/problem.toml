@@ -1,0 +1,16 @@
+id = "yosupo-convex-layers"
+title = "Convex Layers"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "library_checker"
+name = "geo/convex_layers"
+
+[compare]
+kind = "checker"
