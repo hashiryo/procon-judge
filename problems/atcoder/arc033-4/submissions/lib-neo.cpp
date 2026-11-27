@@ -21,7 +21,7 @@ signed main(stringstream& scin, stringstream& scout) {
  for(int i= 0; i <= N; ++i) scin >> A[i];
  int T;
  scin >> T;
- scout << interpolate_iota<Mint>(A, T) << '\n';
+ scout << lagrange::interpolate_iota<Mint>(A, T) << '\n';
  return 0;
 }
 }

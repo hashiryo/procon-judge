@@ -13,6 +13,6 @@ signed main() {
  auto y= pow_table<Mint>(M + K, K);
  for(int i= M; i--;)
   for(int j= 0; j < M + K; ++j) y[j + 1]+= y[j];
- cout << interpolate_iota<Mint>(y, N) << '\n';
+ cout << lagrange::interpolate_iota<Mint>(y, N) << '\n';
  return 0;
 }

@@ -6,5 +6,5 @@
 #include "neo/algo/compute/poly/lagrange.hpp"
 inline u32 run(u32 r, u32 d, u64 n) {
  using Z= ZMod<998244353>;
- return sum_exp_poly(pow_table<Z>(int(d), d), Z(r), n).val();
+ return lagrange::sum_exp_poly(pow_table<Z>(int(d), d), Z(r), n).val();
 }

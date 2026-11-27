@@ -24,6 +24,6 @@ signed main() {
  S-= 6;
  vector<Mint> y(6);
  for(int i= 0; i < 6; ++i) y[i]= a[i * 12 + S % 12];
- cout << interpolate_iota<Mint>(y, S / 12) / 24 << '\n';
+ cout << lagrange::interpolate_iota<Mint>(y, S / 12) / 24 << '\n';
  return 0;
 }

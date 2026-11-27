@@ -22,6 +22,6 @@ signed main() {
  auto c= sparse_fps::div<Mint>({A, B}, {1, -1, -1}, n + 1);
  b= sparse_fps::div(sparse_fps::pow_of_div<Mint>({1}, {1, -1}, n, n + 1), {1, -1, -1}, n + 1);
  for(int i= 0; i <= n; ++i) b[i]-= c[i];
- cout << interpolate_iota<Mint>(b, m) + div_at<Mint>({A, B}, {1, -1, -1}, m) << '\n';
+ cout << lagrange::interpolate_iota<Mint>(b, m) + div_at<Mint>({A, B}, {1, -1, -1}, m) << '\n';
  return 0;
 }

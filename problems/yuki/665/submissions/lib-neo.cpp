@@ -14,6 +14,6 @@ signed main() {
  cin >> n >> k;
  auto pws= pow_table<Mint>(k + 1, k);
  for(int i= 0; i < k + 1; ++i) pws[i + 1]+= pws[i];
- cout << interpolate_iota<Mint>(pws, n) << '\n';
+ cout << lagrange::interpolate_iota<Mint>(pws, n) << '\n';
  return 0;
 }

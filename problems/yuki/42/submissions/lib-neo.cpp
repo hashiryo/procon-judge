@@ -19,7 +19,7 @@ signed main() {
   cin >> M;
   vector<Mint> y(6);
   for(int i= 0; i <= 5; i++) y[i]= dp[M % 500 + i * 500];
-  cout << interpolate_iota<Mint>(y, M / 500) << '\n';
+  cout << lagrange::interpolate_iota<Mint>(y, M / 500) << '\n';
  }
  return 0;
 }
