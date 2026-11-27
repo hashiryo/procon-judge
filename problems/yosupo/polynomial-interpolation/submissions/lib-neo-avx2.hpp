@@ -1,8 +1,8 @@
 #pragma once
-// 実験中の補間 (部分積木と P' の多点評価、_shared/ntt/multipoint.hpp) を、実験中の単独の NTT の核 (3 本目、AVX2) で回す。
+// NeoLibrary の補間 (neo/base/core/poly/multipoint.hpp) を、実験中の単独の NTT の核 (3 本目、AVX2) で回す。
 #include <vector>
 #include "neo/base/core/algebra/ZMod.hpp"
-#include "_shared/ntt/multipoint.hpp"
+#include "neo/base/core/poly/multipoint.hpp"
 #include "_shared/ntt/ntt_avx2.hpp"
 
 struct Solver {
