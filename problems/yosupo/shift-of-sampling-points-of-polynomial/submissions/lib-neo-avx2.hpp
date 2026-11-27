@@ -1,8 +1,8 @@
 #pragma once
-// 実験中の標本点のずらし (_shared/ntt/sample_shift.hpp) を、実験中の単独の NTT の核 (3 本目、AVX2) で回す。
+// NeoLibrary の sample_points_shift (neo/base/core/poly/sample_shift.hpp) を、実験中の単独の NTT の核 (3 本目、AVX2) で回す。
 #include <vector>
 #include "neo/base/core/algebra/ZMod.hpp"
-#include "_shared/ntt/sample_shift.hpp"
+#include "neo/base/core/poly/sample_shift.hpp"
 #include "_shared/ntt/ntt_avx2.hpp"
 
 struct Solver {
