@@ -1,0 +1,16 @@
+id = "yosupo-min-plus-convolution-convex-convex"
+title = "Min Plus Convolution (Convex and Convex)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "convolution/min_plus_convolution_convex_convex"
+
+[compare]
+kind = "checker"
