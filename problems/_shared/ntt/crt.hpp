@@ -60,19 +60,20 @@ struct barrett {
  }
 };
 
-// 素数 P での畳み込み (NttR4 をそのまま使う)。out[0..sz) に全体の積。
-template <u32 P> void prime_conv(const u32* a, int n, const u32* b, int m, int sz, bool sq, u32* out) {
+// 素数 P での畳み込み (単独の NTT の核 Ntt をそのまま使う)。out[0..sz) に全体の積。
+template <class Ntt, u32 P> void prime_conv(const u32* a, int n, const u32* b, int m, int sz, bool sq, u32* out) {
  using Z= ZMod<P>;
  std::vector<Z> fa(n), fb(sq ? 0 : m), fc(sz);
  for (int i= 0; i < n; ++i) fa[i]= Z::raw(a[i]);
  if (!sq)
   for (int i= 0; i < m; ++i) fb[i]= Z::raw(b[i]);
- NttR4::convolve_range<Z>(fa.data(), n, sq ? fa.data() : fb.data(), m, 0, sz, fc.data());
+ Ntt::template convolve_range<Z>(fa.data(), n, sq ? fa.data() : fb.data(), m, 0, sz, fc.data());
  for (int i= 0; i < sz; ++i) out[i]= fc[i].val();
 }
 }  // namespace crt_internal
 
-struct Crt {
+// 3 素数の NTT を核 Ntt で回す CRT。Ntt は単独の NTT の核 (convolve_range<K> を持つ) なら何でもよい。
+template <class Ntt> struct crt_kernel {
  // out[k - lo] = Σ_{i+j=k} a[i] b[j] (lo <= k < hi)。n >= 1、m >= 1、0 <= lo < hi <= n + m - 1。
  template <class K> static void convolve_range(const K* a, int n, const K* b, int m, int lo, int hi, K* out) {
   static_assert(is_zmod_v<K>, "Crt は ZMod の係数だけ");
@@ -100,9 +101,9 @@ struct Crt {
    if (!sq)
     for (int i= 0; i < m; ++i) xb[i]= modp(b[i].val(), p);
    u32* r= t == 0 ? r1.data() : t == 1 ? r2.data() : r3.data();
-   if (t == 0) prime_conv<P1>(xa.data(), n, xb.data(), m, sz, sq, r);
-   else if (t == 1) prime_conv<P2>(xa.data(), n, xb.data(), m, sz, sq, r);
-   else prime_conv<P3>(xa.data(), n, xb.data(), m, sz, sq, r);
+   if (t == 0) crt_internal::prime_conv<Ntt, P1>(xa.data(), n, xb.data(), m, sz, sq, r);
+   else if (t == 1) crt_internal::prime_conv<Ntt, P2>(xa.data(), n, xb.data(), m, sz, sq, r);
+   else crt_internal::prime_conv<Ntt, P3>(xa.data(), n, xb.data(), m, sz, sq, r);
   }
   // Garner: x = x1 + P1 t1 + P1 P2 t2 (mod M)。
   for (int k= lo; k < hi; ++k) {
@@ -117,3 +118,4 @@ struct Crt {
   }
  }
 };
+using Crt= crt_kernel<NttR4>;
