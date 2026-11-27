@@ -74,6 +74,10 @@ template <unsigned P> u32 sdiff(u32 x, u32 y) { return x + mc<P>::p2 - y; }
 template <unsigned P> V vsplat(u32 x) { return _mm256_set1_epi32(int(x)); }
 template <unsigned P> V vload(const u32* p) { return _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p)); }
 template <unsigned P> void vstore(u32* p, V x) { _mm256_storeu_si256(reinterpret_cast<__m256i*>(p), x); }
+template <unsigned P> __m128i vload128(const u32* p) { return _mm_loadu_si128(reinterpret_cast<const __m128i*>(p)); }
+template <unsigned P> __m128i vsplat128(u32 x) { return _mm_set1_epi32(int(x)); }
+// 128 bit を 2 本つないで 1 本の 8 レーンにする。
+template <unsigned P> V vcombine128(__m128i lo, __m128i hi) { return _mm256_inserti128_si256(_mm256_castsi128_si256(lo), hi, 1); }
 template <unsigned P> V vplus(V x, V y) { return _mm256_add_epi32(x, y); }
 template <unsigned P> V vdiff(V x, V y) { return _mm256_sub_epi32(_mm256_add_epi32(x, vsplat<P>(mc<P>::p2)), y); }
 template <unsigned P> V vlow(V x) { return _mm256_min_epu32(x, _mm256_sub_epi32(x, vsplat<P>(mc<P>::p2))); }
@@ -371,12 +375,148 @@ template <unsigned P> void idft_stage_small(u32* d, int n, int len) {
  }
 }
 
+// len = 16 の段 (h = 4)。2 ブロック (32 個) ずつ。1 ブロックは 8 レーン 2 本 ([u0|u1] と [u2|u3]) なので、
+// 2 ブロック分を 128 bit ごとに組み替えて、u0+u2 などを [b0|b1] の 8 レーンにする。順変換。
+// 1 ブロックだけのタイル (n = 16) はスカラーに回す。
+template <unsigned P> void dft_stage_h4(u32* d, int n) {
+ if (n < 32) {
+  dft_stage_small<P>(d, n, 16);
+  return;
+ }
+ const u32* tw= small_tw<P>(16, 4, false);
+ const V w1= vcombine128<P>(vload128<P>(tw), vload128<P>(tw));
+ const V w2= vcombine128<P>(vload128<P>(tw + 4), vload128<P>(tw + 4));
+ const V w3= vcombine128<P>(vload128<P>(tw + 8), vload128<P>(tw + 8));
+ const V& im= im_vec<P>();
+ for (int b= 0; b + 32 <= n; b+= 32) {
+  u32* q= d + b;
+  const V x0= vload<P>(q), x1= vload<P>(q + 8), x2= vload<P>(q + 16), x3= vload<P>(q + 24);
+  const V s0= vplus<P>(x0, x1), s1= vplus<P>(x2, x3);
+  const V d0= vdiff<P>(x0, x1), d1= vdiff<P>(x2, x3);
+  const V t0= vlow<P>(_mm256_permute2x128_si256(s0, s1, 0x20));  // u0+u2 (b0 | b1)
+  const V t2= vlow<P>(_mm256_permute2x128_si256(s0, s1, 0x31));  // u1+u3
+  const V t1= vlow<P>(_mm256_permute2x128_si256(d0, d1, 0x20));  // u0-u2
+  const V t3= _mm256_permute2x128_si256(d0, d1, 0x31);           // u1-u3
+  const V pi= vmuls<P>(t3, im);
+  const V a1= vplus<P>(t1, pi), a3= vdiff<P>(t1, pi);
+  const V o0= vlow<P>(vplus<P>(t0, t2));
+  const V o1= vmul<P>(a1, w1);
+  const V o2= vmul<P>(vdiff<P>(t0, t2), w2);
+  const V o3= vmul<P>(a3, w3);
+  vstore<P>(q, _mm256_permute2x128_si256(o0, o1, 0x20));
+  vstore<P>(q + 8, _mm256_permute2x128_si256(o2, o3, 0x20));
+  vstore<P>(q + 16, _mm256_permute2x128_si256(o0, o1, 0x31));
+  vstore<P>(q + 24, _mm256_permute2x128_si256(o2, o3, 0x31));
+ }
+}
+
+// len = 16 の段 (h = 4)。逆変換。u0 には Montgomery の 1 を掛けて、u0 と y1 を 1 本にそろえる。
+template <unsigned P> void idft_stage_h4(u32* d, int n) {
+ if (n < 32) {
+  idft_stage_small<P>(d, n, 16);
+  return;
+ }
+ const u32* tw= small_tw<P>(16, 4, true);
+ const V wa= vcombine128<P>(vsplat128<P>(mc<P>::r), vload128<P>(tw));
+ const V wb= vcombine128<P>(vload128<P>(tw + 4), vload128<P>(tw + 8));
+ const V& ii= ii_vec<P>();
+ for (int b= 0; b + 32 <= n; b+= 32) {
+  u32* q= d + b;
+  const V x0= vload<P>(q), x1= vload<P>(q + 8), x2= vload<P>(q + 16), x3= vload<P>(q + 24);
+  const V y0= vmul<P>(x0, wa), y1= vmul<P>(x1, wb);
+  const V y2= vmul<P>(x2, wa), y3= vmul<P>(x3, wb);
+  const V s0= vplus<P>(y0, y1), s1= vplus<P>(y2, y3);
+  const V d0= vdiff<P>(y0, y1), d1= vdiff<P>(y2, y3);
+  const V t0= vlow<P>(_mm256_permute2x128_si256(s0, s1, 0x20));  // u0+y2
+  const V t1= vlow<P>(_mm256_permute2x128_si256(s0, s1, 0x31));  // y1+y3
+  const V t2= vlow<P>(_mm256_permute2x128_si256(d0, d1, 0x20));  // u0-y2
+  const V t3= vmuls<P>(_mm256_permute2x128_si256(d0, d1, 0x31), ii);  // (y1-y3) i^{-1}
+  const V o0= vlow<P>(vplus<P>(t0, t1));
+  const V o1= vlow<P>(vplus<P>(t2, t3));
+  const V o2= vlow<P>(vdiff<P>(t0, t1));
+  const V o3= vlow<P>(vdiff<P>(t2, t3));
+  vstore<P>(q, _mm256_permute2x128_si256(o0, o1, 0x20));
+  vstore<P>(q + 8, _mm256_permute2x128_si256(o2, o3, 0x20));
+  vstore<P>(q + 16, _mm256_permute2x128_si256(o0, o1, 0x31));
+  vstore<P>(q + 24, _mm256_permute2x128_si256(o2, o3, 0x31));
+ }
+}
+
+// len = 8 の段 (h = 2)。2 ブロック (16 個) ずつ。1 ブロックが 8 レーン 1 本 ([u0|u1|u2|u3]、各 2 レーン) なので、
+// 128 bit の入れ替えで u0+u2 と u1+u3 を同じ 128 bit にそろえ、2 ブロック分を 64 bit ずつ組にする。順変換。
+// 1 ブロックだけのタイル (n = 8) はスカラーに回す。
+template <unsigned P> void dft_stage_h2(u32* d, int n) {
+ if (n < 16) {
+  dft_stage_small<P>(d, n, 8);
+  return;
+ }
+ const u32* tw= small_tw<P>(8, 2, false);
+ const V w1= _mm256_set_epi32(tw[1], tw[0], tw[1], tw[0], tw[1], tw[0], tw[1], tw[0]);
+ const V w2= _mm256_set_epi32(tw[5], tw[4], tw[5], tw[4], tw[5], tw[4], tw[5], tw[4]);
+ const V w3= _mm256_set_epi32(tw[9], tw[8], tw[9], tw[8], tw[9], tw[8], tw[9], tw[8]);
+ const V& im= im_vec<P>();
+ for (int b= 0; b + 16 <= n; b+= 16) {
+  u32* q= d + b;
+  const V x0= vload<P>(q), x1= vload<P>(q + 8);
+  const V z0= _mm256_permute2x128_si256(x0, x0, 0x01), z1= _mm256_permute2x128_si256(x1, x1, 0x01);
+  const V s0= vplus<P>(x0, z0), s1= vplus<P>(x1, z1);
+  const V d0= vdiff<P>(x0, z0), d1= vdiff<P>(x1, z1);
+  const V t0= vlow<P>(_mm256_unpacklo_epi64(s0, s1));  // u0+u2 (b0 | b1)
+  const V t2= vlow<P>(_mm256_unpackhi_epi64(s0, s1));  // u1+u3
+  const V t1= vlow<P>(_mm256_unpacklo_epi64(d0, d1));  // u0-u2
+  const V t3= _mm256_unpackhi_epi64(d0, d1);           // u1-u3
+  const V pi= vmuls<P>(t3, im);
+  const V a1= vplus<P>(t1, pi), a3= vdiff<P>(t1, pi);
+  const V o0= vlow<P>(vplus<P>(t0, t2));
+  const V o1= vmul<P>(a1, w1);
+  const V o2= vmul<P>(vdiff<P>(t0, t2), w2);
+  const V o3= vmul<P>(a3, w3);
+  // o0 は [b0 | b1 | b0 | b1] (64 bit ごと) なので、b0 は unpacklo、b1 は unpackhi から取る。
+  const V u01= _mm256_unpacklo_epi64(o0, o1), u23= _mm256_unpacklo_epi64(o2, o3);
+  const V v01= _mm256_unpackhi_epi64(o0, o1), v23= _mm256_unpackhi_epi64(o2, o3);
+  vstore<P>(q, _mm256_permute2x128_si256(u01, u23, 0x20));
+  vstore<P>(q + 8, _mm256_permute2x128_si256(v01, v23, 0x20));
+ }
+}
+
+// len = 8 の段 (h = 2)。逆変換。
+template <unsigned P> void idft_stage_h2(u32* d, int n) {
+ if (n < 16) {
+  idft_stage_small<P>(d, n, 8);
+  return;
+ }
+ const u32* tw= small_tw<P>(8, 2, true);
+ const V mv= _mm256_set_epi32(tw[9], tw[8], tw[5], tw[4], tw[1], tw[0], int(mc<P>::r), int(mc<P>::r));
+ const V& ii= ii_vec<P>();
+ for (int b= 0; b + 16 <= n; b+= 16) {
+  u32* q= d + b;
+  const V x0= vload<P>(q), x1= vload<P>(q + 8);
+  const V y0= vmul<P>(x0, mv), y1= vmul<P>(x1, mv);
+  const V z0= _mm256_permute2x128_si256(y0, y0, 0x01), z1= _mm256_permute2x128_si256(y1, y1, 0x01);
+  const V s0= vplus<P>(y0, z0), s1= vplus<P>(y1, z1);
+  const V d0= vdiff<P>(y0, z0), d1= vdiff<P>(y1, z1);
+  const V t0= vlow<P>(_mm256_unpacklo_epi64(s0, s1));
+  const V t1= vlow<P>(_mm256_unpackhi_epi64(s0, s1));
+  const V t2= vlow<P>(_mm256_unpacklo_epi64(d0, d1));
+  const V t3= vmuls<P>(_mm256_unpackhi_epi64(d0, d1), ii);
+  const V o0= vlow<P>(vplus<P>(t0, t1));
+  const V o1= vlow<P>(vplus<P>(t2, t3));
+  const V o2= vlow<P>(vdiff<P>(t0, t1));
+  const V o3= vlow<P>(vdiff<P>(t2, t3));
+  // o0 は [b0 | b1 | b0 | b1] (64 bit ごと) なので、b0 は unpacklo、b1 は unpackhi から取る。
+  const V u01= _mm256_unpacklo_epi64(o0, o1), u23= _mm256_unpacklo_epi64(o2, o3);
+  const V v01= _mm256_unpackhi_epi64(o0, o1), v23= _mm256_unpackhi_epi64(o2, o3);
+  vstore<P>(q, _mm256_permute2x128_si256(u01, u23, 0x20));
+  vstore<P>(q + 8, _mm256_permute2x128_si256(v01, v23, 0x20));
+ }
+}
+
 // タイル (dft_tile 以下) の残りの段をまとめて回す。順変換。
 template <unsigned P> void dft_stages_small(u32* d, int n) {
  int len= n;
  for (; len >= 32; len>>= 2) dft_stage_vec<P>(d, n, len);
- if (len == 16) dft_stage_small<P>(d, n, 16), len= 4;
- if (len == 8) dft_stage_small<P>(d, n, 8), len= 2;
+ if (len == 16) dft_stage_h4<P>(d, n), len= 4;
+ if (len == 8) dft_stage_h2<P>(d, n), len= 2;
  if (len == 4) {
   if (n >= 8) dft_stage_h1<P>(d, n);
   else dft_stage_small<P>(d, n, 4);
@@ -389,12 +529,12 @@ template <unsigned P> void idft_stages_small(u32* d, int n) {
  const bool odd_e= __builtin_ctz(unsigned(n)) & 1;
  if (odd_e) {
   dft_stage_r2<P>(d, n);
-  if (n >= 8) idft_stage_small<P>(d, n, 8);
+  if (n >= 8) idft_stage_h2<P>(d, n);
   for (int len= 32; len <= n; len<<= 2) idft_stage_vec<P>(d, n, len);
  } else {
   if (n >= 8) idft_stage_h1<P>(d, n);
   else idft_stage_small<P>(d, n, 4);
-  if (n >= 16) idft_stage_small<P>(d, n, 16);
+  if (n >= 16) idft_stage_h4<P>(d, n);
   for (int len= 64; len <= n; len<<= 2) idft_stage_vec<P>(d, n, len);
  }
 }
@@ -518,8 +658,10 @@ struct NttAvx2 {
  template <class K> static void convolve_range(const K* a, int n, const K* b, int m, int lo, int hi, K* out) {
   if constexpr (ntt_avx2_internal::static_ntt_mod<K>::value) {
    constexpr unsigned P= ntt_avx2_internal::static_ntt_mod<K>::mod;
+   // 巡回の長さは L >= max(hi, n + m - 1 - lo) でよい (折り返した項が [lo, hi) に入らない)。
+   const int need= std::max(hi, n + m - 1 - lo);
    int l= 1;
-   while (l < n + m - 1) l<<= 1;
+   while (l < need) l<<= 1;
    if (std::min(n, m) >= 60 && (P - 1) % unsigned(l) == 0) {
     std::vector<K> fa(a, a + n), fb;
     fa.resize(l);

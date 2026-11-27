@@ -138,8 +138,10 @@ struct Ntt {
  template <class K> static void convolve_range(const K* a, int n, const K* b, int m, int lo, int hi, K* out) {
   if constexpr (ntt_scalar_r2_internal::static_ntt_mod<K>::value) {
    constexpr unsigned P= ntt_scalar_r2_internal::static_ntt_mod<K>::mod;
+   // 巡回の長さは L >= max(hi, n + m - 1 - lo) でよい (折り返した項が [lo, hi) に入らない)。
+   const int need= std::max(hi, n + m - 1 - lo);
    int l= 1;
-   while (l < n + m - 1) l<<= 1;
+   while (l < need) l<<= 1;
    if (std::min(n, m) >= 60 && (P - 1) % unsigned(l) == 0) {
     std::vector<K> fa(a, a + n), fb;
     fa.resize(l);
