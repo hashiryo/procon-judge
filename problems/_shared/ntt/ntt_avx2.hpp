@@ -552,17 +552,53 @@ template <unsigned P> void from_mont(u32* d, int n) {
  for (; i + 8 <= n; i+= 8) vstore<P>(d + i, vmuls<P>(vload<P>(d + i), onev));
  for (; i < n; ++i) d[i]= smul<P>(d[i], 1);
 }
-template <unsigned P> void dft_impl(ZMod<P>* a, int n) {
+// 段だけ。表現はそのまま (入力が Montgomery なら出力も Montgomery)。
+template <unsigned P> void dft_stages(u32* d, int n) {
  if (n <= 1) return;
- assert((n & (n - 1)) == 0 && (P - 1) % unsigned(n) == 0);
- u32* d= reinterpret_cast<u32*>(a);
- to_mont<P>(d, n);
  // 大きい段 (タイルより長い段) は配列全体をなめる。タイルは段の長さに合わせて 4 で割って決める。
  int tile= n;
  while (tile > dft_tile) tile>>= 2;
  for (int len= n; len > tile; len>>= 2) dft_stage_vec<P>(d, n, len);
  // 残りの段はタイルごとに、タイルを L1 に載せたまま回す。
  for (int b= 0; b < n; b+= tile) dft_stages_small<P>(d + b, tile);
+}
+// 段だけ (逆変換)。段ごとの 1/4 は掛けない。
+template <unsigned P> void idft_stages(u32* d, int n) {
+ if (n <= 1) return;
+ // 小さい段はタイルごとに、大きい段は配列全体をなめる。タイルは段の長さに合わせて 4 で割って決める。
+ int tile= n;
+ while (tile > dft_tile) tile>>= 2;
+ for (int b= 0; b < n; b+= tile) idft_stages_small<P>(d + b, tile);
+ for (int len= tile<< 2; len <= n; len<<= 2) idft_stage_vec<P>(d, n, len);
+}
+// Montgomery の値に c (ふつうの値) を掛ける。c = n^{-1} なら 1/n を掛けながらふつうの値に戻り、
+// c = Montgomery の n^{-1} なら Montgomery のまま 1/n が掛かる。
+template <unsigned P> void scale_by(u32* d, int n, u32 c) {
+ const V cv= vsplat<P>(c);
+ int i= 0;
+ for (; i + 8 <= n; i+= 8) vstore<P>(d + i, vmuls<P>(vload<P>(d + i), cv));
+ for (; i < n; ++i) d[i]= smul<P>(d[i], c);
+}
+// Montgomery の値どうしの点ごとの積 (どちらも 2P 未満。REDC の結果は 2P 未満なので、そのまま次へ渡せる)。
+template <unsigned P> void pointwise_mul(u32* d, const u32* e, int n) {
+ int i= 0;
+ for (; i + 8 <= n; i+= 8) vstore<P>(d + i, vmul<P>(vload<P>(d + i), vload<P>(e + i)));
+ for (; i < n; ++i) d[i]= smul<P>(d[i], e[i]);
+}
+template <unsigned P> void pointwise_square(u32* d, int n) {
+ int i= 0;
+ for (; i + 8 <= n; i+= 8) {
+  const V x= vload<P>(d + i);
+  vstore<P>(d + i, vmul<P>(x, x));
+ }
+ for (; i < n; ++i) d[i]= smul<P>(d[i], d[i]);
+}
+template <unsigned P> void dft_impl(ZMod<P>* a, int n) {
+ if (n <= 1) return;
+ assert((n & (n - 1)) == 0 && (P - 1) % unsigned(n) == 0);
+ u32* d= reinterpret_cast<u32*>(a);
+ to_mont<P>(d, n);
+ dft_stages<P>(d, n);
  from_mont<P>(d, n);
 }
 
@@ -572,28 +608,23 @@ template <unsigned P> void idft_impl(ZMod<P>* a, int n) {
  assert((n & (n - 1)) == 0 && (P - 1) % unsigned(n) == 0);
  u32* d= reinterpret_cast<u32*>(a);
  to_mont<P>(d, n);
- // 小さい段はタイルごとに、大きい段は配列全体をなめる。タイルは段の長さに合わせて 4 で割って決める。
- int tile= n;
- while (tile > dft_tile) tile>>= 2;
- for (int b= 0; b < n; b+= tile) idft_stages_small<P>(d + b, tile);
- for (int len= tile<< 2; len <= n; len<<= 2) idft_stage_vec<P>(d, n, len);
- // 1/n を掛けると、Montgomery のままの値がふつうの値に戻る。
- const V cv= vsplat<P>(inv_n_scalar<P>(n));
- int i= 0;
- for (; i + 8 <= n; i+= 8) vstore<P>(d + i, vmuls<P>(vload<P>(d + i), cv));
- if (i < n) {
-  const u32 iv= inv_n_scalar<P>(n);
-  for (; i < n; ++i) d[i]= smul<P>(d[i], iv);
- }
+ idft_stages<P>(d, n);
+ scale_by<P>(d, n, inv_n_scalar<P>(n));
 }
 
 // a[0..n) は長さ n の変換。係数に戻して 0 を詰め、長さ 2n の変換を a[0..2n) に作る (2 本目と同じ素直な形)。
+// 途中は Montgomery のまま持つ: 逆変換の段のあとに Montgomery の 1/n を掛けて係数の表現にし、0 を詰めて順変換の段を回す。
 template <unsigned P> void dft_doubling_impl(ZMod<P>* a, int n) {
  std::vector<ZMod<P>> c(a, a + n);
- idft_impl<P>(c.data(), n);
+ u32* cd= reinterpret_cast<u32*>(c.data());
+ to_mont<P>(cd, n);
+ idft_stages<P>(cd, n);
+ scale_by<P>(cd, n, smont<P>(inv_n_scalar<P>(n)));
  std::fill(a, a + 2 * n, ZMod<P>());
  std::copy(c.begin(), c.end(), a);
- dft_impl<P>(a, 2 * n);
+ u32* d= reinterpret_cast<u32*>(a);
+ dft_stages<P>(d, 2 * n);
+ from_mont<P>(d, 2 * n);
 }
 
 // 以下、even_dft と odd_dft は 2 本目と同じ並びの式を、ふつうの値のまま (u64 の剰余) で書く。
@@ -663,17 +694,21 @@ struct NttAvx2 {
    int l= 1;
    while (l < need) l<<= 1;
    if (std::min(n, m) >= 60 && (P - 1) % unsigned(l) == 0) {
+    // 変換の間は Montgomery のまま持つ。点ごとの積も 8 レーンで掛け、最後に 1/l を掛けながら戻す。
     std::vector<K> fa(a, a + n), fb;
     fa.resize(l);
+    unsigned* fd= reinterpret_cast<unsigned*>(fa.data());
+    ntt_avx2_internal::to_mont<P>(fd, l), ntt_avx2_internal::dft_stages<P>(fd, l);
     if (a == b && n == m) {
-     dft<P>(fa.data(), l);
-     for (int i= 0; i < l; ++i) fa[i]*= fa[i];
+     ntt_avx2_internal::pointwise_square<P>(fd, l);
     } else {
      fb.assign(b, b + m), fb.resize(l);
-     dft<P>(fa.data(), l), dft<P>(fb.data(), l);
-     for (int i= 0; i < l; ++i) fa[i]*= fb[i];
+     unsigned* gd= reinterpret_cast<unsigned*>(fb.data());
+     ntt_avx2_internal::to_mont<P>(gd, l), ntt_avx2_internal::dft_stages<P>(gd, l);
+     ntt_avx2_internal::pointwise_mul<P>(fd, gd, l);
     }
-    idft<P>(fa.data(), l);
+    ntt_avx2_internal::idft_stages<P>(fd, l);
+    ntt_avx2_internal::scale_by<P>(fd, l, ntt_avx2_internal::inv_n_scalar<P>(l));
     for (int k= lo; k < hi; ++k) out[k - lo]= fa[k];
     return;
    }
