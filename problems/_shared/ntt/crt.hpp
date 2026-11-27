@@ -90,12 +90,14 @@ template <class Ntt> struct crt_kernel {
   }
   const int sz= n + m - 1;
   const bool sq= a == b && n == m;
-  // 各素数の剰余に分けて、3 本の畳み込みを回す。
+  // 係数の和の上界 min(n, m) (M - 1)^2 が収まる素数の本数だけ回す (M が小さいと 1 本か 2 本で済む)。
+  const u128 bound= u128(std::min(n, m)) * u128(M - 1) * (M - 1);
+  const int cnt= bound < u128(P1) ? 1 : bound < u128(P1) * P2 ? 2 : 3;
   std::vector<u32> xa(n), xb(sq ? 0 : m);
-  std::vector<u32> r1(sz), r2(sz), r3(sz);
+  std::vector<u32> r1(sz), r2(cnt >= 2 ? sz : 0), r3(cnt >= 3 ? sz : 0);
   const u32 ps[3]= {P1, P2, P3};
   const barrett bm(M);
-  for (int t= 0; t < 3; ++t) {
+  for (int t= 0; t < cnt; ++t) {
    const u32 p= ps[t];
    for (int i= 0; i < n; ++i) xa[i]= modp(a[i].val(), p);
    if (!sq)
@@ -104,6 +106,19 @@ template <class Ntt> struct crt_kernel {
    if (t == 0) crt_internal::prime_conv<Ntt, P1>(xa.data(), n, xb.data(), m, sz, sq, r);
    else if (t == 1) crt_internal::prime_conv<Ntt, P2>(xa.data(), n, xb.data(), m, sz, sq, r);
    else crt_internal::prime_conv<Ntt, P3>(xa.data(), n, xb.data(), m, sz, sq, r);
+  }
+  if (cnt == 1) {
+   for (int k= lo; k < hi; ++k) out[k - lo]= K::raw(bm.reduce(r1[k]));
+   return;
+  }
+  if (cnt == 2) {
+   for (int k= lo; k < hi; ++k) {
+    const u32 y1= r1[k];
+    const u32 d2= u32((u64(r2[k]) + P2 - y1) % P2);
+    const u32 t1= u32((u64(d2) * G12) % P2);
+    out[k - lo]= K::raw(bm.reduce(u64(y1) + u64(P1) * t1));
+   }
+   return;
   }
   // Garner: x = x1 + P1 t1 + P1 P2 t2 (mod M)。
   for (int k= lo; k < hi; ++k) {

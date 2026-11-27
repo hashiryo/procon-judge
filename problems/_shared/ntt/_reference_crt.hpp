@@ -50,15 +50,31 @@ inline void convolve_range(const u32 *a, int n, const u32 *b, int m, int lo, int
   }
   return;
  }
- std::vector<u32> xa(n), xb(m), r1(sz), r2(sz), r3(sz);
+ // 係数の和の上界 min(n, m) (mod - 1)^2 が収まる素数の本数だけ回す。
+ const u128 bound= u128(std::min(n, m)) * u128(mod - 1) * (mod - 1);
+ const int cnt= bound < u128(P1) ? 1 : bound < u128(P1) * P2 ? 2 : 3;
+ std::vector<u32> xa(n), xb(m), r1(sz), r2(cnt >= 2 ? sz : 0), r3(cnt >= 3 ? sz : 0);
  const u32 ps[3]= {P1, P2, P3};
- for (int t= 0; t < 3; ++t) {
+ for (int t= 0; t < cnt; ++t) {
   const u32 p= ps[t];
   for (int i= 0; i < n; ++i) xa[i]= modp(a[i], p);
   for (int i= 0; i < m; ++i) xb[i]= modp(b[i], p);
   if (t == 0) ntt_reference::convolve_range<P1>(xa.data(), n, xb.data(), m, 0, sz, r1.data());
   else if (t == 1) ntt_reference::convolve_range<P2>(xa.data(), n, xb.data(), m, 0, sz, r2.data());
   else ntt_reference::convolve_range<P3>(xa.data(), n, xb.data(), m, 0, sz, r3.data());
+ }
+ if (cnt == 1) {
+  for (int k= lo; k < hi; ++k) c[k - lo]= r1[k] % mod;
+  return;
+ }
+ if (cnt == 2) {
+  for (int k= lo; k < hi; ++k) {
+   const u32 y1= r1[k];
+   const u32 d2= u32((u64(r2[k]) + P2 - y1) % P2);
+   const u32 t1= u32(u64(d2) * G12 % P2);
+   c[k - lo]= u32((u64(y1) + u64(P1) * t1) % mod);
+  }
+  return;
  }
  for (int k= lo; k < hi; ++k) {
   const u32 y1= r1[k];
