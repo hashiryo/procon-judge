@@ -1,0 +1,21 @@
+id = "self-ntt-convolution-mod-runtime-composite"
+title = "NTT の畳み込み (実行時の合成数、形ごとのケース)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 19
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
