@@ -1,8 +1,8 @@
 #pragma once
 // NeoLibrary の Matrix<MaxPlus<int>> (neo/base/core/linalg/Matrix.hpp と neo/base/core/algebra/semiring.hpp) で、reference と同じ手順を踏む。
-// 重みは -10^4 以上 10^4 以下で、扱う行列はどれも n 歩以下の歩みなので、値は -INF か絶対値 3 × 10^6 以下に収まる。どの積も、
-// 両方の行列が両側の範囲 (-INF か、絶対値が INF / 4 以下) に入る速い道 (INF の比べのない i-k-j のあと、行ごとに INF / 2 で直す)
-// を通る。
+// MaxPlus<int> は構造で、行列の要素は int。重みは -10^4 以上 10^4 以下で、扱う行列はどれも n 歩以下の歩みなので、値は -INF か
+// 絶対値 3 × 10^6 以下に収まる。どの積も、両方の行列が両側の範囲 (-INF か、絶対値が INF / 4 以下) に入る速い道 (INF の比べの
+// ない i-k-j のあと、行ごとに INF / 2 で直す) を通る。
 #include "../common.hpp"
 #include "neo/base/core/algebra/semiring.hpp"
 #include "neo/base/core/linalg/Matrix.hpp"
@@ -10,7 +10,7 @@ inline int solve(int n, const vector<array<int, 4>>& doors) {
  using R= MaxPlus<int>;
  using Mat= Matrix<R>;
  Mat a= Mat::identity(n);
- for(auto [i, j, c, d]: doors) a[i][j]= R(max(a[i][j].x, c)), a[j][i]= R(max(a[j][i].x, d));
+ for(auto [i, j, c, d]: doors) a[i][j]= max(a[i][j], c), a[j][i]= max(a[j][i], d);
  int lg= 0;
  while((1 << lg) <= n) ++lg;
  vector<Mat> P(lg);
@@ -22,7 +22,7 @@ inline int solve(int n, const vector<array<int, 4>>& doors) {
   if(len + (1 << k) > n) continue;
   Mat t= cur * P[k];
   bool pos= false;
-  for(int i= 0; i < n; ++i) pos|= t[i][i].x > 0;
+  for(int i= 0; i < n; ++i) pos|= t[i][i] > 0;
   if(!pos) cur= std::move(t), len+= 1 << k;
  }
  return len >= n ? 0 : len + 1;
