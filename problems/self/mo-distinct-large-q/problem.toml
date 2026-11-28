@@ -1,0 +1,22 @@
+id = "self-mo-distinct-large-q"
+title = "大きい Q の区間 distinct (順序の比較)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+# n <= 1e5、q <= 1e6 の distinct のクエリ。Mo の並べ方 (ブロックの奇偶ソートとヒルベルト順) を
+# 同じデータで比べるための self 問題。期待出力は、右端でソートして最後の出現位置を BIT に持つ
+# reference.cpp が作る。参照実装は、クエリごとに区間を走査する愚直解 (brute.cpp) と小さい入力で
+# 突き合わせる (pj testdata crosscheck)。
+[testdata]
+source = "local"
+count = 8
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "tokens"
