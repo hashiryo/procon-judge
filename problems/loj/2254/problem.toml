@@ -1,0 +1,16 @@
+id = "loj-2254"
+title = "「SNOI2017」一个简单的询问"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "loj"
+name = "2254"
+
+[compare]
+kind = "tokens"
