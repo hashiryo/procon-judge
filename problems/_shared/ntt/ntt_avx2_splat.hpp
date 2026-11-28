@@ -143,10 +143,44 @@ template <unsigned P> const u32* leaf_table(int m) {
   const u32 eta= spow<P>(g, u64(P - 1) / unsigned(m));
   u32* w= tb.p;
   u32* q= tb.p + m;
-  for (int i= 0; i < m; ++i) {
-   const u32 v= spow<P>(eta, u64(rev_index<P>(i, e)));
-   w[i]= v, q[i]= shoup_q<P>(v);
+  // w[i] = eta^{rev(i)} を、i を 1 進めるごとの比で作る (1 つずつ pow を取らない)。
+  // 比は、i の末尾の最大桁 (4 進の 3、2 進なら 1) の数 s で決まる。
+  if (!(e & 1)) {
+   const int k= e / 2;
+   std::vector<u32> step(k);
+   for (int s= 0; s < k; ++s) {
+    const u64 d1= u64(1) << (2 * (k - 1 - s)), d2= u64(1) << (2 * (k - s));
+    step[s]= spow<P>(eta, (d1 + d2) % unsigned(m));
+   }
+   u32 cur= 1;
+   w[0]= 1;
+   for (int i= 0; i < m - 1; ++i) {
+    int s= __builtin_ctz(~unsigned(i)) >> 1;
+    if (s >= k) s= k - 1;
+    cur= u32(u64(cur) * step[s] % P);
+    w[i + 1]= cur;
+   }
+  } else {
+   const int k= (e - 1) / 2;
+   const u32 half= spow<P>(eta, u64(m) / 2);  // eta^{4^k} = -1。b が 0 から 1 に進むときの比
+   std::vector<u32> step(k);
+   for (int s= 0; s < k; ++s) {
+    const u64 d1= u64(1) << (2 * (k - 1 - s)), d2= u64(1) << (2 * (k - s));
+    step[s]= spow<P>(eta, (d1 + d2) % unsigned(m));
+   }
+   u32 cur= 1;
+   w[0]= 1;
+   for (int i= 0; i < m - 1; ++i) {
+    if (!(i & 1)) cur= u32(u64(cur) * half % P);
+    else {
+     int s= __builtin_ctz(~unsigned(i >> 1)) >> 1;
+     if (s >= k) s= k - 1;
+     cur= u32(u64(cur) * step[s] % P);
+    }
+    w[i + 1]= cur;
+   }
   }
+  for (int i= 0; i < m; ++i) q[i]= shoup_q<P>(w[i]);
  }
  return tb.p;
 }
@@ -201,13 +235,15 @@ template <unsigned P> void stage2v(u32* d, int nv) {
 }
 
 // 葉の積 (mod x^8 - w)。窓 [w a, a] を 16 個の作業に置き、8 回の読み出しで回転を作る。
+// 窓のストアと読み出しが近いと待つので、呼び出し側で 1 つ先の窓を作ってから今の積を取る。
 // 積は Montgomery の MAC で、R^{-1} が 1 回付く。奇数レーンの積は 1 つ前の窓の読み出しの偶数レーンを使う。
-template <unsigned P> V leaf_twist(V ya, V yb, V wv, V wq) {
- const V pv= vsplat<P>(P), niv= vsplat<P>(mc<P>::ni);
- alignas(32) u32 buf[16], cb[8];
+template <unsigned P> void leaf_build(u32* buf, u32* cb, V ya, V yb, V wv, V wq) {
  vstore<P>(buf, vshoups<P>(ya, wv, wq));
  vstore<P>(buf + 8, ya);
  vstore<P>(cb, yb);
+}
+template <unsigned P> V leaf_mac(const u32* buf, const u32* cb) {
+ const V pv= vsplat<P>(P), niv= vsplat<P>(mc<P>::ni);
  V prev= vload<P>(buf + 8);
  V e, o;
  {
@@ -240,11 +276,18 @@ template <unsigned P> void tile_work(u32* fa, u32* fb, int m, int nv, int B, boo
  }
  const u32* lw= leaf_table<P>(m);
  const u32* lq= lw + m;
- for (int i= 0; i < nv; ++i) {
+ // 窓は 1 つ先に作る (ストアした窓をすぐ読むと待つため)。
+ alignas(32) u32 buf[2][16], cb[2][8];
+ auto build= [&](int i, int slot) {
   // 葉の積の入力は P 未満に直す。重みは葉の位置 (B + i) のもの。
   const V ya= vcanon<P>(vload<P>(fa + 8 * i));
   const V yb= square ? ya : vcanon<P>(vload<P>(fb + 8 * i));
-  const V c= leaf_twist<P>(ya, yb, vsplat<P>(lw[B + i]), vsplat<P>(lq[B + i]));
+  leaf_build<P>(buf[slot], cb[slot], ya, yb, vsplat<P>(lw[B + i]), vsplat<P>(lq[B + i]));
+ };
+ build(0, 0);
+ for (int i= 0; i < nv; ++i) {
+  if (i + 1 < nv) build(i + 1, (i + 1) & 1);
+  const V c= leaf_mac<P>(buf[i & 1], cb[i & 1]);
   vstore<P>(fa + 8 * i, vlow<P>(vshoups<P>(c, sc, scq)));
  }
  if (L == 2) stage2v<P>(fa, nv), L= 8;
