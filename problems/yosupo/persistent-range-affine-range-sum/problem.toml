@@ -1,0 +1,19 @@
+id = "yosupo-persistent-range-affine-range-sum"
+title = "Persistent Range Affine Range Sum"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "data_structure/persistent_range_affine_range_sum"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true
