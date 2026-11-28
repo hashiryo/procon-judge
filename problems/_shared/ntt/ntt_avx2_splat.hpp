@@ -258,6 +258,51 @@ template <unsigned P> void stage4v(u32* d, int nv, int m, int L, bool inv) {
  }
 }
 
+// 段 (ベクトル数 L) の、長さをコンパイル時に決めた版 (タイルの中の段)。
+template <unsigned P, int L> void stage4v_c(u32* d, int nv, int m, bool inv) {
+ constexpr int h= L >> 2;
+ if constexpr (h == 1) {
+  stage4v_h1<P>(d, nv, inv);
+  return;
+ }
+ const u32* t= stage_table<P>(m, L, inv);
+ const u32 *w1= t, *w2= t + h, *w3= t + 2 * h;
+ const u32 *s1= t + 3 * h, *s2= t + 4 * h, *s3= t + 5 * h;
+ const u32 imn= inv ? ii_normal<P>() : im_normal<P>();
+ const V im= vsplat<P>(imn), imq= vsplat<P>(shoup_q<P>(imn));
+ for (int b= 0; b < nv; b+= L) {
+  u32* p= d + 8 * b;
+#pragma GCC unroll 2
+  for (int j= 0; j < h; ++j) {
+   const V W1= vsplat<P>(w1[j]), W2= vsplat<P>(w2[j]), W3= vsplat<P>(w3[j]);
+   const V S1= vsplat<P>(s1[j]), S2= vsplat<P>(s2[j]), S3= vsplat<P>(s3[j]);
+   if (!inv) {
+    const V u0= vload<P>(p + 8 * j), u1= vload<P>(p + 8 * (j + h)), u2= vload<P>(p + 8 * (j + 2 * h)), u3= vload<P>(p + 8 * (j + 3 * h));
+    const V t0= vplus<P>(u0, u2), t2= vplus<P>(u1, u3);
+    const V t1= vdiff<P>(u0, u2), t3= vdiff<P>(u1, u3);
+    const V l0= vlow<P>(t0), l1= vlow<P>(t1), l2= vlow<P>(t2);
+    const V pi= vshoups<P>(vlow<P>(t3), im, imq);
+    const V a1= vplus<P>(l1, pi), a3= vdiff<P>(l1, pi);
+    vstore<P>(p + 8 * j, vlow<P>(vplus<P>(l0, l2)));
+    vstore<P>(p + 8 * (j + h), vshoups<P>(a1, W1, S1));
+    vstore<P>(p + 8 * (j + 2 * h), vshoups<P>(vlow<P>(vdiff<P>(l0, l2)), W2, S2));
+    vstore<P>(p + 8 * (j + 3 * h), vshoups<P>(a3, W3, S3));
+   } else {
+    const V y1= vshoups<P>(vload<P>(p + 8 * (j + h)), W1, S1);
+    const V y2= vshoups<P>(vload<P>(p + 8 * (j + 2 * h)), W2, S2);
+    const V y3= vshoups<P>(vload<P>(p + 8 * (j + 3 * h)), W3, S3);
+    const V u0= vload<P>(p + 8 * j);
+    const V t0= vlow<P>(vplus<P>(u0, y2)), t2= vlow<P>(vdiff<P>(u0, y2));
+    const V t1= vlow<P>(vplus<P>(y1, y3)), t3= vshoups<P>(vlow<P>(vdiff<P>(y1, y3)), im, imq);
+    vstore<P>(p + 8 * j, vlow<P>(vplus<P>(t0, t1)));
+    vstore<P>(p + 8 * (j + h), vlow<P>(vplus<P>(t2, t3)));
+    vstore<P>(p + 8 * (j + 2 * h), vlow<P>(vdiff<P>(t0, t1)));
+    vstore<P>(p + 8 * (j + 3 * h), vlow<P>(vdiff<P>(t2, t3)));
+   }
+  }
+ }
+}
+
 // 段 (ベクトル数 2) の順変換と逆変換。ひねりは 1。
 template <unsigned P> void stage2v(u32* d, int nv) {
  for (int b= 0; b < nv; b+= 2) {
@@ -266,6 +311,24 @@ template <unsigned P> void stage2v(u32* d, int nv) {
   vstore<P>(d + 8 * (b + 1), vlow<P>(vdiff<P>(u0, u1)));
  }
 }
+
+// タイル (NV ベクトル) の段の列。L = NV, NV/4, …, 4 (2 の指数が奇数なら 8 のあと 2)。
+template <unsigned P, int NV, int L> struct tile_seq {
+ static void fwd(u32* d, int m) { stage4v_c<P, L>(d, NV, m, false); tile_seq<P, NV, L / 4>::fwd(d, m); }
+ static void inv(u32* d, int m) { tile_seq<P, NV, L / 4>::inv(d, m); stage4v_c<P, L>(d, NV, m, true); }
+};
+template <unsigned P, int NV> struct tile_seq<P, NV, 1> {
+ static void fwd(u32*, int) {}
+ static void inv(u32*, int) {}
+};
+template <unsigned P, int NV> struct tile_seq<P, NV, 2> {
+ static void fwd(u32* d, int) { stage2v<P>(d, NV); }
+ static void inv(u32* d, int) { stage2v<P>(d, NV); }
+};
+template <unsigned P, int NV> struct tile_seq<P, NV, 4> {
+ static void fwd(u32* d, int) { stage4v_h1<P>(d, NV, false); }
+ static void inv(u32* d, int) { stage4v_h1<P>(d, NV, true); }
+};
 
 // 葉の積 (mod x^8 - w)。窓 [w a, a] を 16 個の作業に置き、8 回の読み出しで回転を作る。
 // 窓のストアと読み出しが近いと待つので、呼び出し側で 1 つ先の窓を作ってから今の積を取る。
@@ -296,35 +359,38 @@ template <unsigned P> V leaf_mac(const u32* buf, const u32* cb) {
  return _mm256_blend_epi32(_mm256_srli_epi64(e, 32), o, 0xAA);
 }
 
-// タイル (nv ベクトル、全体では m ベクトル、先頭はベクトル B) を回す。
-template <unsigned P> void tile_work(u32* fa, u32* fb, int m, int nv, int B, bool square, V sc, V scq) {
- int L= nv;
- for (; L >= 4; L>>= 2) {
-  if (square) stage4v<P>(fa, nv, m, L, false);
-  else stage4v<P>(fa, nv, m, L, false), stage4v<P>(fb, nv, m, L, false);
- }
- if (L == 2) {
-  if (square) stage2v<P>(fa, nv);
-  else stage2v<P>(fa, nv), stage2v<P>(fb, nv);
- }
+// タイル (NV ベクトル) を、順変換の下の段、葉の積、逆変換の下の段まで回す。段の長さはコンパイル時に決まる。
+template <unsigned P, int NV> void tile_work_c(u32* fa, u32* fb, int m, int B, bool square, V sc, V scq) {
+ tile_seq<P, NV, NV>::fwd(fa, m);
+ if (!square) tile_seq<P, NV, NV>::fwd(fb, m);
  const u32* lw= leaf_table<P>(m);
  const u32* lq= lw + m;
  // 窓は 1 つ先に作る (ストアした窓をすぐ読むと待つため)。
  alignas(32) u32 buf[2][16], cb[2][8];
  auto build= [&](int i, int slot) {
-  // 葉の積の入力は P 未満に直す。重みは葉の位置 (B + i) のもの。
   const V ya= vcanon<P>(vload<P>(fa + 8 * i));
   const V yb= square ? ya : vcanon<P>(vload<P>(fb + 8 * i));
   leaf_build<P>(buf[slot], cb[slot], ya, yb, vsplat<P>(lw[B + i]), vsplat<P>(lq[B + i]));
  };
  build(0, 0);
- for (int i= 0; i < nv; ++i) {
-  if (i + 1 < nv) build(i + 1, (i + 1) & 1);
+ for (int i= 0; i < NV; ++i) {
+  if (i + 1 < NV) build(i + 1, (i + 1) & 1);
   const V c= leaf_mac<P>(buf[i & 1], cb[i & 1]);
   vstore<P>(fa + 8 * i, vlow<P>(vshoups<P>(c, sc, scq)));
  }
- if (L == 2) stage2v<P>(fa, nv), L= 8;
- for (L= (L == 8 ? 8 : 4); L <= nv; L<<= 2) stage4v<P>(fa, nv, m, L, true);
+ tile_seq<P, NV, NV>::inv(fa, m);
+}
+
+// タイル (nv ベクトル、全体では m ベクトル、先頭はベクトル B) を回す。nv は 16, 32, …, 256 のどれか。
+template <unsigned P> void tile_work(u32* fa, u32* fb, int m, int nv, int B, bool square, V sc, V scq) {
+ switch (nv) {
+  case 16: tile_work_c<P, 16>(fa, fb, m, B, square, sc, scq); break;
+  case 32: tile_work_c<P, 32>(fa, fb, m, B, square, sc, scq); break;
+  case 64: tile_work_c<P, 64>(fa, fb, m, B, square, sc, scq); break;
+  case 128: tile_work_c<P, 128>(fa, fb, m, B, square, sc, scq); break;
+  case 256: tile_work_c<P, 256>(fa, fb, m, B, square, sc, scq); break;
+  default: std::abort();
+ }
 }
 
 // 深さ優先で区画を回す。
