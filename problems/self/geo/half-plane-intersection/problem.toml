@@ -1,0 +1,20 @@
+id = "self-geo-half-plane-intersection"
+title = "半平面の共通部分の面積"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 19
+reference = "reference.cpp"
+
+[compare]
+kind = "float"
+abs_tol = 1e-06
+rel_tol = 1e-09
