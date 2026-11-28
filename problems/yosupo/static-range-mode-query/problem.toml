@@ -1,0 +1,19 @@
+id = "yosupo-static-range-mode-query"
+title = "Static Range Mode Query"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "data_structure/static_range_mode_query"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true

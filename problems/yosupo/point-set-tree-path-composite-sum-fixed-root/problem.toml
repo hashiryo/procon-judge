@@ -1,0 +1,19 @@
+id = "yosupo-point-set-tree-path-composite-sum-fixed-root"
+title = "Point Set Tree Path Composite Sum (Fixed Root)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "tree/point_set_tree_path_composite_sum_fixed_root"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true

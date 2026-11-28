@@ -1,0 +1,19 @@
+id = "yosupo-vertex-get-range-contour-add-on-tree"
+title = "Vertex Get Range Contour Add on Tree"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "tree/vertex_get_range_contour_add_on_tree"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true

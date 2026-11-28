@@ -1,0 +1,19 @@
+id = "yosupo-minimum-steiner-tree"
+title = "Minimum Steiner Tree"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "graph/minimum_steiner_tree"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true
