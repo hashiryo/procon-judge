@@ -1,0 +1,19 @@
+id = "yosupo-gcd-of-gaussian-integers"
+title = "Gcd of Gaussian Integers"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "number_theory/gcd_of_gaussian_integers"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true

@@ -1,0 +1,19 @@
+id = "yosupo-sum-of-multiplicative-function-large"
+title = "Sum of Multiplicative Function (Large)"
+
+[limits]
+tle_sec = 30.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "number_theory/sum_of_multiplicative_function_large"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true

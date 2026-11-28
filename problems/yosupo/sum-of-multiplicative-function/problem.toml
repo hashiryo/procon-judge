@@ -1,0 +1,19 @@
+id = "yosupo-sum-of-multiplicative-function"
+title = "Sum of Multiplicative Function"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "number_theory/sum_of_multiplicative_function"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true

@@ -1,0 +1,19 @@
+id = "yosupo-min-of-mod-of-linear"
+title = "Min of Mod of Linear"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "number_theory/min_of_mod_of_linear"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true
