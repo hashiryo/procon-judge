@@ -77,4 +77,57 @@ struct Alloc {
 };
 template <class T>
 using Vec = std::vector<T, Alloc<T>>;
+// 2 の冪の大きさの開番地法の表。V は trivially copyable で、値 0 が空の印になること。
+// 埋まりが半分を超えたら広げ、消した跡は墓標にして広げ直すときに落とす。キーに 0 は使えない。
+template <class V>
+class OpenTable {
+ struct Slot {
+  unsigned long long k;
+  V v;
+ };
+ std::vector<Slot> t;
+ std::size_t mask, shift, live, used;
+ static constexpr unsigned long long TOMB = ~0ull;
+ std::size_t home(unsigned long long k) const { return std::size_t((k * 0x9E3779B97F4A7C15ull) >> shift); }
+ void put(unsigned long long k, const V& v) {
+  std::size_t h = home(k);
+  while (t[h].k && t[h].k != TOMB) h = (h + 1) & mask;
+  if (!t[h].k) ++used;
+  t[h].k = k, t[h].v = v, ++live;
+ }
+ void rehash(std::size_t cap, std::size_t new_shift) {
+  std::vector<Slot> old;
+  old.swap(t);
+  t.assign(cap, Slot{});
+  mask = cap - 1, shift = new_shift, live = 0, used = 0;
+  for (const Slot& s : old)
+   if (s.k && s.k != TOMB) put(s.k, s.v);
+ }
+
+ public:
+ OpenTable(): t(16), mask(15), shift(60), live(0), used(0) {}
+ void insert(unsigned long long k, const V& v) {
+  if ((used + 1) * 2 > mask + 1) {
+   if ((live + 1) * 2 <= mask + 1) rehash(mask + 1, shift);
+   else rehash((mask + 1) * 2, shift - 1);
+  }
+  put(k, v);
+ }
+ // 無ければ nullptr。
+ const V* find(unsigned long long k) const {
+  std::size_t h = home(k);
+  while (t[h].k) {
+   if (t[h].k == k) return &t[h].v;
+   h = (h + 1) & mask;
+  }
+  return nullptr;
+ }
+ bool contains(unsigned long long k) const { return find(k) != nullptr; }
+ void erase(unsigned long long k) {
+  std::size_t h = home(k);
+  while (t[h].k != k) h = (h + 1) & mask;
+  t[h].k = TOMB, --live;
+ }
+};
+
 }  // namespace dyntree_internal

@@ -10,7 +10,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 #include "_shared/dyntree/common.hpp"
@@ -48,7 +47,7 @@ class EulerTourTree {
   static constexpr bool AC = dyntree_internal::ActionLen<M>;
   dyntree_internal::Vec<Node> t;
   std::vector<int> free_nodes;
-  std::unordered_map<unsigned long long, Edge> es;
+  dyntree_internal::OpenTable<Edge> es;
   int n;
   static unsigned long long key(int u, int v) {
    if (u > v) std::swap(u, v);
@@ -178,11 +177,10 @@ class EulerTourTree {
   }
   // v から p へ向かう節と p から v へ向かう節。辺は (u,v) の向きで覚えてある。
   std::pair<int, int> edge_nodes(int v, int p) const {
-   auto it = es.find(key(v, p));
-   assert(it != es.end());
-   const Edge& e = it->second;
-   if (e.u == v) return {e.a, e.b};
-   return {e.b, e.a};
+   const Edge* e = es.find(key(v, p));
+   assert(e);
+   if (e->u == v) return {e->a, e->b};
+   return {e->b, e->a};
   }
 
  public:
@@ -201,7 +199,7 @@ class EulerTourTree {
   for (int e = 0; e < E; ++e) {
    const int u = edges[e][0], v = edges[e][1];
    add_arc(u, v, e, 0), add_arc(v, u, e, 1);
-   es.emplace(key(u, v), Edge{u, v, base + 2 * e, base + 2 * e + 1});
+   es.insert(key(u, v), Edge{u, v, base + 2 * e, base + 2 * e + 1});
   }
   std::vector<char> seen(n, 0);
   std::vector<int> seq;
@@ -238,7 +236,7 @@ class EulerTourTree {
   }
  }
  int size() const { return n; }
- bool edge_exists(int u, int v) const { return es.count(key(u, v)); }
+ bool edge_exists(int u, int v) const { return es.contains(key(u, v)); }
  T get(int v) {
   splay(v + 1);
   return t[v + 1].val;
@@ -255,13 +253,13 @@ class EulerTourTree {
   int ru = reroot(u + 1), rv = reroot(v + 1);
   int x = merge(merge(merge(ru, a), rv), b);
   static_cast<void>(x);
-  es.emplace(key(u, v), Edge{u, v, a, b});
+  es.insert(key(u, v), Edge{u, v, a, b});
  }
  void cut(int u, int v) {
-  auto it = es.find(key(u, v));
-  assert(it != es.end());
-  Edge e = it->second;
-  es.erase(it);
+  const Edge* found = es.find(key(u, v));
+  assert(found);
+  Edge e = *found;
+  es.erase(key(u, v));
   int a, b;
   if (e.u == u) a = e.a, b = e.b;
   else a = e.b, b = e.a;
