@@ -1,0 +1,16 @@
+id = "loj-3751"
+title = "「SDOI2009」HH 的项链"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "loj"
+name = "3751"
+
+[compare]
+kind = "tokens"
