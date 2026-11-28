@@ -7,7 +7,6 @@
 #include <cassert>
 #include <climits>
 #include <cstdint>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -194,8 +193,58 @@ struct Event {
  int kind, u, v;
  long long w;
 };
+// 生きている辺のイベント番号。2 の冪の大きさの開番地法の表で、埋まりが半分を超えたら広げる。
+// 消した跡は墓標にして、広げ直すときに落とす。
+class EdgeIndex {
+ struct Slot {
+  unsigned long long k;
+  int v;
+ };
+ std::vector<Slot> t;
+ std::size_t mask, shift, live, used;
+ static constexpr unsigned long long TOMB = ~0ull;
+ std::size_t home(unsigned long long k) const { return std::size_t((k * 0x9E3779B97F4A7C15ull) >> shift); }
+ void put(unsigned long long k, int v) {
+  std::size_t h = home(k);
+  while (t[h].k && t[h].k != TOMB) h = (h + 1) & mask;
+  if (!t[h].k) ++used;
+  t[h].k = k, t[h].v = v, ++live;
+ }
+ void rehash(std::size_t cap, std::size_t new_shift) {
+  std::vector<Slot> old;
+  old.swap(t);
+  t.assign(cap, Slot{0, 0});
+  mask = cap - 1, shift = new_shift, live = 0, used = 0;
+  for (const Slot& s : old)
+   if (s.k && s.k != TOMB) put(s.k, s.v);
+ }
+
+ public:
+ EdgeIndex(): t(16, Slot{0, 0}), mask(15), shift(60), live(0), used(0) {}
+ void insert(unsigned long long k, int v) {
+  if ((used + 1) * 2 > mask + 1) {
+   if ((live + 1) * 2 <= mask + 1) rehash(mask + 1, shift);
+   else rehash((mask + 1) * 2, shift - 1);
+  }
+  put(k, v);
+ }
+ // 無ければ -1。
+ int find(unsigned long long k) const {
+  std::size_t h = home(k);
+  while (t[h].k) {
+   if (t[h].k == k) return t[h].v;
+   h = (h + 1) & mask;
+  }
+  return -1;
+ }
+ void erase(unsigned long long k) {
+  std::size_t h = home(k);
+  while (t[h].k != k) h = (h + 1) & mask;
+  t[h].k = TOMB, --live;
+ }
+};
 class OfflineSubtree {
- std::unordered_map<unsigned long long, int> active;
+ EdgeIndex active;
  std::vector<Event> ev;
  static unsigned long long key(int u, int v) {
   if (u > v) std::swap(u, v);
@@ -205,14 +254,14 @@ class OfflineSubtree {
  public:
  explicit OfflineSubtree(int) { ev.reserve(1024); }
  void link(int u, int v) {
-  active[key(u, v)] = int(ev.size());
+  active.insert(key(u, v), int(ev.size()));
   ev.push_back({0, u, v, INT_MIN});
  }
  void cut(int u, int v) {
-  auto it = active.find(key(u, v));
-  assert(it != active.end());
-  ev[it->second].w = -(long long)ev.size();
-  active.erase(it);
+  const int idx = active.find(key(u, v));
+  assert(idx >= 0);
+  ev[idx].w = -(long long)ev.size();
+  active.erase(key(u, v));
   ev.push_back({1, u, v, 1});
  }
  void add_all(int v, long long x) { ev.push_back({2, v, 0, x}); }
