@@ -1,0 +1,26 @@
+#include <algorithm>
+#include <iostream>
+#include <vector>
+#include "neo/base/core/geo/Circle.hpp"
+using namespace std;
+signed main() {
+ cin.tie(0);
+ ios::sync_with_stdio(0);
+ using R= long double;
+ int N;
+ while(cin >> N && N) {
+  vector<Point<R>> ps(N);
+  for(auto& p: ps) cin >> p;
+  int ans= 1;
+  for(int i= N; i--;)
+   for(int j= i; j--;)
+    for(const auto& o: cross_points(Circle<R>(ps[i], 1), Circle<R>(ps[j], 1))) {
+     Circle<R> c(o, 1);
+     int cnt= 0;
+     for(const auto& p: ps) cnt+= c.where(p) != -1;
+     ans= max(ans, cnt);
+    }
+  cout << ans << '\n';
+ }
+ return 0;
+}
