@@ -1,6 +1,6 @@
 #pragma once
 #include "common.hpp"
-#include "_shared/segtree2d/segtree2d.hpp"
+#include "neo/base/ds/2d/SegTree2D.hpp"
 
 // モノイドを受ける 2 次元セグメント木 (merge sort 木) の候補で、長方形の最小を取る。
 // 今の Library の SegmentTree_2D を使う提出 (lib-segtree-2d.hpp) と書き比べる。

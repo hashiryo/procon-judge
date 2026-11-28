@@ -15,10 +15,11 @@ struct KdEnum {
   };
 
   vector<Node> t;
-  vector<int> bx, by, bid;  // 葉の順に並べた点
+  vector<int> bx, by, bid;
+  int n_ = 0;  // 葉の順に並べた点
 
   explicit KdEnum(const vector<array<int, 3>> &pts) {
-    const int n = (int)pts.size();
+    const int n = n_ = (int)pts.size();
     t.assign((size_t)4 * n + 4, Node{0, 0, 0, 0, -1, -1});
     vector<int> idx(n);
     iota(idx.begin(), idx.end(), 0);
@@ -30,7 +31,7 @@ struct KdEnum {
 
   // [l, r) の x と [d, u) の y に入る点の番号を out に積む。
   template <class F> void query(int l, int d, int r, int u, F out) const {
-    if (t.empty()) return;
+    if (n_ == 0) return;
     int st[128];
     int sp = 0;
     st[sp++] = 1;

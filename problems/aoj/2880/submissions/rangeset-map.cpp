@@ -1,9 +1,9 @@
-// RangeSet を std::map で持ち直した候補 (problems/_shared/rangeset/rangeset.hpp) で解く。
+// RangeSet を std::map で持ち直した候補 (neo/base/ds/set/RangeSet.hpp) で解く。
 // 隣接する区間は併合しない (merge = false)。lib.cpp (今の Library の RangeSet) と書き比べる。
 #include <algorithm>
 #include <array>
 #include <iostream>
-#include "_shared/rangeset/rangeset.hpp"
+#include "neo/base/ds/set/RangeSet.hpp"
 using namespace std;
 
 signed main() {

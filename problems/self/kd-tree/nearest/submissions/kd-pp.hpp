@@ -1,9 +1,8 @@
 #pragma once
 #include "pj.hpp"
-#include "_shared/kd-tree/kd_ball_pp.hpp"
+#include "neo/base/ds/kd/KdBall.hpp"
 
-// 1 点につき 1 ノードを置く KD 木で最近傍を引く。近い側の子から降り、
-// 外接矩形までの距離が今の最善以上になったら打ち切る。
+// neo の KdBall (1 点 1 ノードの KD 木) で最近傍を引く。
 struct Solver {
   const vector<array<i64, 2>> &pts_;
   const vector<array<i64, 2>> &qs_;
@@ -13,12 +12,13 @@ struct Solver {
 
   void run() {
     const int n = (int)pts_.size();
-    vector<int> x(n), y(n), id(n);
-    for (int i = 0; i < n; ++i) x[i] = (int)pts_[i][0], y[i] = (int)pts_[i][1], id[i] = i;
-    const KdBallPP kd(x, y, id);
+    vector<array<int, 2>> pt(n);
+    vector<int> id(n);
+    for (int i = 0; i < n; ++i) pt[i] = {(int)pts_[i][0], (int)pts_[i][1]}, id[i] = i;
+    const KdBall<int, 2> kd(pt, id);
     ans_.clear();
     ans_.reserve(qs_.size());
-    for (const auto &q : qs_) ans_.push_back(kd.nearest2((int)q[0], (int)q[1]));
+    for (const auto &q : qs_) ans_.push_back(kd.nearest2({(int)q[0], (int)q[1]}));
   }
 
   const vector<i64> &answers() const { return ans_; }

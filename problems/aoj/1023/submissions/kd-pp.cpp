@@ -1,10 +1,10 @@
-// 円形クエリ。1 点につき 1 ノードを置く KD 木 (problems/_shared/kd-tree/kd_ball_pp.hpp) で、
-// 円に入る点を数える。lib.cpp (今の Library の KDTree::prod_ball) と書き比べる。
+// 円形クエリ。neo の KdBall (neo/base/ds/kd/KdBall.hpp、1 点 1 ノード) で、円に入る点を数える。
+// lib.cpp (今の Library の KDTree::prod_ball) と書き比べる。
 #include <algorithm>
 #include <array>
 #include <iostream>
 #include <vector>
-#include "_shared/kd-tree/kd_ball_pp.hpp"
+#include "neo/base/ds/kd/KdBall.hpp"
 using namespace std;
 
 signed main() {
@@ -14,10 +14,12 @@ signed main() {
     vector<int> ax(AN), ay(AN), bx(BN), by(BN), bid(BN);
     for (int i = 0; i < AN; ++i) cin >> ax[i] >> ay[i];
     for (int i = 0; i < BN; ++i) cin >> bx[i] >> by[i], bid[i] = i;
-    KdBallPP kd(bx, by, bid);
+    vector<array<int, 2>> pt(BN);
+    for (int i = 0; i < BN; ++i) pt[i] = {bx[i], by[i]};
+    KdBall<int, 2> kd(pt, bid);
     long long ans = 0;
     const long long r2 = (long long)R * 4 * R * 4;
-    for (int i = 0; i < AN; ++i) ans += kd.count(ax[i], ay[i], r2);
+    for (int i = 0; i < AN; ++i) ans += kd.count({ax[i], ay[i]}, r2);
     cout << ans << '\n';
   }
   return 0;

@@ -1,7 +1,7 @@
-// RangeSet を std::map で持ち直した候補 (problems/_shared/rangeset/rangeset.hpp) で解く。
+// RangeSet を std::map で持ち直した候補 (neo/base/ds/set/RangeSet.hpp) で解く。
 // 区間の列挙 (begin/end) を使う。lib.cpp (今の Library の RangeSet) と書き比べる。
 #include <iostream>
-#include "_shared/rangeset/rangeset.hpp"
+#include "neo/base/ds/set/RangeSet.hpp"
 using namespace std;
 signed main() {
   cin.tie(0);
