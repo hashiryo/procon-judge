@@ -1,0 +1,16 @@
+id = "loj-3592"
+title = "「CEOI2021」多样性"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "loj"
+name = "3592"
+
+[compare]
+kind = "tokens"

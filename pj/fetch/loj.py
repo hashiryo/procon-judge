@@ -114,13 +114,31 @@ def limits(number: str) -> tuple[float, int]:
         ) from None
 
 
+def _case_stem(filename: str) -> str:
+    """ケース名。普通の入力は拡張子を除いた名前 (1.000.in は 1.000、input0.txt は input0)。
+
+    LOJ はサブタスクの印を入力の後ろに付けることがある (diversity.in.1a)。この形は
+    `.in` を外して印を残す (diversity.1a)。そのまま拡張子を落とすと diversity.in に
+    潰れて、同じ問題のケース名が重なる。
+    """
+    name = PurePosixPath(filename).name
+    if name.endswith(".in"):
+        return name[: -len(".in")]
+    marker = ".in."
+    i = name.rfind(marker)
+    if i >= 0:
+        return name[:i] + "." + name[i + len(marker) :]
+    return PurePosixPath(name).stem
+
+
 def pairs(info: dict) -> list[tuple[str, str, str]]:
     """(ケース名, 入力ファイル, 出力ファイル) の一覧。
 
     サブタスクがあれば、その testcases の組をそのまま使う。同じケースが複数の
     サブタスクに出るので、入力ファイルで畳む。サブタスクの無い問題は、拡張子を
-    除いた部分が同じ `.in` と `.out` (無ければ `.ans`) を組にする。ケース名は入力
-    ファイルの拡張子を除いたもの。`1.000.in` は `1.000`、`input0.txt` は `input0`。
+    除いた部分が同じ `.in` と `.out` (無ければ `.ans`) を組にする。`.in` の後ろに
+    印が付く名前 (diversity.in.1a) は、印を残して `.in` を外した名前をケース名にし、
+    相手は `.out` か `.ans` を挟んだ名前 (diversity.out.1a) にする。
     """
     files = {f["filename"] for f in info.get("testData") or [] if f.get("filename")}
     judge = info.get("judgeInfo") or {}
@@ -135,13 +153,19 @@ def pairs(info: dict) -> list[tuple[str, str, str]]:
             found.append((in_file, out_file))
     if not found:
         for name in sorted(files):
-            if not name.endswith(".in"):
-                continue
-            stem = name[: -len(".in")]
-            for suffix in OUTPUT_SUFFIXES:
-                if stem + suffix in files:
-                    found.append((name, stem + suffix))
-                    break
+            if name.endswith(".in"):
+                stem = name[: -len(".in")]
+                for suffix in OUTPUT_SUFFIXES:
+                    if stem + suffix in files:
+                        found.append((name, stem + suffix))
+                        break
+            elif ".in." in name:
+                prefix, tail = name.rsplit(".in.", 1)
+                for suffix in OUTPUT_SUFFIXES:
+                    candidate = prefix + suffix + "." + tail
+                    if candidate in files:
+                        found.append((name, candidate))
+                        break
     missing = sorted({f for pair in found for f in pair if f not in files})
     if missing:
         raise FetchError(
@@ -151,7 +175,7 @@ def pairs(info: dict) -> list[tuple[str, str, str]]:
     result: list[tuple[str, str, str]] = []
     names: set[str] = set()
     for in_file, out_file in found:
-        name = PurePosixPath(in_file).stem
+        name = _case_stem(in_file)
         if not name or name.startswith(".") or "/" in in_file:
             raise FetchError(f"LOJ: ケース名にできないファイル名です: {in_file!r}")
         if name in names:

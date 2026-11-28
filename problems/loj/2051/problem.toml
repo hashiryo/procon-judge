@@ -1,0 +1,16 @@
+id = "loj-2051"
+title = "「HNOI2016」序列"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "loj"
+name = "2051"
+
+[compare]
+kind = "tokens"

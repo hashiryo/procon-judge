@@ -73,6 +73,53 @@ def test_pairs_fall_back_to_stems_without_subtasks():
     ]
 
 
+def test_pairs_keep_the_suffix_after_in():
+    info = {
+        "testData": files(
+            "diversity.in.1a",
+            "diversity.out.1a",
+            "diversity.in.1b",
+            "diversity.out.1b",
+        ),
+        "judgeInfo": {
+            "subtasks": [
+                {
+                    "testcases": [
+                        {
+                            "inputFile": "diversity.in.1a",
+                            "outputFile": "diversity.out.1a",
+                        },
+                        {
+                            "inputFile": "diversity.in.1b",
+                            "outputFile": "diversity.out.1b",
+                        },
+                    ]
+                }
+            ]
+        },
+    }
+    assert loj.pairs(info) == [
+        ("diversity.1a", "diversity.in.1a", "diversity.out.1a"),
+        ("diversity.1b", "diversity.in.1b", "diversity.out.1b"),
+    ]
+
+
+def test_pairs_keep_the_suffix_after_in_without_subtasks():
+    info = {
+        "testData": files(
+            "diversity.in.1a",
+            "diversity.out.1a",
+            "diversity.in.1b",
+            "diversity.ans.1b",
+        ),
+        "judgeInfo": {"subtasks": None},
+    }
+    assert loj.pairs(info) == [
+        ("diversity.1a", "diversity.in.1a", "diversity.out.1a"),
+        ("diversity.1b", "diversity.in.1b", "diversity.ans.1b"),
+    ]
+
+
 def test_pairs_reject_files_missing_from_the_list():
     info = {
         "testData": files("1.in"),
