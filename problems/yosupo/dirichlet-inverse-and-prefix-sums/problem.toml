@@ -1,0 +1,19 @@
+id = "yosupo-dirichlet-inverse-and-prefix-sums"
+title = "Dirichlet Inverse and Prefix Sums"
+
+[limits]
+tle_sec = 30.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "number_theory/dirichlet_inverse_and_prefix_sums"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true
