@@ -1,0 +1,21 @@
+id = "self-dwm-min-count-sum"
+title = "点更新と区間の大きい方から和が k 以上になる最小個数 (N=Q=30000)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 10
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
