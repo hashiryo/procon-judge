@@ -1,0 +1,19 @@
+id = "yosupo-two-square-sum"
+title = "Represent A Number As Two Square Sum"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "number_theory/two_square_sum"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true
