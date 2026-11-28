@@ -1,12 +1,12 @@
 id = "aoj-2270"
-title = "L - L 番目の数字 (The L-th Number)"
+title = "The L-th Number"
 
 [limits]
 tle_sec = 5.0
-mle_mb = 512
+mle_mb = 1024
 
 [harness]
-kind = "raw"
+kind = "base"
 
 [testdata]
 source = "aoj"
