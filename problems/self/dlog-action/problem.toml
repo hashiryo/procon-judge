@@ -1,0 +1,21 @@
+id = "self-dlog-action"
+title = "モノイド作用の離散対数 (アフィン・行列・置換)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 10
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
