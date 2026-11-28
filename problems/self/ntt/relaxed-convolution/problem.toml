@@ -1,0 +1,21 @@
+id = "self-ntt-relaxed-convolution"
+title = "relaxed (オンライン) の畳み込み (mod 998244353、形ごとのケース)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 31
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
