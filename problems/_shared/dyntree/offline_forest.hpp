@@ -8,7 +8,6 @@
 // 保つ。辺の期限は削除時刻で、期限の小さい辺ほど上に来る。削除は owner[時刻] で切る節を引き、代替辺を探さない。
 #include <cassert>
 #include <cstdint>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 #include "_shared/dyntree/common.hpp"
@@ -18,28 +17,40 @@ struct Operation {
  unsigned kind, a, b;
 };
 // 各 link の削除時刻 (イベント番号)。削除されない辺はイベント数。
+// 辺の寿命は、2 の冪の大きさの開番地法の表で引く。std::unordered_map より軽い。
 class Timeline {
  std::vector<Operation> ops_;
  std::vector<unsigned> death_;
+ static constexpr unsigned long long TOMB = ~0ull;
 
  public:
  explicit Timeline(const std::vector<Operation>& ops): ops_(ops), death_(ops.size(), unsigned(ops.size())) {
-  std::unordered_map<unsigned long long, unsigned> open;
-  open.reserve(ops.size());
+  std::size_t links = 0;
+  for (const Operation& o : ops) links += (o.kind == 0);
+  std::size_t cap = 4, shift = 62;
+  while (cap < links * 2) cap <<= 1, --shift;
+  std::vector<unsigned long long> keys(cap, 0);
+  std::vector<unsigned> vals(cap, 0);
+  auto hash = [shift](unsigned long long k) { return std::size_t((k * 0x9E3779B97F4A7C15ull) >> shift); };
   for (unsigned i = 0; i < ops.size(); ++i) {
    const Operation& o = ops[i];
    if (o.kind > 1) continue;
    unsigned u = o.a, v = o.b;
    if (u > v) std::swap(u, v);
    const unsigned long long key = (unsigned long long)(u + 1) << 32 | (v + 1);
+   std::size_t h = hash(key);
    if (o.kind == 0) {
-    assert(!open.count(key));
-    open.emplace(key, i);
+    std::size_t tomb = cap;
+    while (keys[h]) {
+     if (keys[h] == TOMB && tomb == cap) tomb = h;
+     h = (h + 1) & (cap - 1);
+    }
+    if (tomb != cap) h = tomb;
+    keys[h] = key, vals[h] = i;
    } else {
-    auto it = open.find(key);
-    assert(it != open.end());
-    death_[it->second] = i;
-    open.erase(it);
+    while (keys[h] != key) h = (h + 1) & (cap - 1);
+    death_[vals[h]] = i;
+    keys[h] = TOMB;
    }
   }
  }
