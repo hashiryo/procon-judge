@@ -1,0 +1,19 @@
+id = "yosupo-connected-components-of-complement-graph"
+title = "Connected Components of Complement Graph"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "graph/connected_components_of_complement_graph"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true

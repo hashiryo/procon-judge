@@ -1,0 +1,19 @@
+id = "yosupo-shortest-path"
+title = "Shortest Path"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "graph/shortest_path"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true
