@@ -1,0 +1,19 @@
+id = "yosupo-area-of-union-of-rectangles"
+title = "Area of Union of Rectangles"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "data_structure/area_of_union_of_rectangles"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true
