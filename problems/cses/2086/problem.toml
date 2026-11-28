@@ -1,0 +1,22 @@
+id = "cses-2086"
+title = "Subarray Squares"
+url = "https://cses.fi/problemset/task/2086"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+# CSES のテストケースは自作する。配列を k 個の空でない連続した区間に分け、各区間の和の 2 乗の和を最小にする。
+# 費用 (S_i - S_j)^2 は S が広義単調増加なら Monge なので、各層の最小は分割統治 (monotone_minima) でも、
+# 傾き -2 S_j の直線を足す両端キューでも引ける。両方を提出として測る。
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 14
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
