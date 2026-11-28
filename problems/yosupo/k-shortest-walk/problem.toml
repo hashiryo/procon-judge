@@ -1,0 +1,19 @@
+id = "yosupo-k-shortest-walk"
+title = "K-Shortest Walk"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "graph/k_shortest_walk"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true
