@@ -1,0 +1,28 @@
+id = "atcoder-abc355-g"
+title = "Baseball"
+url = "https://atcoder.jp/contests/abc355/tasks/abc355_g"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+# AtCoder はテストケースを公開していないので、自作する。
+# 1..N から K 個の相異なる位置に中心を置き、Σ_y P_y min_i |x_i - y| を最小にする (1 次元の k-median)。
+# ΣP ≤ 1e5 なので、位置 y を P_y 個に展開して点列にする (M = ΣP ≤ 1e5)。ソート済みの点列を
+# 連続する区間に分け、区間ごとに 1 つの中心 (中央値) を置く問題になる。K は M まで大きいので
+# Alien DP: 中心 1 個あたり λ を足した DP を解き、中心数が K 以上になる最大の λ を二分探索する。
+# 内側の DP dp[i] = min_{j < i} dp[j] + w(j, i-1) + λ は同じ層の dp を参照する (オンラインの
+# 決定単調性) ので、分割統治ではなく LARSCH で解く。w は Monge。
+# 提出は、neo の larsch_dp と今の Library の simplified_larsch_dp を測る。どちらも (値, 中心数) を
+# 1 語 (__int128、値 * (M+1) + (M - 中心数)) に詰めて渡す。
+[testdata]
+source = "local"
+count = 14
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "tokens"
