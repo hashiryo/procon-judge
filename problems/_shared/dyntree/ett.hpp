@@ -266,10 +266,8 @@ class EulerTourTree {
   if (e.u == u) a = e.a, b = e.b;
   else a = e.b, b = e.a;
   splay(b);
-  int r = a;
-  while (t[r].par != b) r = t[r].par;
-  const bool right = (t[b].ch[1] == r);
   splay_to(a, b);
+  const bool right = (t[b].ch[1] == a);
   if (right) {  // [L] b [v の側] a [Q]
    int l = t[b].ch[0], q = t[a].ch[1], v1 = t[a].ch[0];
    if (v1) t[v1].par = 0;
@@ -313,10 +311,8 @@ class EulerTourTree {
  T prod_subtree(int v, int p) {
   auto [a, b] = edge_nodes(v, p);  // a: v->p, b: p->v
   splay(b);
-  int r = a;
-  while (t[r].par != b) r = t[r].par;
-  const bool right = (t[b].ch[1] == r);
   splay_to(a, b);
+  const bool right = (t[b].ch[1] == a);
   if (right) {  // [L] b [v の側] a [Q]
    int l = t[a].ch[0];
    return l ? t[l].sum : M::ti();
@@ -334,10 +330,8 @@ class EulerTourTree {
   if constexpr (A) {
    auto [a, b] = edge_nodes(v, p);  // a: v->p, b: p->v
    splay(b);
-   int r = a;
-   while (t[r].par != b) r = t[r].par;
-   const bool right = (t[b].ch[1] == r);
    splay_to(a, b);
+   const bool right = (t[b].ch[1] == a);
    if (right) {
     apply_to(t[a].ch[0], e);
    } else {
