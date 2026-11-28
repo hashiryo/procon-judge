@@ -1,0 +1,21 @@
+id = "self-ntt-binomial-convolution-mod-runtime-prime"
+title = "二項畳み込み (実行時の素数、形ごとのケース)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 19
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
