@@ -106,16 +106,21 @@ struct Core {
         cnt[ix] = (u32)(vc >= P ? vc - P : vc);
         sm[ix] = (u32)(vs >= P ? vs - P : vs);
       }
-      for (u64 v = K; v >= p2; --v) {
-        const size_t jx = (size_t)((double)v / dp) - 1;
-        const u64 tc = (u64)cnt[jx] + P - sp;
-        const u64 ts = (u64)sm[jx] + P - sp2;
+      // 小さい値: v / p = j になる v をまとめて回す。j ごとに 1 度だけ引けばよい。
+      for (u64 j = K / p; j >= p; --j) {
+        const u64 tc = (u64)cnt[j - 1] + P - sp;
+        const u64 ts = (u64)sm[j - 1] + P - sp2;
         const u64 dc = tc >= P ? tc - P : tc;
         const u64 ds = ts >= P ? ts - P : ts;
-        const u64 vc = (u64)cnt[v - 1] + P - dc;
-        const u64 vs = (u64)sm[v - 1] + P - red(ds * pm);
-        cnt[v - 1] = (u32)(vc >= P ? vc - P : vc);
-        sm[v - 1] = (u32)(vs >= P ? vs - P : vs);
+        const u32 dcr = (u32)dc, dsr = red(ds * pm);
+        const u64 vlo = j * p, vhi = std::min(K, vlo + p - 1);
+        for (u64 v = vhi; v >= vlo; --v) {
+          const u64 vc = (u64)cnt[v - 1] + P - dcr;
+          const u64 vs = (u64)sm[v - 1] + P - dsr;
+          cnt[v - 1] = (u32)(vc >= P ? vc - P : vc);
+          sm[v - 1] = (u32)(vs >= P ? vs - P : vs);
+        }
+        if (j == p) break;
       }
     }
     np = primes.size();
