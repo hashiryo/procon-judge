@@ -51,7 +51,7 @@ inline Poly inv_series(const Poly& f, int n) {
  Poly g(1, pw(f[0], M - 2));
  for (int m= 1; m < n;) {
   const int m2= std::min(2 * m, n);
-  Poly t= mul(f.size() > m2 ? Poly(f.begin(), f.begin() + m2) : f, g);
+  Poly t= mul(f.size() > size_t(m2) ? Poly(f.begin(), f.begin() + m2) : f, g);
   t.resize(m2);
   for (auto& x: t) x= x ? M - x : 0;  // 1 - f g
   t[0]= (t[0] + 2) % M;
