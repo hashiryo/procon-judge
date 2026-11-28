@@ -5,7 +5,7 @@
 #include <string>
 #include <cassert>
 #include "neo/algo/optimize/slope/PiecewiseLinearConvex.hpp"
-#include "mylib/optimization/fibonacci_search.hpp"
+#include "neo/algo/optimize/search/fibonacci_search.hpp"
 using namespace std;
 bool test(int (*solve)(stringstream&, stringstream&), string in, string expected) {
  stringstream scin(in), scout;
@@ -43,7 +43,7 @@ signed main(stringstream& scin, stringstream& scout) {
   long long ret= f.min().value() + (long long)p * k;
   return ret;
  };
- scout << fibonacci_search<MAXIMIZE>(lagrange, 0LL, 2e9 + 10).second << '\n';
+ scout << fibonacci_search<true>(lagrange, 0LL, 2e9 + 10).second << '\n';
  return 0;
 }
 }
@@ -71,7 +71,7 @@ signed main(stringstream& scin, stringstream& scout) {
   long long ret= -f(0).value() + (long long)p * k;
   return ret;
  };
- scout << fibonacci_search<MAXIMIZE>(lagrange, 0, 2e9 + 10).second << '\n';
+ scout << fibonacci_search<true>(lagrange, 0, 2e9 + 10).second << '\n';
  return 0;
 }
 }
