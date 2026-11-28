@@ -1,0 +1,16 @@
+id = "loj-6164"
+title = "「美团 CodeM 初赛 Round A」数列互质"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "loj"
+name = "6164"
+
+[compare]
+kind = "tokens"

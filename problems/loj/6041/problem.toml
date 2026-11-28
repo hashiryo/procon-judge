@@ -1,0 +1,16 @@
+id = "loj-6041"
+title = "「雅礼集训 2017 Day7」事情的相似度"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "loj"
+name = "6041"
+
+[compare]
+kind = "tokens"
