@@ -1,0 +1,19 @@
+id = "atcoder-abc191-d"
+title = "D - Circle Lattice Points"
+url = "https://atcoder.jp/contests/abc191/tasks/abc191_d"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 9
+reference = "reference.cpp"
+
+[compare]
+kind = "tokens"
