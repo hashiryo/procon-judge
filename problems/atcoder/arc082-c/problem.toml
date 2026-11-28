@@ -1,0 +1,19 @@
+id = "atcoder-arc082-c"
+title = "C - ConvexScore"
+url = "https://atcoder.jp/contests/arc082/tasks/arc082_c"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 10
+reference = "reference.cpp"
+
+[compare]
+kind = "tokens"
