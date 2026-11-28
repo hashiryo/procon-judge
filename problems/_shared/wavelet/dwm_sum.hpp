@@ -5,6 +5,7 @@
 // 塊は bit と重みの配列、語の境目ごとの 0/1 の重みの累積を持つ。
 #include <cassert>
 #include <cstdint>
+#include <cstring>
 #include <utility>
 #include <vector>
 
@@ -145,16 +146,18 @@ struct WeightedBlockBitVector {
     int word = off >> 6;
     if (word == W) return b.tot0;
     i64 s = b.p0[word];
-    for (int i = word * 64; i < off; ++i)
-      if (!get_bit(b, i)) s += b.wt[i];
+    u64 mask = ~b.w[word];
+    int base = word * 64, lim = off - base;
+    for (int i = 0; i < lim; ++i) s += b.wt[base + i] & (-(i64)((mask >> i) & 1));
     return s;
   }
   i64 prefix1(const Block &b, int off) const {
     int word = off >> 6;
     if (word == W) return b.tot1;
     i64 s = b.p1[word];
-    for (int i = word * 64; i < off; ++i)
-      if (get_bit(b, i)) s += b.wt[i];
+    u64 mask = b.w[word];
+    int base = word * 64, lim = off - base;
+    for (int i = 0; i < lim; ++i) s += b.wt[base + i] & (-(i64)((mask >> i) & 1));
     return s;
   }
   i64 sum0_prefix(int k) const {
@@ -185,7 +188,7 @@ struct WeightedBlockBitVector {
         cross_w[i] = b.wt[pos];
       }
     }
-    for (int i = b.len; i > off; --i) b.wt[i] = b.wt[i - 1];
+    if (b.len > off) std::memmove(b.wt + off + 1, b.wt + off, (std::size_t)(b.len - off) * sizeof(i64));
     for (int i = W - 1; i > word; --i) b.w[i] = (b.w[i] << 1) | (b.w[i - 1] >> 63);
     u64 lo = b.w[word] & low_mask(sh);
     u64 hi = b.w[word] >> sh;
@@ -220,7 +223,7 @@ struct WeightedBlockBitVector {
       b.w[i] >>= 1;
       if (i + 1 < W) b.w[i] |= (b.w[i + 1] & 1) << 63;
     }
-    for (int i = off; i + 1 < b.len; ++i) b.wt[i] = b.wt[i + 1];
+    if (off + 1 < b.len) std::memmove(b.wt + off, b.wt + off + 1, (std::size_t)(b.len - off - 1) * sizeof(i64));
     --b.len;
     b.w[W - 1] &= low_mask(b.len - 64 * (W - 1));
     for (int i = word + 1; i < W; ++i) {
