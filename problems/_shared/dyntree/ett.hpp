@@ -88,7 +88,6 @@ class EulerTourTree {
    pull(p);
   }
   [[gnu::always_inline]] void splay(int x) {
-   push(x);
    for (int p; (p = t[x].par);) {
     int g = t[p].par;
     if (!g) {
