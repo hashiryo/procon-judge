@@ -1,0 +1,28 @@
+id = "atcoder-tupc2022-k"
+title = "Lebesgue Integral"
+url = "https://atcoder.jp/contests/tupc2022/tasks/tupc2022_k"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "raw"
+
+# AtCoder はテストケースを公開していないので、自作する。
+# (0, M] を K 個の区間に分け、各区間の右端 m_i × その区間に入る A_j の個数の和を最小にする。
+# A をソートすると、連続する区間に分けて Σ (区間の最大) × (区間の長さ) を最小にする問題になる
+# (区間の右端は区間の最大に置くのが最良で、空の区間は 0 円)。
+# K ≤ 1e5、N ≤ 1e5 なので O(KN) の DP は間に合わない。Alien DP で 1 区間あたり λ を足し、
+# 内側の DP dp[i] = min_j (dp[j] + A_i (i - j) + λ) を解く。傾き -j は足す順に狭義減少、問い A_i は
+# 広義増加なので、両端キューの Convex Hull Trick で O(N)。λ は区間数の単調性で二分探索する O(log(N maxA))。
+# 提出は、neo の MonotoneCHT と今の Library の ConvexHullTrick (multiset) を測る。どちらも値を
+# (値, 区間数) の 1 語に詰めて渡す (値 × (N+1) + (N - 区間数) が小さいほど良いので、同点は区間数が多いほうが勝つ)。
+[testdata]
+source = "local"
+count = 14
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "tokens"
