@@ -1,0 +1,20 @@
+id = "self-geo-union-of-circles"
+title = "円の和集合の面積"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 14
+reference = "reference.cpp"
+
+[compare]
+kind = "float"
+abs_tol = 1e-06
+rel_tol = 1e-09
