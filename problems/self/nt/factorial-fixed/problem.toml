@@ -1,0 +1,18 @@
+id = "self-nt-factorial-fixed"
+title = "階乗と二項係数 (法 998244353 固定)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 5
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
