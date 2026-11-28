@@ -10,9 +10,11 @@
 // 答えは 1 + S(N, 0)。x は常に N の床の値なので、g は Q_N の表を引くだけでよい。
 // 添字は x <= K なら x-1、x > K なら K + N/x - 1 (K = floor(sqrt(N)))。
 //
-// 2026-11-28 の実験: 今の Library の multiplicative_sum より遅い (N = 1e13 で手元の M2 の
-// algo が 26.0 s 対 18.3 s。内訳は篩 15.9 s、再帰 10.1 s)。原因は篩の内側の整数の割り算で、
-// Library は double の割り算と n*p の掛け算で添字を作っている。この写しは捨てる候補。
+// 速さのために 3 つ手を入れてある。
+//  - 篩の添字は、i p <= K の範囲を掛け算 (K + i p - 1) で作り、それより上は double の割り算で作る。
+//    小さい値の側 (v / p) も double で割る。どちらも値が 2^53 未満なので厳密。
+//  - mod の掛け算は Barrett (P < 2^29 なので、P^2 未満の値なら 1 回の補正で足りる)。
+//  - 再帰の内側で x / p を 1 度だけ割る。
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -34,25 +36,29 @@ inline u64 isqrt(u64 x) {
 struct Core {
   u64 n = 0, K = 0;
   u32 P = 1, a = 0, b = 0;
+  u64 M = 0;  // Barrett: floor(2^64 / P)
   size_t len = 0, np = 0;
   std::vector<u32> cnt, sm, g, gp;
   std::vector<u32> primes;
 
-  size_t idx(u64 x) const {
-    return x <= K ? (size_t)x - 1 : K + (size_t)(n / x) - 1;
+  inline size_t idx(u64 x) const { return x <= K ? (size_t)x - 1 : K + (size_t)(n / x) - 1; }
+  // v < P^2 (P^2 の 2 倍まで可) を mod P にする。
+  inline u32 red(u64 v) const {
+    const u64 q = (u64)(((u128)v * M) >> 64);
+    u64 r = v - q * P;
+    if (r >= P) r -= P;
+    if (r >= P) r -= P;
+    return (u32)r;
   }
-
-  // f(p^e) = a e + b p (mod P)
-  u32 fp(u64 p, int e) const {
-    return (u32)(((u64)a * (u32)e + (u64)b * (p % P)) % P);
-  }
+  inline u32 fp(u64 p, int e) const { return red((u64)a * (u32)e + (u64)b * p); }  // p < P
 
   void build(u64 n_, u32 a_, u32 b_, u32 mod) {
     n = n_;
     P = mod;
+    M = (~0ull) / P;
     a = a_ % P;
     b = b_ % P;
-    const u32 inv2 = (u32)((P + 1) / 2);  // P は奇素数
+    const u32 inv2 = (u32)((P + 1) / 2);
     K = isqrt(n);
     const u64 m = n / (K + 1);
     len = (size_t)(K + m);
@@ -68,46 +74,67 @@ struct Core {
       cnt[ix] = (u32)((x - 1) % P);
       sm[ix] = (u32)(((u128)(x % P) * ((x + 1) % P) % P * inv2 % P + P - 1) % P);
     }
-    // Lucy_Hedgehog。x を大きい順に回すので、x/p はこの段の更新前の値を読む。
     for (u64 p = 2; p <= K; ++p) {
-      if (cnt[p - 1] == cnt[p - 2]) continue;  // p は素数でない
+      if (cnt[p - 1] == cnt[p - 2]) continue;
       primes.push_back((u32)p);
-      const u64 sp = cnt[p - 2], sp2 = sm[p - 2];  // pi(p-1), sum_{q<=p-1} q
-      const u64 p2 = p * p;
+      const u64 sp = cnt[p - 2], sp2 = sm[p - 2];
+      const u64 p2 = p * p, pm = p % P;
       const u64 imax = std::min(n / (K + 1), n / p2);
-      for (u64 i = 1; i <= imax; ++i) {
+      const u64 by_mul = std::min(m / p, imax);  // i p <= m のときだけ添字を掛け算で作れる
+      const double dn = (double)n, dp = (double)p;
+      for (u64 i = 1; i <= by_mul; ++i) {
+        const size_t ix = K + (size_t)i - 1, jx = K + (size_t)(i * p) - 1;
+        const u64 tc = (u64)cnt[jx] + P - sp;
+        const u64 ts = (u64)sm[jx] + P - sp2;
+        const u64 dc = tc >= P ? tc - P : tc;
+        const u64 ds = ts >= P ? ts - P : ts;
+        const u64 vc = (u64)cnt[ix] + P - dc;
+        const u64 vs = (u64)sm[ix] + P - red(ds * pm);
+        cnt[ix] = (u32)(vc >= P ? vc - P : vc);
+        sm[ix] = (u32)(vs >= P ? vs - P : vs);
+      }
+      for (u64 i = by_mul + 1; i <= imax; ++i) {
         const size_t ix = K + (size_t)i - 1;
-        const u64 xp = (n / i) / p;
-        const size_t jx = idx(xp);
-        cnt[ix] = (u32)((cnt[ix] + P - (u64)((cnt[jx] + P - sp) % P)) % P);
-        sm[ix] = (u32)((sm[ix] + P - (u64)((sm[jx] + P - sp2) % P) * (p % P) % P) % P);
+        const u64 xp = (u64)(dn / ((double)i * dp));
+        const size_t jx = xp <= K ? (size_t)xp - 1 : K + (size_t)(dn / (double)xp) - 1;
+        const u64 tc = (u64)cnt[jx] + P - sp;
+        const u64 ts = (u64)sm[jx] + P - sp2;
+        const u64 dc = tc >= P ? tc - P : tc;
+        const u64 ds = ts >= P ? ts - P : ts;
+        const u64 vc = (u64)cnt[ix] + P - dc;
+        const u64 vs = (u64)sm[ix] + P - red(ds * pm);
+        cnt[ix] = (u32)(vc >= P ? vc - P : vc);
+        sm[ix] = (u32)(vs >= P ? vs - P : vs);
       }
       for (u64 v = K; v >= p2; --v) {
-        const size_t jx = (size_t)(v / p) - 1;
-        cnt[v - 1] = (u32)((cnt[v - 1] + P - (u64)((cnt[jx] + P - sp) % P)) % P);
-        sm[v - 1] = (u32)((sm[v - 1] + P - (u64)((sm[jx] + P - sp2) % P) * (p % P) % P) % P);
+        const size_t jx = (size_t)((double)v / dp) - 1;
+        const u64 tc = (u64)cnt[jx] + P - sp;
+        const u64 ts = (u64)sm[jx] + P - sp2;
+        const u64 dc = tc >= P ? tc - P : tc;
+        const u64 ds = ts >= P ? ts - P : ts;
+        const u64 vc = (u64)cnt[v - 1] + P - dc;
+        const u64 vs = (u64)sm[v - 1] + P - red(ds * pm);
+        cnt[v - 1] = (u32)(vc >= P ? vc - P : vc);
+        sm[v - 1] = (u32)(vs >= P ? vs - P : vs);
       }
     }
     np = primes.size();
     g.resize(len);
-    for (size_t i = 0; i < len; ++i) {
-      g[i] = (u32)(((u64)a * cnt[i] + (u64)b * sm[i]) % P);
-    }
+    for (size_t i = 0; i < len; ++i) g[i] = red((u64)a * cnt[i] + (u64)b * sm[i]);
     gp.assign(np + 1, 0);
-    for (size_t k = 0; k < np; ++k) {
-      gp[k + 1] = (u32)(((u64)gp[k] + fp(primes[k], 1)) % P);
-    }
+    for (size_t k = 0; k < np; ++k) gp[k + 1] = red((u64)gp[k] + fp(primes[k], 1));
   }
 
   u32 dfs(u64 x, size_t k) const {
-    u64 ret = (g[idx(x)] + P - gp[k]) % P;
+    u64 ret = (u64)g[idx(x)] + P - gp[k];
+    if (ret >= P) ret -= P;
     for (size_t j = k; j < np; ++j) {
       const u64 p = primes[j];
-      if (p > x / p) break;
+      if (p * p > x) break;
+      const u64 xp = x / p;
       u64 pe = p;
-      for (int e = 1; pe <= x / p; ++e) {
-        const u32 fpe = fp(p, e);
-        ret += (u64)fpe * dfs(x / pe, j + 1) % P + fp(p, e + 1);
+      for (int e = 1; pe <= xp; ++e) {
+        ret += (u64)fp(p, e) * dfs(x / pe, j + 1) + fp(p, e + 1);
         if (ret >= (1ull << 63)) ret %= P;
         pe *= p;
       }
