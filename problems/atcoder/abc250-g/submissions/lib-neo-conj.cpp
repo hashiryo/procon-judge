@@ -1,0 +1,18 @@
+#include <iostream>
+#include "neo/algo/optimize/slope/PiecewiseLinearConvex.hpp"
+using namespace std;
+signed main() {
+ cin.tie(0);
+ ios::sync_with_stdio(0);
+ int N;
+ cin >> N;
+ PiecewiseLinearConvex<long long> f;
+ for(int i= 0; i < N; ++i) {
+  int P;
+  cin >> P;
+  f.add_abs(1, P);
+  f.chmin_cum(true);
+ }
+ cout << (long long)f(0).value() << '\n';
+ return 0;
+}
