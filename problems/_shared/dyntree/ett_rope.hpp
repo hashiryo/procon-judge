@@ -52,12 +52,14 @@ class RopeEulerTourTree {
   using Node = rope_ett_internal::Node<M>;
   static constexpr bool AC = dyntree_internal::ActionLen<M>;
   static constexpr int CAP = Node::CAP;
+  static constexpr int MIN = CAP / 2;
   dyntree_internal::Vec<Node> t;
   dyntree_internal::Vec<T> val;  // 要素の値 (添字は要素の ID)
   std::vector<int> cid, slot;    // 要素の ID → チャンクと位置
   std::vector<int> free_chunks;
   dyntree_internal::OpenTable<Edge> es;
   int n;
+  int pending0 = 0, pending1 = 0;  // 直前に分けた境界のチャンク
   static unsigned long long key(int u, int v) {
    if (u > v) std::swap(u, v);
    return (unsigned long long)(unsigned)u << 32 | (unsigned)v;
@@ -162,6 +164,72 @@ class RopeEulerTourTree {
    refresh(c), refresh(d);
    return d;
   }
+  // c の in-order の隣を根にして返す。c はその子になる。隣が無ければ false。
+  bool adjacent(int c, int& p, bool& p_before) {
+   splay(c);
+   if (t[c].ch[0]) {
+    p = t[c].ch[0];
+    while (t[p].ch[1]) p = t[p].ch[1], push(p);
+    splay(p);
+    p_before = true;
+    return true;
+   }
+   if (t[c].ch[1]) {
+    p = t[c].ch[1];
+    while (t[p].ch[0]) p = t[p].ch[0], push(p);
+    splay(p);
+    p_before = false;
+    return true;
+   }
+   return false;
+  }
+  // 小さくなったチャンクを、隣と合わせるか要素を借りて直す。木の根を返す。
+  int fix(int c) {
+   for (int guard = 0; t[c].len < MIN && guard < 8; ++guard) {
+    int p;
+    bool before;
+    if (!adjacent(c, p, before)) break;
+    // ここで p が根、c は p の子。
+    if (t[p].len + t[c].len <= CAP) {
+     const int pn = t[p].len, cn = t[c].len;
+     if (before) {  // [p][c] を p にまとめる
+      for (int i = 0; i < cn; ++i) set_slot(p, pn + i, t[c].ids[i]);
+      t[p].len = pn + cn;
+      t[p].ch[1] = t[c].ch[1];
+      if (t[p].ch[1]) t[t[p].ch[1]].par = p;
+      t[c].ch[0] = t[c].ch[1] = 0, t[c].len = t[c].tot = t[c].cnt = 0;
+      free_chunks.push_back(c);
+      refresh(p);
+      c = p;
+     } else {  // [c][p] を c にまとめる
+      for (int i = 0; i < pn; ++i) set_slot(c, cn + i, t[p].ids[i]);
+      t[c].len = cn + pn;
+      t[c].ch[1] = t[p].ch[1];
+      if (t[c].ch[1]) t[t[c].ch[1]].par = c;
+      t[c].par = 0;
+      t[p].ch[0] = t[p].ch[1] = 0, t[p].len = t[p].tot = t[p].cnt = 0;
+      free_chunks.push_back(p);
+      refresh(c);
+     }
+    } else {
+     const int k = MIN - t[c].len;
+     if (before) {  // p の後ろから k 個を c の前に移す
+      for (int i = t[c].len - 1; i >= 0; --i) set_slot(c, i + k, t[c].ids[i]);
+      for (int i = 0; i < k; ++i) set_slot(c, i, t[p].ids[t[p].len - k + i]);
+      t[c].len += k, t[p].len -= k;
+      refresh(c), refresh(p);
+      c = p;
+     } else {  // p の前から k 個を c の後ろに移す
+      for (int i = 0; i < k; ++i) set_slot(c, t[c].len + i, t[p].ids[i]);
+      for (int i = k; i < t[p].len; ++i) set_slot(p, i - k, t[p].ids[i]);
+      t[c].len += k, t[p].len -= k;
+      refresh(c), refresh(p);
+      c = p;
+     }
+    }
+   }
+   return root_of(c);
+  }
   // 列を最初の k 要素と残りに分ける。
   void split_pos(int c, int k, int& a, int& b) {
    if (!c) return a = 0, b = 0, void();
@@ -185,7 +253,17 @@ class RopeEulerTourTree {
     pull(c), pull(d);
     a = c, b = d;
     t[a].par = t[b].par = 0;
+    pending0 = c, pending1 = d;
    }
+  }
+  // 分けたあと、境界のチャンクを直して、2 つの木の根を返す。
+  void split_fixed(int root, int k, int& a, int& b) {
+   pending0 = pending1 = 0;
+   split_pos(root, k, a, b);
+   if (pending0) fix(pending0);
+   if (pending1) fix(pending1);
+   if (a) a = root_of(pending0 ? pending0 : a);
+   if (b) b = root_of(pending1 ? pending1 : b);
   }
   // 2 つの列を継ぐ。右端と左端のチャンクが 1 つに収まるならまとめる。
   int merge(int a, int b) {
@@ -254,7 +332,7 @@ class RopeEulerTourTree {
   int reroot(int id) {
    const int k = rank(id);  // これで id のチャンクが根になる
    int a, b;
-   split_pos(cid[id], k, a, b);
+   split_fixed(cid[id], k, a, b);
    return merge(b, a);
   }
   // 辺の印を作り、その ID と、その 1 個だけを持つチャンクを返す。
@@ -381,16 +459,16 @@ class RopeEulerTourTree {
    splay(root);
    int p1, p2, p3, p4, p5, mid;
    if (ra > rb) {  // [.. b ..(v の側).. a ..]
-    split_pos(root, rb, p1, p2);
-    split_pos(p2, 1, mid, p3);
-    split_pos(p3, ra - rb - 1, p4, p5);
-    split_pos(p5, 1, mid, p5);
+    split_fixed(root, rb, p1, p2);
+    split_fixed(p2, 1, mid, p3);
+    split_fixed(p3, ra - rb - 1, p4, p5);
+    split_fixed(p5, 1, mid, p5);
     static_cast<void>(merge(p5, p1));
    } else {  // v の側は折り返し (rb,) + [0,ra)
-    split_pos(root, ra, p1, p2);
-    split_pos(p2, 1, mid, p3);
-    split_pos(p3, rb - ra - 1, p4, p5);
-    split_pos(p5, 1, mid, p5);
+    split_fixed(root, ra, p1, p2);
+    split_fixed(p2, 1, mid, p3);
+    split_fixed(p3, rb - ra - 1, p4, p5);
+    split_fixed(p5, 1, mid, p5);
     static_cast<void>(merge(p5, p1));
    }
   }
