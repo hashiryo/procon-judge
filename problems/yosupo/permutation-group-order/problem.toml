@@ -1,0 +1,19 @@
+id = "yosupo-permutation-group-order"
+title = "Permutation Group Order"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "other/permutation_group_order"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
