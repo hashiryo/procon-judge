@@ -166,10 +166,10 @@ template <unsigned P> void stage_dit(u32* d, int h, int k, const u32* tb, int co
  for (int j= 0; j < h; ++j) {
   u32* p= d + 8 * j;
   const V u0= vload<P>(p), u1= vload<P>(p + 8 * h), u2= vload<P>(p + 16 * h), u3= vload<P>(p + 24 * h);
-  const V c= vshoups<P>(vlow<P>(u2), X, Xq), dd= vshoups<P>(vlow<P>(u3), X, Xq);
+  const V c= vshoups<P>(u2, X, Xq), dd= vshoups<P>(u3, X, Xq);
   const V ac= vplus<P>(u0, c), amc= vdiff<P>(u0, c);
   const V bd0= vplus<P>(u1, dd), bmd0= vdiff<P>(u1, dd);
-  const V bd= vshoups<P>(vlow<P>(bd0), Y, Yq), bmd= vshoups<P>(vlow<P>(bmd0), Z, Zq);
+  const V bd= vshoups<P>(bd0, Y, Yq), bmd= vshoups<P>(bmd0, Z, Zq);
   const V lac= vlow<P>(ac), lamc= vlow<P>(amc);
   vstore<P>(p, vlow<P>(vplus<P>(lac, bd)));
   vstore<P>(p + 8 * h, vlow<P>(vdiff<P>(lac, bd)));
@@ -187,13 +187,13 @@ template <unsigned P> void stage_dit_inv(u32* d, int h, int k, const u32* tb, in
   u32* p= d + 8 * j;
   const V u0= vload<P>(p), u1= vload<P>(p + 8 * h), u2= vload<P>(p + 16 * h), u3= vload<P>(p + 24 * h);
   const V ab= vplus<P>(u0, u1), cd= vplus<P>(u2, u3);
-  const V amb= vshoups<P>(vlow<P>(vdiff<P>(u0, u1)), Y, Yq);
-  const V cmd= vshoups<P>(vlow<P>(vdiff<P>(u2, u3)), Z, Zq);
+  const V amb= vshoups<P>(vdiff<P>(u0, u1), Y, Yq);
+  const V cmd= vshoups<P>(vdiff<P>(u2, u3), Z, Zq);
   const V lab= vlow<P>(ab), lcd= vlow<P>(cd);
   vstore<P>(p, vlow<P>(vplus<P>(lab, lcd)));
   vstore<P>(p + 8 * h, vlow<P>(vplus<P>(amb, cmd)));
-  vstore<P>(p + 16 * h, vshoups<P>(vlow<P>(vdiff<P>(lab, lcd)), X, Xq));
-  vstore<P>(p + 24 * h, vshoups<P>(vlow<P>(vdiff<P>(amb, cmd)), X, Xq));
+  vstore<P>(p + 16 * h, vshoups<P>(vdiff<P>(lab, lcd), X, Xq));
+  vstore<P>(p + 24 * h, vshoups<P>(vdiff<P>(amb, cmd), X, Xq));
  }
 }
 
