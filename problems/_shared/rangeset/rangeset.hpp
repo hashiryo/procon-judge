@@ -9,6 +9,7 @@
 #include <iterator>
 #include <limits>
 #include <map>
+#include <memory_resource>
 
 template <class Int, bool merge = true> class RangeSet {
  public:
@@ -20,7 +21,8 @@ template <class Int, bool merge = true> class RangeSet {
 
  private:
   static constexpr Int GAP = merge ? 1 : 0;
-  std::map<Int, Int> mp_;  // 区間の左端 -> 右端
+  std::pmr::unsynchronized_pool_resource pool_;  // ノードの確保をプールから行う
+  std::pmr::map<Int, Int> mp_;                    // 区間の左端 -> 右端
 
   static Section empty_section() { return {1, 0}; }
   static Int sub(Int a, Int b) {  // a - b。あふれないように下限で止める
@@ -33,7 +35,7 @@ template <class Int, bool merge = true> class RangeSet {
   }
 
  public:
-  RangeSet() {}
+  RangeSet() : mp_(&pool_) {}
 
   size_t size() const { return mp_.size(); }
 
@@ -51,6 +53,21 @@ template <class Int, bool merge = true> class RangeSet {
   // [l, r] を入れて、新しく覆われた点の数を返す。
   Int insert(Int l, Int r) {
     if (r < l) return 0;
+    // 既に覆われているなら、消して入れ直さずに返す。
+    auto up = mp_.upper_bound(l);
+    if (up != mp_.begin()) {
+      auto p = std::prev(up);
+      if (p->second >= r) return 0;
+      // 1 つの区間に右から触れて伸ばすだけなら、値を書き換える (鍵は変えずに済む)。
+      if (p->second >= sub(l, GAP)) {
+        auto nx = std::next(p);
+        if (nx == mp_.end() || nx->first > add(r, GAP)) {
+          const Int add_len = r - p->second;
+          p->second = r;
+          return add_len;
+        }
+      }
+    }
     auto it = mp_.lower_bound(sub(l, GAP));
     if (it != mp_.begin()) {
       auto p = std::prev(it);
@@ -95,7 +112,7 @@ template <class Int, bool merge = true> class RangeSet {
     using difference_type = std::ptrdiff_t;
     using pointer = const Section *;
     using reference = Section;
-    std::map<Int, Int>::const_iterator it;
+    std::pmr::map<Int, Int>::const_iterator it;
     Section operator*() const { return {it->first, it->second}; }
     const_iterator &operator++() {
       ++it;
