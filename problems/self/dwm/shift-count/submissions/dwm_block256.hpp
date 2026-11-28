@@ -10,8 +10,7 @@ struct Solver {
   explicit Solver(const vector<int> &a) : wm(a) {}
 
   void shift(int l, int r) {
-    int x = wm.access(r - 1);
-    wm.erase(r - 1);
+    int x = wm.erase_value(r - 1);
     wm.insert(l, x);
   }
 

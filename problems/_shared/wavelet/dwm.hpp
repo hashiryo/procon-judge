@@ -652,14 +652,19 @@ struct DynamicWaveletMatrix {
     ++n;
   }
 
-  void erase(int k) {
+  // 位置 k を消し、消した値を返す。
+  int erase_value(int k) {
+    int res = 0;
     for (int h = L - 1; h >= 0; --h) {
       auto [b, o] = bv[h].erase_rank(k);
-      if (b) k = mid[h] + o;
+      if (b) res |= 1 << h, k = mid[h] + o;
       else k -= o, --mid[h];
     }
     --n;
+    return res;
   }
+
+  void erase(int k) { (void)erase_value(k); }
 
   int access(int k) const {
     int res = 0;
@@ -672,8 +677,7 @@ struct DynamicWaveletMatrix {
   }
 
   void set(int k, int x) {
-    if (access(k) == x) return;
-    erase(k);
+    erase_value(k);
     insert(k, x);
   }
 
@@ -709,6 +713,21 @@ struct DynamicWaveletMatrix {
       }
     }
     return c;
+  }
+
+  // [l, r) の x の個数。
+  int count(int l, int r, int x) const {
+    for (int h = L - 1; h >= 0; --h) {
+      int ol = bv[h].rank1(l), orr = bv[h].rank1(r);
+      if ((x >> h) & 1) {
+        l = mid[h] + ol;
+        r = mid[h] + orr;
+      } else {
+        l -= ol;
+        r -= orr;
+      }
+    }
+    return r - l;
   }
 };
 
