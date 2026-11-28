@@ -1,0 +1,20 @@
+id = "self-mo-tree-distinct"
+title = "木のパスの相異なる色の数"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+# 入力は n q、色 c_1 ... c_n、辺 n-1 行、クエリ q 行 (1-indexed)。各クエリのパス上の相異なる色の数を出す。
+# 木を括弧列に落としてパスを区間に対応させる Mo's algorithm (MoOnTree) の自己ベンチマーク。
+[testdata]
+source = "local"
+count = 12
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "tokens"
