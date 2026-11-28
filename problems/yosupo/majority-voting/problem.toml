@@ -1,0 +1,19 @@
+id = "yosupo-majority-voting"
+title = "Majority Voting"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "data_structure/majority_voting"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true

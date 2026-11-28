@@ -1,0 +1,19 @@
+id = "yosupo-counting-c4"
+title = "Counting C  4's"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "graph/counting_c4"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true
