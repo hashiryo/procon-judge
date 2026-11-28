@@ -107,6 +107,34 @@ template <unsigned P> V vmuls(V x, V w) {
  return _mm256_blend_epi32(_mm256_srli_epi64(e, 32), o, 0xAA);
 }
 
+// ひねりを表に持ち、wi = w * (-P^{-1}) mod 2^32 を掛けて商を 1 命令 (vpmulld) で 8 レーン作る形。
+// x < 4P、w < P、wi = w * ni。結果は 2P 未満。intrinsics の vpmulld は下位 32 bit だけなので符号は問わない。
+// SIMDe の mullo は符号付きで掛けて UBSan に鳴るため、SIMDe のときは vmul / vmuls に回す。
+#if defined(__AVX2__) && !defined(USE_SIMDE)
+template <unsigned P> V vmult(V x, V w, V wi) {
+ const V pv= vsplat<P>(P);
+ const V xo= _mm256_srli_epi64(x, 32), wo= _mm256_srli_epi64(w, 32);
+ const V q= _mm256_mullo_epi32(x, wi);
+ const V t= _mm256_mul_epu32(x, w), to= _mm256_mul_epu32(xo, wo);
+ const V e= _mm256_add_epi64(t, _mm256_mul_epu32(q, pv));
+ const V o= _mm256_add_epi64(to, _mm256_mul_epu32(_mm256_srli_epi64(q, 32), pv));
+ return _mm256_blend_epi32(_mm256_srli_epi64(e, 32), o, 0xAA);
+}
+// w が全レーン同じとき (率や 4 乗根、1/n)。
+template <unsigned P> V vmults(V x, V w, V wi) {
+ const V pv= vsplat<P>(P);
+ const V xo= _mm256_srli_epi64(x, 32);
+ const V q= _mm256_mullo_epi32(x, wi);
+ const V t= _mm256_mul_epu32(x, w), to= _mm256_mul_epu32(xo, w);
+ const V e= _mm256_add_epi64(t, _mm256_mul_epu32(q, pv));
+ const V o= _mm256_add_epi64(to, _mm256_mul_epu32(_mm256_srli_epi64(q, 32), pv));
+ return _mm256_blend_epi32(_mm256_srli_epi64(e, 32), o, 0xAA);
+}
+#else
+template <unsigned P> V vmult(V x, V w, V) { return vmul<P>(x, w); }
+template <unsigned P> V vmults(V x, V w, V) { return vmuls<P>(x, w); }
+#endif
+
 // mod は素数。mod - 1 の素因数を集め、どの p でも g^((mod-1)/p) != 1 となる最小の g を返す。
 template <unsigned P> const u32& primitive_root() {
  static const u32 g= [] {
@@ -140,6 +168,8 @@ template <unsigned P> const V& ii_vec() {
  static const V v= vsplat<P>(smont<P>(spow<P>(primitive_root<P>(), u64(P - 1) - u64(P - 1) / 4)));
  return v;
 }
+template <unsigned P> u32 im_scalar() { return smont<P>(spow<P>(primitive_root<P>(), u64(P - 1) / 4)); }
+template <unsigned P> u32 ii_scalar() { return smont<P>(spow<P>(primitive_root<P>(), u64(P - 1) - u64(P - 1) / 4)); }
 // n^{-1} mod P。n = 2^e ごとに残す。
 template <unsigned P> u32 inv_n_scalar(int n) {
  static u32 tab[26]= {};
@@ -156,9 +186,10 @@ template <unsigned P> struct scratch {
 };
 // inv = false で順変換 (ω_len^j)、true で逆変換 (ω_len^{-j})。
 template <unsigned P> const u32* build_tw(int len, int h, bool inv) {
+ // 前半 3h が w (Montgomery)、後半 3h が wi = w * ni mod 2^32 (商を vpmulld で作るため)。
  auto& tab= scratch<P>::tw[inv ? 1 : 0][__builtin_ctz(unsigned(len))];
- if ((int)tab.size() == 3 * h) return tab.data();
- tab.assign(3 * h, 0);
+ if ((int)tab.size() == 6 * h) return tab.data();
+ tab.assign(6 * h, 0);
  const u32 g= primitive_root<P>();
  const u32 wl= smont<P>(spow<P>(g, inv ? u64(P - 1) - u64(P - 1) / unsigned(len) : u64(P - 1) / unsigned(len)));
  const u32 c2= smul<P>(wl, wl), c3= smul<P>(c2, wl);
@@ -176,6 +207,11 @@ template <unsigned P> const u32* build_tw(int len, int h, bool inv) {
   vstore<P>(p1 + j, w1), vstore<P>(p2 + j, w2), vstore<P>(p3 + j, w3);
   w1= vmuls<P>(w1, r1), w2= vmuls<P>(w2, r2), w3= vmuls<P>(w3, r3);
  }
+ u32* q1= tab.data() + 3 * h;
+ u32* q2= q1 + h;
+ u32* q3= q2 + h;
+ const u32 niv= mc<P>::ni;
+ for (int j= 0; j < h; ++j) q1[j]= u32(p1[j] * niv), q2[j]= u32(p2[j] * niv), q3[j]= u32(p3[j] * niv);
  return tab.data();
 }
 
@@ -186,23 +222,28 @@ template <unsigned P> void dft_stage_vec(u32* d, int n, int len) {
  const u32* t1= tab;
  const u32* t2= tab + h;
  const u32* t3= tab + 2 * h;
+ const u32* u1w= tab + 3 * h;
+ const u32* u2w= u1w + h;
+ const u32* u3w= u2w + h;
  const V& im= im_vec<P>();
+ const V imw= vsplat<P>(im_scalar<P>() * mc<P>::ni);
  for (int b= 0; b < n; b+= len) {
   u32* q= d + b;
   for (int jv= 0; jv < hv; ++jv) {
    u32* p= q + (jv << 3);
    const int j= jv << 3;
    const V w1= vload<P>(t1 + j), w2= vload<P>(t2 + j), w3= vload<P>(t3 + j);
+   const V g1= vload<P>(u1w + j), g2= vload<P>(u2w + j), g3= vload<P>(u3w + j);
    const V u0= vload<P>(p), u1= vload<P>(p + h), u2= vload<P>(p + 2 * h), u3= vload<P>(p + 3 * h);
    const V t0= vplus<P>(u0, u2), t2v= vplus<P>(u1, u3);
    const V t1v= vdiff<P>(u0, u2), t3v= vdiff<P>(u1, u3);
    const V l0= vlow<P>(t0), l1= vlow<P>(t1v), l2= vlow<P>(t2v);
-   const V pi= vmuls<P>(t3v, im);
+   const V pi= vmults<P>(t3v, im, imw);
    const V s1= vplus<P>(l1, pi), s3= vdiff<P>(l1, pi);
    vstore<P>(p, vlow<P>(vplus<P>(l0, l2)));
-   vstore<P>(p + h, vmul<P>(s1, w1));
-   vstore<P>(p + 2 * h, vmul<P>(vdiff<P>(l0, l2), w2));
-   vstore<P>(p + 3 * h, vmul<P>(s3, w3));
+   vstore<P>(p + h, vmult<P>(s1, w1, g1));
+   vstore<P>(p + 2 * h, vmult<P>(vdiff<P>(l0, l2), w2, g2));
+   vstore<P>(p + 3 * h, vmult<P>(s3, w3, g3));
   }
  }
 }
@@ -214,19 +255,24 @@ template <unsigned P> void idft_stage_vec(u32* d, int n, int len) {
  const u32* t1= tab;
  const u32* t2= tab + h;
  const u32* t3= tab + 2 * h;
+ const u32* u1w= tab + 3 * h;
+ const u32* u2w= u1w + h;
+ const u32* u3w= u2w + h;
  const V& ii= ii_vec<P>();
+ const V imw= vsplat<P>(ii_scalar<P>() * mc<P>::ni);
  for (int b= 0; b < n; b+= len) {
   u32* q= d + b;
   for (int jv= 0; jv < hv; ++jv) {
    u32* p= q + (jv << 3);
    const int j= jv << 3;
    const V w1= vload<P>(t1 + j), w2= vload<P>(t2 + j), w3= vload<P>(t3 + j);
+   const V g1= vload<P>(u1w + j), g2= vload<P>(u2w + j), g3= vload<P>(u3w + j);
    const V u0= vload<P>(p);
-   const V y1= vmul<P>(vload<P>(p + h), w1);
-   const V y2= vmul<P>(vload<P>(p + 2 * h), w2);
-   const V y3= vmul<P>(vload<P>(p + 3 * h), w3);
+   const V y1= vmult<P>(vload<P>(p + h), w1, g1);
+   const V y2= vmult<P>(vload<P>(p + 2 * h), w2, g2);
+   const V y3= vmult<P>(vload<P>(p + 3 * h), w3, g3);
    const V t0= vlow<P>(vplus<P>(u0, y2)), t2v= vlow<P>(vdiff<P>(u0, y2));
-   const V t1v= vlow<P>(vplus<P>(y1, y3)), t3v= vmuls<P>(vdiff<P>(y1, y3), ii);
+   const V t1v= vlow<P>(vplus<P>(y1, y3)), t3v= vmults<P>(vdiff<P>(y1, y3), ii, imw);
    vstore<P>(p, vlow<P>(vplus<P>(t0, t1v)));
    vstore<P>(p + h, vlow<P>(vplus<P>(t2v, t3v)));
    vstore<P>(p + 2 * h, vlow<P>(vdiff<P>(t0, t1v)));
