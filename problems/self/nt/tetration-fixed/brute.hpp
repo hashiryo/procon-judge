@@ -17,6 +17,9 @@ struct Solver {
  unsigned solve(unsigned a, unsigned b) {
   constexpr unsigned long long M= 998244353;
   if (b == 0) return 1;
+  // a <= 1 は b が大きくても塔が閉じるので、b 回まわさずに返す。
+  if (a == 0) return (b & 1) ? 0 : 1;
+  if (a == 1) return 1;
   // t = a ↑↑ i を正確に持つ。最後の段だけ mod M で累乗する。
   u128 t= 1;
   for (unsigned i= 0; i < b; ++i) {
