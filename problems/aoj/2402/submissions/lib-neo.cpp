@@ -1,0 +1,37 @@
+#include <algorithm>
+#include <cmath>
+#include <iomanip>
+#include <iostream>
+#include <vector>
+#include "neo/base/core/geo/Polygon.hpp"
+#include "neo/base/core/geo/angle.hpp"
+using namespace std;
+signed main() {
+ cin.tie(0);
+ ios::sync_with_stdio(false);
+ cout << fixed << setprecision(12);
+ using R= long double;
+ for(int N, M, L; cin >> N >> M >> L && N;) {
+  vector<Polygon<R>> stars(N);
+  for(int i= 0; i < N; i++) {
+   Point<R> p;
+   R a, r;
+   cin >> p >> a >> r;
+   vector<Point<R>> ps(5);
+   for(int j= 0; j < 5; j++) {
+    R theta= degree_to_radian(a + j * 144 + 90);
+    ps[j]= p + r * Point<R>{cos(theta), sin(theta)};
+   }
+   stars[i]= Polygon<R>(ps);
+  }
+  R dis[N][N];
+  for(int i= N; i--;) dis[i][i]= 0;
+  for(int i= N; i--;)
+   for(int j= N; j--;) dis[i][j]= dis[j][i]= sqrt((long double)dist2(stars[i], stars[j]));
+  for(int k= N; k--;)
+   for(int i= N; i--;)
+    for(int j= N; j--;) dis[i][j]= min(dis[i][j], dis[i][k] + dis[k][j]);
+  cout << dis[M - 1][L - 1] << '\n';
+ }
+ return 0;
+}

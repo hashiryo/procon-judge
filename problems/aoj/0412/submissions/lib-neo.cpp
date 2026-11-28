@@ -1,0 +1,23 @@
+#include <iostream>
+#include "neo/base/core/geo/IncrementalConvexHull.hpp"
+using namespace std;
+signed main() {
+ cin.tie(0);
+ ios::sync_with_stdio(false);
+ int N;
+ cin >> N;
+ IncrementalConvexHull<__int128_t> ch;
+ for(int i= 0; i < N; ++i) {
+  long long x, y;
+  cin >> x >> y;
+  ch.insert({x * 10000, y * 10000});
+ }
+ int Q;
+ cin >> Q;
+ while(Q--) {
+  long long x, y;
+  cin >> x >> y;
+  cout << (ch.where({x * 9999, y * 9999}) == 1) << '\n';
+ }
+ return 0;
+}
