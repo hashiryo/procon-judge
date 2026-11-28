@@ -1,0 +1,20 @@
+id = "self-mo-distinct-updates"
+title = "点更新つき区間 distinct"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+# 期待出力は、3D Mo (時間軸つき Mo's algorithm) を手書きした reference.cpp が作る。参照実装は、
+# クエリごとに区間を走査する愚直解 (brute.cpp) と小さい入力で突き合わせる (pj testdata crosscheck)。
+[testdata]
+source = "local"
+count = 12
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "tokens"
