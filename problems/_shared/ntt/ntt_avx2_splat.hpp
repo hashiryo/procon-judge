@@ -185,9 +185,42 @@ template <unsigned P> const u32* leaf_table(int m) {
  return tb.p;
 }
 
+// 段 (ベクトル数 4) はひねりがすべて 1 なので、掛け算を省く。
+template <unsigned P> void stage4v_h1(u32* d, int nv, bool inv) {
+ const u32 imn= inv ? ii_normal<P>() : im_normal<P>();
+ const V im= vsplat<P>(imn), imq= vsplat<P>(shoup_q<P>(imn));
+ for (int b= 0; b < nv; b+= 4) {
+  u32* p= d + 8 * b;
+  const V u0= vload<P>(p), u1= vload<P>(p + 8), u2= vload<P>(p + 16), u3= vload<P>(p + 24);
+  if (!inv) {
+   const V t0= vplus<P>(u0, u2), t2= vplus<P>(u1, u3);
+   const V t1= vdiff<P>(u0, u2), t3= vdiff<P>(u1, u3);
+   const V l0= vlow<P>(t0), l1= vlow<P>(t1), l2= vlow<P>(t2);
+   const V pi= vshoups<P>(vlow<P>(t3), im, imq);
+   vstore<P>(p, vlow<P>(vplus<P>(l0, l2)));
+   vstore<P>(p + 8, vlow<P>(vplus<P>(l1, pi)));
+   vstore<P>(p + 16, vlow<P>(vdiff<P>(l0, l2)));
+   vstore<P>(p + 24, vlow<P>(vdiff<P>(l1, pi)));
+  } else {
+   const V y2= vlow<P>(u2);
+   const V y1= vlow<P>(u1), y3= vlow<P>(u3);
+   const V t0= vlow<P>(vplus<P>(u0, y2)), t2= vlow<P>(vdiff<P>(u0, y2));
+   const V t1= vlow<P>(vplus<P>(y1, y3)), t3= vshoups<P>(vlow<P>(vdiff<P>(y1, y3)), im, imq);
+   vstore<P>(p, vlow<P>(vplus<P>(t0, t1)));
+   vstore<P>(p + 8, vlow<P>(vplus<P>(t2, t3)));
+   vstore<P>(p + 16, vlow<P>(vdiff<P>(t0, t1)));
+   vstore<P>(p + 24, vlow<P>(vdiff<P>(t2, t3)));
+  }
+ }
+}
+
 // 段 (ベクトル数 L) の順変換 (DIF) と逆変換 (DIT)。L は 4 以上。
 template <unsigned P> void stage4v(u32* d, int nv, int m, int L, bool inv) {
  const int h= L >> 2;
+ if (h == 1) {
+  stage4v_h1<P>(d, nv, inv);
+  return;
+ }
  const u32* t= stage_table<P>(m, L, inv);
  const u32 *w1= t, *w2= t + h, *w3= t + 2 * h;
  const u32 *s1= t + 3 * h, *s2= t + 4 * h, *s3= t + 5 * h;
