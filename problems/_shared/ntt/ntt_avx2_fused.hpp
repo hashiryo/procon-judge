@@ -97,39 +97,53 @@ template <unsigned P> u32 ii_normal() {
 // 段のひねりの表。長さ len の基数 4 の段は h = len/4 で、
 // 前半 3h が w (ω_len^j、ω_len^{2j}、ω_len^{3j})、後半 3h がその Shoup の商。
 // 長さと向きごとに 1 回だけ作って残す。
+// 表の置き場。32 byte にそろえて、段の読み込みがキャッシュ線をまたがないようにする。
+struct tbuf {
+ u32* p= nullptr;
+ int n= 0;
+ void assign(int n_) {
+  if (n == n_) return;
+  std::free(p);
+  void* q= nullptr;
+  if (posix_memalign(&q, 32, size_t(n_) * 4)) std::abort();
+  p= static_cast<u32*>(q), n= n_;
+ }
+};
 template <unsigned P> struct table_cache {
- static inline std::vector<u32> r4[2][26];
- static inline std::vector<u32> r2[2][26];
+ static inline tbuf r4[2][26];
+ static inline tbuf r2[2][26];
 };
 template <unsigned P> const u32* get_r4(int len, bool inv) {
  auto& t= table_cache<P>::r4[inv ? 1 : 0][__builtin_ctz(unsigned(len))];
  const int h= len >> 2;
- if ((int)t.size() != 6 * h) {
-  t.assign(6 * h, 0);
+ if (t.n != 6 * h) {
+  t.assign(6 * h);
   const u32 g= primitive_root<P>();
   const u32 wl= spow<P>(g, inv ? u64(P - 1) - u64(P - 1) / unsigned(len) : u64(P - 1) / unsigned(len));
   const u32 c2= u32(u64(wl) * wl % P), c3= u32(u64(c2) * wl % P);
   u32 a1= 1, a2= 1, a3= 1;
+  u32* tp= t.p;
   for (int j= 0; j < h; ++j) {
-   t[j]= a1, t[h + j]= a2, t[2 * h + j]= a3;
-   t[3 * h + j]= shoup_q<P>(a1), t[4 * h + j]= shoup_q<P>(a2), t[5 * h + j]= shoup_q<P>(a3);
+   tp[j]= a1, tp[h + j]= a2, tp[2 * h + j]= a3;
+   tp[3 * h + j]= shoup_q<P>(a1), tp[4 * h + j]= shoup_q<P>(a2), tp[5 * h + j]= shoup_q<P>(a3);
    a1= u32(u64(a1) * wl % P), a2= u32(u64(a2) * c2 % P), a3= u32(u64(a3) * c3 % P);
   }
  }
- return t.data();
+ return t.p;
 }
 // 基数 2 の段 (長さ len、h = len/2) のひねり。前半 h が w、後半 h が商。
 template <unsigned P> const u32* get_r2(int len, bool inv) {
  auto& t= table_cache<P>::r2[inv ? 1 : 0][__builtin_ctz(unsigned(len))];
  const int h= len >> 1;
- if ((int)t.size() != 2 * h) {
-  t.assign(2 * h, 0);
+ if (t.n != 2 * h) {
+  t.assign(2 * h);
   const u32 g= primitive_root<P>();
   const u32 wl= spow<P>(g, inv ? u64(P - 1) - u64(P - 1) / unsigned(len) : u64(P - 1) / unsigned(len));
   u32 a= 1;
-  for (int j= 0; j < h; ++j) t[j]= a, t[h + j]= shoup_q<P>(a), a= u32(u64(a) * wl % P);
+  u32* tp= t.p;
+  for (int j= 0; j < h; ++j) tp[j]= a, tp[h + j]= shoup_q<P>(a), a= u32(u64(a) * wl % P);
  }
- return t.data();
+ return t.p;
 }
 
 // 基数 4 の段 (h = len/4 が 8 以上)。順変換 (inv = false) は DIF、逆は DIT。
@@ -253,31 +267,53 @@ constexpr int tile_len(int l) {
  return t;
 }
 
-// fa[0..l) と fb[0..l) から、巡回の畳み込みを fa に作る (長さ l、2 の冪)。
+// 1 つのタイル (n = T 要素) を、順変換の下の段、葉の積、逆変換の下の段まで続けて回す。
+template <unsigned P> void tile_work(u32* fa, u32* fb, int T, bool square, V sc, V scq) {
+ tile_forward<P>(fa, T);
+ if (!square) tile_forward<P>(fb, T);
+ for (int i= 0; i < T; i+= 8) {
+  // 葉の積の入力は P 未満に直す (8 個の 64 bit の和を R P 未満に収め、還元の結果を 2^32 未満にするため)。
+  // 葉の積が 8 次の巡回畳み込み (正規化なし) で R^{-1} が付き、残りの逆の段が l/8 倍なので、ここで 8 R / l を掛ける。
+  const V ya= vcanon<P>(vload<P>(fa + i));
+  if (square) vstore<P>(fa + i, vlow<P>(vshoups<P>(leaf_mul<P>(ya, ya), sc, scq)));
+  else vstore<P>(fa + i, vlow<P>(vshoups<P>(leaf_mul<P>(ya, vcanon<P>(vload<P>(fb + i))), sc, scq)));
+ }
+ tile_inverse<P>(fa, T);
+}
+
+// 長さ n (要素数、2 の冪) の区画を、深さ優先で回す。区画の段を順に掛け、4 つの子を回してから、
+// 同じ段の逆を掛ける。こうすると、各段の順と逆の間で子の区画がキャッシュに残る。
+template <unsigned P> void fused_rec(u32* fa, u32* fb, int n, int T, bool square, V sc, V scq) {
+ if (n <= T) {
+  tile_work<P>(fa, fb, n, square, sc, scq);
+  return;
+ }
+ stage4<P>(fa, n, n, false);
+ if (!square) stage4<P>(fb, n, n, false);
+ const int h= n >> 2;
+ for (int t= 0; t < 4; ++t) fused_rec<P>(fa + t * h, fb + t * h, h, T, square, sc, scq);
+ stage4<P>(fa, n, n, true);
+}
+
+// fa[0..l) と fb[0..l) から、巡回の畳み込みを fa に作る (長さ l、2 の冪)。深さ優先で区画を回す。
 // square のときは fb を使わず、fa の 2 乗にする。
 template <unsigned P> void convolve_fused(u32* fa, u32* fb, int l, bool square) {
  const int T= tile_len(l);
+ const u32 c= u32(u64(u64(8) * mc<P>::r % P) * inv_n_scalar<P>(l) % P);
+ const V sc= vsplat<P>(c), scq= vsplat<P>(shoup_q<P>(c));
+ fused_rec<P>(fa, fb, l, T, square, sc, scq);
+}
+// 同じ入力で、外の段を配列全体のなめで回す形 (区画を深さ優先にしない)。比べるために残す。
+template <unsigned P> void convolve_fused_flat(u32* fa, u32* fb, int l, bool square) {
+ const int T= tile_len(l);
+ const u32 c= u32(u64(u64(8) * mc<P>::r % P) * inv_n_scalar<P>(l) % P);
+ const V sc= vsplat<P>(c), scq= vsplat<P>(shoup_q<P>(c));
  for (int len= l; len > T; len>>= 2) {
   stage4<P>(fa, l, len, false);
   if (!square) stage4<P>(fb, l, len, false);
  }
- for (int b= 0; b < l; b+= T) {
-  tile_forward<P>(fa + b, T);
-  if (!square) tile_forward<P>(fb + b, T);
-  for (int i= 0; i < T; i+= 8) {
-   // 葉の積の入力は P 未満に直す (8 個の 64 bit の和を R P 未満に収め、還元の結果を 2^32 未満にするため)。
-   const V ya= vcanon<P>(vload<P>(fa + b + i));
-   if (square) vstore<P>(fa + b + i, vlow<P>(leaf_mul<P>(ya, ya)));
-   else vstore<P>(fa + b + i, vlow<P>(leaf_mul<P>(ya, vcanon<P>(vload<P>(fb + b + i)))));
-  }
-  tile_inverse<P>(fa + b, T);
- }
+ for (int b= 0; b < l; b+= T) tile_work<P>(fa + b, fb + b, T, square, sc, scq);
  for (int len= T << 2; len <= l; len<<= 2) stage4<P>(fa, l, len, true);
- // 葉の積が 8 次の巡回畳み込み (正規化なし) で R^{-1} が付き、残りの逆の段が l/8 倍なので、8 R / l を掛ける。
- u32 c= u32(u64(8) * mc<P>::r % P);
- c= u32(u64(c) * inv_n_scalar<P>(l) % P);
- const V cv= vsplat<P>(c), cq= vsplat<P>(shoup_q<P>(c));
- for (int i= 0; i < l; i+= 8) vstore<P>(fa + i, vcanon<P>(vshoups<P>(vload<P>(fa + i), cv, cq)));
 }
 
 // 作業の配列。呼び出しをまたいで残す (タイルの段は小さい呼び出しで何度も来るため)。
@@ -294,29 +330,52 @@ template <unsigned P> struct work_buf {
   fa= static_cast<u32*>(pa), fb= static_cast<u32*>(pb), cap= l;
  }
 };
+// 畳み込みの入口。deep で外の段の回し方 (深さ優先か、配列全体のなめか) を選ぶ。
+template <unsigned P> void convolve_entry(const ZMod<P>* a, int n, const ZMod<P>* b, int m, int lo, int hi, ZMod<P>* out, bool deep) {
+ // 巡回の長さは L >= max(hi, n + m - 1 - lo) でよい (折り返した項が [lo, hi) に入らない)。
+ const int need= std::max(hi, n + m - 1 - lo);
+ int l= 1;
+ while (l < need) l<<= 1;
+ if (std::min(n, m) >= 60 && l >= 128 && (P - 1) % unsigned(l) == 0) {
+  const bool square= (a == b && n == m);
+  work_buf<P>::reserve(l);
+  u32* fa= work_buf<P>::fa;
+  u32* fb= work_buf<P>::fb;
+  std::copy(reinterpret_cast<const u32*>(a), reinterpret_cast<const u32*>(a) + n, fa), std::fill(fa + n, fa + l, 0);
+  if (!square) std::copy(reinterpret_cast<const u32*>(b), reinterpret_cast<const u32*>(b) + m, fb), std::fill(fb + m, fb + l, 0);
+  if (deep) convolve_fused<P>(fa, fb, l, square);
+  else convolve_fused_flat<P>(fa, fb, l, square);
+  for (int k= lo; k < hi; ++k) out[k - lo]= ZMod<P>::raw(fa[k]);
+  return;
+ }
+ Naive::convolve_range(a, n, b, m, lo, hi, out);
+}
 }  // namespace ntt_fused_internal
 
 // 4 本目の核。畳み込みは融合した道、素の変換は 3 本目のものを使う。
+// NttAvx2Fused は外の段を深さ優先で回し (子の区画がキャッシュに残る)、NttAvx2FusedFlat は配列全体をなめる。
 struct NttAvx2Fused {
  template <class K> static void convolve_range(const K* a, int n, const K* b, int m, int lo, int hi, K* out) {
   if constexpr (ntt_avx2_internal::static_ntt_mod<K>::value) {
-   constexpr unsigned P= ntt_avx2_internal::static_ntt_mod<K>::mod;
-   // 巡回の長さは L >= max(hi, n + m - 1 - lo) でよい (折り返した項が [lo, hi) に入らない)。
-   const int need= std::max(hi, n + m - 1 - lo);
-   int l= 1;
-   while (l < need) l<<= 1;
-   if (std::min(n, m) >= 60 && l >= 128 && (P - 1) % unsigned(l) == 0) {
-    using namespace ntt_fused_internal;
-    const bool square= (a == b && n == m);
-    work_buf<P>::reserve(l);
-    u32* fa= work_buf<P>::fa;
-    u32* fb= work_buf<P>::fb;
-    std::fill(fa, fa + l, 0), std::copy(reinterpret_cast<const u32*>(a), reinterpret_cast<const u32*>(a) + n, fa);
-    if (!square) std::fill(fb, fb + l, 0), std::copy(reinterpret_cast<const u32*>(b), reinterpret_cast<const u32*>(b) + m, fb);
-    convolve_fused<P>(fa, fb, l, square);
-    for (int k= lo; k < hi; ++k) out[k - lo]= K::raw(fa[k]);
-    return;
-   }
+   ntt_fused_internal::convolve_entry<ntt_avx2_internal::static_ntt_mod<K>::mod>(a, n, b, m, lo, hi, out, true);
+   return;
+  }
+  Naive::convolve_range(a, n, b, m, lo, hi, out);
+ }
+
+ template <unsigned P> requires ntt_friendly<P> static void dft(ZMod<P>* a, int n) { NttAvx2::dft(a, n); }
+ template <unsigned P> requires ntt_friendly<P> static void idft(ZMod<P>* a, int n) { NttAvx2::idft(a, n); }
+ template <unsigned P> requires ntt_friendly<P> static void dft_doubling(ZMod<P>* a, int n) { NttAvx2::dft_doubling(a, n); }
+ template <unsigned P> requires ntt_friendly<P> static void even_dft(ZMod<P>* a, int n) { NttAvx2::even_dft(a, n); }
+ template <unsigned P> requires ntt_friendly<P> static void odd_dft(ZMod<P>* a, int n) { NttAvx2::odd_dft(a, n); }
+};
+
+// 外の段を配列全体のなめで回す版 (深さ優先と比べるため)。
+struct NttAvx2FusedFlat {
+ template <class K> static void convolve_range(const K* a, int n, const K* b, int m, int lo, int hi, K* out) {
+  if constexpr (ntt_avx2_internal::static_ntt_mod<K>::value) {
+   ntt_fused_internal::convolve_entry<ntt_avx2_internal::static_ntt_mod<K>::mod>(a, n, b, m, lo, hi, out, false);
+   return;
   }
   Naive::convolve_range(a, n, b, m, lo, hi, out);
  }
