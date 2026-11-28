@@ -1,0 +1,21 @@
+id = "self-poly-p-recursive"
+title = "多項式係数の線形漸化式の第 N 項 (mod 998244353、階数と次数のケース)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 13
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
