@@ -55,6 +55,14 @@ class KdBall2D {
     return ret;
   }
 
+  // 一番近い点までの距離の 2 乗。点が無ければ -1。
+  long long nearest2(int x, int y) const {
+    if (n_ == 0) return -1;
+    long long best = -1;
+    nearest_rec(1, x, y, best);
+    return best;
+  }
+
   // 円に入る点の番号を f に渡す。
   template <class F> void search(int x, int y, long long r2, F f) const {
     if (n_ == 0) return;
@@ -102,6 +110,29 @@ class KdBall2D {
     const long long dx = std::max(std::abs((long long)p.lx - x), std::abs((long long)p.hx - 1 - x));
     const long long dy = std::max(std::abs((long long)p.ly - y), std::abs((long long)p.hy - 1 - y));
     return dx * dx + dy * dy;
+  }
+
+  // 近い側の子から降り、外接矩形までの距離が今の最善以上なら打ち切る。
+  void nearest_rec(int v, int x, int y, long long &best) const {
+    const Node &p = t_[v];
+    const long long lb = min_dist2(p, x, y);
+    if (best >= 0 && lb >= best) return;
+    if (p.lo >= 0) {
+      for (int j = p.lo; j < p.hi; ++j) {
+        const long long dx = (long long)bx_[j] - x, dy = (long long)by_[j] - y;
+        const long long d2 = dx * dx + dy * dy;
+        if (best < 0 || d2 < best) best = d2;
+      }
+      return;
+    }
+    const long long dl = min_dist2(t_[2 * v], x, y), dr = min_dist2(t_[2 * v + 1], x, y);
+    if (dl <= dr) {
+      nearest_rec(2 * v, x, y, best);
+      nearest_rec(2 * v + 1, x, y, best);
+    } else {
+      nearest_rec(2 * v + 1, x, y, best);
+      nearest_rec(2 * v, x, y, best);
+    }
   }
 
   void build(std::vector<int> &idx, int v, int l, int r, int dep) {

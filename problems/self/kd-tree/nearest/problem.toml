@@ -1,0 +1,20 @@
+id = "self-kd-tree-nearest"
+title = "Nearest Neighbor (KD Tree)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# 最近傍の自作の問題。テストデータは gen.py で作り、参照は KD 木をその場で書いた submissions/reference.hpp。
+# 小さい入力 (seed 1000 以上) は、全部の点を調べる brute.hpp と突き合わせる。
+[testdata]
+source = "local"
+count = 20
+generator = "gen.py"
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
