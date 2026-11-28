@@ -1,8 +1,8 @@
 #pragma once
 #include "pj.hpp"
-#include "_shared/dyntree/ett_wbt.hpp"
+#include "neo/base/ds/tree/EulerTourTree.hpp"
 
-// Euler Tour Tree (splay 木)。部分木への作用は遅延で持つ。
+// Euler Tour Tree (大きさで釣り合いを取る木。NeoLibrary のもの)。部分木への作用は遅延で持つ。
 struct Solver {
   struct AddM {
     using T = i64;
@@ -17,7 +17,7 @@ struct Solver {
     for (size_t i = 0; i < e.size(); ++i) r[i] = {e[i].first, e[i].second};
     return r;
   }
-  WbtEulerTourTree<AddM> ett;
+  EulerTourTree<AddM> ett;
   Solver(int n, const vector<i64> &a, const vector<pair<int, int>> &edges): ett(n - 1 < 0 ? n : n, to_edges(edges), a) {}
   void cut(int u, int v) { ett.cut(u, v); }
   void link(int u, int v) { ett.link(u, v); }
