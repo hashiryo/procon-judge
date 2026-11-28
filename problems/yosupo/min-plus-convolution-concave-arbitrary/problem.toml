@@ -1,0 +1,16 @@
+id = "yosupo-min-plus-convolution-concave-arbitrary"
+title = "Min Plus Convolution (Concave and Arbitrary)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "convolution/min_plus_convolution_concave_arbitrary"
+
+[compare]
+kind = "checker"
