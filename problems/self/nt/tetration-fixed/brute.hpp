@@ -29,10 +29,8 @@ struct Solver {
    }
    // t = a^t を exact に。u128 に収まらない入力は小さい seed では来ない。
    u128 p= 1, base= a;
-   for (u128 e= t; e; e>>= 1) {
+   for (u128 e= t; e; e>>= 1, base*= base)
     if (e & 1) p*= base;
-    if (e >>= 1) base*= base;
-   }
    t= p;
   }
   return 1;
