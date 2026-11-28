@@ -1,0 +1,16 @@
+id = "yuki-3170"
+title = "[Cherry 7th Tune KY] Even if you could say \"See you ...\""
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "3170"
+
+[compare]
+kind = "tokens"

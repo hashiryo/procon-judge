@@ -1,0 +1,20 @@
+id = "mofecoder-monoxercon-202508-l"
+title = "L - FF?DLP"
+url = "https://mofecoder.com/contests/monoxercon_202508/tasks/monoxercon_202508_l"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+# mofecoder のテストケースは公開されていないので、自作する (gen.py と、lib-neo.cpp を固定した reference.cpp)。
+[testdata]
+source = "local"
+count = 10
+generator = "gen.py"
+reference = "reference.cpp"
+
+[compare]
+kind = "tokens"
