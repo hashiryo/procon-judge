@@ -1,0 +1,19 @@
+id = "yosupo-dynamic-tree-vertex-set-path-composite-base"
+title = "Dynamic Tree Vertex Set Path Composite (base)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "tree/dynamic_tree_vertex_set_path_composite"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true

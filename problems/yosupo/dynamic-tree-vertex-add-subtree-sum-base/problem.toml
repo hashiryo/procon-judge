@@ -1,0 +1,19 @@
+id = "yosupo-dynamic-tree-vertex-add-subtree-sum-base"
+title = "Dynamic Tree Vertex Add Subtree Sum (base)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "tree/dynamic_tree_vertex_add_subtree_sum"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true
