@@ -252,6 +252,8 @@ class EulerTourTree {
  void link(int u, int v) {
   assert(u != v && !edge_exists(u, v));
   int a = alloc_edge_node(), b = alloc_edge_node();
+  // u と v の列を、どちらもその頂点から始まる形に回してから継ぐ。v の列の先頭が v でないと、
+  // 新しい辺の印が v に隣り合わず、ほかの辺の区間に入り込む。
   int ru = reroot(u + 1), rv = reroot(v + 1);
   int x = merge(merge(merge(ru, a), rv), b);
   static_cast<void>(x);
