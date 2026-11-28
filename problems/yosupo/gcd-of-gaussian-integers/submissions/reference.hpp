@@ -27,16 +27,17 @@ inline G mul_1pi(G x) { return {x.a - x.b, x.a + x.b}; }
 inline i64 norm(G x) { return x.a * x.a + x.b * x.b; }
 
 // x から u y (u = ±1, ±i) を引いて、差のノルムが最小になるものを返す。
+// |x - u y|^2 = |x|^2 + |y|^2 - 2 Re(x conj(u y)) なので、Re(x conj(u y)) が最大の u を選ぶ。
+// t = x conj(y) とすると、u = 1 で Re = t.a、u = i で Re = t.b、u = -1 と -i はその符号違い。
+// だから 4 つのノルムを計算しなくてよく、掛け算 4 回と比較で決まる。
 inline G sub_best_unit(G x, G y) {
-  const G c[4] = {{y.a, y.b}, {-y.a, -y.b}, {-y.b, y.a}, {y.b, -y.a}};
-  i64 best = -1;
-  G r{0, 0};
-  for (int i = 0; i < 4; ++i) {
-    const G d{x.a - c[i].a, x.b - c[i].b};
-    const i64 n = d.a * d.a + d.b * d.b;
-    if (best < 0 || n < best) best = n, r = d;
-  }
-  return r;
+  const i64 ta = x.a * y.a + x.b * y.b;  // Re(x conj y)
+  const i64 tb = x.b * y.a - x.a * y.b;  // Im(x conj y)
+  const i64 aa = ta < 0 ? -ta : ta, ab = tb < 0 ? -tb : tb;
+  G u;
+  if (aa >= ab) u = {ta >= 0 ? y.a : -y.a, ta >= 0 ? y.b : -y.b};
+  else u = {tb >= 0 ? -y.b : y.b, tb >= 0 ? y.a : -y.a};  // i y = (-y.b, y.a)
+  return {x.a - u.a, x.b - u.b};
 }
 
 inline G gcd(G x, G y) {

@@ -10,7 +10,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <unordered_map>
 #include <vector>
 
 namespace squarefree_internal {
@@ -29,46 +28,54 @@ struct Core {
   u64 D = 0;
   std::vector<signed char> mu;
   std::vector<int> sm;  // M(x) for x <= D
-  std::unordered_map<u64, i64> memo;
+  // M のメモ。開番地法 (key 0 は空)。引数は 1e9 以下なので 64 bit に収まる。
+  static constexpr size_t HSZ = 1u << 21;
+  std::vector<u64> hkey;
+  std::vector<i64> hval;
 
   void build(u64 D_) {
     D = D_;
     mu.assign(D + 1, 0);
-    std::vector<int> primes;
-    std::vector<signed char> comp(D + 1, 0);
-    mu[1] = 1;
-    for (u64 i = 2; i <= D; ++i) {
-      if (!comp[i]) primes.push_back((int)i), mu[i] = -1;
-      for (int p : primes) {
-        if ((u64)p * i > D) break;
-        comp[p * i] = 1;
-        if (i % (u64)p == 0) {
-          mu[p * i] = 0;
-          break;
+    {
+      std::vector<int> primes;
+      std::vector<signed char> comp(D + 1, 0);
+      mu[1] = 1;
+      for (u64 i = 2; i <= D; ++i) {
+        if (!comp[i]) primes.push_back((int)i), mu[i] = -1;
+        for (int p : primes) {
+          if ((u64)p * i > D) break;
+          comp[p * i] = 1;
+          if (i % (u64)p == 0) {
+            mu[p * i] = 0;
+            break;
+          }
+          mu[p * i] = (signed char)-mu[i];
         }
-        mu[p * i] = (signed char)-mu[i];
       }
     }
     sm.assign(D + 1, 0);
     int s = 0;
     for (u64 i = 1; i <= D; ++i) s += mu[i], sm[i] = s;
+    hkey.assign(HSZ, 0);
+    hval.assign(HSZ, 0);
   }
 
   i64 mertens(u64 y) {
     if (y <= D) return sm[y];
-    auto it = memo.find(y);
-    if (it != memo.end()) return it->second;
+    size_t h = (size_t)((y * 0x9E3779B97F4A7C15ull) >> 43) & (HSZ - 1);
+    while (hkey[h] && hkey[h] != y) h = (h + 1) & (HSZ - 1);
+    if (hkey[h]) return hval[h];
     i64 s = 1;
     for (u64 i = 2, j; i <= y; i = j + 1) {
       const u64 q = y / i;
       j = y / q;
       s -= (i64)(j - i + 1) * mertens(q);
     }
-    memo.emplace(y, s);
+    hkey[h] = y, hval[h] = s;
     return s;
   }
 
-  u64 solve(u64 n, u64 cap = 10000000ULL) {
+  u64 solve(u64 n, u64 cap = 30000000ULL) {
     if (n == 0) return 0;
     const u64 R = isqrt(n);
     const u64 lim = std::min<u64>(R, cap);
