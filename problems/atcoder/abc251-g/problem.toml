@@ -1,0 +1,19 @@
+id = "atcoder-abc251-g"
+title = "G - Intersection of Polygons"
+url = "https://atcoder.jp/contests/abc251/tasks/abc251_g"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 10
+reference = "reference.cpp"
+
+[compare]
+kind = "tokens"
