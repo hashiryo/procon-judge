@@ -81,6 +81,8 @@ template <unsigned P> V vcombine128(__m128i lo, __m128i hi) { return _mm256_inse
 template <unsigned P> V vplus(V x, V y) { return _mm256_add_epi32(x, y); }
 template <unsigned P> V vdiff(V x, V y) { return _mm256_sub_epi32(_mm256_add_epi32(x, vsplat<P>(mc<P>::p2)), y); }
 template <unsigned P> V vlow(V x) { return _mm256_min_epu32(x, _mm256_sub_epi32(x, vsplat<P>(mc<P>::p2))); }
+// 2P 未満の値を P 未満に落とす (表の値を正規化する)。
+template <unsigned P> V vcanon(V x) { return _mm256_min_epu32(x, _mm256_sub_epi32(x, vsplat<P>(P))); }
 
 // Montgomery の掛け算 (8 レーン)。x < 4P、w < P。結果は 2P 未満。
 // 積 t = x w の下位 32 bit から q = t * ni mod 2^32 を作り、t + q P の上位 32 bit を取る。
@@ -203,9 +205,11 @@ template <unsigned P> const u32* build_tw(int len, int h, bool inv) {
  u32* p1= tab.data();
  u32* p2= p1 + h;
  u32* p3= p2 + h;
+ // 表の値は P 未満に正規化する。vmuls の結果は 2P 未満なので、そのまま入れると
+ // 段の掛け算の前提 (w < P) が崩れ、遅延還元の値が 2P を超えて 2^32 の桁あふれを起こす。
  for (int j= 0; j < h; j+= 8) {
   vstore<P>(p1 + j, w1), vstore<P>(p2 + j, w2), vstore<P>(p3 + j, w3);
-  w1= vmuls<P>(w1, r1), w2= vmuls<P>(w2, r2), w3= vmuls<P>(w3, r3);
+  w1= vcanon<P>(vmuls<P>(w1, r1)), w2= vcanon<P>(vmuls<P>(w2, r2)), w3= vcanon<P>(vmuls<P>(w3, r3));
  }
  u32* q1= tab.data() + 3 * h;
  u32* q2= q1 + h;
