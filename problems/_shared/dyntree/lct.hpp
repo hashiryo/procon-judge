@@ -272,7 +272,7 @@ class LinkCutTree {
    rotate(x);
    last = p;
   }
-  pull(x);
+  if constexpr (AC) pull(x);
   return last;
  }
  [[gnu::always_inline]] void evert(int x) { access(x), reverse(x); }
@@ -334,7 +334,9 @@ public:
  T prod(int u, int v) {
   u += 1, v += 1;
   evert(u), access(v);
-  return t[v].sum;  // v の右の子は空で、和は u から v への道の順
+  if constexpr (AC) return t[v].sum;
+  T s = t[v].ch[0] ? t[t[v].ch[0]].sum : M::ti();
+  return M::op(s, t[v].val);
  }
  // 道 u-v への作用。
  template <bool A = AC>
