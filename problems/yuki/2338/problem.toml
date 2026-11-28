@@ -1,0 +1,16 @@
+id = "yuki-2338"
+title = "Range AtCoder Query"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "2338"
+
+[compare]
+kind = "tokens"

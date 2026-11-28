@@ -1,0 +1,16 @@
+id = "yuki-961"
+title = "Vibrant Fillumination"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "961"
+
+[compare]
+kind = "tokens"

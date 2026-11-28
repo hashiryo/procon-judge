@@ -1,0 +1,16 @@
+id = "yuki-3446"
+title = "Range Adjacent Differences"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "yukicoder"
+name = "3446"
+
+[compare]
+kind = "tokens"
