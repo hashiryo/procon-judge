@@ -1,0 +1,21 @@
+id = "self-dwm-delete-kth"
+title = "列への追加・削除・変更と区間 k 番目 (Q=100000)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 10
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
