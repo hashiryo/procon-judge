@@ -442,6 +442,30 @@ struct WeightedWaveletMatrix {
   }
 
   i64 sum_all(int l, int r) const { return bv[L - 1].sum_all(l, r); }
+
+  // [l, r) の大きい方から食べて和が k 以上になる最小個数。総和が k 未満なら -1。
+  int min_count_ge(int l, int r, i64 k) const {
+    if (sum_all(l, r) < k) return -1;
+    int cnt = 0;
+    i64 v = 0;
+    for (int h = L - 1; h >= 0; --h) {
+      int ol = bv[h].rank1(l), orr = bv[h].rank1(r);
+      i64 s1 = bv[h].sum1(l, r);
+      int c1 = orr - ol;
+      if (s1 >= k) {
+        v |= i64(1) << h;
+        l = mid[h] + ol;
+        r = mid[h] + orr;
+      } else {
+        k -= s1;
+        cnt += c1;
+        l -= ol;
+        r -= orr;
+      }
+    }
+    if (k > 0) cnt += (int)((k + v - 1) / v);
+    return cnt;
+  }
 };
 
 }  // namespace dwm_sum_internal
