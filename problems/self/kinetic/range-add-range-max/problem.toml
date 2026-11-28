@@ -1,0 +1,21 @@
+id = "self-kinetic-range-add-range-max"
+title = "要素ごとの係数の区間線形加算と区間最大 (N = Q = 10^5、交差を集中させた入力を含む)"
+
+[limits]
+tle_sec = 10.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 10
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
