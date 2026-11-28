@@ -1,0 +1,19 @@
+id = "yosupo-cycle-detection-undirected"
+title = "Cycle Detection (Undirected)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "graph/cycle_detection_undirected"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true

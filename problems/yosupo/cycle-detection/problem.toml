@@ -1,0 +1,19 @@
+id = "yosupo-cycle-detection"
+title = "Cycle Detection (Directed)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+[testdata]
+source = "library_checker"
+name = "graph/cycle_detection"
+
+[compare]
+kind = "checker"
+
+[record]
+case_times = true
