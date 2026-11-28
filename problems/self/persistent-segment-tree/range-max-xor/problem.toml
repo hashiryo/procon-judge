@@ -1,0 +1,23 @@
+id = "self-persistent-segment-tree-range-max-xor"
+title = "永続セグメント木 (区間 max xor)"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 1024
+
+[harness]
+kind = "base"
+
+# テストデータは毎回 gen.py で作る。参照実装は NeoLibrary を使わずに書いた永続 binary trie で、
+# 愚直解 (brute.hpp) と小さい入力で突き合わせる (pj testdata crosscheck)。
+[testdata]
+source = "local"
+count = 12
+generator = "gen.py"
+reference = "reference.hpp"
+
+[compare]
+kind = "tokens"
+
+[record]
+case_times = true
