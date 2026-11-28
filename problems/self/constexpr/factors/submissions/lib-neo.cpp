@@ -1,3 +1,4 @@
+#include <cassert>
 #include "neo/base/core/nt/factors.hpp"
 
 constexpr auto f= Factors(2 * 2 * 3 * 5);
@@ -13,13 +14,16 @@ constexpr auto g= Factors(7 * 2 * 2 * 3);
 static_assert(g[0].first == 2 && g[0].second == 2);
 static_assert(g[1].first == 3 && g[1].second == 1);
 static_assert(g[2].first == 7 && g[2].second == 1);
-// 2 つの素数の積 (rho の道)
-constexpr auto h= Factors(1000000007ull * 1000000009ull);
-static_assert(h.size() == 2);
-static_assert(h[0].first == 1000000007ull && h[0].second == 1);
-static_assert(h[1].first == 1000000009ull && h[1].second == 1);
 constexpr int n= totient(100);
 static_assert(n == 40);
 constexpr auto m= lambda_like(998244353ull);  // p - 1 = 2^23 * 7 * 17
 static_assert(m == 998244352ull);
-signed main() { return 0; }
+signed main() {
+ // 2 つの素数の積 (rho の道)。定数評価では、この大きさの合成数は rho の回数が多く、判定サイトの
+ // constexpr の上限 (GCC の -fconstexpr-ops-limit と Clang の -fconstexpr-steps) を超えるので、実行時に確かめる。
+ const auto h= Factors(1000000007ull * 1000000009ull);
+ assert(h.size() == 2);
+ assert(h[0].first == 1000000007ull && h[0].second == 1);
+ assert(h[1].first == 1000000009ull && h[1].second == 1);
+ return 0;
+}
