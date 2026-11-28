@@ -1,0 +1,23 @@
+id = "cses-2085"
+title = "Monster Game II"
+url = "https://cses.fi/problemset/task/2085"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+# CSES のテストケースは自作する。2084 と同じゲームで、s_i も f_i も単調とは限らない。
+# 遷移 dp[i] = min_j (dp[j] + s_i f_j) の直線 y = f_j X + dp[j] の傾きも、問い s_i も単調でないので、
+# 両端キューは使えない。Li Chao 木で各 i を O(log C) で引く。neo の LiChaoTree (範囲) と
+# LiChaoTreePoints (問いの x を先に渡す形)、今の Library の LiChaoTree を測る。
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 14
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"

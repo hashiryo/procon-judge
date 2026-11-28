@@ -1,0 +1,23 @@
+id = "cses-2088"
+title = "Knuth Division"
+url = "https://cses.fi/problemset/task/2088"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+# CSES のテストケースは自作する。配列を 1 要素ずつに分ける。1 回の分割は選んだ部分配列の和の費用で、
+# 全体の費用の最小を出す。区間 DP dp[l][r] = min_{l <= k < r} dp[l][k] + dp[k+1][r] + sum(l, r) で、
+# 費用の区間和は Monge (等号) かつ単調なので、最適な k は opt[l][r-1] <= opt[l][r] <= opt[l+1][r] を満たす。
+# Knuth の最適化で O(n^2)。neo の knuth_dp を測る。
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 14
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"

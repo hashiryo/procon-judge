@@ -1,0 +1,24 @@
+id = "cses-2084"
+title = "Monster Game I"
+url = "https://cses.fi/problemset/task/2084"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+# CSES のテストケースは自作する。n 体のモンスターを順に見て、倒すか逃げるかを選ぶ (最後は必ず倒す)。
+# 倒すと s_i × 今の skill factor の時間がかかり、skill factor が f_i になる。s は広義単調増加、
+# f は広義単調減少 (x >= f_1 >= … >= f_n) なので、遷移 dp[i] = min_j (dp[j] + s_i f_j) の直線の傾き f_j は
+# 単調に減り、問い s_i は単調に増える。両端キューの Convex Hull Trick で各 i を O(1) で引ける。
+# neo の MonotoneCHT と、今の Library の ConvexHullTrick (multiset) を測る。
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 14
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"

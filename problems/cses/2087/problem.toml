@@ -1,0 +1,24 @@
+id = "cses-2087"
+title = "Houses and Schools"
+url = "https://cses.fi/problemset/task/2087"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "base"
+
+# CSES のテストケースは自作する。直線上の n 軒に k 校を置き、子が近い方の学校へ歩く距離の和を最小にする。
+# 学校の受け持ちは連続した区間になるので、区間 [l, r] に学校 1 校を置く費用 w(l, r) (子の数の重み付き中央値)
+# を全部作り、dp[t][i] = min_{j < i} dp[t-1][j] + w(j+1, i) を解く。w は Monge なので、argmin は行 i に
+# ついて単調。分割統治の決定単調性で各層 O(n log n)。neo の monotone_minima_bounded_values と、
+# 今の Library の monotone_minima を測る。
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 14
+reference = "submissions/reference.hpp"
+
+[compare]
+kind = "tokens"
