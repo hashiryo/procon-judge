@@ -34,8 +34,8 @@ signed main(stringstream& scin, stringstream& scout) {
     g1.shift(-R[e]);
     g2.chmin_cum(true);
     g2.shift(R[e]);
-    f1+= g2;
-    f2+= g1;
+    f1+= std::move(g2);
+    f2+= std::move(g1);
    }
    f1.add_linear(-W[v]);
    f2.add_linear(W[v]);

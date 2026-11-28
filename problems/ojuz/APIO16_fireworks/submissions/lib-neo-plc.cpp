@@ -34,7 +34,7 @@ signed main(stringstream& scin, stringstream& scout) {
    fu.add_linear(-2);
    fu.chmin_cum();
    fu.add_linear(1);
-   f+= fu;
+   f+= std::move(fu);
   }
   return f;
  };

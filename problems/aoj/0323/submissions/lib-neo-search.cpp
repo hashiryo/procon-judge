@@ -1,5 +1,6 @@
 #include <iostream>
 #include <iomanip>
+#include <cmath>
 #include "neo/algo/optimize/search/golden_search.hpp"
 using namespace std;
 signed main() {

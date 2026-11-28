@@ -17,7 +17,7 @@ signed main() {
   for(int u: tree[v]) {
    auto g= dfs(dfs, u);
    g.chmin_cum(), g.shift(1);
-   f+= g;
+   f+= std::move(g);
   }
   return f;
  };

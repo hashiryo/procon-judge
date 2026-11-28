@@ -29,7 +29,7 @@ signed main(stringstream& scin, stringstream& scout) {
    if(u == p) continue;
    PLC f_= dfs(dfs, u, v);
    f_.chmin_slide_win(-c[e], c[e]);
-   f+= f_;
+   f+= std::move(f_);
   }
   f.add_linear(y[v] - x[v]);
   return f;

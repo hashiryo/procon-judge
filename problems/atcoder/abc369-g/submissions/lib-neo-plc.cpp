@@ -23,7 +23,7 @@ signed main() {
    fu.chmin_slide_win(-L[e], 0);
    fu.add_linear(1);
    fu.add_const(L[e]);
-   f+= fu;
+   f+= std::move(fu);
   }
   f.chmin_cum(true);
   f.add_ramp(1, 0);
