@@ -1,0 +1,19 @@
+id = "atcoder-abc181-c"
+title = "C - Collinearity"
+url = "https://atcoder.jp/contests/abc181/tasks/abc181_c"
+
+[limits]
+tle_sec = 5.0
+mle_mb = 512
+
+[harness]
+kind = "raw"
+
+[testdata]
+source = "local"
+generator = "gen.py"
+count = 9
+reference = "reference.cpp"
+
+[compare]
+kind = "tokens"
